@@ -6,14 +6,20 @@
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}">
-                        <x-application-logo class="block h-9 w-auto fill-current text-gray-800" />
+                        {{-- <x-application-logo class="block h-9 w-auto fill-current text-gray-800" /> --}}
                     </a>
                 </div>
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        {{ __('Dashboard') }}
+                        {{ __('Parse Schedule') }}
+                    </x-nav-link>
+                    <x-nav-link href="https://buymeacoffee.com/crewcompass" :active="false" target="_blank" rel="noopener">
+                        {{-- <div class="h-2 w-2 rounded-full bg-[#FFDD00] inline-block me-2"> --}}
+
+                            <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="crewcompass" data-color="#FFDD00" data-emoji="☕"  data-font="Cookie" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff" ></script>
+                        {{-- </div> --}}
                     </x-nav-link>
                 </div>
             </div>
@@ -68,7 +74,10 @@
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                {{ __('Dashboard') }}
+                {{ __('Parse Schedule') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link href="https://buymeacoffee.com/crewcompass" :active="false" target="_blank" rel="noopener">
+                Buy Me a Coffee
             </x-responsive-nav-link>
         </div>
 

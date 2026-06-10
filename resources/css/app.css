@@ -1,3 +1,29 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+	.cc-card {
+		@apply rounded-lg border border-[#1B365D]/15 bg-white shadow-sm;
+	}
+
+	.cc-card-header {
+		@apply border-b border-[#1B365D]/10 bg-[#0B0E14] px-5 py-4 text-[#F8F9FA];
+	}
+
+	.cc-btn-primary {
+		@apply inline-flex items-center justify-center rounded-md bg-[#C5A059] px-4 py-2 text-sm font-semibold text-[#0B0E14] transition hover:bg-[#b6914b];
+	}
+
+	.cc-btn-cta {
+		@apply rounded-md bg-[#1B365D] px-5 py-2.5 font-semibold text-[#F8F9FA] transition hover:bg-[#142a49];
+	}
+
+	.cc-badge {
+		@apply rounded-full bg-[#C5A059]/20 px-2.5 py-1 text-xs font-bold uppercase text-[#1B365D];
+	}
+
+	.cc-file-input {
+		@apply block w-full rounded-md border border-[#4A5568]/30 bg-[#F8F9FA] p-3 text-sm text-[#0B0E14];
+	}
+}

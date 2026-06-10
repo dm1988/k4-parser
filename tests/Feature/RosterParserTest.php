@@ -90,15 +90,15 @@ TEXT;
 
         $response
             ->assertRedirect()
-            ->assertSessionHas('result', function (array $result): bool {
+                ->assertSessionHas('result', function (array $result): bool {
                 return $result['type'] === 'hotel'
                     && count($result['parsed']) === 1
                     && $result['parsed'][0]['type'] === 'layover';
-            });
-    }
+                });
+            }
 
-    public function test_roster_parser_can_filter_calendar_events(): void
-    {
+            public function test_roster_parser_can_filter_calendar_events(): void
+            {
         $text = <<<'TEXT'
 June 2026
 Details
@@ -228,6 +228,14 @@ TEXT;
             ->assertSee('BEGIN:VEVENT')
             ->assertSee('SUMMARY:G4 368 AUS-CVG')
             ->assertSee('DTSTART:20260612T224400Z')
-            ->assertSee('DTEND:20260613T011700Z');
+            ->assertSee('DTEND:20260613T011700Z')
+            ->assertSee('Type: Flight')
+            ->assertSee('Flight number: G4 368')
+            ->assertSee('Origin: AUS')
+            ->assertSee('Destination: CVG')
+            ->assertSee('Position: DH')
+            ->assertDontSee('Aircraft:')
+            ->assertDontSee('Block time:')
+            ->assertDontSee('Raw lines:');
     }
 }

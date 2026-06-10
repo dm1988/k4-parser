@@ -438,17 +438,25 @@ class ParserController extends Controller
 
     private function formatEventDescription(array $event): string
     {
-        $description = 'Type: '.ucfirst($event['type']);
+        $description = ['Type: '.ucfirst($event['type'])];
 
         foreach ($event['metadata'] as $key => $value) {
-            if (is_array($value)) {
-                $value = implode(', ', $value);
+            if ($key === 'raw_lines') {
+                continue;
             }
 
-            $description .= '\n'.ucfirst(str_replace('_', ' ', $key)).': '.$value;
+            if (is_array($value)) {
+                $value = implode(', ', array_filter($value, fn ($item) => $item !== null && $item !== ''));
+            }
+
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            $description[] = ucfirst(str_replace('_', ' ', $key)).': '.$value;
         }
 
-        return $description;
+        return implode("\n", $description);
     }
 
     private function escapeIcsValue(string $value): string
