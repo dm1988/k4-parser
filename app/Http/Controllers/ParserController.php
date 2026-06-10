@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\Process\Process;
+use Throwable;
 
 class ParserController extends Controller
 {
@@ -40,14 +43,37 @@ class ParserController extends Controller
 
     public function parseRoster(Request $request)
     {
-        $text = $request->validate([
-            'text' => ['required', 'string'],
-        ])['text'];
+        $data = $request->validate([
+            'image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,bmp,tif,tiff,webp', 'max:10240', 'required_without:text'],
+            'text' => ['nullable', 'string', 'required_without:image'],
+            'event_types' => ['nullable', 'array'],
+            'event_types.*' => ['in:flight,layover'],
+        ]);
+
+        $source = 'text';
+        $text = $data['text'] ?? '';
+
+        if ($request->hasFile('image')) {
+            $source = 'image';
+            $text = $this->extractTextFromImage($request->file('image')->getRealPath());
+        }
+
+        $parsed = $this->extractRoster($text);
+        $eventTypes = $data['event_types'] ?? [];
+
+        if ($eventTypes !== []) {
+            $parsed['calendar_events'] = array_values(array_filter(
+                $parsed['calendar_events'],
+                fn (array $event) => in_array($event['type'], $eventTypes, true),
+            ));
+        }
 
         return back()->with('result', [
             'type' => 'roster',
+            'source' => $source,
+            'filters' => $eventTypes,
             'raw' => $text,
-            'parsed' => $this->extractRoster($text),
+            'parsed' => $parsed,
         ]);
     }
 
@@ -70,7 +96,7 @@ class ParserController extends Controller
         $defaultYear = $this->detectRosterYear($lines);
         $monthYears = $this->detectMonthYears($lines, $defaultYear);
 
-        $detailStart = array_search('Details', $lines, true);
+        $detailStart = $this->firstLineIndexContaining($lines, 'Details');
         $detailLines = $detailStart === false ? $lines : array_slice($lines, $detailStart + 1);
 
         $events = [];
@@ -89,14 +115,80 @@ class ParserController extends Controller
         ];
     }
 
+    private function extractTextFromImage(string $path): string
+    {
+        $tesseract = config('services.ocr.tesseract_path', '/usr/bin/tesseract');
+
+        if (! is_executable($tesseract)) {
+            throw ValidationException::withMessages([
+                'image' => "OCR is not installed in the web server container. Expected Tesseract at {$tesseract}.",
+            ]);
+        }
+
+        $process = new Process([
+            $tesseract,
+            $path,
+            'stdout',
+            '--psm',
+            '6',
+        ]);
+        $process->setTimeout(30);
+
+        try {
+            $process->mustRun();
+        } catch (Throwable $exception) {
+            report($exception);
+
+            throw ValidationException::withMessages([
+                'image' => 'OCR failed. Try a sharper roster screenshot or paste the extracted text instead.',
+            ]);
+        }
+
+        $text = trim($process->getOutput());
+
+        if ($text === '') {
+            throw ValidationException::withMessages([
+                'image' => 'OCR did not find any text in that image. Try a clearer screenshot or paste the text manually.',
+            ]);
+        }
+
+        return $text;
+    }
+
     private function normaliseLines(string $text): array
     {
         $text = str_replace(["\r\n", "\r"], "\n", $text);
 
-        return array_values(array_filter(array_map(
-            fn (string $line) => trim(preg_replace('/\s+/', ' ', $line)),
-            explode("\n", $text),
-        ), fn (string $line) => $line !== ''));
+        $lines = [];
+
+        foreach (explode("\n", $text) as $line) {
+            $line = trim(preg_replace('/\s+/', ' ', $line));
+
+            if ($line === '') {
+                continue;
+            }
+
+            if (preg_match('/([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}\s+-\s+[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2})/', $line, $matches)) {
+                $before = trim(substr($line, 0, strpos($line, $matches[1])));
+                $after = trim(substr($line, strpos($line, $matches[1]) + strlen($matches[1])));
+
+                if ($before !== '') {
+                    $lines[] = $before;
+                }
+
+                $lines[] = $matches[1];
+
+                if ($after !== '') {
+                    $lines[] = $after;
+                }
+
+                continue;
+            }
+
+            $lines[] = $line;
+        }
+
+        return $lines;
     }
 
     private function detectRosterYear(array $lines): int
@@ -173,6 +265,23 @@ class ParserController extends Controller
         $airportRoute = $this->firstMatchingLine($block, '/^([A-Z]{3})\s+-\s+([A-Z]{3})$/');
         $hotelRoute = $this->firstMatchingLine($block, '/^([A-Z]{3})\s+-\s+(.+)$/');
         $station = $this->firstMatchingLine($block, '/^[A-Z]{3}$/');
+        $blockText = implode(' ', $block);
+
+        if ($flightNumber === null && preg_match('/\b([A-Z0-9]{1,3}\s+\d{2,5})\b/', $blockText, $matches)) {
+            $flightNumber = $matches[1];
+        }
+
+        if ($airportRoute === null && preg_match('/\b([A-Z]{3})\s*-\s*([A-Z]{3})\b/', $blockText, $matches)) {
+            $airportRoute = "{$matches[1]} - {$matches[2]}";
+        }
+
+        if ($hotelRoute === null && preg_match('/\b([A-Z]{3})\s*-\s*([^|]+?)(?:\s+[vV]+)?(?:\s+\d+:\d{2}h?)?$/', $blockText, $matches)) {
+            $hotelRoute = "{$matches[1]} - ".trim($matches[2]);
+        }
+
+        if ($station === null && preg_match('/\b([A-Z]{3})\b/', $blockText, $matches)) {
+            $station = $matches[1];
+        }
 
         if ($flightNumber !== null && $airportRoute !== null && preg_match('/^([A-Z]{3})\s+-\s+([A-Z]{3})$/', $airportRoute, $routeMatches)) {
             $origin = $routeMatches[1];
@@ -290,6 +399,17 @@ class ParserController extends Controller
         }
 
         return null;
+    }
+
+    private function firstLineIndexContaining(array $lines, string $needle): int|false
+    {
+        foreach ($lines as $index => $line) {
+            if (str_contains($line, $needle)) {
+                return $index;
+            }
+        }
+
+        return false;
     }
 
     private function detectCrewPosition(array $lines): ?string

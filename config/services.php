@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'ocr' => [
+        'tesseract_path' => env('TESSERACT_PATH', '/usr/bin/tesseract'),
+    ],
+
 ];
