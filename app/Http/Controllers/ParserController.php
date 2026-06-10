@@ -68,18 +68,22 @@ class ParserController extends Controller
             ));
         }
 
-        return back()->with('result', [
+        $result = [
             'type' => 'roster',
             'source' => $source,
             'filters' => $eventTypes,
             'raw' => $text,
             'parsed' => $parsed,
-        ]);
+        ];
+
+        session(['parsed_result' => $result]);
+
+        return back()->with('result', $result);
     }
 
     public function exportCalendar(Request $request)
     {
-        $sessionResult = session('result');
+        $sessionResult = session('parsed_result', session('result'));
 
         if (! is_array($sessionResult) || ! isset($sessionResult['parsed']['calendar_events'])) {
             abort(404);
@@ -103,6 +107,26 @@ class ParserController extends Controller
         $filename = 'crew-compass' . ($tripNumber ? "-{$tripNumber}" : '') . '.ics';
 
         return response($this->buildIcs($events, $sessionResult['parsed']['trip'] ?? []), 200, [
+            'Content-Type' => 'text/calendar; charset=utf-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
+    public function exportCalendarEvent(Request $request, int $eventIndex)
+    {
+        $sessionResult = session('parsed_result', session('result'));
+
+        if (! is_array($sessionResult) || ! isset($sessionResult['parsed']['calendar_events'][$eventIndex])) {
+            abort(404);
+        }
+
+        $event = $sessionResult['parsed']['calendar_events'][$eventIndex];
+        $trip = $sessionResult['parsed']['trip'] ?? [];
+        $tripNumber = $trip['trip_number'] ?? null;
+        $slug = 'event-'.$eventIndex;
+        $filename = 'crew-compass' . ($tripNumber ? "-{$tripNumber}" : '') . '-' . $slug . '.ics';
+
+        return response($this->buildIcs([$event], $trip), 200, [
             'Content-Type' => 'text/calendar; charset=utf-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);

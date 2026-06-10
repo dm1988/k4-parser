@@ -2,10 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Tests\TestCase;
 
 class RosterParserTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->actingAs(User::factory()->make());
+    }
+
     public function test_roster_text_is_parsed_into_calendar_events(): void
     {
         $text = <<<'TEXT'
@@ -194,5 +202,32 @@ TEXT;
             ->assertSee('BEGIN:VCALENDAR')
             ->assertSee('BEGIN:VEVENT')
             ->assertSee('SUMMARY:G4 368 AUS-CVG');
+    }
+
+    public function test_roster_parser_can_export_single_line_item_ics(): void
+    {
+        $text = <<<'TEXT'
+June 2026
+Details
+Jun 12 22:44 - Jun 13 01:17
+G4 368
+Pos
+AUS - CVG
+DH
+TEXT;
+
+        $this->post(route('parse.roster'), ['text' => $text]);
+
+        $response = $this->get(route('parse.export.event', ['eventIndex' => 0]));
+
+        $response
+            ->assertOk()
+            ->assertHeader('content-type', 'text/calendar; charset=utf-8')
+            ->assertHeader('content-disposition', 'attachment; filename="crew-compass-event-0.ics"')
+            ->assertSee('BEGIN:VCALENDAR')
+            ->assertSee('BEGIN:VEVENT')
+            ->assertSee('SUMMARY:G4 368 AUS-CVG')
+            ->assertSee('DTSTART:20260612T224400Z')
+            ->assertSee('DTEND:20260613T011700Z');
     }
 }
