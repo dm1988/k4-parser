@@ -40,6 +40,18 @@
                                 $start = \Carbon\Carbon::parse($event['start']);
                                 $end = \Carbon\Carbon::parse($event['end']);
                                 $sameDay = $start->isSameDay($end);
+                                $durationMinutes = $start->diffInMinutes($end);
+                                $hours = floor($durationMinutes / 60);
+                                $minutes = $durationMinutes % 60;
+                                $durationText = $hours > 0 ? "{$hours}h {$minutes}m" : "{$minutes}m";
+
+                                $eventType = strtolower($event['type']);
+                                $badgeColor = match($eventType) {
+                                    'flight' => 'bg-blue-100 text-blue-900',
+                                    'duty' => 'bg-green-100 text-green-900',
+                                    'layover' => 'bg-gray-100 text-gray-900',
+                                    default => 'bg-[#C5A059]/20 text-[#1B365D]',
+                                };
                             @endphp
 
                             <article class="rounded-md border border-[#1B365D]/10 p-3">
@@ -56,14 +68,15 @@
                                         </p>
                                     </div>
 
-                                    <span class="shrink-0 rounded-full bg-[#C5A059]/20 px-2.5 py-1 text-xs font-bold uppercase text-[#1B365D]">
-                                        {{ $event['type'] }}
-                                    </span>
+                                    <div class="flex flex-col items-end gap-1">
+                                        <span class="shrink-0 rounded-full {{ $badgeColor }} px-2.5 py-1 text-xs font-bold uppercase">
+                                            {{ $event['type'] }}
+                                        </span>
+                                        <p class="text-xs text-[#4A5568]">{{ $durationText }}</p>
+                                    </div>
                                 </div>
 
                                 <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                    <p class="text-xs text-[#4A5568]">Export this line item as a single .ics event.</p>
-
                                     <a href="{{ route('parse.export.event', ['eventIndex' => $loop->index]) }}"
                                        class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-[#1B365D] text-[#F8F9FA] transition hover:bg-[#142a49]"
                                        title="Download .ics">
