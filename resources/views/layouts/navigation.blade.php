@@ -15,12 +15,21 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Parse Schedule') }}
                     </x-nav-link>
-                    <x-nav-link href="https://buymeacoffee.com/crewcompass" :active="false" target="_blank" rel="noopener">
-                        {{-- <div class="h-2 w-2 rounded-full bg-[#FFDD00] inline-block me-2"> --}}
-
-                            <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="crewcompass" data-color="#FFDD00" data-emoji="☕"  data-font="Cookie" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff" ></script>
-                        {{-- </div> --}}
-                    </x-nav-link>
+                    <div class="px-3 py-2 scale-75 origin-left">
+                        <script
+                            type="text/javascript"
+                            src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js"
+                            data-name="bmc-button"
+                            data-slug="crewcompass"
+                            data-color="#FFDD00"
+                            data-emoji="☕"
+                            data-font="Cookie"
+                            data-text="Buy me a coffee"
+                            data-outline-color="#000000"
+                            data-font-color="#000000"
+                            data-coffee-color="#ffffff">
+                        </script>
+                    </div>
                 </div>
             </div>
 
