@@ -167,4 +167,32 @@ TEXT;
                     && $events[5]['metadata']['hotel'] === 'Hyatt Regency Tokyo Bay';
             });
     }
+
+    public function test_roster_parser_can_export_calendar_ics_from_parsed_result(): void
+    {
+        $text = <<<'TEXT'
+June 2026
+Details
+Jun 12 22:44 - Jun 13 01:17
+G4 368
+Pos
+AUS - CVG
+DH
+Jun 13 01:17 - Jun 13 07:35
+CVG - Holiday Inn Express & Suites Florence - Cincinnati Airport - Vandercar Way
+6:18h
+TEXT;
+
+        $this->post(route('parse.roster'), ['text' => $text]);
+
+        $response = $this->get(route('parse.export'));
+
+        $response
+            ->assertOk()
+            ->assertHeader('content-type', 'text/calendar; charset=utf-8')
+            ->assertHeader('content-disposition', 'attachment; filename="crew-compass.ics"')
+            ->assertSee('BEGIN:VCALENDAR')
+            ->assertSee('BEGIN:VEVENT')
+            ->assertSee('SUMMARY:G4 368 AUS-CVG');
+    }
 }

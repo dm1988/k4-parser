@@ -77,6 +77,37 @@ class ParserController extends Controller
         ]);
     }
 
+    public function exportCalendar(Request $request)
+    {
+        $sessionResult = session('result');
+
+        if (! is_array($sessionResult) || ! isset($sessionResult['parsed']['calendar_events'])) {
+            abort(404);
+        }
+
+        $eventTypes = $request->query('event_types', $sessionResult['filters'] ?? []);
+        $events = $sessionResult['parsed']['calendar_events'];
+
+        if ($eventTypes !== []) {
+            $events = array_values(array_filter(
+                $events,
+                fn (array $event) => in_array($event['type'], $eventTypes, true),
+            ));
+        }
+
+        if (count($events) === 0) {
+            abort(404);
+        }
+
+        $tripNumber = $sessionResult['parsed']['trip']['trip_number'] ?? null;
+        $filename = 'crew-compass' . ($tripNumber ? "-{$tripNumber}" : '') . '.ics';
+
+        return response($this->buildIcs($events, $sessionResult['parsed']['trip'] ?? []), 200, [
+            'Content-Type' => 'text/calendar; charset=utf-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
     private function extractFlight(string $text): array
     {
         return $this->extractRoster($text)['calendar_events'];
@@ -342,6 +373,67 @@ class ParserController extends Controller
             'timezone' => config('app.timezone'),
             'metadata' => $metadata,
         ];
+    }
+
+    private function buildIcs(array $events, array $trip = []): string
+    {
+        $lines = [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'CALSCALE:GREGORIAN',
+            'METHOD:PUBLISH',
+            'PRODID:-//Crew Compass//Roster Parser//EN',
+        ];
+
+        if (! empty($trip['trip_number'])) {
+            $lines[] = 'X-WR-CALNAME:Crew Compass Trip '.$this->escapeIcsValue($trip['trip_number']);
+        }
+
+        $lines[] = 'X-WR-CALDESC:Calendar export from Crew Compass';
+
+        foreach ($events as $event) {
+            $start = Carbon::parse($event['start'])->setTimezone('UTC');
+            $end = Carbon::parse($event['end'])->setTimezone('UTC');
+            $description = $this->formatEventDescription($event);
+            $uid = sha1($event['title'].$event['start'].$event['end']);
+
+            $lines[] = 'BEGIN:VEVENT';
+            $lines[] = 'UID:'.$uid.'@crew-compass';
+            $lines[] = 'DTSTAMP:'.now()->setTimezone('UTC')->format('Ymd\THis\Z');
+            $lines[] = 'DTSTART:'.$start->format('Ymd\THis\Z');
+            $lines[] = 'DTEND:'.$end->format('Ymd\THis\Z');
+            $lines[] = 'SUMMARY:'.$this->escapeIcsValue($event['title']);
+            $lines[] = 'DESCRIPTION:'.$this->escapeIcsValue($description);
+            $lines[] = 'END:VEVENT';
+        }
+
+        $lines[] = 'END:VCALENDAR';
+
+        return implode("\r\n", $lines)."\r\n";
+    }
+
+    private function formatEventDescription(array $event): string
+    {
+        $description = 'Type: '.ucfirst($event['type']);
+
+        foreach ($event['metadata'] as $key => $value) {
+            if (is_array($value)) {
+                $value = implode(', ', $value);
+            }
+
+            $description .= '\n'.ucfirst(str_replace('_', ' ', $key)).': '.$value;
+        }
+
+        return $description;
+    }
+
+    private function escapeIcsValue(string $value): string
+    {
+        return str_replace(
+            ['\\', "\r\n", "\n", ',', ';'],
+            ['\\\\', '\\n', '\\n', '\\,', '\\;'],
+            $value,
+        );
     }
 
     private function extractTripSummary(array $lines): array

@@ -1,11 +1,20 @@
 <?php
 
-use App\Http\Controllers\ParserController;
+use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn() => redirect('/parse'));
+Route::get('/', function () {
+    return view('welcome');
+});
 
-Route::get('/parse', [ParserController::class, 'index'])->name('parse.index');
-Route::post('/parse/roster', [ParserController::class, 'parseRoster'])->name('parse.roster');
-Route::post('/parse/flight', [ParserController::class, 'parseFlight'])->name('parse.flight');
-Route::post('/parse/hotel', [ParserController::class, 'parseHotel'])->name('parse.hotel');
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+require __DIR__.'/auth.php';
