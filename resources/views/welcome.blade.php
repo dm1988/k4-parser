@@ -14,7 +14,7 @@
 
     <header class="max-w-7xl w-full mx-auto px-6 py-6 flex justify-between items-center">
         <div class="text-xl font-bold tracking-wider text-indigo-400">
-            K4 SCHEDULEPARSER
+            K4 SCHEDULE PARSER
         </div>
         <div>
             @if (Route::has('login'))
