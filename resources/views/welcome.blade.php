@@ -59,7 +59,7 @@
                     <x-heroicon-o-globe-alt class="h-6 w-6 text-emerald-400 mb-2" />
                     {{-- <div class="text-emerald-400 font-bold text-lg mb-1">02</div> --}}
                     <h3 class="text-sm font-semibold text-white mb-1">No VPN required</h3>
-                    <p class="text-xs text-slate-400">Check your upcoming calendar securely from the open web.</p>
+                    <p class="text-xs text-slate-400">Check your upcoming roster securely from your personal calendar app.</p>
                 </div>
                 <div class="p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
                     <x-heroicon-o-device-tablet class="h-6 w-6 text-amber-400 mb-2" />
@@ -111,7 +111,7 @@
                 <div class="space-y-3">
                     <h2 class="text-lg font-bold text-white">Why is account registration required?</h2>
                     <p class="text-sm text-slate-400 leading-relaxed">
-                        To securely parse and store your schedules, you must upload document files. Registration acts as a critical security measure to prevent unauthorized automated abuse of our file processing servers, keeping the ecosystem safe and efficient for everyone.
+                        To securely parse and process your schedules, you must upload document files. Registration acts as a critical security measure to prevent unauthorized automated abuse of our file processing servers, keeping the ecosystem safe and efficient for everyone.
                     </p>
                     <div class="p-3 bg-slate-950/80 rounded-lg border border-slate-800 text-xs text-slate-400 flex items-center gap-2">
                         <span class="font-bold text-amber-500 uppercase tracking-wide text-[10px] bg-amber-500/10 px-1.5 py-0.5 rounded">Security Recommendation</span>
@@ -122,9 +122,17 @@
         </div>
     </section>
 
-    <footer class="border-t border-slate-800/40 py-6 text-center text-xs text-slate-600">
-        &copy; {{ date('Y') }} Crew Compass. All rights reserved. Not affiliated with corporate entity systems.
-    </footer>
+<footer class="border-t border-slate-800/40 py-6 text-center text-xs text-slate-600">
+    &copy; {{ date('Y') }} Crew Compass. All rights reserved.
+    Not affiliated with corporate entity systems.
+    |
+    <a
+        href="mailto:crewcompasscc@gmail.com"
+        class="underline hover:text-slate-800"
+    >
+        Feedback &amp; Bugs
+    </a>
+</footer>
 
 </body>
 </html>
