@@ -52,6 +52,7 @@
                                     'layover' => 'bg-gray-100 text-gray-900',
                                     default => 'bg-[#C5A059]/20 text-[#1B365D]',
                                 };
+                                $isDeadhead = (bool) data_get($event, 'metadata.deadhead', data_get($event, 'is_deadhead', false));
                             @endphp
 
                             <article class="rounded-md border border-[#1B365D]/10 p-3">
@@ -72,6 +73,11 @@
                                         <span class="shrink-0 rounded-full {{ $badgeColor }} px-2.5 py-1 text-xs font-bold uppercase">
                                             {{ $event['type'] }}
                                         </span>
+                                        @if ($isDeadhead)
+                                            <span class="shrink-0 rounded-full bg-[#C5A059]/20 px-2.5 py-1 text-xs font-bold uppercase text-[#1B365D]">
+                                                Deadhead
+                                            </span>
+                                        @endif
                                         <p class="text-xs text-[#4A5568]">{{ $durationText }}</p>
                                     </div>
                                 </div>

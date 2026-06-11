@@ -110,9 +110,11 @@ class ParserController extends Controller
 
         // 3. Normalized Output Contract
         $result = [
-            'type'     => $sourceType, // 'pdf' | 'image' | 'text'
+            'type'     => 'roster',
+            'source'   => $sourceType,
             'file'     => $path,
             'mime'     => $mime ?? null,
+            'raw'      => $text,
             'raw_text' => $text,
             'parsed'   => $parsed,
             'filters'  => $eventTypes,
@@ -196,7 +198,7 @@ class ParserController extends Controller
 
         // 1. Dynamic Boundary Identification
         // Find the table header row where flight records actually begin
-        $detailStart = $this->firstLineMatchingPattern($lines, '/DayFlightDeparture/i');
+        $detailStart = $this->firstLineMatchingPattern($lines, '/\b(?:Details|Day\s*Flight\s*Departure)\b/i');
 
         // Find where the duty rows end so we don't accidentally parse metadata as events
         $detailEnd = $this->firstLineMatchingPattern($lines, '/Duty Summary/i');
@@ -210,8 +212,6 @@ class ParserController extends Controller
 
         $events = [];
 
-        // 2. Streamlined Processing
-        // Ensure detailBlocks() is optimized to group by "Duty start" -> "Duty end" anchors
         foreach ($this->detailBlocks($detailLines) as $block) {
             $event = $this->parseDetailBlock($block, $monthYears, $defaultYear);
 
@@ -336,6 +336,7 @@ class ParserController extends Controller
         foreach ($lines as $line) {
             if (preg_match('/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b/', $line, $matches)) {
                 $monthYears[substr($matches[1], 0, 3)] = (int) $matches[2];
+                $monthYears[strtolower(substr($matches[1], 0, 3))] = (int) $matches[2];
             }
         }
 
@@ -346,38 +347,43 @@ class ParserController extends Controller
     {
         $blocks = [];
         $currentBlock = [];
-        $inBlock = false;
+        $mode = null;
 
         foreach ($lines as $line) {
             $trimmedLine = trim($line);
 
-            // 1. Detect the beginning of a duty period block
             if (str_contains($trimmedLine, 'Duty start')) {
-                // Defensive check: if a previous block wasn't closed cleanly, save it anyway
-                if ($inBlock && !empty($currentBlock)) {
+                if (!empty($currentBlock)) {
                     $blocks[] = $currentBlock;
                 }
 
                 $currentBlock = [$trimmedLine];
-                $inBlock = true;
+                $mode = 'duty';
                 continue;
             }
 
-            // 2. Collect content lines while inside an active duty period
-            if ($inBlock) {
+            if ($this->isDateRange($trimmedLine)) {
+                if (!empty($currentBlock)) {
+                    $blocks[] = $currentBlock;
+                }
+
+                $currentBlock = [$trimmedLine];
+                $mode = 'date-range';
+                continue;
+            }
+
+            if ($mode !== null) {
                 $currentBlock[] = $trimmedLine;
 
-                // 3. Detect the end of a duty period block
-                if (str_contains($trimmedLine, 'Duty end')) {
+                if ($mode === 'duty' && str_contains($trimmedLine, 'Duty end')) {
                     $blocks[] = $currentBlock;
                     $currentBlock = [];
-                    $inBlock = false;
+                    $mode = null;
                 }
             }
         }
 
-        // Catch any trailing data block that didn't conclude with an explicit "Duty end" string
-        if ($inBlock && !empty($currentBlock)) {
+        if (!empty($currentBlock)) {
             $blocks[] = $currentBlock;
         }
 
@@ -385,6 +391,10 @@ class ParserController extends Controller
     }
     private function parseDetailBlock(array $block, array $monthYears, int $defaultYear): ?array
     {
+        if ($this->isDateRange($block[0] ?? '')) {
+            return $this->parseDateRangeDetailBlock($block, $monthYears, $defaultYear);
+        }
+
         // Ensure we have a valid 3-line duty segment block
         if (count($block) < 3) {
             return null;
@@ -447,6 +457,124 @@ class ParserController extends Controller
             'destination'   => $destination,
             'deadhead'      => $isDeadhead,
         ]);
+    }
+
+    private function parseDateRangeDetailBlock(array $block, array $monthYears, int $defaultYear): ?array
+    {
+        if (!preg_match('/^([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2})\s+-\s+([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2})$/', $block[0], $matches)) {
+            return null;
+        }
+
+        $start = $this->parseRosterDate($matches[1], $monthYears, $defaultYear);
+        $end = $this->parseRosterDate($matches[2], $monthYears, $defaultYear);
+
+        if ($end->lessThanOrEqualTo($start)) {
+            $end->addYear();
+        }
+
+        $body = array_values(array_filter(array_slice($block, 1), fn(string $line): bool => $line !== ''));
+        $joinedBody = implode(' ', $body);
+
+        if ($route = $this->extractFlightRoute($body)) {
+            $flightNumber = $this->extractFlightNumber($body);
+            $position = $this->detectCrewPosition($body);
+            $aircraft = $this->detectAircraft($body);
+            $blockTime = $this->firstMatchingLine($body, '/\b\d{1,2}:\d{2}h\b/');
+            $isDeadhead = (bool) preg_match('/\bDH\b/i', $joinedBody);
+
+            return $this->calendarEvent(
+                'flight',
+                trim(($flightNumber ? "{$flightNumber} " : '') . "{$route['origin']}-{$route['destination']}"),
+                $start,
+                $end,
+                array_filter([
+                    'flight_number' => $flightNumber,
+                    'origin' => $route['origin'],
+                    'destination' => $route['destination'],
+                    'position' => $position,
+                    'aircraft' => $aircraft,
+                    'block_time' => $blockTime,
+                    'deadhead' => $isDeadhead,
+                    'raw_lines' => $body,
+                ], fn($value) => $value !== null && $value !== '')
+            );
+        }
+
+        if ($layover = $this->extractLayover($body)) {
+            return $this->calendarEvent(
+                'layover',
+                "Layover {$layover['station']}",
+                $start,
+                $end,
+                [
+                    'station' => $layover['station'],
+                    'hotel' => $layover['hotel'],
+                    'raw_lines' => $body,
+                ],
+            );
+        }
+
+        if (preg_match('/\b([A-Z]{3})\b/', $joinedBody, $matches)) {
+            return $this->calendarEvent(
+                'duty',
+                "Duty {$matches[1]}",
+                $start,
+                $end,
+                [
+                    'station' => $matches[1],
+                    'raw_lines' => $body,
+                ],
+            );
+        }
+
+        return null;
+    }
+
+    private function extractFlightRoute(array $lines): ?array
+    {
+        foreach ($lines as $line) {
+            if (preg_match('/\b([A-Z]{3})\s*-\s*([A-Z]{3})\b/', $line, $matches)) {
+                return [
+                    'origin' => $matches[1],
+                    'destination' => $matches[2],
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    private function extractLayover(array $lines): ?array
+    {
+        foreach ($lines as $line) {
+            if (!preg_match('/\b([A-Z]{3})\s*-\s*(.+)$/', $line, $matches)) {
+                continue;
+            }
+
+            $hotel = preg_replace('/\s+[vV]{1,2}\s*$/', '', trim($matches[2]));
+
+            if (preg_match('/^[A-Z]{3}\b/', $hotel)) {
+                continue;
+            }
+
+            return [
+                'station' => $matches[1],
+                'hotel' => trim($hotel, " \t\n\r\0\x0B|"),
+            ];
+        }
+
+        return null;
+    }
+
+    private function extractFlightNumber(array $lines): ?string
+    {
+        foreach ($lines as $line) {
+            if (preg_match('/\b([A-Z][A-Z0-9]?\s*\d{1,4}[A-Z]?)\b/', $line, $matches)) {
+                return preg_replace('/\s+/', ' ', trim($matches[1]));
+            }
+        }
+
+        return null;
     }
 
     private function parseRosterDate(string $value, array $monthYears, int $defaultYear): Carbon
@@ -553,23 +681,29 @@ class ParserController extends Controller
         // Join lines temporarily to perform global regex scans easily across inline boundaries
         $fullText = implode("\n", $lines);
 
-        // 1. Extract Trip ID / Number (Matches "Trip ID:13131" or "Trip Id: 13131")
         if (preg_match('/Trip\s*Id:\s*(\d+)/i', $fullText, $matches)) {
+            $summary['trip_number'] = $matches[1];
+        } elseif (preg_match('/\bTrip\b\D+(\d{4,})\b/s', $fullText, $matches)) {
             $summary['trip_number'] = $matches[1];
         }
 
-        // 2. Extract Position (Matches "Crew: 1FO" or "Crew: CA", captures just the letters)
         if (preg_match('/Crew:\s*\d*([A-Z]{2})/i', $fullText, $matches)) {
             $summary['position'] = strtoupper($matches[1]);
+        } elseif (preg_match('/\b\d{4,}\s*\|?\s*([A-Z]{2})\.?\s+[A-Z]{3}\b/', $fullText, $matches)) {
+            $summary['position'] = strtoupper($matches[1]);
+        } else {
+            $summary['position'] = $this->detectCrewPosition($lines);
         }
 
-        // 3. Extract Homebase (Matches "Homebase:KEF")
         if (preg_match('/Homebase:\s*([A-Z]{3})/i', $fullText, $matches)) {
+            $summary['base'] = $matches[1];
+        } elseif (preg_match('/\b\d{4,}\s*\|?\s*[A-Z]{2}\.?\s+([A-Z]{3})\b/', $fullText, $matches)) {
             $summary['base'] = $matches[1];
         }
 
-        // 4. Extract Total Block Time (Matches "Block Time:54:15")
         if (preg_match('/Block\s+Time:\s*(\d{2}:\d{2})/i', $fullText, $matches)) {
+            $summary['block_time'] = $matches[1];
+        } elseif (preg_match('/\bBlock\s+(\d{1,2}:\d{2}h?)\b/i', $fullText, $matches)) {
             $summary['block_time'] = $matches[1];
         }
 
