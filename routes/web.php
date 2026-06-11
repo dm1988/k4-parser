@@ -27,6 +27,9 @@ Route::middleware(['auth'])->group(function () {
         ->whereNumber('eventIndex');
     Route::post('/parse/flight', [ParserController::class, 'parseFlight'])->name('parse.flight');
     Route::post('/parse/hotel', [ParserController::class, 'parseHotel'])->name('parse.hotel');
+    // Schedule uploads are handled by parseRoster
 });
 
 require __DIR__.'/auth.php';
+
+// parse/upload is protected by auth above

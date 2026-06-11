@@ -13,7 +13,8 @@
         "blade-ui-kit/blade-heroicons": "^2.7",
         "laravel/cashier": "^16.5",
         "laravel/framework": "^13.8",
-        "laravel/tinker": "^3.0"
+        "laravel/tinker": "^3.0",
+        "smalot/pdfparser": "^2.12"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

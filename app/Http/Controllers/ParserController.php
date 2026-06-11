@@ -7,6 +7,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\Process\Process;
 use Throwable;
+use App\Services\PdfScheduleParser;
+use Illuminate\Support\Facades\Storage;
+
 
 class ParserController extends Controller
 {
@@ -14,6 +17,8 @@ class ParserController extends Controller
     {
         return view('parse');
     }
+
+    // Deprecated methods `showUpload` and `parseUpload` removed — uploads now handled by `parseRoster`
 
     public function parseFlight(Request $request)
     {
@@ -44,36 +49,74 @@ class ParserController extends Controller
     public function parseRoster(Request $request)
     {
         $data = $request->validate([
-            'image' => ['nullable', 'file', 'mimes:jpg,jpeg,png,bmp,tif,tiff,webp', 'max:10240', 'required_without:text'],
-            'text' => ['nullable', 'string', 'required_without:image'],
-            'event_types' => ['nullable', 'array'],
+            'file'          => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,bmp,tif,tiff,webp', 'max:20480', 'required_without:text'],
+            'text'          => ['nullable', 'string', 'required_without:file'],
+            'event_types'   => ['nullable', 'array'],
             'event_types.*' => ['in:flight,layover'],
         ]);
 
-        $source = 'text';
-        $text = $data['text'] ?? '';
-
-        if ($request->hasFile('image')) {
-            $source = 'image';
-            $text = $this->extractTextFromImage($request->file('image')->getRealPath());
-        }
-
-        $parsed = $this->extractRoster($text);
         $eventTypes = $data['event_types'] ?? [];
 
-        if ($eventTypes !== []) {
+        // Track core execution metrics uniformly
+        $text = '';
+        $sourceType = 'text';
+        $path = null;
+        $meta = [];
+
+        // 1. Ingestion Layer
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $path = $file->store('uploads');
+            $mime = $file->getMimeType();
+
+            if ($mime === 'application/pdf') {
+                $sourceType = 'pdf';
+                try {
+                    // Use getRealPath() if available; fallback securely to local disk reference
+                    $tmpPath = $file->getRealPath();
+                    $targetPath = ($tmpPath && file_exists($tmpPath)) ? $tmpPath : storage_path('app/' . $path);
+
+                    $pdfData = app(PdfScheduleParser::class)->parse($targetPath);
+                    $text = $pdfData['text'] ?? '';
+                    $meta = [
+                        'trip_id' => $pdfData['trip_id'] ?? null,
+                        'date'    => $pdfData['date'] ?? null,
+                    ];
+                } catch (\Exception $e) {
+                    return back()->with('result', ['error' => 'PDF parse failed: ' . $e->getMessage()]);
+                }
+            } else {
+                $sourceType = 'image';
+                try {
+                    $text = $this->extractTextFromImage($file->getRealPath());
+                } catch (\Exception $e) {
+                    return back()->with('result', ['error' => 'Image OCR failed: ' . $e->getMessage()]);
+                }
+            }
+        } else {
+            $text = $data['text'] ?? '';
+        }
+
+        // 2. Core Processing Engine
+        $parsed = $this->extractRoster($text);
+
+        // Apply array filters cleanly to all source paths matching validation constraints
+        if (!empty($eventTypes)) {
             $parsed['calendar_events'] = array_values(array_filter(
-                $parsed['calendar_events'],
-                fn (array $event) => in_array($event['type'], $eventTypes, true),
+                $parsed['calendar_events'] ?? [],
+                fn(array $event) => in_array($event['type'] ?? '', $eventTypes, true)
             ));
         }
 
+        // 3. Normalized Output Contract
         $result = [
-            'type' => 'roster',
-            'source' => $source,
-            'filters' => $eventTypes,
-            'raw' => $text,
-            'parsed' => $parsed,
+            'type'     => $sourceType, // 'pdf' | 'image' | 'text'
+            'file'     => $path,
+            'mime'     => $mime ?? null,
+            'raw_text' => $text,
+            'parsed'   => $parsed,
+            'filters'  => $eventTypes,
+            'meta'     => $meta ?: null,
         ];
 
         session(['parsed_result' => $result]);
@@ -95,7 +138,7 @@ class ParserController extends Controller
         if ($eventTypes !== []) {
             $events = array_values(array_filter(
                 $events,
-                fn (array $event) => in_array($event['type'], $eventTypes, true),
+                fn(array $event) => in_array($event['type'], $eventTypes, true),
             ));
         }
 
@@ -123,7 +166,7 @@ class ParserController extends Controller
         $event = $sessionResult['parsed']['calendar_events'][$eventIndex];
         $trip = $sessionResult['parsed']['trip'] ?? [];
         $tripNumber = $trip['trip_number'] ?? null;
-        $slug = 'event-'.$eventIndex;
+        $slug = 'event-' . $eventIndex;
         $filename = 'crew-compass' . ($tripNumber ? "-{$tripNumber}" : '') . '-' . $slug . '.ics';
 
         return response($this->buildIcs([$event], $trip), 200, [
@@ -141,7 +184,7 @@ class ParserController extends Controller
     {
         return array_values(array_filter(
             $this->extractRoster($text)['calendar_events'],
-            fn (array $event) => $event['type'] === 'layover',
+            fn(array $event) => $event['type'] === 'layover',
         ));
     }
 
@@ -151,11 +194,24 @@ class ParserController extends Controller
         $defaultYear = $this->detectRosterYear($lines);
         $monthYears = $this->detectMonthYears($lines, $defaultYear);
 
-        $detailStart = $this->firstLineIndexContaining($lines, 'Details');
-        $detailLines = $detailStart === false ? $lines : array_slice($lines, $detailStart + 1);
+        // 1. Dynamic Boundary Identification
+        // Find the table header row where flight records actually begin
+        $detailStart = $this->firstLineMatchingPattern($lines, '/DayFlightDeparture/i');
+
+        // Find where the duty rows end so we don't accidentally parse metadata as events
+        $detailEnd = $this->firstLineMatchingPattern($lines, '/Duty Summary/i');
+
+        if ($detailStart !== false) {
+            $sliceLength = ($detailEnd !== false) ? ($detailEnd - $detailStart - 1) : null;
+            $detailLines = array_slice($lines, $detailStart + 1, $sliceLength);
+        } else {
+            $detailLines = $lines;
+        }
 
         $events = [];
 
+        // 2. Streamlined Processing
+        // Ensure detailBlocks() is optimized to group by "Duty start" -> "Duty end" anchors
         foreach ($this->detailBlocks($detailLines) as $block) {
             $event = $this->parseDetailBlock($block, $monthYears, $defaultYear);
 
@@ -170,6 +226,18 @@ class ParserController extends Controller
         ];
     }
 
+    /**
+     * Helper to dynamically locate lines using regex patterns instead of rigid string matches.
+     */
+    private function firstLineMatchingPattern(array $lines, string $pattern): int|false
+    {
+        foreach ($lines as $index => $line) {
+            if (preg_match($pattern, $line)) {
+                return $index;
+            }
+        }
+        return false;
+    }
     private function extractTextFromImage(string $path): string
     {
         $tesseract = config('services.ocr.tesseract_path', '/usr/bin/tesseract');
@@ -277,104 +345,107 @@ class ParserController extends Controller
     private function detailBlocks(array $lines): array
     {
         $blocks = [];
-        $current = [];
+        $currentBlock = [];
+        $inBlock = false;
 
         foreach ($lines as $line) {
-            if ($this->isDateRange($line)) {
-                if ($current !== []) {
-                    $blocks[] = $current;
+            $trimmedLine = trim($line);
+
+            // 1. Detect the beginning of a duty period block
+            if (str_contains($trimmedLine, 'Duty start')) {
+                // Defensive check: if a previous block wasn't closed cleanly, save it anyway
+                if ($inBlock && !empty($currentBlock)) {
+                    $blocks[] = $currentBlock;
                 }
 
-                $current = [$line];
+                $currentBlock = [$trimmedLine];
+                $inBlock = true;
                 continue;
             }
 
-            if ($current !== []) {
-                $current[] = $line;
+            // 2. Collect content lines while inside an active duty period
+            if ($inBlock) {
+                $currentBlock[] = $trimmedLine;
+
+                // 3. Detect the end of a duty period block
+                if (str_contains($trimmedLine, 'Duty end')) {
+                    $blocks[] = $currentBlock;
+                    $currentBlock = [];
+                    $inBlock = false;
+                }
             }
         }
 
-        if ($current !== []) {
-            $blocks[] = $current;
+        // Catch any trailing data block that didn't conclude with an explicit "Duty end" string
+        if ($inBlock && !empty($currentBlock)) {
+            $blocks[] = $currentBlock;
         }
 
         return $blocks;
     }
-
     private function parseDetailBlock(array $block, array $monthYears, int $defaultYear): ?array
     {
-        $range = array_shift($block);
-
-        if (! preg_match('/^([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2})\s+-\s+([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2})$/', $range, $matches)) {
+        // Ensure we have a valid 3-line duty segment block
+        if (count($block) < 3) {
             return null;
         }
 
-        $start = $this->parseRosterDate($matches[1], $monthYears, $defaultYear);
-        $end = $this->parseRosterDate($matches[2], $monthYears, $defaultYear);
+        $lineStart = $block[0]; // "Duty start\t22:44"
+        $lineData  = $block[1]; // "Fri DH G4368AUS-CVG 17:4421:1722:4401:17 -        "
+        $lineEnd   = $block[2]; // "12JunDuty end\t01:17"
 
-        if ($end->lessThanOrEqualTo($start)) {
-            $end->addYear();
+        // 1. Extract the Event Date (e.g., "12Jun") from the bottom line anchor
+        if (!preg_match('/(\d{1,2})([A-Za-z]{3})Duty\s+end/i', $lineEnd, $dateMatches)) {
+            return null;
         }
 
-        $flightNumber = $this->firstMatchingLine($block, '/^[A-Z0-9]{1,3}\s+\d{2,5}$/');
-        $airportRoute = $this->firstMatchingLine($block, '/^([A-Z]{3})\s+-\s+([A-Z]{3})$/');
-        $hotelRoute = $this->firstMatchingLine($block, '/^([A-Z]{3})\s+-\s+(.+)$/');
-        $station = $this->firstMatchingLine($block, '/^[A-Z]{3}$/');
-        $blockText = implode(' ', $block);
+        $day = $dateMatches[1];
+        $monthStr = $dateMatches[2];
+        $year = $monthYears[strtolower($monthStr)] ?? $defaultYear;
 
-        if ($flightNumber === null && preg_match('/\b([A-Z0-9]{1,3}\s+\d{2,5})\b/', $blockText, $matches)) {
-            $flightNumber = $matches[1];
+        // 2. Extract Smashed Flight Operational Times
+        // Looks for 4 consecutive HH:MM timestamps smashed together: Departure, Arrival, Local Start, Local End
+        if (!preg_match('/(\d{2}:\d{2})(\d{2}:\d{2})(\d{2}:\d{2})(\d{2}:\d{2})/', $lineData, $timeMatches)) {
+            return null;
         }
 
-        if ($airportRoute === null && preg_match('/\b([A-Z]{3})\s*-\s*([A-Z]{3})\b/', $blockText, $matches)) {
-            $airportRoute = "{$matches[1]} - {$matches[2]}";
+        $depTime = $timeMatches[1]; // "17:44"
+        $arrTime = $timeMatches[2]; // "21:17"
+
+        // 3. Extract Flight Number and Airport Pair
+        // Capture the airline designator + number (e.g., "DH G4368" or "206") and routing ("AUS-CVG")
+        if (!preg_match('/(?:[A-Z]{2}\s+)?([A-Z0-9]+)\s+([A-Z]{3})-([A-Z]{3})/', $lineData, $flightMatches)) {
+            return null;
         }
 
-        if ($hotelRoute === null && preg_match('/\b([A-Z]{3})\s*-\s*([^|]+?)(?:\s+[vV]+)?(?:\s+\d+:\d{2}h?)?$/', $blockText, $matches)) {
-            $hotelRoute = "{$matches[1]} - ".trim($matches[2]);
+        $flightNumber = $flightMatches[1]; // "G4368" or "206"
+        $origin       = $flightMatches[2]; // "AUS"
+        $destination  = $flightMatches[3]; // "CVG"
+
+        // 4. Construct Precise Carbon Timestamps
+        // Note: If a flight crosses midnight (e.g., Departure 23:00, Arrival 02:00), adjust the date forward.
+        try {
+            $start = now()->createFromFormat('Y-M-d H:i', "{$year}-{$monthStr}-{$day} {$depTime}");
+            $end   = now()->createFromFormat('Y-M-d H:i', "{$year}-{$monthStr}-{$day} {$arrTime}");
+
+            if ($end->lessThan($start)) {
+                $end->addDay(); // Handle overnight flight spans smoothly
+            }
+        } catch (\Exception $e) {
+            return null; // Skip if date parsing engine fails invalid configurations
         }
 
-        if ($station === null && preg_match('/\b([A-Z]{3})\b/', $blockText, $matches)) {
-            $station = $matches[1];
-        }
+        // Determine event classification type
+        $isDeadhead = str_contains(strtoupper($lineData), ' DH ');
+        $type = $isDeadhead ? 'layover' : 'flight'; // Or map custom flags based on your $eventTypes rules
+        $title = "{$origin} - {$destination} ({$flightNumber})";
 
-        if ($flightNumber !== null && $airportRoute !== null && preg_match('/^([A-Z]{3})\s+-\s+([A-Z]{3})$/', $airportRoute, $routeMatches)) {
-            $origin = $routeMatches[1];
-            $destination = $routeMatches[2];
-
-            return $this->calendarEvent('flight', "{$flightNumber} {$origin}-{$destination}", $start, $end, [
-                'flight_number' => $flightNumber,
-                'origin' => $origin,
-                'destination' => $destination,
-                'position' => $this->detectCrewPosition($block),
-                'aircraft' => $this->detectAircraft($block),
-                'block_time' => $this->firstMatchingLine($block, '/^\d+:\d{2}h$/'),
-                'raw_lines' => $block,
-            ]);
-        }
-
-        if ($hotelRoute !== null && preg_match('/^([A-Z]{3})\s+-\s+(.+)$/', $hotelRoute, $hotelMatches) && ! preg_match('/^[A-Z]{3}$/', $hotelMatches[2])) {
-            $station = $hotelMatches[1];
-            $hotel = $hotelMatches[2];
-
-            return $this->calendarEvent('layover', "Layover {$station}", $start, $end, [
-                'station' => $station,
-                'hotel' => $hotel,
-                'duration' => $this->firstMatchingLine($block, '/^\d+:\d{2}h?$/'),
-                'raw_lines' => $block,
-            ]);
-        }
-
-        if ($station !== null) {
-            return $this->calendarEvent('duty', "Duty {$station}", $start, $end, [
-                'station' => $station,
-                'duration' => $this->firstMatchingLine($block, '/^\d+:\d{2}h?$/'),
-                'raw_lines' => $block,
-            ]);
-        }
-
-        return $this->calendarEvent('duty', 'Roster duty', $start, $end, [
-            'raw_lines' => $block,
+        // 5. Build and Return standard payload contract
+        return $this->calendarEvent($type, $title, $start, $end, [
+            'flight_number' => $flightNumber,
+            'origin'        => $origin,
+            'destination'   => $destination,
+            'deadhead'      => $isDeadhead,
         ]);
     }
 
@@ -410,7 +481,7 @@ class ParserController extends Controller
         ];
 
         if (! empty($trip['trip_number'])) {
-            $lines[] = 'X-WR-CALNAME:Crew Compass Trip '.$this->escapeIcsValue($trip['trip_number']);
+            $lines[] = 'X-WR-CALNAME:Crew Compass Trip ' . $this->escapeIcsValue($trip['trip_number']);
         }
 
         $lines[] = 'X-WR-CALDESC:Calendar export from Crew Compass';
@@ -419,26 +490,26 @@ class ParserController extends Controller
             $start = Carbon::parse($event['start'])->setTimezone('UTC');
             $end = Carbon::parse($event['end'])->setTimezone('UTC');
             $description = $this->formatEventDescription($event);
-            $uid = sha1($event['title'].$event['start'].$event['end']);
+            $uid = sha1($event['title'] . $event['start'] . $event['end']);
 
             $lines[] = 'BEGIN:VEVENT';
-            $lines[] = 'UID:'.$uid.'@crew-compass';
-            $lines[] = 'DTSTAMP:'.now()->setTimezone('UTC')->format('Ymd\THis\Z');
-            $lines[] = 'DTSTART:'.$start->format('Ymd\THis\Z');
-            $lines[] = 'DTEND:'.$end->format('Ymd\THis\Z');
-            $lines[] = 'SUMMARY:'.$this->escapeIcsValue($event['title']);
-            $lines[] = 'DESCRIPTION:'.$this->escapeIcsValue($description);
+            $lines[] = 'UID:' . $uid . '@crew-compass';
+            $lines[] = 'DTSTAMP:' . now()->setTimezone('UTC')->format('Ymd\THis\Z');
+            $lines[] = 'DTSTART:' . $start->format('Ymd\THis\Z');
+            $lines[] = 'DTEND:' . $end->format('Ymd\THis\Z');
+            $lines[] = 'SUMMARY:' . $this->escapeIcsValue($event['title']);
+            $lines[] = 'DESCRIPTION:' . $this->escapeIcsValue($description);
             $lines[] = 'END:VEVENT';
         }
 
         $lines[] = 'END:VCALENDAR';
 
-        return implode("\r\n", $lines)."\r\n";
+        return implode("\r\n", $lines) . "\r\n";
     }
 
     private function formatEventDescription(array $event): string
     {
-        $description = ['Type: '.ucfirst($event['type'])];
+        $description = ['Type: ' . ucfirst($event['type'])];
 
         foreach ($event['metadata'] as $key => $value) {
             if ($key === 'raw_lines') {
@@ -446,14 +517,14 @@ class ParserController extends Controller
             }
 
             if (is_array($value)) {
-                $value = implode(', ', array_filter($value, fn ($item) => $item !== null && $item !== ''));
+                $value = implode(', ', array_filter($value, fn($item) => $item !== null && $item !== ''));
             }
 
             if ($value === null || $value === '') {
                 continue;
             }
 
-            $description[] = ucfirst(str_replace('_', ' ', $key)).': '.$value;
+            $description[] = ucfirst(str_replace('_', ' ', $key)) . ': ' . $value;
         }
 
         return implode("\n", $description);
@@ -471,39 +542,54 @@ class ParserController extends Controller
     private function extractTripSummary(array $lines): array
     {
         $summary = [
-            'trip_number' => null,
-            'position' => null,
-            'base' => null,
-            'layovers' => [],
-            'block_time' => null,
+            'trip_number'  => null,
+            'position'     => null,
+            'base'         => null,
+            'layovers'     => [],
+            'block_time'   => null,
             'roster_range' => null,
         ];
 
-        foreach ($lines as $index => $line) {
-            if ($line === 'Roster' && isset($lines[$index + 1]) && preg_match('/^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}\s+-\s+[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}/', $lines[$index + 1])) {
-                $summary['roster_range'] = $lines[$index + 1];
-            }
+        // Join lines temporarily to perform global regex scans easily across inline boundaries
+        $fullText = implode("\n", $lines);
 
-            if ($line === 'Trip' && isset($lines[$index + 1]) && preg_match('/^\d+$/', $lines[$index + 1])) {
-                $summary['trip_number'] = $lines[$index + 1];
-            }
-
-            if ($line === 'FO' || $line === 'CA') {
-                $summary['position'] ??= $line;
-            }
-
-            if (preg_match('/^Block\s+(\d+:\d{2}h)$/', $line, $matches)) {
-                $summary['block_time'] = $matches[1];
-            }
+        // 1. Extract Trip ID / Number (Matches "Trip ID:13131" or "Trip Id: 13131")
+        if (preg_match('/Trip\s*Id:\s*(\d+)/i', $fullText, $matches)) {
+            $summary['trip_number'] = $matches[1];
         }
 
-        $headerIndex = array_search('Pos Stn Layovers', $lines, true);
+        // 2. Extract Position (Matches "Crew: 1FO" or "Crew: CA", captures just the letters)
+        if (preg_match('/Crew:\s*\d*([A-Z]{2})/i', $fullText, $matches)) {
+            $summary['position'] = strtoupper($matches[1]);
+        }
 
-        if ($headerIndex !== false && isset($lines[$headerIndex + 1], $lines[$headerIndex + 2])) {
-            $summary['position'] = $lines[$headerIndex + 1];
-            $stations = preg_split('/\s+/', $lines[$headerIndex + 2]);
-            $summary['base'] = $stations[0] ?? null;
-            $summary['layovers'] = array_values(array_filter(array_slice($stations, 1)));
+        // 3. Extract Homebase (Matches "Homebase:KEF")
+        if (preg_match('/Homebase:\s*([A-Z]{3})/i', $fullText, $matches)) {
+            $summary['base'] = $matches[1];
+        }
+
+        // 4. Extract Total Block Time (Matches "Block Time:54:15")
+        if (preg_match('/Block\s+Time:\s*(\d{2}:\d{2})/i', $fullText, $matches)) {
+            $summary['block_time'] = $matches[1];
+        }
+
+        // 5. Build Layover List Dynamically
+        // Scans your main flight text for airport routings like "AUS-CVG" or "CVG-NRT"
+        if (preg_match_all('/([A-Z]{3})-([A-Z]{3})/', $fullText, $matches)) {
+            $stations = [];
+            foreach ($matches[2] as $arrivalStation) {
+                // If they land somewhere that isn't their home base, track it as a layover spot
+                if ($summary['base'] && $arrivalStation !== $summary['base']) {
+                    $stations[] = $arrivalStation;
+                }
+            }
+            // Deduplicate the array routing stops cleanly
+            $summary['layovers'] = array_values(array_unique($stations));
+        }
+
+        // 6. Infer Roster Range from Trip Header Dates if present
+        if (preg_match('/Date:\s*(\d{2}[A-Za-z]{3}\d{4})/', $fullText, $matches)) {
+            $summary['roster_range'] = $matches[1]; // Fallback anchor date context
         }
 
         return $summary;
