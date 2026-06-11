@@ -50,17 +50,20 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
                 <div class="p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
-                    <div class="text-indigo-400 font-bold text-lg mb-1">01</div>
+                    <x-heroicon-o-calendar-days class="h-6 w-6 text-indigo-400 mb-2" />
+                    {{-- <div class="text-indigo-400 font-bold text-lg mb-1">01</div> --}}
                     <h3 class="text-sm font-semibold text-white mb-1">Understand your schedule</h3>
                     <p class="text-xs text-slate-400">Clear, readable, and beautifully formatted shifts.</p>
                 </div>
                 <div class="p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
-                    <div class="text-emerald-400 font-bold text-lg mb-1">02</div>
+                    <x-heroicon-o-globe-alt class="h-6 w-6 text-emerald-400 mb-2" />
+                    {{-- <div class="text-emerald-400 font-bold text-lg mb-1">02</div> --}}
                     <h3 class="text-sm font-semibold text-white mb-1">No VPN required</h3>
                     <p class="text-xs text-slate-400">Check your upcoming calendar securely from the open web.</p>
                 </div>
                 <div class="p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
-                    <div class="text-amber-400 font-bold text-lg mb-1">03</div>
+                    <x-heroicon-o-device-tablet class="h-6 w-6 text-amber-400 mb-2" />
+                    {{-- <div class="text-amber-400 font-bold text-lg mb-1">03</div> --}}
                     <h3 class="text-sm font-semibold text-white mb-1">Break free from work devices</h3>
                     <p class="text-xs text-slate-400">Keep up with your life using your personal phone.</p>
                 </div>
