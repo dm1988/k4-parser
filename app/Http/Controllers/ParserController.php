@@ -405,7 +405,8 @@ class ParserController extends Controller
         $lineEnd   = $block[2]; // "12JunDuty end\t01:17"
 
         // 1. Extract the Event Date (e.g., "12Jun") from the bottom line anchor
-        if (!preg_match('/(\d{1,2})([A-Za-z]{3})Duty\s+end/i', $lineEnd, $dateMatches)) {
+        // Accept an optional space between the month and the "Duty" token (some PDFs insert a space)
+        if (!preg_match('/(\d{1,2})([A-Za-z]{3})\s*Duty\s+end/i', $lineEnd, $dateMatches)) {
             return null;
         }
 
@@ -413,18 +414,22 @@ class ParserController extends Controller
         $monthStr = $dateMatches[2];
         $year = $monthYears[strtolower($monthStr)] ?? $defaultYear;
 
-        // 2. Extract Smashed Flight Operational Times
-        // Looks for 4 consecutive HH:MM timestamps smashed together: Departure, Arrival, Local Start, Local End
-        if (!preg_match('/(\d{2}:\d{2})(\d{2}:\d{2})(\d{2}:\d{2})(\d{2}:\d{2})/', $lineData, $timeMatches)) {
-            return null;
+        // 2. Extract flight operational times.
+        // Be permissive: times may be smashed together or separated by spaces/other non-digit chars.
+        preg_match_all('/\d{2}:\d{2}/', $lineData, $timeMatchesAll);
+        $timeMatches = $timeMatchesAll[0] ?? [];
+
+        if (count($timeMatches) < 2) {
+            return null; // need at least departure and arrival
         }
 
-        $depTime = $timeMatches[1]; // "17:44"
-        $arrTime = $timeMatches[2]; // "21:17"
+        $depTime = $timeMatches[0];
+        $arrTime = $timeMatches[1];
 
         // 3. Extract Flight Number and Airport Pair
         // Capture the airline designator + number (e.g., "DH G4368" or "206") and routing ("AUS-CVG")
-        if (!preg_match('/(?:[A-Z]{2}\s+)?([A-Z0-9]+)\s+([A-Z]{3})-([A-Z]{3})/', $lineData, $flightMatches)) {
+        // Allow optional whitespace between the flight number and the origin (some PDFs remove spacing).
+        if (!preg_match('/(?:[A-Z]{2}\s+)?([A-Z0-9]+)\s*([A-Z]{3})-([A-Z]{3})/', $lineData, $flightMatches)) {
             return null;
         }
 
