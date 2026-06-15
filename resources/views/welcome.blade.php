@@ -71,7 +71,7 @@
 
             <div class="flex flex-wrap gap-4 items-center pt-2">
                 <a href="{{ route('register') }}" class="rounded-xl bg-indigo-600 px-6 py-3 text-md font-semibold text-white shadow-md hover:bg-indigo-500 transition">
-                    Get Started Free
+                    Get Started
                 </a>
                 <a href="#security-notice" class="text-sm text-slate-400 hover:text-slate-300 underline underline-offset-4">
                     Why do I need an account?
