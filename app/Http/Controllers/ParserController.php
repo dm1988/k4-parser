@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ParserEventType;
 use App\Services\IcsCalendarService;
 use App\Services\RosterParser;
 use App\Services\RosterSourceResolver;
+use App\View\Models\Parser\ParserPageViewModel;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ParserController extends Controller
 {
@@ -13,12 +16,16 @@ class ParserController extends Controller
         private readonly IcsCalendarService $icsCalendarService,
         private readonly RosterParser $rosterParser,
         private readonly RosterSourceResolver $rosterSourceResolver,
-    ) {
-    }
+    ) {}
 
     public function index()
     {
-        return view('parse');
+        return view('parse', [
+            'viewModel' => ParserPageViewModel::fromSession(
+                session('result'),
+                session()->getOldInput(),
+            ),
+        ]);
     }
 
     public function parseFlight(Request $request)
@@ -53,7 +60,7 @@ class ParserController extends Controller
             'file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,bmp,tif,tiff,webp', 'max:20480', 'required_without:text'],
             'text' => ['nullable', 'string', 'required_without:file'],
             'event_types' => ['nullable', 'array'],
-            'event_types.*' => ['in:flight,layover'],
+            'event_types.*' => [Rule::in(ParserEventType::filterValues())],
         ]);
 
         $eventTypes = $data['event_types'] ?? [];
@@ -68,7 +75,7 @@ class ParserController extends Controller
                 ? 'Source resolution failed: '
                 : 'Roster text resolution failed: ';
 
-            return back()->with('result', ['error' => $message . $e->getMessage()]);
+            return back()->with('result', ['error' => $message.$e->getMessage()]);
         }
 
         $text = $source['raw_text'];
@@ -121,7 +128,7 @@ class ParserController extends Controller
         }
 
         $tripNumber = $sessionResult['parsed']['trip']['trip_number'] ?? null;
-        $filename = 'crew-compass' . ($tripNumber ? "-{$tripNumber}" : '') . '.ics';
+        $filename = 'crew-compass'.($tripNumber ? "-{$tripNumber}" : '').'.ics';
 
         return response($this->icsCalendarService->serialize($events, $sessionResult['parsed']['trip'] ?? []), 200, [
             'Content-Type' => 'text/calendar; charset=utf-8',
@@ -140,13 +147,12 @@ class ParserController extends Controller
         $event = $sessionResult['parsed']['calendar_events'][$eventIndex];
         $trip = $sessionResult['parsed']['trip'] ?? [];
         $tripNumber = $trip['trip_number'] ?? null;
-        $slug = 'event-' . $eventIndex;
-        $filename = 'crew-compass' . ($tripNumber ? "-{$tripNumber}" : '') . '-' . $slug . '.ics';
+        $slug = 'event-'.$eventIndex;
+        $filename = 'crew-compass'.($tripNumber ? "-{$tripNumber}" : '').'-'.$slug.'.ics';
 
         return response($this->icsCalendarService->serialize([$event], $trip), 200, [
             'Content-Type' => 'text/calendar; charset=utf-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
     }
-
 }

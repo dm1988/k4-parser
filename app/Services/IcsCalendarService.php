@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ParserEventType;
 use Illuminate\Support\Carbon;
 
 class IcsCalendarService
@@ -17,7 +18,7 @@ class IcsCalendarService
         ];
 
         if (! empty($trip['trip_number'])) {
-            $lines[] = 'X-WR-CALNAME:Crew Compass Trip ' . $this->escapeValue($trip['trip_number']);
+            $lines[] = 'X-WR-CALNAME:Crew Compass Trip '.$this->escapeValue($trip['trip_number']);
         }
 
         $lines[] = 'X-WR-CALDESC:Calendar export from Crew Compass';
@@ -26,36 +27,41 @@ class IcsCalendarService
             $start = Carbon::parse($event['start'])->setTimezone('UTC');
             $end = Carbon::parse($event['end'])->setTimezone('UTC');
 
-            $event['metadata']['utc_start'] = $start->format('m-d H:i') . 'Z';
-            $event['metadata']['utc_end'] = $end->format('m-d H:i') . 'Z';
+            $event['metadata']['utc_start'] = $start->format('m-d H:i').'Z';
+            $event['metadata']['utc_end'] = $end->format('m-d H:i').'Z';
 
             $flightAwareUrl = $event['metadata']['flightaware_url'] ?? null;
             $description = $this->formatDescription($event);
-            $uid = sha1($event['title'] . $event['start'] . $event['end']);
+            $uid = sha1($event['title'].$event['start'].$event['end']);
 
             $lines[] = 'BEGIN:VEVENT';
-            $lines[] = 'UID:' . $uid . '@crew-compass';
-            $lines[] = 'DTSTAMP:' . now()->setTimezone('UTC')->format('Ymd\THis\Z');
-            $lines[] = 'DTSTART:' . $start->format('Ymd\THis\Z');
-            $lines[] = 'DTEND:' . $end->format('Ymd\THis\Z');
-            $lines[] = 'SUMMARY:' . $this->escapeValue($event['title']);
+            $lines[] = 'UID:'.$uid.'@crew-compass';
+            $lines[] = 'DTSTAMP:'.now()->setTimezone('UTC')->format('Ymd\THis\Z');
+            $lines[] = 'DTSTART:'.$start->format('Ymd\THis\Z');
+            $lines[] = 'DTEND:'.$end->format('Ymd\THis\Z');
+            $lines[] = 'SUMMARY:'.$this->escapeValue($event['title']);
             if ($flightAwareUrl) {
-                $lines[] = 'URL:' . $this->escapeValue($flightAwareUrl);
+                $lines[] = 'URL:'.$this->escapeValue($flightAwareUrl);
             }
-            $lines[] = 'DESCRIPTION:' . $this->escapeValue($description);
+            $lines[] = 'DESCRIPTION:'.$this->escapeValue($description);
             $lines[] = 'END:VEVENT';
         }
 
         $lines[] = 'END:VCALENDAR';
 
-        return implode("\r\n", $lines) . "\r\n";
+        return implode("\r\n", $lines)."\r\n";
     }
 
     private function formatDescription(array $event): string
     {
-        $description = ['Type: ' . ucfirst($event['type'])];
+        $eventType = ParserEventType::fromValue($event['type'] ?? null);
+        $metadata = is_array($event['metadata'] ?? null) ? $event['metadata'] : [];
+        $description = [
+            'Type: '.$eventType->label(),
+            'Type description: '.$eventType->description(),
+        ];
 
-        foreach ($event['metadata'] as $key => $value) {
+        foreach ($metadata as $key => $value) {
             if ($key === 'raw_lines' || $key === 'flightaware_url') {
                 continue;
             }
@@ -72,7 +78,7 @@ class IcsCalendarService
                 continue;
             }
 
-            $description[] = ucfirst(str_replace('_', ' ', $key)) . ': ' . $value;
+            $description[] = ucfirst(str_replace('_', ' ', $key)).': '.$value;
         }
 
         return implode("\n", $description);

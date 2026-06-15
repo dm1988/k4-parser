@@ -24,20 +24,19 @@
     <fieldset class="p-5">
         <legend class="text-sm font-semibold text-[#1B365D]">Filters</legend>
         <div class="mt-3 grid gap-3 sm:grid-cols-2">
-            <label
-                class="flex items-center gap-3 rounded-md border border-[#1B365D]/15 bg-[#F8F9FA] px-4 py-3 text-sm font-medium text-[#0B0E14]">
-                <input type="checkbox" name="event_types[]" value="flight" class="h-4 w-4 accent-[#C5A059]"
-                    @checked(in_array('flight', old('event_types', $result['filters'] ?? []), true))>
-                Flights only
-            </label>
-            <label
-                class="flex items-center gap-3 rounded-md border border-[#1B365D]/15 bg-[#F8F9FA] px-4 py-3 text-sm font-medium text-[#0B0E14]">
-                <input type="checkbox" name="event_types[]" value="layover" class="h-4 w-4 accent-[#C5A059]"
-                    @checked(in_array('layover', old('event_types', $result['filters'] ?? []), true))>
-                Layovers only
-            </label>
+            @foreach ($model->filterOptions as $option)
+                <label
+                    class="flex items-center gap-3 rounded-md border border-[#1B365D]/15 bg-[#F8F9FA] px-4 py-3 text-sm font-medium text-[#0B0E14]">
+                    <input type="checkbox" name="event_types[]" value="{{ $option['value'] }}" class="h-4 w-4 accent-[#C5A059]"
+                        @checked(in_array($option['value'], $model->selectedTypes, true))>
+                    <span>
+                        <span class="block">{{ $option['label'] }}</span>
+                        <span class="block text-xs font-normal text-[#4A5568]">{{ $option['description'] }}</span>
+                    </span>
+                </label>
+            @endforeach
         </div>
-        <p class="mt-2 text-sm text-[#4A5568]">Leave both unchecked to include duties, flights, and layovers.</p>
+        <p class="mt-2 text-sm text-[#4A5568]">Leave all unchecked to include duties, flights, and layovers.</p>
         @error('event_types')
         <p class="mt-2 text-sm font-medium text-red-700">{{ $message }}</p>
         @enderror
@@ -50,7 +49,7 @@
         <summary class="cursor-pointer font-semibold text-[#1B365D]">Paste extracted text instead</summary>
         <textarea name="text"
             class="mt-3 h-40 w-full rounded-md border border-[#4A5568]/30 bg-[#F8F9FA] p-3 text-sm text-[#0B0E14] outline-none focus:border-[#C5A059]"
-            placeholder="Paste OCR text if you already have it...">{{ old('text') }}</textarea>
+            placeholder="Paste OCR text if you already have it...">{{ $model->text }}</textarea>
         @error('text')
         <p class="mt-2 text-sm font-medium text-red-700">{{ $message }}</p>
         @enderror
