@@ -46,6 +46,7 @@
                                 $durationText = $hours > 0 ? "{$hours}h {$minutes}m" : "{$minutes}m";
 
                                 $eventType = strtolower($event['type']);
+                                $tailNumber = strtoupper(data_get($event, 'metadata.tail_number', ''));
                                 $badgeColor = match($eventType) {
                                     'flight' => 'bg-blue-100 text-blue-900',
                                     'duty' => 'bg-green-100 text-green-900',
@@ -67,6 +68,9 @@
                                                 {{ $start->format('M j, g:i A') }} → {{ $end->format('M j, g:i A') }}
                                             @endif
                                         </p>
+                                        @if ($tailNumber)
+                                            <p class="mt-1 text-sm text-[#4A5568]">{{ $tailNumber }}</p>
+                                        @endif
                                     </div>
 
                                     <div class="flex flex-col items-end gap-1">
