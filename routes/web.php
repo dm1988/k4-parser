@@ -22,9 +22,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/parse', [ParserController::class, 'index'])->name('parse.index');
     Route::post('/parse/roster', [ParserController::class, 'parseRoster'])->name('parse.roster');
     Route::get('/parse/export', [ParserController::class, 'exportCalendar'])->name('parse.export');
-    Route::get('/parse/export/event/{eventIndex}', [ParserController::class, 'exportCalendarEvent'])
+    Route::get('/parse/export/event/{eventId}', [ParserController::class, 'exportCalendarEvent'])
         ->name('parse.export.event')
-        ->whereNumber('eventIndex');
+        ->whereAlphaNumeric('eventId');
     Route::post('/parse/flight', [ParserController::class, 'parseFlight'])->name('parse.flight');
     Route::post('/parse/hotel', [ParserController::class, 'parseHotel'])->name('parse.hotel');
     // Schedule uploads are handled by parseRoster

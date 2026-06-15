@@ -21,7 +21,7 @@ readonly class ParserEventViewModel
         public string $downloadUrl,
     ) {}
 
-    public static function fromArray(array $event, int $index): self
+    public static function fromArray(array $event, string $parseKey): self
     {
         $start = CarbonImmutable::parse($event['start']);
         $end = CarbonImmutable::parse($event['end']);
@@ -30,6 +30,7 @@ readonly class ParserEventViewModel
         $hours = intdiv($durationMinutes, 60);
         $minutes = $durationMinutes % 60;
         $eventType = ParserEventType::fromValue($event['type'] ?? null);
+        $downloadId = (string) ($event['download_id'] ?? '');
 
         return new self(
             title: (string) ($event['title'] ?? 'Untitled event'),
@@ -44,7 +45,7 @@ readonly class ParserEventViewModel
             tailNumber: self::tailNumber($event),
             isDeadhead: (bool) data_get($event, 'metadata.deadhead', data_get($event, 'is_deadhead', false)),
             badgeColor: $eventType->badgeColor(),
-            downloadUrl: route('parse.export.event', ['eventIndex' => $index]),
+            downloadUrl: route('parse.export.event', ['eventId' => $downloadId, 'parse_key' => $parseKey]),
         );
     }
 

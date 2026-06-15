@@ -9,6 +9,7 @@ use App\Services\RosterSourceResolver;
 use App\View\Models\Parser\ParserPageViewModel;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class ParserController extends Controller
 {
@@ -34,10 +35,25 @@ class ParserController extends Controller
             'text' => ['required', 'string'],
         ])['text'];
 
+        $result = $this->buildResult(
+            type: 'flight',
+            source: 'text',
+            raw: $text,
+            rawText: $text,
+            parsed: [
+                'trip' => [],
+                'calendar_events' => $this->rosterParser->extractFlights($text),
+            ],
+        );
+
+        session(['parsed_result' => $result]);
+        session()->put("parsed_results.{$result['parse_key']}", $result);
+
         return back()->with('result', [
             'type' => 'flight',
             'raw' => $text,
-            'parsed' => $this->rosterParser->extractFlights($text),
+            'parsed' => $result['parsed'],
+            'parse_key' => $result['parse_key'],
         ]);
     }
 
@@ -47,10 +63,25 @@ class ParserController extends Controller
             'text' => ['required', 'string'],
         ])['text'];
 
+        $result = $this->buildResult(
+            type: 'hotel',
+            source: 'text',
+            raw: $text,
+            rawText: $text,
+            parsed: [
+                'trip' => [],
+                'calendar_events' => $this->rosterParser->extractHotels($text),
+            ],
+        );
+
+        session(['parsed_result' => $result]);
+        session()->put("parsed_results.{$result['parse_key']}", $result);
+
         return back()->with('result', [
             'type' => 'hotel',
             'raw' => $text,
-            'parsed' => $this->rosterParser->extractHotels($text),
+            'parsed' => $result['parsed']['calendar_events'],
+            'parse_key' => $result['parse_key'],
         ]);
     }
 
@@ -88,26 +119,27 @@ class ParserController extends Controller
             ));
         }
 
-        $result = [
-            'type' => 'roster',
-            'source' => $source['source'],
-            'file' => $source['file'],
-            'mime' => $source['mime'],
-            'raw' => $source['raw'],
-            'raw_text' => $source['raw_text'],
-            'parsed' => $parsed,
-            'filters' => $eventTypes,
-            'meta' => $source['meta'],
-        ];
+        $result = $this->buildResult(
+            type: 'roster',
+            source: $source['source'],
+            raw: $source['raw'],
+            rawText: $source['raw_text'],
+            parsed: $parsed,
+            filters: $eventTypes,
+            file: $source['file'],
+            mime: $source['mime'],
+            meta: is_array($source['meta'] ?? null) ? $source['meta'] : [],
+        );
 
         session(['parsed_result' => $result]);
+        session()->put("parsed_results.{$result['parse_key']}", $result);
 
         return back()->with('result', $result);
     }
 
     public function exportCalendar(Request $request)
     {
-        $sessionResult = session('parsed_result', session('result'));
+        $sessionResult = $this->resolveExportResult($request);
 
         if (! is_array($sessionResult) || ! isset($sessionResult['parsed']['calendar_events'])) {
             abort(404);
@@ -136,23 +168,95 @@ class ParserController extends Controller
         ]);
     }
 
-    public function exportCalendarEvent(Request $request, int $eventIndex)
+    public function exportCalendarEvent(Request $request, string $eventId)
     {
-        $sessionResult = session('parsed_result', session('result'));
+        $sessionResult = $this->resolveExportResult($request);
 
-        if (! is_array($sessionResult) || ! isset($sessionResult['parsed']['calendar_events'][$eventIndex])) {
+        if (! is_array($sessionResult) || ! isset($sessionResult['parsed']['calendar_events'])) {
             abort(404);
         }
 
-        $event = $sessionResult['parsed']['calendar_events'][$eventIndex];
+        $event = $this->findEventByDownloadId($sessionResult['parsed']['calendar_events'], $eventId);
+
+        if ($event === null) {
+            abort(404);
+        }
+
         $trip = $sessionResult['parsed']['trip'] ?? [];
         $tripNumber = $trip['trip_number'] ?? null;
-        $slug = 'event-'.$eventIndex;
+        $slug = 'event-'.$eventId;
         $filename = 'crew-compass'.($tripNumber ? "-{$tripNumber}" : '').'-'.$slug.'.ics';
 
         return response($this->icsCalendarService->serialize([$event], $trip), 200, [
             'Content-Type' => 'text/calendar; charset=utf-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
+    }
+
+    private function buildResult(
+        string $type,
+        string $source,
+        string $raw,
+        string $rawText,
+        array $parsed,
+        array $filters = [],
+        mixed $file = null,
+        ?string $mime = null,
+        array $meta = [],
+    ): array {
+        $parseKey = (string) Str::ulid();
+
+        return [
+            'type' => $type,
+            'source' => $source,
+            'file' => $file,
+            'mime' => $mime,
+            'raw' => $raw,
+            'raw_text' => $rawText,
+            'parsed' => $this->attachDownloadIds($parsed),
+            'filters' => $filters,
+            'meta' => $meta,
+            'parse_key' => $parseKey,
+        ];
+    }
+
+    private function attachDownloadIds(array $parsed): array
+    {
+        $events = [];
+
+        foreach (($parsed['calendar_events'] ?? []) as $event) {
+            if (! is_array($event)) {
+                continue;
+            }
+
+            $event['download_id'] = (string) Str::ulid();
+            $events[] = $event;
+        }
+
+        $parsed['calendar_events'] = $events;
+
+        return $parsed;
+    }
+
+    private function resolveExportResult(Request $request): mixed
+    {
+        $parseKey = $request->query('parse_key');
+
+        if (is_string($parseKey) && $parseKey !== '') {
+            return session("parsed_results.{$parseKey}");
+        }
+
+        return session('parsed_result', session('result'));
+    }
+
+    private function findEventByDownloadId(array $events, string $eventId): ?array
+    {
+        foreach ($events as $event) {
+            if (is_array($event) && ($event['download_id'] ?? null) === $eventId) {
+                return $event;
+            }
+        }
+
+        return null;
     }
 }

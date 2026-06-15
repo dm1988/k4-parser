@@ -29,6 +29,7 @@ class ParserPageViewModelTest extends TestCase
         $viewModel = ParserPageViewModel::fromSession([
             'source' => 'pdf',
             'filters' => ['flight'],
+            'parse_key' => '01JTESTPARSEKEYABC123',
             'parsed' => [
                 'trip' => ['trip_number' => '1234'],
                 'calendar_events' => [[
@@ -36,6 +37,7 @@ class ParserPageViewModelTest extends TestCase
                     'type' => 'flight',
                     'start' => '2026-06-15 09:00:00',
                     'end' => '2026-06-15 11:30:00',
+                    'download_id' => '01JTESTEVENTKEYABC123',
                     'metadata' => [
                         'tail_number' => 'hl1234',
                         'deadhead' => true,
@@ -49,7 +51,8 @@ class ParserPageViewModelTest extends TestCase
         $this->assertSame('Pdf', $viewModel->result->sourceLabel);
         $this->assertSame('1234', $viewModel->result->tripNumber);
         $this->assertSame(1, $viewModel->result->eventCount);
-        $this->assertSame(route('parse.export', ['event_types' => ['flight']]), $viewModel->result->exportUrl);
+        $this->assertSame('01JTESTPARSEKEYABC123', $viewModel->result->parseKey);
+        $this->assertSame(route('parse.export', ['event_types' => ['flight'], 'parse_key' => '01JTESTPARSEKEYABC123']), $viewModel->result->exportUrl);
         $this->assertCount(1, $viewModel->result->events);
         $this->assertSame('flight', $viewModel->result->events[0]->type);
         $this->assertSame('Flight', $viewModel->result->events[0]->typeLabel);
@@ -58,6 +61,10 @@ class ParserPageViewModelTest extends TestCase
         $this->assertSame('2h 30m', $viewModel->result->events[0]->durationLabel);
         $this->assertSame('HL1234', $viewModel->result->events[0]->tailNumber);
         $this->assertTrue($viewModel->result->events[0]->isDeadhead);
+        $this->assertSame(
+            route('parse.export.event', ['eventId' => '01JTESTEVENTKEYABC123', 'parse_key' => '01JTESTPARSEKEYABC123']),
+            $viewModel->result->events[0]->downloadUrl
+        );
     }
 
     #[Test]
