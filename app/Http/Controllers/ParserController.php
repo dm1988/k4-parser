@@ -484,6 +484,10 @@ class ParserController extends Controller
             $flightNumber = $this->extractFlightNumber($body);
             $position = $this->detectCrewPosition($body);
             $aircraft = $this->detectAircraft($body);
+            $tailNumber = $this->detectTailNumber($body);
+            $flightAwareUrl = $tailNumber
+                ? 'https://www.flightaware.com/live/flight/' . rawurlencode($tailNumber)
+                : null;
             $blockTime = $this->firstMatchingLine($body, '/\b\d{1,2}:\d{2}h\b/');
             $isDeadhead = (bool) preg_match('/\bDH\b/i', $joinedBody);
 
@@ -498,6 +502,8 @@ class ParserController extends Controller
                     'destination' => $route['destination'],
                     'position' => $position,
                     'aircraft' => $aircraft,
+                    'tail_number' => $tailNumber,
+                    'flightaware_url' => $flightAwareUrl,
                     'block_time' => $blockTime,
                     'deadhead' => $isDeadhead,
                     'raw_lines' => $body,
@@ -575,7 +581,9 @@ class ParserController extends Controller
     {
         foreach ($lines as $line) {
             if (preg_match('/\b([A-Z][A-Z0-9]?\s*\d{1,4}[A-Z]?)\b/', $line, $matches)) {
-                return preg_replace('/\s+/', ' ', trim($matches[1]));
+                $flightNumber = preg_replace('/\s+/', ' ', trim($matches[1]));
+
+                return preg_replace('/^K4\s+/', 'CKS ', $flightNumber);
             }
         }
 
@@ -622,6 +630,12 @@ class ParserController extends Controller
         foreach ($events as $event) {
             $start = Carbon::parse($event['start'])->setTimezone('UTC');
             $end = Carbon::parse($event['end'])->setTimezone('UTC');
+
+            $event['metadata']['utc_start'] = $start->format('m-d H:i') . 'Z';
+            $event['metadata']['utc_end'] = $end->format('m-d H:i') . 'Z';
+
+            $flightAwareUrl = $event['metadata']['flightaware_url'] ?? null;
+
             $description = $this->formatEventDescription($event);
             $uid = sha1($event['title'] . $event['start'] . $event['end']);
 
@@ -631,6 +645,9 @@ class ParserController extends Controller
             $lines[] = 'DTSTART:' . $start->format('Ymd\THis\Z');
             $lines[] = 'DTEND:' . $end->format('Ymd\THis\Z');
             $lines[] = 'SUMMARY:' . $this->escapeIcsValue($event['title']);
+            if ($flightAwareUrl) {
+                $lines[] = 'URL:' . $this->escapeIcsValue($flightAwareUrl);
+            }
             $lines[] = 'DESCRIPTION:' . $this->escapeIcsValue($description);
             $lines[] = 'END:VEVENT';
         }
@@ -646,6 +663,14 @@ class ParserController extends Controller
 
         foreach ($event['metadata'] as $key => $value) {
             if ($key === 'raw_lines') {
+                continue;
+            }
+
+            if ($key === 'raw_lines' || $key === 'flightaware_url') {
+                continue;
+            }
+
+            if ($key === 'deadhead' && ! $value) {
                 continue;
             }
 
@@ -779,6 +804,16 @@ class ParserController extends Controller
         foreach ($lines as $line) {
             if (preg_match('/^(?:\d{2}[A-Z]|[A-Z]\d{2})$/', $line)) {
                 return $line;
+            }
+        }
+
+        return null;
+    }
+    private function detectTailNumber(array $lines): ?string
+    {
+        foreach ($lines as $line) {
+            if (preg_match('/\b(?:N\d{1,5}[A-Z]{0,2}|[A-Z]{1,2}-?[A-Z0-9]{3,6})\b/', $line, $matches)) {
+                return $matches[0];
             }
         }
 
