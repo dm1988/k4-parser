@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\Process\Process;
+use Intervention\Image\Laravel\Facades\Image;
 use Throwable;
 
 class RosterSourceResolver
@@ -87,12 +88,35 @@ class RosterSourceResolver
             ]);
         }
 
+        // --- PREPROCESSING STEP ---
+        // Create a temporary path for the optimized image
+        $optimizedPath = storage_path('app/ocr_temp_' . uniqid() . '.png');
+        
+        try {
+            $image = Image::read($path);
+            
+            // 1. Convert to greyscale
+            $image->greyscale();
+            
+            // 2. Upscale by 2x if it's a standard screenshot (helps Tesseract recognize small text)
+            $image->resize($image->width() * 2, $image->height() * 2);
+            
+            // 3. Boost contrast to make text pop against backgrounds
+            $image->contrast(15); 
+
+            $image->save($optimizedPath);
+        } catch (\Throwable $e) {
+            // Fallback to original path if preprocessing fails
+            $optimizedPath = $path;
+        }
+        // ---------------------------
+
+        // Use $optimizedPath instead of $path
         $process = new Process([
             $tesseract,
-            $path,
+            $optimizedPath,
             'stdout',
-            '--psm',
-            '6',
+            '--psm', '6', 
         ]);
         $process->setTimeout(30);
 
@@ -100,13 +124,16 @@ class RosterSourceResolver
             $process->mustRun();
         } catch (Throwable $exception) {
             report($exception);
-
+            $this->cleanupTempFile($optimizedPath, $path);
             throw ValidationException::withMessages([
                 'image' => 'OCR failed. Try a sharper roster screenshot or paste the extracted text instead.',
             ]);
         }
 
         $text = trim($process->getOutput());
+        
+        // Clean up the temporary file
+        $this->cleanupTempFile($optimizedPath, $path);
 
         if ($text === '') {
             throw ValidationException::withMessages([
@@ -115,5 +142,12 @@ class RosterSourceResolver
         }
 
         return $text;
+    }
+
+    private function cleanupTempFile($optimizedPath, $originalPath)
+    {
+        if ($optimizedPath !== $originalPath && file_exists($optimizedPath)) {
+            unlink($optimizedPath);
+        }
     }
 }
