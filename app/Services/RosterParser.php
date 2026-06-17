@@ -32,6 +32,8 @@ class RosterParser
             }
         }
 
+        $events = $this->attachDutyFlightContext($events);
+
         return [
             'trip' => $this->extractTripSummary($lines),
             'calendar_events' => $events,
@@ -320,6 +322,104 @@ class RosterParser
         $year = $monthYears[$matches[1]] ?? $defaultYear;
 
         return Carbon::createFromFormat('Y M j H:i', "{$year} {$matches[1]} {$matches[2]} {$matches[3]}");
+    }
+
+    private function attachDutyFlightContext(array $events): array
+    {
+        foreach ($events as $eventIndex => $event) {
+            if (! $this->shouldAttachDutyToFlight($event)) {
+                continue;
+            }
+
+            $flightIndex = $this->findMatchingFlightEventIndex($events, $event);
+
+            if ($flightIndex === null) {
+                continue;
+            }
+
+            $events[$flightIndex] = $this->mergeDutyIntoFlightEvent($events[$flightIndex], $event);
+            unset($events[$eventIndex]);
+        }
+
+        return array_values($events);
+    }
+
+    private function shouldAttachDutyToFlight(array $event): bool
+    {
+        if (($event['type'] ?? null) !== 'duty') {
+            return false;
+        }
+
+        $rawLines = data_get($event, 'metadata.raw_lines');
+
+        if (! is_array($rawLines) || $rawLines === []) {
+            return false;
+        }
+
+        $joinedLines = implode(' ', $rawLines);
+
+        return preg_match('/\bDuty LT\b/i', $joinedLines) === 1
+            || preg_match('/\bFlight Info\b/i', $joinedLines) === 1;
+    }
+
+    private function findMatchingFlightEventIndex(array $events, array $dutyEvent): ?int
+    {
+        $bestIndex = null;
+        $bestScore = 0;
+        $dutyStart = Carbon::parse($dutyEvent['start']);
+        $dutyEnd = Carbon::parse($dutyEvent['end']);
+
+        foreach ($events as $index => $event) {
+            if (($event['type'] ?? null) !== 'flight') {
+                continue;
+            }
+
+            $score = 0;
+            $flightRawLines = data_get($event, 'metadata.raw_lines', []);
+            $flightJoinedLines = is_array($flightRawLines) ? implode(' ', $flightRawLines) : '';
+
+            if (preg_match('/\bLeg LT\b/i', $flightJoinedLines) === 1) {
+                $score += 3;
+            }
+
+            $flightStart = Carbon::parse($event['start']);
+            $flightEnd = Carbon::parse($event['end']);
+
+            if ($flightStart->lessThan($dutyEnd) && $flightEnd->greaterThan($dutyStart)) {
+                $score += 4;
+            } elseif ($flightStart->diffInHours($dutyStart) <= 18) {
+                $score += 1;
+            }
+
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestIndex = $index;
+            }
+        }
+
+        return $bestScore >= 4 ? $bestIndex : null;
+    }
+
+    private function mergeDutyIntoFlightEvent(array $flightEvent, array $dutyEvent): array
+    {
+        $flightMetadata = is_array($flightEvent['metadata'] ?? null) ? $flightEvent['metadata'] : [];
+        $dutyMetadata = is_array($dutyEvent['metadata'] ?? null) ? $dutyEvent['metadata'] : [];
+        $flightRawLines = is_array($flightMetadata['raw_lines'] ?? null) ? $flightMetadata['raw_lines'] : [];
+        $dutyRawLines = is_array($dutyMetadata['raw_lines'] ?? null) ? $dutyMetadata['raw_lines'] : [];
+
+        $flightMetadata['raw_lines'] = array_values(array_unique([
+            ...$flightRawLines,
+            ...$dutyRawLines,
+        ]));
+        $flightMetadata['duty_raw_lines'] = $dutyRawLines;
+
+        if (! empty($dutyMetadata['station']) && empty($flightMetadata['duty_station'])) {
+            $flightMetadata['duty_station'] = $dutyMetadata['station'];
+        }
+
+        $flightEvent['metadata'] = $flightMetadata;
+
+        return $flightEvent;
     }
 
     private function calendarEvent(string $type, string $title, Carbon $start, Carbon $end, array $metadata = []): array

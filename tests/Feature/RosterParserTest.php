@@ -183,6 +183,45 @@ TEXT;
             });
     }
 
+    public function test_roster_parser_attaches_duty_lt_flight_info_to_matching_flight(): void
+    {
+        $text = <<<'TEXT'
+May 2026
+Details
+May 16 07:00 - May 16 21:00
+{ETD #5%50))
+Work 2 8 @ K4 200 Pos AC Block A
+a
+EN CVG-NRT | FO 77X 14:00h
+4 5 6 7 8 9 10
+Tail id N793CK Leg LT
+May 16 03:00 - May 17 06:00
+Duty LT May 16 01:00 - May 17 06:30
+EEE EEE Customer DHL 777 NET Catering Ordered
+oT 120 138014 BY 17
+Work
+EEE EEE .
+DEW ICN CVG NRT Flight Info
+18 19 20 21 22 23 24 Scheduled Time:
+TEXT;
+
+        $response = $this->post(route('parse.roster'), ['text' => $text]);
+
+        $response
+            ->assertRedirect()
+            ->assertSessionHas('result', function (array $result): bool {
+                $events = $result['parsed']['calendar_events'];
+
+                return count($events) === 1
+                    && $events[0]['type'] === 'flight'
+                    && $events[0]['metadata']['flight_number'] === 'CKS 200'
+                    && $events[0]['metadata']['tail_number'] === 'N793CK'
+                    && $events[0]['metadata']['duty_station'] === 'EEE'
+                    && in_array('EEE EEE Customer DHL 777 NET Catering Ordered', $events[0]['metadata']['raw_lines'], true)
+                    && in_array('DEW ICN CVG NRT Flight Info', $events[0]['metadata']['duty_raw_lines'], true);
+            });
+    }
+
     public function test_roster_parser_can_export_calendar_ics_from_parsed_result(): void
     {
         $text = <<<'TEXT'
