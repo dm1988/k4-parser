@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\ParserEventType;
 use App\Services\IcsCalendarService;
+use App\Services\RosterDocumentParser;
 use App\Services\RosterParser;
 use App\Services\RosterSourceResolver;
 use App\View\Models\Parser\ParserPageViewModel;
@@ -15,6 +16,7 @@ class ParserController extends Controller
 {
     public function __construct(
         private readonly IcsCalendarService $icsCalendarService,
+        private readonly RosterDocumentParser $rosterDocumentParser,
         private readonly RosterParser $rosterParser,
         private readonly RosterSourceResolver $rosterSourceResolver,
     ) {}
@@ -38,6 +40,7 @@ class ParserController extends Controller
         $result = $this->buildResult(
             type: 'flight',
             source: 'text',
+            documentType: null,
             raw: $text,
             rawText: $text,
             parsed: [
@@ -66,6 +69,7 @@ class ParserController extends Controller
         $result = $this->buildResult(
             type: 'hotel',
             source: 'text',
+            documentType: null,
             raw: $text,
             rawText: $text,
             parsed: [
@@ -110,7 +114,10 @@ class ParserController extends Controller
         }
 
         $text = $source['raw_text'];
-        $parsed = $this->rosterParser->parse($text);
+        $parsed = $this->rosterDocumentParser->parse(
+            $text,
+            $source['document_type'] ?? null,
+        );
 
         if (! empty($eventTypes)) {
             $parsed['calendar_events'] = array_values(array_filter(
@@ -122,6 +129,7 @@ class ParserController extends Controller
         $result = $this->buildResult(
             type: 'roster',
             source: $source['source'],
+            documentType: $source['document_type'] ?? null,
             raw: $source['raw'],
             rawText: $source['raw_text'],
             parsed: $parsed,
@@ -196,6 +204,7 @@ class ParserController extends Controller
     private function buildResult(
         string $type,
         string $source,
+        ?string $documentType,
         string $raw,
         string $rawText,
         array $parsed,
@@ -209,6 +218,7 @@ class ParserController extends Controller
         return [
             'type' => $type,
             'source' => $source,
+            'document_type' => $documentType,
             'file' => $file,
             'mime' => $mime,
             'raw' => $raw,

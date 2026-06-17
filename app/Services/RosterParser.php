@@ -60,6 +60,8 @@ class RosterParser
         $lines = [];
 
         foreach (explode("\n", $text) as $line) {
+            $line = str_replace(['—', '–'], '-', $line);
+            $line = preg_replace('/\b([A-Z][a-z]{2}\s+\d{1,2})(\d{2}:\d{2})\b/', '$1 $2', $line) ?? $line;
             $line = trim(preg_replace('/\s+/', ' ', $line));
 
             if ($line === '') {
@@ -262,8 +264,9 @@ class RosterParser
             $flightAwareUrl = $tailNumber
                 ? 'https://www.flightaware.com/live/flight/' . rawurlencode($tailNumber)
                 : null;
-            $blockTime = $this->firstMatchingLine($body, '/\b\d{1,2}:\d{2}h\b/');
+            $blockTime = $this->extractBlockTime($body);
             $isDeadhead = (bool) preg_match('/\bDH\b/i', $joinedBody);
+            $crewSummary = $this->extractCrewSummary($body);
 
             return $this->calendarEvent(
                 'flight',
@@ -279,6 +282,9 @@ class RosterParser
                     'tail_number' => $tailNumber,
                     'flightaware_url' => $flightAwareUrl,
                     'block_time' => $blockTime,
+                    'crew_count' => $crewSummary['crew_count'],
+                    'operating_crew_count' => $crewSummary['operating_crew_count'],
+                    'deadheading_crew_count' => $crewSummary['deadheading_crew_count'],
                     'deadhead' => $isDeadhead,
                     'raw_lines' => $body,
                 ], fn ($value) => $value !== null && $value !== '')
@@ -296,6 +302,23 @@ class RosterParser
                     'hotel' => $layover['hotel'],
                     'raw_lines' => $body,
                 ],
+            );
+        }
+
+        if (preg_match('/\bCrew list\b/i', $joinedBody)) {
+            $crewSummary = $this->extractCrewSummary($body);
+
+            return $this->calendarEvent(
+                'duty',
+                'Duty Crew',
+                $start,
+                $end,
+                array_filter([
+                    'crew_count' => $crewSummary['crew_count'],
+                    'operating_crew_count' => $crewSummary['operating_crew_count'],
+                    'deadheading_crew_count' => $crewSummary['deadheading_crew_count'],
+                    'raw_lines' => $body,
+                ], fn ($value) => $value !== null && $value !== '')
             );
         }
 
@@ -359,7 +382,8 @@ class RosterParser
         $joinedLines = implode(' ', $rawLines);
 
         return preg_match('/\bDuty LT\b/i', $joinedLines) === 1
-            || preg_match('/\bFlight Info\b/i', $joinedLines) === 1;
+            || preg_match('/\bFlight Info\b/i', $joinedLines) === 1
+            || preg_match('/\bCrew list\b/i', $joinedLines) === 1;
     }
 
     private function findMatchingFlightEventIndex(array $events, array $dutyEvent): ?int
@@ -415,6 +439,18 @@ class RosterParser
 
         if (! empty($dutyMetadata['station']) && empty($flightMetadata['duty_station'])) {
             $flightMetadata['duty_station'] = $dutyMetadata['station'];
+        }
+
+        if (! empty($dutyMetadata['crew_count']) && empty($flightMetadata['crew_count'])) {
+            $flightMetadata['crew_count'] = $dutyMetadata['crew_count'];
+        }
+
+        if (! empty($dutyMetadata['operating_crew_count']) && empty($flightMetadata['operating_crew_count'])) {
+            $flightMetadata['operating_crew_count'] = $dutyMetadata['operating_crew_count'];
+        }
+
+        if (! empty($dutyMetadata['deadheading_crew_count']) && empty($flightMetadata['deadheading_crew_count'])) {
+            $flightMetadata['deadheading_crew_count'] = $dutyMetadata['deadheading_crew_count'];
         }
 
         $flightEvent['metadata'] = $flightMetadata;
@@ -563,6 +599,10 @@ class RosterParser
             if (in_array($line, $positions, true)) {
                 return $line;
             }
+
+            if (preg_match('/\b(CA|CAPT|FO|DH|FE|AC)\b/', $line, $matches)) {
+                return $matches[1];
+            }
         }
 
         return null;
@@ -573,6 +613,10 @@ class RosterParser
         foreach ($lines as $line) {
             if (preg_match('/^(?:\d{2}[A-Z]|[A-Z]\d{2})$/', $line)) {
                 return $line;
+            }
+
+            if (preg_match('/\b(?:\d{2}[A-Z]|[A-Z]\d{2})\b/', $line, $matches)) {
+                return $matches[0];
             }
         }
 
@@ -588,5 +632,57 @@ class RosterParser
         }
 
         return null;
+    }
+
+    private function extractBlockTime(array $lines): ?string
+    {
+        foreach ($lines as $line) {
+            if (preg_match('/\b(\d{1,2}:\d{2}h)\b/', $line, $matches)) {
+                return $matches[1];
+            }
+        }
+
+        return null;
+    }
+
+    private function extractCrewCount(array $lines): ?int
+    {
+        return $this->extractCrewSummary($lines)['crew_count'];
+    }
+
+    /**
+     * @return array{crew_count: ?int, operating_crew_count: ?int, deadheading_crew_count: ?int}
+     */
+    private function extractCrewSummary(array $lines): array
+    {
+        $count = 0;
+        $operatingCount = 0;
+        $deadheadingCount = 0;
+
+        foreach ($lines as $line) {
+            if (preg_match('/\b\d{5}\b/', $line) === 1) {
+                $count++;
+
+                if (preg_match('/\bDH\b/i', $line) === 1) {
+                    $deadheadingCount++;
+                } else {
+                    $operatingCount++;
+                }
+            }
+        }
+
+        if ($count === 0) {
+            return [
+                'crew_count' => null,
+                'operating_crew_count' => null,
+                'deadheading_crew_count' => null,
+            ];
+        }
+
+        return [
+            'crew_count' => $count,
+            'operating_crew_count' => $operatingCount,
+            'deadheading_crew_count' => $deadheadingCount,
+        ];
     }
 }

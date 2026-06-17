@@ -10,6 +10,9 @@ use Throwable;
 
 class RosterSourceResolver
 {
+    public const PDF_TYPE_PUBLISHED_ROSTER = 'published_roster';
+    public const PDF_TYPE_TRIP_INFORMATION = 'trip_information';
+
     public function __construct(
         private readonly PdfScheduleParser $pdfScheduleParser,
     ) {
@@ -22,6 +25,7 @@ class RosterSourceResolver
 
             return [
                 'source' => 'text',
+                'document_type' => null,
                 'file' => null,
                 'mime' => null,
                 'raw' => $rawText,
@@ -35,12 +39,25 @@ class RosterSourceResolver
 
         if ($mime === 'application/pdf') {
             $tmpPath = $file->getRealPath();
-            $targetPath = ($tmpPath && file_exists($tmpPath)) ? $tmpPath : storage_path('app/' . $path);
+
+            $targetPath = ($tmpPath && file_exists($tmpPath))
+                ? $tmpPath
+                : storage_path('app/' . $path);
+
             $pdfData = $this->pdfScheduleParser->parse($targetPath);
-            $rawText = $pdfData['text'] ?? '';
+            $rawText = trim($pdfData['text'] ?? '');
+
+            if ($rawText === '') {
+                throw ValidationException::withMessages([
+                    'file' => 'No readable text was found in the PDF.',
+                ]);
+            }
+
+            $documentType = $this->detectPdfType($rawText);
 
             return [
                 'source' => 'pdf',
+                'document_type' => $documentType,
                 'file' => $path,
                 'mime' => $mime,
                 'raw' => $rawText,
@@ -53,12 +70,88 @@ class RosterSourceResolver
 
         return [
             'source' => 'image',
+            'document_type' => null,
             'file' => $path,
             'mime' => $mime,
             'raw' => $rawText,
             'raw_text' => $rawText,
             'meta' => null,
         ];
+    }
+
+    private function detectPdfType(string $rawText): string
+    {
+        $text = $this->normalizeTextForDetection($rawText);
+
+        /*
+        * The title receives the highest score, but secondary markers provide
+        * a fallback if the PDF extraction splits or misses the heading.
+        */
+        $scores = [
+            self::PDF_TYPE_PUBLISHED_ROSTER => $this->scoreMarkers($text, [
+                'published roster' => 10,
+                'planning period' => 3,
+                'report (utc)' => 2,
+                'off days' => 2,
+                'block time + dh time' => 2,
+                'qualifications' => 1,
+            ]),
+
+            self::PDF_TYPE_TRIP_INFORMATION => $this->scoreMarkers($text, [
+                'trip information' => 10,
+                'operates' => 3,
+                'duty summary' => 3,
+                'trip summary' => 3,
+                'crew on trip' => 2,
+                'annotations on trip' => 2,
+                'departure-arrival' => 1,
+            ]),
+        ];
+
+        $highestScore = max($scores);
+
+        $matches = array_keys(
+            array_filter(
+                $scores,
+                fn (int $score): bool => $score === $highestScore,
+            ),
+        );
+
+        /*
+        * A score of 8 allows classification without the main heading, but
+        * still requires several format-specific markers.
+        */
+        if ($highestScore < 8 || count($matches) !== 1) {
+            throw ValidationException::withMessages([
+                'file' => 'The PDF type could not be identified. Upload either a Published Roster or Trip Information PDF.',
+            ]);
+        }
+
+        return $matches[0];
+    }
+
+    /**
+     * @param array<string, int> $markers
+     */
+    private function scoreMarkers(string $text, array $markers): int
+    {
+        $score = 0;
+
+        foreach ($markers as $marker => $weight) {
+            if (str_contains($text, $marker)) {
+                $score += $weight;
+            }
+        }
+
+        return $score;
+    }
+
+    private function normalizeTextForDetection(string $text): string
+    {
+        $text = mb_strtolower($text);
+        $text = str_replace("\u{00A0}", ' ', $text);
+
+        return preg_replace('/\s+/u', ' ', trim($text)) ?? trim($text);
     }
 
     private function normalizePdfMeta(array $pdfData): ?array

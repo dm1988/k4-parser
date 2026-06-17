@@ -222,6 +222,84 @@ TEXT;
             });
     }
 
+    public function test_roster_parser_recovers_flight_event_from_noisy_ocr_image_text(): void
+    {
+        $text = <<<'TEXT'
+Jun 15 23:45 - Jun 1603:45 — ETOyAG?5))
+@ K4 240 Pos AC Block Cxn a
+ICN - HKG | AFO 77X 4:00h -27:45h
+Tail id N772CK Leg LT Jun 16 08:45 - Jun 16 11:45 Duty LT Jun 16 06:45 - Jun 15 12:00 Customer DHL 777 NET
+Catering Ordered
+Flight Info
+Scheduled Time: Jun 15 13:00 - Jun 15 17:00
+Crew list
+Name Crew Pos Base
+w Jesper Brandt Jensen 98765 (OP ete)
+w Julio Rodriguez Batista 12456 FO EYW
+aXe Cameron Stovold 36879 DH LAX
+* David Gonzalez 34534 INZe) NUS
+TEXT;
+
+        $response = $this->post(route('parse.roster'), ['text' => $text]);
+
+        $response
+            ->assertRedirect()
+            ->assertSessionHas('result', function (array $result): bool {
+                $events = $result['parsed']['calendar_events'];
+
+                return count($events) === 1
+                    && $events[0]['type'] === 'flight'
+                    && $events[0]['metadata']['flight_number'] === 'CKS 240'
+                    && $events[0]['metadata']['origin'] === 'ICN'
+                    && $events[0]['metadata']['destination'] === 'HKG'
+                    && $events[0]['metadata']['tail_number'] === 'N772CK'
+                    && $events[0]['metadata']['aircraft'] === '77X'
+                    && $events[0]['metadata']['block_time'] === '4:00h'
+                    && $events[0]['metadata']['crew_count'] === 4
+                    && $events[0]['metadata']['operating_crew_count'] === 3
+                    && $events[0]['metadata']['deadheading_crew_count'] === 1
+                    && $events[0]['start'] === '2026-06-15T23:45:00+00:00'
+                    && $events[0]['end'] === '2026-06-16T03:45:00+00:00';
+            });
+    }
+
+    public function test_roster_parser_separates_operating_and_deadheading_crew_from_duty_lines(): void
+    {
+        $text = <<<'TEXT'
+June 2026
+Details
+Jun 15 23:45 - Jun 16 03:45
+K4 240
+ICN - HKG | AFO 77X 4:00h
+Tail id N772CK Leg LT
+Jun 16 08:45 - Jun 16 11:45
+Duty LT Jun 16 06:45 - Jun 15 12:00
+Customer DHL 777 NET
+Flight Info
+Scheduled Time: Jun 15 13:00 - Jun 15 17:00
+Crew list
+Name Crew Pos Base
+w Jesper Brandt Jensen 71022 (OP ete)
+w Julio Rodriguez Batista 71559 FO EYW
+aXe Cameron Stovold 71835 DH LAX
+* David Gonzalez 72860 INZe) NUS
+TEXT;
+
+        $response = $this->post(route('parse.roster'), ['text' => $text]);
+
+        $response
+            ->assertRedirect()
+            ->assertSessionHas('result', function (array $result): bool {
+                $event = $result['parsed']['calendar_events'][0] ?? null;
+
+                return is_array($event)
+                    && $event['type'] === 'flight'
+                    && $event['metadata']['crew_count'] === 4
+                    && $event['metadata']['operating_crew_count'] === 3
+                    && $event['metadata']['deadheading_crew_count'] === 1;
+            });
+    }
+
     public function test_roster_parser_can_export_calendar_ics_from_parsed_result(): void
     {
         $text = <<<'TEXT'
