@@ -40,6 +40,9 @@ class ParserController extends Controller
             'text' => ['required', 'string'],
         ])['text'];
 
+        $dtos = $this->rosterParser->extractFlightsDto($text);
+        $calendarEvents = array_map(fn ($d) => $d->toArray(), $dtos);
+
         $result = $this->buildResult(
             type: 'flight',
             source: 'text',
@@ -48,7 +51,7 @@ class ParserController extends Controller
             rawText: $text,
             parsed: [
                 'trip' => [],
-                'calendar_events' => $this->rosterParser->extractFlightsDto($text),
+                'calendar_events' => $calendarEvents,
             ],
         );
 
@@ -120,6 +123,13 @@ class ParserController extends Controller
         $parsed = $this->rosterDocumentParser->parse(
             $text,
             $source['document_type'] ?? null,
+        );
+
+        // Convert flight calendar event arrays into Flight DTOs so downstream
+        // logic (filters, attachDownloadIds) can operate on a consistent type.
+        $parsed['calendar_events'] = array_map(
+            fn (mixed $event) => is_array($event) ? ($this->flightMapper->fromCalendarEvent($event) ?? $event) : $event,
+            $parsed['calendar_events'] ?? []
         );
 
         if (! empty($eventTypes)) {

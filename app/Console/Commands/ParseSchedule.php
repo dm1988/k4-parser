@@ -32,6 +32,16 @@ class ParseSchedule extends Command
 
         try {
             $data = $parser->parse($file);
+
+            // Also expose DTOs for flights when available so CLI consumers
+            // can inspect structured parsed flights.
+            try {
+                $dtos = $parser->extractFlightsDto($file);
+                $data['parsed']['flight_dtos'] = array_map(fn($d) => $d->toArray(), $dtos);
+            } catch (\Throwable $ignored) {
+                // Non-fatal: leave original data if DTO extraction fails
+            }
+
             $this->line(json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
             return 0;
         } catch (\Exception $e) {
