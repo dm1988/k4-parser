@@ -2,11 +2,18 @@
 
 namespace App\Services;
 
+use App\DTOs\Flight;
 use App\Enums\ParserEventType;
+use App\Mappers\FlightMapper;
 use Illuminate\Support\Carbon;
 
 class IcsCalendarService
 {
+    public function __construct(
+        private readonly FlightMapper $flightMapper,
+    ) {
+    }
+
     public function serialize(array $events, array $trip = []): string
     {
         $lines = [
@@ -24,6 +31,12 @@ class IcsCalendarService
         $lines[] = 'X-WR-CALDESC:Calendar export from Crew Compass';
 
         foreach ($events as $event) {
+            $event = $this->normalizeEvent($event);
+
+            if ($event === null) {
+                continue;
+            }
+
             $start = Carbon::parse($event['start'])->setTimezone('UTC');
             $end = Carbon::parse($event['end'])->setTimezone('UTC');
 
@@ -50,6 +63,15 @@ class IcsCalendarService
         $lines[] = 'END:VCALENDAR';
 
         return implode("\r\n", $lines)."\r\n";
+    }
+
+    private function normalizeEvent(mixed $event): ?array
+    {
+        if ($event instanceof Flight) {
+            return $this->flightMapper->toCalendarEvent($event);
+        }
+
+        return is_array($event) ? $event : null;
     }
 
     private function formatDescription(array $event): string

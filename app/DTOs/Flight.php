@@ -1,0 +1,194 @@
+<?php
+
+namespace App\DTOs;
+
+final readonly class Flight extends ParsedEventDTO
+{
+    public function __construct(
+        string $title,
+        string $type,
+        string $typeLabel,
+        string $typeDescription,
+        string $typeIcon,
+        string $scheduleLabel,
+        string $durationLabel,
+        public ?string $tailNumber,
+        bool $isDeadhead,
+        string $badgeColor,
+        string $downloadUrl,
+        ?string $downloadId = null,
+        public ?string $flightNumber = null,
+        public ?string $position = null,
+        public ?string $aircraft = null,
+        public ?string $blockTime = null,
+        public ?string $tripId = null,
+        public ?int $crewCount = null,
+        public ?int $operatingCrewCount = null,
+        public ?int $deadheadingCrewCount = null,
+        public ?string $dutyStation = null,
+        ?string $start = null,
+        ?string $end = null,
+        ?string $timezone = null,
+        public ?string $origin = null,
+        public ?string $destination = null,
+        public array $rawLines = [],
+        public array $dutyRawLines = [],
+        array $metadata = [],
+    ) {
+        parent::__construct(
+            title: $title,
+            type: $type,
+            typeLabel: $typeLabel,
+            typeDescription: $typeDescription,
+            typeIcon: $typeIcon,
+            scheduleLabel: $scheduleLabel,
+            durationLabel: $durationLabel,
+            isDeadhead: $isDeadhead,
+            badgeColor: $badgeColor,
+            downloadUrl: $downloadUrl,
+            downloadId: $downloadId,
+            start: $start,
+            end: $end,
+            timezone: $timezone,
+            metadata: $metadata,
+        );
+    }
+
+    public static function fromArray(array $data): self
+    {
+        $metadata = self::metadataFrom($data);
+
+        return new self(
+            title: self::stringOrDefault($data, 'title'),
+            type: self::stringOrDefault($data, 'type', default: 'flight'),
+            typeLabel: self::stringOrDefault($data, 'typeLabel', 'type_label'),
+            typeDescription: self::stringOrDefault($data, 'typeDescription', 'type_description'),
+            typeIcon: self::stringOrDefault($data, 'typeIcon', 'type_icon'),
+            scheduleLabel: self::stringOrDefault($data, 'scheduleLabel', 'schedule_label'),
+            durationLabel: self::stringOrDefault($data, 'durationLabel', 'duration_label'),
+            tailNumber: self::nullableString($data, 'tailNumber', 'tail_number') ?? self::nullableString($metadata, 'tail_number'),
+            isDeadhead: self::boolOrDefault($data, 'isDeadhead', 'is_deadhead'),
+            badgeColor: self::stringOrDefault($data, 'badgeColor', 'badge_color'),
+            downloadUrl: self::stringOrDefault($data, 'downloadUrl', 'download_url'),
+            downloadId: self::nullableString($data, 'downloadId', 'download_id'),
+            flightNumber: self::nullableString($data, 'flightNumber', 'flight_number') ?? self::nullableString($metadata, 'flight_number'),
+            position: self::nullableString($data, 'position') ?? self::nullableString($metadata, 'position'),
+            aircraft: self::nullableString($data, 'aircraft') ?? self::nullableString($metadata, 'aircraft'),
+            blockTime: self::nullableString($data, 'blockTime', 'block_time') ?? self::nullableString($metadata, 'block_time'),
+            tripId: self::nullableString($data, 'tripId', 'trip_id') ?? self::nullableString($metadata, 'trip_id'),
+            crewCount: self::nullableInt($data, 'crewCount', 'crew_count') ?? self::nullableInt($metadata, 'crew_count'),
+            operatingCrewCount: self::nullableInt($data, 'operatingCrewCount', 'operating_crew_count') ?? self::nullableInt($metadata, 'operating_crew_count'),
+            deadheadingCrewCount: self::nullableInt($data, 'deadheadingCrewCount', 'deadheading_crew_count') ?? self::nullableInt($metadata, 'deadheading_crew_count'),
+            dutyStation: self::nullableString($data, 'dutyStation', 'duty_station') ?? self::nullableString($metadata, 'duty_station'),
+            start: self::nullableString($data, 'start'),
+            end: self::nullableString($data, 'end'),
+            timezone: self::nullableString($data, 'timezone'),
+            origin: self::nullableString($data, 'origin') ?? self::nullableString($metadata, 'origin') ?? self::nullableString($metadata, 'station'),
+            destination: self::nullableString($data, 'destination') ?? self::nullableString($metadata, 'destination'),
+            rawLines: self::stringList($data['rawLines'] ?? $data['raw_lines'] ?? $metadata['raw_lines'] ?? []),
+            dutyRawLines: self::stringList($data['dutyRawLines'] ?? $data['duty_raw_lines'] ?? $metadata['duty_raw_lines'] ?? []),
+            metadata: $metadata,
+        );
+    }
+
+    public function toArray(): array
+    {
+        return [
+            ...$this->baseArray(),
+            'tailNumber' => $this->tailNumber,
+            'flightNumber' => $this->flightNumber,
+            'position' => $this->position,
+            'aircraft' => $this->aircraft,
+            'blockTime' => $this->blockTime,
+            'tripId' => $this->tripId,
+            'crewCount' => $this->crewCount,
+            'operatingCrewCount' => $this->operatingCrewCount,
+            'deadheadingCrewCount' => $this->deadheadingCrewCount,
+            'dutyStation' => $this->dutyStation,
+            'origin' => $this->origin,
+            'destination' => $this->destination,
+            'rawLines' => $this->rawLines,
+            'dutyRawLines' => $this->dutyRawLines,
+            'tail_number' => $this->tailNumber,
+            'flight_number' => $this->flightNumber,
+            'block_time' => $this->blockTime,
+            'trip_id' => $this->tripId,
+            'crew_count' => $this->crewCount,
+            'operating_crew_count' => $this->operatingCrewCount,
+            'deadheading_crew_count' => $this->deadheadingCrewCount,
+            'duty_station' => $this->dutyStation,
+            'raw_lines' => $this->rawLines,
+            'duty_raw_lines' => $this->dutyRawLines,
+        ];
+    }
+
+    public function withDownloadId(string $downloadId): self
+    {
+        return new self(
+            title: $this->title,
+            type: $this->type,
+            typeLabel: $this->typeLabel,
+            typeDescription: $this->typeDescription,
+            typeIcon: $this->typeIcon,
+            scheduleLabel: $this->scheduleLabel,
+            durationLabel: $this->durationLabel,
+            tailNumber: $this->tailNumber,
+            isDeadhead: $this->isDeadhead,
+            badgeColor: $this->badgeColor,
+            downloadUrl: $this->downloadUrl,
+            downloadId: $downloadId,
+            flightNumber: $this->flightNumber,
+            position: $this->position,
+            aircraft: $this->aircraft,
+            blockTime: $this->blockTime,
+            tripId: $this->tripId,
+            crewCount: $this->crewCount,
+            operatingCrewCount: $this->operatingCrewCount,
+            deadheadingCrewCount: $this->deadheadingCrewCount,
+            dutyStation: $this->dutyStation,
+            start: $this->start,
+            end: $this->end,
+            timezone: $this->timezone,
+            origin: $this->origin,
+            destination: $this->destination,
+            rawLines: $this->rawLines,
+            dutyRawLines: $this->dutyRawLines,
+            metadata: $this->metadata,
+        );
+    }
+
+    public function withDownloadUrl(string $downloadUrl): self
+    {
+        return new self(
+            title: $this->title,
+            type: $this->type,
+            typeLabel: $this->typeLabel,
+            typeDescription: $this->typeDescription,
+            typeIcon: $this->typeIcon,
+            scheduleLabel: $this->scheduleLabel,
+            durationLabel: $this->durationLabel,
+            tailNumber: $this->tailNumber,
+            isDeadhead: $this->isDeadhead,
+            badgeColor: $this->badgeColor,
+            downloadUrl: $downloadUrl,
+            downloadId: $this->downloadId,
+            flightNumber: $this->flightNumber,
+            position: $this->position,
+            aircraft: $this->aircraft,
+            blockTime: $this->blockTime,
+            tripId: $this->tripId,
+            crewCount: $this->crewCount,
+            operatingCrewCount: $this->operatingCrewCount,
+            deadheadingCrewCount: $this->deadheadingCrewCount,
+            dutyStation: $this->dutyStation,
+            start: $this->start,
+            end: $this->end,
+            timezone: $this->timezone,
+            origin: $this->origin,
+            destination: $this->destination,
+            rawLines: $this->rawLines,
+            dutyRawLines: $this->dutyRawLines,
+            metadata: $this->metadata,
+        );
+    }
+}

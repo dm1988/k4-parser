@@ -10,6 +10,8 @@ readonly class ParserEventViewModel
     public function __construct(
         public string $title,
         public string $type,
+        // public string $origin,
+        // public string $destination,
         public string $typeLabel,
         public string $typeDescription,
         public string $typeIcon,
@@ -38,6 +40,8 @@ readonly class ParserEventViewModel
             typeLabel: $eventType->label(),
             typeDescription: $eventType->description(),
             typeIcon: $eventType->icon(),
+            // origin: (string) $event['origin'] ?? '',
+            // destination: (string) $event['destination'] ?? '', 
             scheduleLabel: $sameDay
                 ? $start->format('M j • g:i A').' - '.$end->format('g:i A')
                 : $start->format('M j, g:i A').' -> '.$end->format('M j, g:i A'),

@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\DTOs\Flight;
 use App\Enums\ParserEventType;
+use App\Mappers\FlightMapper;
 use App\Services\IcsCalendarService;
 use App\Services\RosterDocumentParser;
 use App\Services\RosterParser;
@@ -16,6 +18,7 @@ class ParserController extends Controller
 {
     public function __construct(
         private readonly IcsCalendarService $icsCalendarService,
+        private readonly FlightMapper $flightMapper,
         private readonly RosterDocumentParser $rosterDocumentParser,
         private readonly RosterParser $rosterParser,
         private readonly RosterSourceResolver $rosterSourceResolver,
@@ -45,7 +48,7 @@ class ParserController extends Controller
             rawText: $text,
             parsed: [
                 'trip' => [],
-                'calendar_events' => $this->rosterParser->extractFlights($text),
+                'calendar_events' => $this->rosterParser->extractFlightsDto($text),
             ],
         );
 
@@ -122,7 +125,7 @@ class ParserController extends Controller
         if (! empty($eventTypes)) {
             $parsed['calendar_events'] = array_values(array_filter(
                 $parsed['calendar_events'] ?? [],
-                fn (array $event) => in_array($event['type'] ?? '', $eventTypes, true)
+                fn (mixed $event) => in_array($this->eventType($event), $eventTypes, true)
             ));
         }
 
@@ -159,7 +162,7 @@ class ParserController extends Controller
         if ($eventTypes !== []) {
             $events = array_values(array_filter(
                 $events,
-                fn (array $event) => in_array($event['type'], $eventTypes, true),
+                fn (mixed $event) => in_array($this->eventType($event), $eventTypes, true),
             ));
         }
 
@@ -235,11 +238,24 @@ class ParserController extends Controller
         $events = [];
 
         foreach (($parsed['calendar_events'] ?? []) as $event) {
+            if ($event instanceof Flight) {
+                $events[] = $this->flightMapper->withDownloadId($event, (string) Str::ulid());
+                continue;
+            }
+
             if (! is_array($event)) {
                 continue;
             }
 
-            $event['download_id'] = (string) Str::ulid();
+            $downloadId = (string) Str::ulid();
+            $flight = $this->flightMapper->fromCalendarEvent($event, $downloadId);
+
+            if ($flight !== null) {
+                $events[] = $flight;
+                continue;
+            }
+
+            $event['download_id'] = $downloadId;
             $events[] = $event;
         }
 
@@ -259,14 +275,27 @@ class ParserController extends Controller
         return session('parsed_result', session('result'));
     }
 
-    private function findEventByDownloadId(array $events, string $eventId): ?array
+    private function findEventByDownloadId(array $events, string $eventId): Flight|array|null
     {
         foreach ($events as $event) {
+            if ($event instanceof Flight && $event->downloadId === $eventId) {
+                return $event;
+            }
+
             if (is_array($event) && ($event['download_id'] ?? null) === $eventId) {
                 return $event;
             }
         }
 
         return null;
+    }
+
+    private function eventType(mixed $event): string
+    {
+        if ($event instanceof Flight) {
+            return $event->type;
+        }
+
+        return is_array($event) ? (string) ($event['type'] ?? '') : '';
     }
 }
