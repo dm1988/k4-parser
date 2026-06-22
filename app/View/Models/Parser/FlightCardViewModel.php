@@ -10,8 +10,7 @@ readonly class FlightCardViewModel
 {
     public function __construct(
         public Flight $flight,
-    ) {
-    }
+    ) {}
 
     public static function fromFlight(Flight $flight): self
     {
@@ -36,6 +35,7 @@ readonly class FlightCardViewModel
         return $this->flight->scheduleLabel;
     }
 
+    // Flight Details
     public function originLabel(): string
     {
         return $this->flight->origin ?? 'UNK';
@@ -66,6 +66,7 @@ readonly class FlightCardViewModel
         return $this->formatTime($this->flight->end);
     }
 
+    // Airport Details
     public function hasAirportDetails(): bool
     {
         return $this->originIcao() !== null
@@ -116,6 +117,80 @@ readonly class FlightCardViewModel
         return $this->metadataString('destination_country_code');
     }
 
+    // Aircraft Details
+    public function hasAircraftDetails(): bool
+    {
+        return $this->flight->aircraft !== null
+            || $this->flight->tailNumber !== null;
+    }
+
+    public function aircraft(): ?string
+    {
+        return $this->flight->aircraft;
+    }
+
+    public function tailNumber(): ?string
+    {
+        return $this->flight->tailNumber;
+    }
+
+    // Crew Details
+    public function crewMembers(): array
+    {
+        $crew = $this->flight->metadata['crew'] ?? [];
+
+        return is_array($crew) ? $crew : [];
+    }
+
+    public function crewCount(): int
+    {
+        $metadataCount = $this->metadataInt('crew_count');
+
+        if ($metadataCount !== null) {
+            return $metadataCount;
+        }
+
+        return count($this->crewMembers());
+    }
+
+    public function deadheadingCrewCount(): int
+    {
+        $metadataCount = $this->metadataInt('deadheading_crew_count');
+
+        if ($metadataCount !== null) {
+            return $metadataCount;
+        }
+
+        return collect($this->crewMembers())
+            ->where('deadheading', true)
+            ->count();
+    }
+
+    public function operatingCrewCount(): int
+    {
+        return max(0, $this->crewCount() - $this->deadheadingCrewCount());
+    }
+
+    public function hasCrewDetails(): bool
+    {
+        return $this->crewCount() > 0 || ! empty($this->crewMembers());
+    }
+
+    // Metadata Helpers
+    private function metadataInt(string $key): ?int
+    {
+        $value = $this->flight->metadata[$key] ?? null;
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        return (int) $value;
+    }
     private function formatTime(?string $value): string
     {
         return $value

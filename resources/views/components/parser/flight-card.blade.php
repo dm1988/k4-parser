@@ -17,8 +17,9 @@
             </div>
 
             <div class="flex items-center gap-2">
-                <span class="inline-flex shrink-0 items-center gap-1 rounded-full {{ $model->flight->badgeColor }} px-2.5 py-1 text-xs font-bold uppercase"
-                                              title="{{ $model->flight->typeLabel }}">
+                <span
+                    class="inline-flex shrink-0 items-center gap-1 rounded-full {{ $model->flight->badgeColor }} px-2.5 py-1 text-xs font-bold uppercase"
+                    title="{{ $model->flight->typeLabel }}">
                     <x-dynamic-component :component="$model->flight->typeIcon" class="h-3.5 w-3.5" />
                     {{ $model->flight->typeLabel }}
                 </span>
@@ -159,6 +160,27 @@
             </div>
         </details>
         @endif
+        <div class="mt-8 flex flex-wrap items-center gap-2">
+            @if ($model->hasAirportDetails())
+            <x-parser.flight-card.dropdown icon="heroicon-o-map-pin" title="Airports">
+                @include('parser.partials.flight-card.airport-details', [
+                'model' => $model,
+                ])
+            </x-parser.flight-card.dropdown>
+            @endif
+
+            <x-parser.flight-card.dropdown icon="heroicon-o-paper-airplane" title="Flight">
+                @include('parser.partials.flight-card.flight-details', [
+                'model' => $model,
+                ])
+            </x-parser.flight-card.dropdown>
+
+            <x-parser.flight-card.dropdown icon="heroicon-o-user-group" title="Crew" align="right">
+                @include('parser.partials.flight-card.crew-details', [
+                'model' => $model,
+                ])
+            </x-parser.flight-card.dropdown>
+        </div>
     </div>
 
     <footer class="flex items-center justify-between border-t border-[#D8E0EC] bg-[#F8FAFD] px-8 py-5">
