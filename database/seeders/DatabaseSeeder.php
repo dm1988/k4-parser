@@ -23,5 +23,6 @@ class DatabaseSeeder extends Seeder
         // ]);
         
         $this->call(AircraftSeeder::class);
+        $this->call(AirlineSeeder::class);
     }
 }
