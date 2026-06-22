@@ -36,6 +36,7 @@
 
                     <div class="space-y-3">
                         @foreach ($model->events as $event)
+                            @if (! $event instanceof \App\DTOs\Flight)
                             <article class="rounded-md border border-[#1B365D]/10 p-3">
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
@@ -69,6 +70,11 @@
                                     </a>
                                 </div>
                             </article>
+                            @endif
+
+                            @if ($event instanceof \App\DTOs\Flight)
+                                <x-parser.flight-card :model="\App\View\Models\Parser\FlightCardViewModel::fromFlight($event)" />
+                            @endif
                         @endforeach
                     </div>
                 @elseif (! $model->hasError())

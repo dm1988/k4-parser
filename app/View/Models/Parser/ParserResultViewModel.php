@@ -2,10 +2,15 @@
 
 namespace App\View\Models\Parser;
 
+use App\DTOs\DutyEvent;
+use App\DTOs\Flight;
+use App\Mappers\DutyEventMapper;
+use App\Mappers\FlightMapper;
+
 readonly class ParserResultViewModel
 {
     /**
-     * @param  list<ParserEventViewModel>  $events
+     * @param  list<ParserEventViewModel|Flight|DutyEvent>  $events
      * @param  list<string>  $filters
      */
     public function __construct(
@@ -29,11 +34,36 @@ readonly class ParserResultViewModel
         $eventViewModels = [];
 
         foreach (($result['parsed']['calendar_events'] ?? []) as $event) {
+            if ($parseKey === null) {
+                continue;
+            }
+
+            if ($event instanceof Flight) {
+                $eventViewModels[] = $event;
+                continue;
+            }
+
             if (! is_array($event)) {
                 continue;
             }
 
-            if ($parseKey === null) {
+            $flight = app(FlightMapper::class)->fromCalendarEvent($event, $event['download_id'] ?? null);
+
+            if ($flight !== null) {
+                $downloadId = (string) ($event['download_id'] ?? '');
+                $eventViewModels[] = $downloadId === ''
+                    ? $flight
+                    : $flight->withDownloadUrl(route('parse.export.event', ['eventId' => $downloadId, 'parse_key' => $parseKey]));
+                continue;
+            }
+
+            $duty = app(DutyEventMapper::class)->fromCalendarEvent($event, $event['download_id'] ?? null);
+
+            if ($duty !== null) {
+                $downloadId = (string) ($event['download_id'] ?? '');
+                $eventViewModels[] = $downloadId === ''
+                    ? $duty
+                    : $duty->withDownloadUrl(route('parse.export.event', ['eventId' => $downloadId, 'parse_key' => $parseKey]));
                 continue;
             }
 

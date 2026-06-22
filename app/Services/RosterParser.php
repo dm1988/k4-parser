@@ -2,10 +2,16 @@
 
 namespace App\Services;
 
+use App\Mappers\FlightMapper;
+use App\DTOs\Flight;
 use Illuminate\Support\Carbon;
 
 class RosterParser
 {
+    public function __construct(
+        private readonly FlightMapper $flightMapper,
+    ) {
+    }
     public function parse(string $text): array
     {
         $lines = $this->normaliseLines($text);
@@ -43,6 +49,28 @@ class RosterParser
     public function extractFlights(string $text): array
     {
         return $this->parse($text)['calendar_events'];
+    }
+
+    /**
+     * Return parsed flights as `App\DTOs\Flight` instances.
+     *
+     * @return list<Flight>
+     */
+    public function extractFlightsDto(string $text): array
+    {
+        $events = $this->extractFlights($text);
+
+        $flights = [];
+
+        foreach ($events as $event) {
+            $dto = $this->flightMapper->fromCalendarEvent($event);
+
+            if ($dto !== null) {
+                $flights[] = $dto;
+            }
+        }
+
+        return $flights;
     }
 
     public function extractHotels(string $text): array

@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\DTOs\Flight;
+use App\Services\RosterDocumentParser;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -316,6 +318,54 @@ TEXT;
         $this->assertSame(4, $event['metadata']['crew_count']);
         $this->assertSame(3, $event['metadata']['operating_crew_count']);
         $this->assertSame(1, $event['metadata']['deadheading_crew_count']);
+    }
+
+    public function test_cache_boundary_dehydrates_dto_events_before_storage(): void
+    {
+        $this->mock(RosterDocumentParser::class, function ($mock): void {
+            $mock->shouldReceive('parse')
+                ->once()
+                ->andReturn([
+                    'trip' => [],
+                    'calendar_events' => [
+                        Flight::fromArray([
+                            'title' => 'CKS 240 ICN-HKG',
+                            'type' => 'flight',
+                            'typeLabel' => 'Flight',
+                            'typeDescription' => 'Scheduled flying segment.',
+                            'typeIcon' => 'heroicon-o-paper-airplane',
+                            'scheduleLabel' => 'Jun 15, 11:45 PM -> Jun 16, 3:45 AM',
+                            'durationLabel' => '4:00h',
+                            'isDeadhead' => false,
+                            'badgeColor' => 'bg-blue-100 text-blue-900',
+                            'downloadUrl' => 'https://www.flightaware.com/live/flight/N772CK',
+                            'start' => '2026-06-15T23:45:00+00:00',
+                            'end' => '2026-06-16T03:45:00+00:00',
+                            'timezone' => 'UTC',
+                            'metadata' => [
+                                'flight_number' => 'CKS 240',
+                                'origin' => 'ICN',
+                                'destination' => 'HKG',
+                                'tail_number' => 'N772CK',
+                            ],
+                        ]),
+                    ],
+                ]);
+        });
+
+        $response = $this->post(route('parse.roster'), ['text' => 'stub']);
+
+        $response->assertRedirect();
+
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+
+        $result = Cache::get($this->cacheKeyForSession($parseKey));
+        $this->assertIsArray($result);
+        $this->assertIsArray($result['parsed']['calendar_events'][0] ?? null);
+        $this->assertSame('flight', $result['parsed']['calendar_events'][0]['type']);
+        $this->assertSame('CKS 240', $result['parsed']['calendar_events'][0]['metadata']['flight_number']);
+        $this->assertIsString($result['parsed']['calendar_events'][0]['download_id'] ?? null);
     }
 
     public function test_roster_parser_can_export_calendar_ics_from_parsed_result(): void

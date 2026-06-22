@@ -2,13 +2,16 @@
 
 namespace App\Services;
 
+use App\Mappers\FlightMapper;
 use Smalot\PdfParser\Parser;
 
 class PdfScheduleParser
 {
     protected Parser $parser;
 
-    public function __construct()
+    public function __construct(
+        private readonly FlightMapper $flightMapper,
+    )
     {
         $this->parser = new Parser();
     }
@@ -174,5 +177,54 @@ class PdfScheduleParser
         }
 
         return $result;
+    }
+
+    /**
+     * @return list\App\DTOs\Flight
+     */
+    public function extractFlightsDto(string $path): array
+    {
+        $data = $this->parse($path);
+        $events = $data['parsed']['calendar_events'] ?? [];
+        $flights = [];
+
+        foreach ($events as $ev) {
+            if (! is_array($ev)) {
+                continue;
+            }
+
+            $route = $ev['route'] ?? null;
+            $origin = null;
+            $destination = null;
+
+            if (is_string($route) && str_contains($route, '-')) {
+                [$origin, $destination] = explode('-', $route, 2) + [null, null];
+            }
+
+            $calendarEvent = [
+                'type' => 'flight',
+                'title' => trim((string) ($ev['flight_number'] ?? '') . ' ' . ($route ?? '')),
+                'start' => $ev['date'] ?? null,
+                'end' => $ev['date'] ?? null,
+                'timezone' => config('app.timezone'),
+                'metadata' => array_filter([
+                    'flight_number' => $ev['flight_number'] ?? null,
+                    'origin' => $origin,
+                    'destination' => $destination,
+                    'aircraft' => $ev['aircraft_type'] ?? null,
+                    'deadhead' => $ev['is_deadhead'] ?? false,
+                    'block_time' => $ev['block_time'] ?? null,
+                    'raw_times' => $ev['raw_times'] ?? null,
+                ], fn($v) => $v !== null && $v !== ''),
+            ];
+
+            $flight = $this->flightMapper->fromCalendarEvent($calendarEvent);
+
+            if ($flight !== null) {
+                $flights[] = $flight;
+            }
+        }
+
+        return $flights;
     }
 }

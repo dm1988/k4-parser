@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\DTOs\Flight;
+use App\DTOs\ParsedEventDTO;
 use App\Enums\ParserEventType;
+use App\Mappers\FlightMapper;
 use App\Services\IcsCalendarService;
 use App\Services\RosterDocumentParser;
 use App\Services\RosterParser;
@@ -43,7 +46,7 @@ class ParserController extends Controller
             rawText: $text,
             parsed: [
                 'trip' => [],
-                'calendar_events' => $this->rosterParser->extractFlights($text),
+                'calendar_events' => $this->rosterParser->extractFlightsDto($text), // Keep as DTO array!
             ],
         );
 
@@ -95,7 +98,7 @@ class ParserController extends Controller
             $message = $request->hasFile('file')
                 ? 'Source resolution failed: '
                 : 'Roster text resolution failed: ';
-            
+
             return back()->withInput()->withErrors(['file' => $message . $e->getMessage()]);
         }
 
@@ -108,7 +111,7 @@ class ParserController extends Controller
         if (! empty($eventTypes)) {
             $parsed['calendar_events'] = array_values(array_filter(
                 $parsed['calendar_events'] ?? [],
-                fn (array $event) => in_array($event['type'] ?? '', $eventTypes, true)
+                fn(mixed $event) => in_array($this->eventType($event), $eventTypes, true)
             ));
         }
 
@@ -144,7 +147,7 @@ class ParserController extends Controller
         if ($eventTypes !== []) {
             $events = array_values(array_filter(
                 $events,
-                fn (array $event) => in_array($event['type'], $eventTypes, true),
+                fn(mixed $event) => in_array($this->eventType($event), $eventTypes, true),
             ));
         }
 
@@ -153,7 +156,7 @@ class ParserController extends Controller
         }
 
         $tripNumber = $sessionResult['parsed']['trip']['trip_number'] ?? null;
-        $filename = 'crew-compass'.($tripNumber ? "-{$tripNumber}" : '').'.ics';
+        $filename = 'crew-compass' . ($tripNumber ? "-{$tripNumber}" : '') . '.ics';
 
         return response($this->icsCalendarService->serialize($events, $sessionResult['parsed']['trip'] ?? []), 200, [
             'Content-Type' => 'text/calendar; charset=utf-8',
@@ -177,8 +180,8 @@ class ParserController extends Controller
 
         $trip = $sessionResult['parsed']['trip'] ?? [];
         $tripNumber = $trip['trip_number'] ?? null;
-        $slug = 'event-'.$eventId;
-        $filename = 'crew-compass'.($tripNumber ? "-{$tripNumber}" : '').'-'.$slug.'.ics';
+        $slug = 'event-' . $eventId;
+        $filename = 'crew-compass' . ($tripNumber ? "-{$tripNumber}" : '') . '-' . $slug . '.ics';
 
         return response($this->icsCalendarService->serialize([$event], $trip), 200, [
             'Content-Type' => 'text/calendar; charset=utf-8',
@@ -220,12 +223,25 @@ class ParserController extends Controller
         $events = [];
 
         foreach (($parsed['calendar_events'] ?? []) as $event) {
-            if (! is_array($event)) {
+            $downloadId = (string) Str::ulid();
+
+            // 1. If it's your concrete Flight DTO, use its internal mutation method
+            if ($event instanceof Flight) {
+                $events[] = $event->withDownloadId($downloadId);
                 continue;
             }
 
-            $event['download_id'] = (string) Str::ulid();
-            $events[] = $event;
+            // 2. Future-proofing: Catch any other broad ParsedEventDTO types
+            if ($event instanceof ParsedEventDTO) {
+                $events[] = $event;
+                continue;
+            }
+
+            // 3. Fallback for array matrices
+            if (is_array($event)) {
+                $event['download_id'] = $downloadId;
+                $events[] = $event;
+            }
         }
 
         $parsed['calendar_events'] = $events;
@@ -250,9 +266,14 @@ class ParserController extends Controller
         return null;
     }
 
-    private function findEventByDownloadId(array $events, string $eventId): ?array
+    private function findEventByDownloadId(array $events, string $eventId): mixed
     {
         foreach ($events as $event) {
+            // Use abstract parent properties or ArrayAccess fallbacks smoothly
+            if ($event instanceof ParsedEventDTO && $event->downloadId === $eventId) {
+                return $event;
+            }
+
             if (is_array($event) && ($event['download_id'] ?? null) === $eventId) {
                 return $event;
             }
@@ -269,14 +290,15 @@ class ParserController extends Controller
     private function cacheResult(array $result): void
     {
         $ttlMinutes = config('cache.parsed_results_ttl', 60);
+        $normalizedResult = $this->normalizeForCache($result);
 
-        Cache::put($this->cacheKey($result['parse_key']), $result, now()->addMinutes($ttlMinutes));
+        Cache::put($this->cacheKey($result['parse_key']), $normalizedResult, now()->addMinutes($ttlMinutes));
         session(['latest_parse_key' => $result['parse_key']]);
     }
 
     private function cacheKey(string $parseKey): string
     {
-        return 'sessions:'.$this->sessionCacheNamespace().":parsed_results:{$parseKey}";
+        return 'sessions:' . $this->sessionCacheNamespace() . ":parsed_results:{$parseKey}";
     }
 
     private function sessionCacheNamespace(): string
@@ -291,5 +313,49 @@ class ParserController extends Controller
         session(['parsed_results_namespace' => $namespace]);
 
         return $namespace;
+    }
+
+    private function eventType(mixed $event): string
+    {
+        if ($event instanceof ParsedEventDTO) {
+            return $event->type;
+        }
+
+        return is_array($event) ? (string) ($event['type'] ?? '') : '';
+    }
+
+    private function normalizeForCache(mixed $value): mixed
+    {
+        if ($value instanceof ParsedEventDTO) {
+            return $this->normalizeForCache($value->toArray());
+        }
+
+        if ($value instanceof \JsonSerializable) {
+            return $this->normalizeForCache($value->jsonSerialize());
+        }
+
+        if ($value instanceof \BackedEnum) {
+            return $value->value;
+        }
+
+        if ($value instanceof \UnitEnum) {
+            return $value->name;
+        }
+
+        if (is_array($value)) {
+            $normalized = [];
+
+            foreach ($value as $key => $item) {
+                $normalized[$key] = $this->normalizeForCache($item);
+            }
+
+            return $normalized;
+        }
+
+        if (is_object($value)) {
+            throw new \LogicException('Unsupported object passed to cache boundary: ' . $value::class);
+        }
+
+        return $value;
     }
 }
