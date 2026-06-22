@@ -5,12 +5,13 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Services\RosterDocumentParser;
 use App\Services\RosterSourceResolver;
+use Illuminate\Support\Facades\Cache;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
 class ParseUploadTest extends TestCase
 {
-    public function test_parse_pasted_text_stores_parsed_result_in_session()
+    public function test_parse_pasted_text_stores_parse_key_in_session_and_result_in_cache()
     {
         $text = "Trip Information\nDate: 13Jun2026\nTrip ID: 13131\nCrew on trip - (5)\nCP 4620 Michael Blackburn";
 
@@ -22,9 +23,12 @@ class ParseUploadTest extends TestCase
 
         $response->assertStatus(200);
 
-        $this->assertTrue(session()->has('parsed_result'));
+        $this->assertTrue(session()->has('latest_parse_key'));
 
-        $parsed = session('parsed_result');
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+
+        $parsed = Cache::get("parsed_results:{$parseKey}");
         $this->assertIsArray($parsed);
         $this->assertEquals('roster', $parsed['type']);
         $this->assertEquals('text', $parsed['source']);
@@ -68,10 +72,18 @@ class ParseUploadTest extends TestCase
         $response
             ->assertRedirect()
             ->assertSessionHas('result', function (array $result): bool {
-                return $result['source'] === 'pdf'
-                    && $result['document_type'] === RosterSourceResolver::PDF_TYPE_PUBLISHED_ROSTER
-                    && $result['meta']['date'] === '17Jun2026';
+                return $result['type'] === 'roster'
+                    && is_string($result['parse_key'] ?? null);
             });
+
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+
+        $result = Cache::get("parsed_results:{$parseKey}");
+        $this->assertIsArray($result);
+        $this->assertSame('pdf', $result['source']);
+        $this->assertSame(RosterSourceResolver::PDF_TYPE_PUBLISHED_ROSTER, $result['document_type']);
+        $this->assertSame('17Jun2026', $result['meta']['date']);
     }
 
     public function test_parse_roster_routes_trip_information_uploads_to_document_parser(): void
@@ -111,9 +123,17 @@ class ParseUploadTest extends TestCase
         $response
             ->assertRedirect()
             ->assertSessionHas('result', function (array $result): bool {
-                return $result['source'] === 'pdf'
-                    && $result['document_type'] === RosterSourceResolver::PDF_TYPE_TRIP_INFORMATION
-                    && $result['meta']['trip_id'] === '13131';
+                return $result['type'] === 'roster'
+                    && is_string($result['parse_key'] ?? null);
             });
+
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+
+        $result = Cache::get("parsed_results:{$parseKey}");
+        $this->assertIsArray($result);
+        $this->assertSame('pdf', $result['source']);
+        $this->assertSame(RosterSourceResolver::PDF_TYPE_TRIP_INFORMATION, $result['document_type']);
+        $this->assertSame('13131', $result['meta']['trip_id']);
     }
 }

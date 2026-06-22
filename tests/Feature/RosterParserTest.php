@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class RosterParserTest extends TestCase
@@ -54,25 +55,32 @@ TEXT;
         $response
             ->assertRedirect()
             ->assertSessionHas('result', function (array $result): bool {
-                $parsed = $result['parsed'];
-
                 return $result['type'] === 'roster'
-                    && is_string($result['parse_key'] ?? null)
-                    && $parsed['trip']['trip_number'] === '13131'
-                    && $parsed['trip']['position'] === 'FO'
-                    && count($parsed['calendar_events']) === 4
-                    && is_string($parsed['calendar_events'][0]['download_id'] ?? null)
-                    && $parsed['calendar_events'][0]['type'] === 'flight'
-                    && $parsed['calendar_events'][0]['metadata']['flight_number'] === 'G4 368'
-                    && $parsed['calendar_events'][0]['metadata']['origin'] === 'AUS'
-                    && $parsed['calendar_events'][0]['metadata']['destination'] === 'CVG'
-                    && $parsed['calendar_events'][1]['type'] === 'layover'
-                    && $parsed['calendar_events'][1]['metadata']['hotel'] === 'Holiday Inn Express & Suites Florence - Cincinnati Airport - Vandercar Way'
-                    && $parsed['calendar_events'][2]['type'] === 'duty'
-                    && $parsed['calendar_events'][3]['metadata']['aircraft'] === '77X'
-                    && $parsed['calendar_events'][3]['metadata']['block_time'] === '13:50h'
-                    && $parsed['calendar_events'][3]['start'] === '2026-06-13T09:35:00+00:00';
+                    && is_string($result['parse_key'] ?? null);
             });
+
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+
+        $result = Cache::get("parsed_results:{$parseKey}");
+        $this->assertIsArray($result);
+
+        $parsed = $result['parsed'];
+
+        $this->assertSame('13131', $parsed['trip']['trip_number']);
+        $this->assertSame('FO', $parsed['trip']['position']);
+        $this->assertCount(4, $parsed['calendar_events']);
+        $this->assertIsString($parsed['calendar_events'][0]['download_id'] ?? null);
+        $this->assertSame('flight', $parsed['calendar_events'][0]['type']);
+        $this->assertSame('G4 368', $parsed['calendar_events'][0]['metadata']['flight_number']);
+        $this->assertSame('AUS', $parsed['calendar_events'][0]['metadata']['origin']);
+        $this->assertSame('CVG', $parsed['calendar_events'][0]['metadata']['destination']);
+        $this->assertSame('layover', $parsed['calendar_events'][1]['type']);
+        $this->assertSame('Holiday Inn Express & Suites Florence - Cincinnati Airport - Vandercar Way', $parsed['calendar_events'][1]['metadata']['hotel']);
+        $this->assertSame('duty', $parsed['calendar_events'][2]['type']);
+        $this->assertSame('77X', $parsed['calendar_events'][3]['metadata']['aircraft']);
+        $this->assertSame('13:50h', $parsed['calendar_events'][3]['metadata']['block_time']);
+        $this->assertSame('2026-06-13T09:35:00+00:00', $parsed['calendar_events'][3]['start']);
     }
 
     public function test_hotel_parser_returns_only_layover_events(): void
@@ -127,11 +135,17 @@ TEXT;
             ->assertRedirect()
             ->assertSessionHas('result', function (array $result): bool {
                 return $result['filters'] === ['flight']
-                    && is_string($result['parse_key'] ?? null)
-                    && count($result['parsed']['calendar_events']) === 1
-                    && is_string($result['parsed']['calendar_events'][0]['download_id'] ?? null)
-                    && $result['parsed']['calendar_events'][0]['type'] === 'flight';
+                    && is_string($result['parse_key'] ?? null);
             });
+
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+
+        $result = Cache::get("parsed_results:{$parseKey}");
+        $this->assertIsArray($result);
+        $this->assertCount(1, $result['parsed']['calendar_events']);
+        $this->assertIsString($result['parsed']['calendar_events'][0]['download_id'] ?? null);
+        $this->assertSame('flight', $result['parsed']['calendar_events'][0]['type']);
     }
 
     public function test_roster_parser_handles_noisy_image_ocr_output(): void
@@ -167,20 +181,27 @@ TEXT;
         $response
             ->assertRedirect()
             ->assertSessionHas('result', function (array $result): bool {
-                $events = $result['parsed']['calendar_events'];
-
-                return count($events) === 6
-                    && is_string($result['parse_key'] ?? null)
-                    && $events[0]['type'] === 'flight'
-                    && is_string($events[0]['download_id'] ?? null)
-                    && $events[0]['metadata']['flight_number'] === 'G4 368'
-                    && $events[0]['metadata']['origin'] === 'AUS'
-                    && $events[3]['type'] === 'flight'
-                    && $events[3]['metadata']['origin'] === 'CVG'
-                    && $events[3]['metadata']['destination'] === 'NRT'
-                    && $events[5]['type'] === 'layover'
-                    && $events[5]['metadata']['hotel'] === 'Hyatt Regency Tokyo Bay';
+                return $result['type'] === 'roster'
+                    && is_string($result['parse_key'] ?? null);
             });
+
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+
+        $result = Cache::get("parsed_results:{$parseKey}");
+        $this->assertIsArray($result);
+        $events = $result['parsed']['calendar_events'];
+
+        $this->assertCount(6, $events);
+        $this->assertSame('flight', $events[0]['type']);
+        $this->assertIsString($events[0]['download_id'] ?? null);
+        $this->assertSame('G4 368', $events[0]['metadata']['flight_number']);
+        $this->assertSame('AUS', $events[0]['metadata']['origin']);
+        $this->assertSame('flight', $events[3]['type']);
+        $this->assertSame('CVG', $events[3]['metadata']['origin']);
+        $this->assertSame('NRT', $events[3]['metadata']['destination']);
+        $this->assertSame('layover', $events[5]['type']);
+        $this->assertSame('Hyatt Regency Tokyo Bay', $events[5]['metadata']['hotel']);
     }
 
     public function test_roster_parser_attaches_duty_lt_flight_info_to_matching_flight(): void
@@ -210,16 +231,24 @@ TEXT;
         $response
             ->assertRedirect()
             ->assertSessionHas('result', function (array $result): bool {
-                $events = $result['parsed']['calendar_events'];
-
-                return count($events) === 1
-                    && $events[0]['type'] === 'flight'
-                    && $events[0]['metadata']['flight_number'] === 'CKS 200'
-                    && $events[0]['metadata']['tail_number'] === 'N793CK'
-                    && $events[0]['metadata']['duty_station'] === 'EEE'
-                    && in_array('EEE EEE Customer DHL 777 NET Catering Ordered', $events[0]['metadata']['raw_lines'], true)
-                    && in_array('DEW ICN CVG NRT Flight Info', $events[0]['metadata']['duty_raw_lines'], true);
+                return $result['type'] === 'roster'
+                    && is_string($result['parse_key'] ?? null);
             });
+
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+
+        $result = Cache::get("parsed_results:{$parseKey}");
+        $this->assertIsArray($result);
+        $events = $result['parsed']['calendar_events'];
+
+        $this->assertCount(1, $events);
+        $this->assertSame('flight', $events[0]['type']);
+        $this->assertSame('CKS 200', $events[0]['metadata']['flight_number']);
+        $this->assertSame('N793CK', $events[0]['metadata']['tail_number']);
+        $this->assertSame('EEE', $events[0]['metadata']['duty_station']);
+        $this->assertContains('EEE EEE Customer DHL 777 NET Catering Ordered', $events[0]['metadata']['raw_lines']);
+        $this->assertContains('DEW ICN CVG NRT Flight Info', $events[0]['metadata']['duty_raw_lines']);
     }
 
     public function test_roster_parser_recovers_flight_event_from_noisy_ocr_image_text(): void
@@ -245,22 +274,30 @@ TEXT;
         $response
             ->assertRedirect()
             ->assertSessionHas('result', function (array $result): bool {
-                $events = $result['parsed']['calendar_events'];
-
-                return count($events) === 1
-                    && $events[0]['type'] === 'flight'
-                    && $events[0]['metadata']['flight_number'] === 'CKS 240'
-                    && $events[0]['metadata']['origin'] === 'ICN'
-                    && $events[0]['metadata']['destination'] === 'HKG'
-                    && $events[0]['metadata']['tail_number'] === 'N772CK'
-                    && $events[0]['metadata']['aircraft'] === '77X'
-                    && $events[0]['metadata']['block_time'] === '4:00h'
-                    && $events[0]['metadata']['crew_count'] === 4
-                    && $events[0]['metadata']['operating_crew_count'] === 3
-                    && $events[0]['metadata']['deadheading_crew_count'] === 1
-                    && $events[0]['start'] === '2026-06-15T23:45:00+00:00'
-                    && $events[0]['end'] === '2026-06-16T03:45:00+00:00';
+                return $result['type'] === 'roster'
+                    && is_string($result['parse_key'] ?? null);
             });
+
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+
+        $result = Cache::get("parsed_results:{$parseKey}");
+        $this->assertIsArray($result);
+        $events = $result['parsed']['calendar_events'];
+
+        $this->assertCount(1, $events);
+        $this->assertSame('flight', $events[0]['type']);
+        $this->assertSame('CKS 240', $events[0]['metadata']['flight_number']);
+        $this->assertSame('ICN', $events[0]['metadata']['origin']);
+        $this->assertSame('HKG', $events[0]['metadata']['destination']);
+        $this->assertSame('N772CK', $events[0]['metadata']['tail_number']);
+        $this->assertSame('77X', $events[0]['metadata']['aircraft']);
+        $this->assertSame('4:00h', $events[0]['metadata']['block_time']);
+        $this->assertSame(4, $events[0]['metadata']['crew_count']);
+        $this->assertSame(3, $events[0]['metadata']['operating_crew_count']);
+        $this->assertSame(1, $events[0]['metadata']['deadheading_crew_count']);
+        $this->assertSame('2026-06-15T23:45:00+00:00', $events[0]['start']);
+        $this->assertSame('2026-06-16T03:45:00+00:00', $events[0]['end']);
     }
 
     public function test_roster_parser_separates_operating_and_deadheading_crew_from_duty_lines(): void
@@ -290,14 +327,22 @@ TEXT;
         $response
             ->assertRedirect()
             ->assertSessionHas('result', function (array $result): bool {
-                $event = $result['parsed']['calendar_events'][0] ?? null;
-
-                return is_array($event)
-                    && $event['type'] === 'flight'
-                    && $event['metadata']['crew_count'] === 4
-                    && $event['metadata']['operating_crew_count'] === 3
-                    && $event['metadata']['deadheading_crew_count'] === 1;
+                return $result['type'] === 'roster'
+                    && is_string($result['parse_key'] ?? null);
             });
+
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+
+        $result = Cache::get("parsed_results:{$parseKey}");
+        $this->assertIsArray($result);
+        $event = $result['parsed']['calendar_events'][0] ?? null;
+
+        $this->assertIsArray($event);
+        $this->assertSame('flight', $event['type']);
+        $this->assertSame(4, $event['metadata']['crew_count']);
+        $this->assertSame(3, $event['metadata']['operating_crew_count']);
+        $this->assertSame(1, $event['metadata']['deadheading_crew_count']);
     }
 
     public function test_roster_parser_can_export_calendar_ics_from_parsed_result(): void
@@ -316,7 +361,9 @@ TEXT;
         TEXT;
 
         $this->post(route('parse.roster'), ['text' => $text]);
-        $result = session('parsed_result');
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+        $result = Cache::get("parsed_results:{$parseKey}");
 
         $response = $this->get(route('parse.export', ['parse_key' => $result['parse_key']]));
 
@@ -342,7 +389,9 @@ TEXT;
         TEXT;
 
         $this->post(route('parse.roster'), ['text' => $text]);
-        $result = session('parsed_result');
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+        $result = Cache::get("parsed_results:{$parseKey}");
         $eventId = $result['parsed']['calendar_events'][0]['download_id'];
 
         $response = $this->get(route('parse.export.event', ['eventId' => $eventId, 'parse_key' => $result['parse_key']]));
@@ -386,7 +435,9 @@ TEXT;
             'event_types' => ['layover'],
         ]);
 
-        $result = session('parsed_result');
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+        $result = Cache::get("parsed_results:{$parseKey}");
         $event = $result['parsed']['calendar_events'][0];
 
         $response = $this->get(route('parse.export.event', [
@@ -427,11 +478,15 @@ TEXT;
         TEXT;
 
         $this->post(route('parse.roster'), ['text' => $firstText]);
-        $firstResult = session('parsed_result');
+        $firstParseKey = session('latest_parse_key');
+        $this->assertIsString($firstParseKey);
+        $firstResult = Cache::get("parsed_results:{$firstParseKey}");
         $firstEventId = $firstResult['parsed']['calendar_events'][0]['download_id'];
 
         $this->post(route('parse.roster'), ['text' => $secondText]);
-        $secondResult = session('parsed_result');
+        $secondParseKey = session('latest_parse_key');
+        $this->assertIsString($secondParseKey);
+        $secondResult = Cache::get("parsed_results:{$secondParseKey}");
 
         $oldPageResponse = $this->get(route('parse.export.event', [
             'eventId' => $firstEventId,

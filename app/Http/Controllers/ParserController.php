@@ -11,6 +11,7 @@ use App\View\Models\Parser\ParserPageViewModel;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 
 class ParserController extends Controller
 {
@@ -23,9 +24,11 @@ class ParserController extends Controller
 
     public function index()
     {
+        $result = $this->resolveLatestResult();
+
         return view('parse', [
             'viewModel' => ParserPageViewModel::fromSession(
-                session('result'),
+                $result,
                 session()->getOldInput(),
             ),
         ]);
@@ -49,8 +52,10 @@ class ParserController extends Controller
             ],
         );
 
-        session(['parsed_result' => $result]);
-        session()->put("parsed_results.{$result['parse_key']}", $result);
+        // Cache the full parse result and keep only the parse key in session
+        $ttlMinutes = (int) env('PARSED_RESULTS_TTL', 60);
+        Cache::put("parsed_results:{$result['parse_key']}", $result, now()->addMinutes($ttlMinutes));
+        session(['latest_parse_key' => $result['parse_key']]);
 
         return back()->with('result', [
             'type' => 'flight',
@@ -78,8 +83,9 @@ class ParserController extends Controller
             ],
         );
 
-        session(['parsed_result' => $result]);
-        session()->put("parsed_results.{$result['parse_key']}", $result);
+        $ttlMinutes = (int) env('PARSED_RESULTS_TTL', 60);
+        Cache::put("parsed_results:{$result['parse_key']}", $result, now()->addMinutes($ttlMinutes));
+        session(['latest_parse_key' => $result['parse_key']]);
 
         return back()->with('result', [
             'type' => 'hotel',
@@ -109,8 +115,8 @@ class ParserController extends Controller
             $message = $request->hasFile('file')
                 ? 'Source resolution failed: '
                 : 'Roster text resolution failed: ';
-
-            return back()->with('result', ['error' => $message.$e->getMessage()]);
+            
+            return back()->withInput()->withErrors(['file' => $message . $e->getMessage()]);
         }
 
         $text = $source['raw_text'];
@@ -139,10 +145,16 @@ class ParserController extends Controller
             meta: is_array($source['meta'] ?? null) ? $source['meta'] : [],
         );
 
-        session(['parsed_result' => $result]);
-        session()->put("parsed_results.{$result['parse_key']}", $result);
+        $ttlMinutes = (int) env('PARSED_RESULTS_TTL', 60);
+        Cache::put("parsed_results:{$result['parse_key']}", $result, now()->addMinutes($ttlMinutes));
+        session(['latest_parse_key' => $result['parse_key']]);
 
-        return back()->with('result', $result);
+        return back()->with('result', [
+            'type' => 'roster',
+            'parse_key' => $result['parse_key'],
+            'parsed' => $result['parsed']['calendar_events'] ?? [],
+            'filters' => $result['filters'] ?? [],
+        ]);
     }
 
     public function exportCalendar(Request $request)
@@ -253,10 +265,16 @@ class ParserController extends Controller
         $parseKey = $request->query('parse_key');
 
         if (is_string($parseKey) && $parseKey !== '') {
-            return session("parsed_results.{$parseKey}");
+            return $this->resolveCachedResult($parseKey);
         }
 
-        return session('parsed_result', session('result'));
+        $latestParseKey = session('latest_parse_key');
+
+        if (is_string($latestParseKey) && $latestParseKey !== '') {
+            return $this->resolveCachedResult($latestParseKey);
+        }
+
+        return session('result');
     }
 
     private function findEventByDownloadId(array $events, string $eventId): ?array
@@ -268,5 +286,33 @@ class ParserController extends Controller
         }
 
         return null;
+    }
+
+    private function resolveLatestResult(): mixed
+    {
+        $result = session('result');
+
+        if (is_array($result) && isset($result['parsed']['calendar_events'])) {
+            return $result;
+        }
+
+        $parseKey = is_string($result['parse_key'] ?? null)
+            ? $result['parse_key']
+            : session('latest_parse_key');
+
+        if (is_string($parseKey) && $parseKey !== '') {
+            $cachedResult = $this->resolveCachedResult($parseKey);
+
+            if (is_array($cachedResult)) {
+                return $cachedResult;
+            }
+        }
+
+        return $result;
+    }
+
+    private function resolveCachedResult(string $parseKey): mixed
+    {
+        return Cache::get("parsed_results:{$parseKey}");
     }
 }
