@@ -71,7 +71,12 @@ class ParserPageViewModelTest extends TestCase
     #[Test]
     public function it_hydrates_the_full_result_from_cache_when_session_only_has_a_trimmed_payload(): void
     {
-        Cache::put('parsed_results:01JTESTPARSEKEYABC123', [
+        session([
+            'latest_parse_key' => '01JTESTPARSEKEYABC123',
+            'parsed_results_namespace' => '01JTESTSESSIONKEYABC123',
+        ]);
+
+        Cache::put('sessions:01JTESTSESSIONKEYABC123:parsed_results:01JTESTPARSEKEYABC123', [
             'type' => 'roster',
             'source' => 'pdf',
             'filters' => [],
@@ -92,18 +97,7 @@ class ParserPageViewModelTest extends TestCase
             ],
         ]);
 
-        $viewModel = ParserPageViewModel::fromSession([
-            'type' => 'roster',
-            'parse_key' => '01JTESTPARSEKEYABC123',
-            'parsed' => [[
-                'title' => 'CVG - NRT (206)',
-                'type' => 'flight',
-                'start' => '2026-06-13T06:38:00+00:00',
-                'end' => '2026-06-13T08:31:00+00:00',
-                'download_id' => '01JTESTEVENTKEYABC123',
-            ]],
-            'filters' => [],
-        ]);
+        $viewModel = ParserPageViewModel::fromCurrentSession();
 
         $this->assertTrue($viewModel->hasResult());
         $this->assertNotNull($viewModel->result);

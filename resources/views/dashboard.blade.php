@@ -10,8 +10,7 @@
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6 text-gray-900">
                     @include('parse', [
-                        'viewModel' => \App\View\Models\Parser\ParserPageViewModel::fromSession(
-                            session('result'),
+                        'viewModel' => \App\View\Models\Parser\ParserPageViewModel::fromCurrentSession(
                             session()->getOldInput(),
                         ),
                     ])

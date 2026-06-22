@@ -1,8 +1,7 @@
 @php
-$viewModel ??= \App\View\Models\Parser\ParserPageViewModel::fromSession(
-session('result'),
-session()->getOldInput(),
-);
+// Fall back to a blank state if the controller didn't inject one, 
+// rather than scanning old session payloads manually.
+$viewModel ??= new \App\View\Models\Parser\ParserPageViewModel();
 @endphp
 
 <main

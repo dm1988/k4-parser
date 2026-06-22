@@ -17,11 +17,12 @@ class ParseUploadTest extends TestCase
 
         $user = User::factory()->make();
 
-        $response = $this->followingRedirects()->actingAs($user)->post('/parse/roster', [
+        $response = $this->actingAs($user)->post('/parse/roster', [
             'text' => $text,
         ]);
 
-        $response->assertStatus(200);
+        $response->assertRedirect();
+        $response->assertSessionMissing('result');
 
         $this->assertTrue(session()->has('latest_parse_key'));
 
@@ -33,6 +34,9 @@ class ParseUploadTest extends TestCase
         $this->assertEquals('roster', $parsed['type']);
         $this->assertEquals('text', $parsed['source']);
         $this->assertStringContainsString('Trip Information', $parsed['raw']);
+
+        $page = $this->get(route('parse.index'));
+        $page->assertOk()->assertSee('Parsed Output');
     }
 
     public function test_parse_roster_routes_published_roster_uploads_to_document_parser(): void
@@ -69,12 +73,8 @@ class ParseUploadTest extends TestCase
             'text' => 'ignored because resolver is mocked',
         ]);
 
-        $response
-            ->assertRedirect()
-            ->assertSessionHas('result', function (array $result): bool {
-                return $result['type'] === 'roster'
-                    && is_string($result['parse_key'] ?? null);
-            });
+        $response->assertRedirect();
+        $response->assertSessionMissing('result');
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -120,12 +120,8 @@ class ParseUploadTest extends TestCase
             'text' => 'ignored because resolver is mocked',
         ]);
 
-        $response
-            ->assertRedirect()
-            ->assertSessionHas('result', function (array $result): bool {
-                return $result['type'] === 'roster'
-                    && is_string($result['parse_key'] ?? null);
-            });
+        $response->assertRedirect();
+        $response->assertSessionMissing('result');
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);

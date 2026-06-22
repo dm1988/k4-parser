@@ -18,12 +18,35 @@ readonly class ParserPageViewModel
         public string $text,
     ) {}
 
+    /**
+     * Resolves the view model state using the secure cache keys stored in the session.
+     */
+    public static function fromCurrentSession(array $oldInput = []): self
+    {
+        $parseKey = session('latest_parse_key');
+        $namespace = session('parsed_results_namespace');
+        $result = null;
+
+        if (is_string($parseKey) && $parseKey !== '' && is_string($namespace) && $namespace !== '') {
+            $result = Cache::get("sessions:{$namespace}:parsed_results:{$parseKey}");
+        }
+
+        return self::fromSession($result, $oldInput);
+    }
+
+    /**
+     * Builds the view model from a resolved cache result array.
+     */
     public static function fromSession(mixed $result, array $oldInput = []): self
     {
-        $result = self::resolveResult($result);
+        // 1. Ensure result filters fall back gracefully to an array if null/missing
+        $cachedFilters = is_array($result) && isset($result['filters']) && is_array($result['filters']) 
+            ? $result['filters'] 
+            : [];
 
+        // 2. Resolve selected event types prioritizing user form input over historical filters
         $selectedTypes = array_values(array_filter(
-            is_array($oldInput['event_types'] ?? null) ? $oldInput['event_types'] : ($result['filters'] ?? []),
+            is_array($oldInput['event_types'] ?? null) ? $oldInput['event_types'] : $cachedFilters,
             fn (mixed $value): bool => is_string($value) && in_array($value, ParserEventType::filterValues(), true),
         ));
 
@@ -45,41 +68,5 @@ readonly class ParserPageViewModel
     public function hasResult(): bool
     {
         return $this->result !== null;
-    }
-
-    private static function resolveResult(mixed $result): ?array
-    {
-        if (! is_array($result)) {
-            return null;
-        }
-
-        if (isset($result['parsed']['calendar_events'])) {
-            return $result;
-        }
-
-        $parseKey = is_string($result['parse_key'] ?? null) ? $result['parse_key'] : null;
-
-        if ($parseKey !== null) {
-            $cachedResult = Cache::get("parsed_results:{$parseKey}");
-
-            if (is_array($cachedResult) && isset($cachedResult['parsed']['calendar_events'])) {
-                return $cachedResult;
-            }
-        }
-
-        if (is_array($result['parsed'] ?? null)) {
-            return [
-                ...$result,
-                'parsed' => [
-                    'trip' => [],
-                    'calendar_events' => array_values(array_filter(
-                        $result['parsed'],
-                        static fn (mixed $event): bool => is_array($event),
-                    )),
-                ],
-            ];
-        }
-
-        return $result;
     }
 }

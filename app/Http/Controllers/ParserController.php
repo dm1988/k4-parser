@@ -24,13 +24,8 @@ class ParserController extends Controller
 
     public function index()
     {
-        $result = $this->resolveLatestResult();
-
         return view('parse', [
-            'viewModel' => ParserPageViewModel::fromSession(
-                $result,
-                session()->getOldInput(),
-            ),
+            'viewModel' => ParserPageViewModel::fromCurrentSession(session()->getOldInput()),
         ]);
     }
 
@@ -54,12 +49,7 @@ class ParserController extends Controller
 
         $this->cacheResult($result);
 
-        return back()->with('result', [
-            'type' => 'flight',
-            'raw' => $text,
-            'parsed' => $result['parsed'],
-            'parse_key' => $result['parse_key'],
-        ]);
+        return back();
     }
 
     public function parseHotel(Request $request)
@@ -82,12 +72,7 @@ class ParserController extends Controller
 
         $this->cacheResult($result);
 
-        return back()->with('result', [
-            'type' => 'hotel',
-            'raw' => $text,
-            'parsed' => $result['parsed'],
-            'parse_key' => $result['parse_key'],
-        ]);
+        return back();
     }
 
     public function parseRoster(Request $request)
@@ -142,12 +127,7 @@ class ParserController extends Controller
 
         $this->cacheResult($result);
 
-        return back()->with('result', [
-            'type' => 'roster',
-            'parse_key' => $result['parse_key'],
-            'parsed' => $result['parsed'],
-            'filters' => $result['filters'] ?? [],
-        ]);
+        return back();
     }
 
     public function exportCalendar(Request $request)
@@ -267,7 +247,7 @@ class ParserController extends Controller
             return $this->resolveCachedResult($latestParseKey);
         }
 
-        return session('result');
+        return null;
     }
 
     private function findEventByDownloadId(array $events, string $eventId): ?array
@@ -279,29 +259,6 @@ class ParserController extends Controller
         }
 
         return null;
-    }
-
-    private function resolveLatestResult(): mixed
-    {
-        $result = session('result');
-
-        if (is_array($result) && isset($result['parsed']['calendar_events'])) {
-            return $result;
-        }
-
-        $parseKey = is_string($result['parse_key'] ?? null)
-            ? $result['parse_key']
-            : session('latest_parse_key');
-
-        if (is_string($parseKey) && $parseKey !== '') {
-            $cachedResult = $this->resolveCachedResult($parseKey);
-
-            if (is_array($cachedResult)) {
-                return $cachedResult;
-            }
-        }
-
-        return $result;
     }
 
     private function resolveCachedResult(string $parseKey): mixed
@@ -330,7 +287,7 @@ class ParserController extends Controller
             return $namespace;
         }
 
-        $namespace = session()->getId();
+        $namespace = (string) Str::ulid();
         session(['parsed_results_namespace' => $namespace]);
 
         return $namespace;

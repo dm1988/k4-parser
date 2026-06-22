@@ -52,13 +52,8 @@ TEXT;
 
         $response = $this->post(route('parse.roster'), ['text' => $text]);
 
-        $response
-            ->assertRedirect()
-            ->assertSessionHas('result', function (array $result): bool {
-                return $result['type'] === 'roster'
-                    && is_string($result['parse_key'] ?? null)
-                    && isset($result['parsed']['trip'], $result['parsed']['calendar_events']);
-            });
+        $response->assertRedirect();
+        $response->assertSessionMissing('result');
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -99,14 +94,11 @@ TEXT;
 
         $response = $this->post(route('parse.hotel'), ['text' => $text]);
 
-        $response
-            ->assertRedirect()
-            ->assertSessionHas('result', function (array $result): bool {
-                return $result['type'] === 'hotel'
-                    && is_string($result['parse_key'] ?? null)
-                    && count($result['parsed']['calendar_events'] ?? []) === 1
-                    && $result['parsed']['calendar_events'][0]['type'] === 'layover';
-            });
+        $response->assertRedirect();
+        $response->assertSessionMissing('result');
+
+        $page = $this->get(route('parse.index'));
+        $page->assertOk()->assertSee('Parsed Output');
     }
 
     public function test_roster_parser_can_filter_calendar_events(): void
@@ -132,13 +124,8 @@ TEXT;
             'event_types' => ['flight'],
         ]);
 
-        $response
-            ->assertRedirect()
-            ->assertSessionHas('result', function (array $result): bool {
-                return $result['filters'] === ['flight']
-                    && is_string($result['parse_key'] ?? null)
-                    && isset($result['parsed']['trip'], $result['parsed']['calendar_events']);
-            });
+        $response->assertRedirect();
+        $response->assertSessionMissing('result');
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -180,12 +167,8 @@ TEXT;
 
         $response = $this->post(route('parse.roster'), ['text' => $text]);
 
-        $response
-            ->assertRedirect()
-            ->assertSessionHas('result', function (array $result): bool {
-                return $result['type'] === 'roster'
-                    && is_string($result['parse_key'] ?? null);
-            });
+        $response->assertRedirect();
+        $response->assertSessionMissing('result');
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -230,12 +213,8 @@ TEXT;
 
         $response = $this->post(route('parse.roster'), ['text' => $text]);
 
-        $response
-            ->assertRedirect()
-            ->assertSessionHas('result', function (array $result): bool {
-                return $result['type'] === 'roster'
-                    && is_string($result['parse_key'] ?? null);
-            });
+        $response->assertRedirect();
+        $response->assertSessionMissing('result');
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -273,12 +252,8 @@ TEXT;
 
         $response = $this->post(route('parse.roster'), ['text' => $text]);
 
-        $response
-            ->assertRedirect()
-            ->assertSessionHas('result', function (array $result): bool {
-                return $result['type'] === 'roster'
-                    && is_string($result['parse_key'] ?? null);
-            });
+        $response->assertRedirect();
+        $response->assertSessionMissing('result');
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -326,12 +301,8 @@ TEXT;
 
         $response = $this->post(route('parse.roster'), ['text' => $text]);
 
-        $response
-            ->assertRedirect()
-            ->assertSessionHas('result', function (array $result): bool {
-                return $result['type'] === 'roster'
-                    && is_string($result['parse_key'] ?? null);
-            });
+        $response->assertRedirect();
+        $response->assertSessionMissing('result');
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
