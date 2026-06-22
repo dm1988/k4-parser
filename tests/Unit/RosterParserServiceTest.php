@@ -20,7 +20,7 @@ TEXT;
         $parsed = app(RosterParser::class)->parse($text);
         $event = $parsed['calendar_events'][0];
 
-        $this->assertSame('layover', $event['type']);
+        $this->assertSame('deadhead', $event['type']);
         $this->assertSame('AUS - CVG (G4368)', $event['title']);
         $this->assertSame('G4368', $event['metadata']['flight_number']);
         $this->assertSame('AUS', $event['metadata']['origin']);

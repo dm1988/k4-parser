@@ -75,4 +75,25 @@ class FlightCardViewModelTest extends TestCase
         $this->assertSame('UNK', $model->originLabel());
         $this->assertSame('UNK', $model->destinationLabel());
     }
+
+    #[Test]
+    public function it_uses_flight_numbers_for_deadhead_flights(): void
+    {
+        $flight = Flight::fromArray([
+            'title' => 'CKS 240 ICN-HKG',
+            'type' => 'deadhead',
+            'typeLabel' => 'Deadhead',
+            'typeDescription' => 'Time spent traveling as a passenger for work purposes.',
+            'scheduleLabel' => 'Jun 15, 11:45 PM -> Jun 16, 3:45 AM',
+            'durationLabel' => '4:00h',
+            'isDeadhead' => true,
+            'badgeColor' => 'bg-yellow-100 text-yellow-900',
+            'downloadUrl' => 'https://example.test/export',
+            'flightNumber' => 'CKS 240',
+        ]);
+
+        $model = FlightCardViewModel::fromFlight($flight);
+
+        $this->assertSame('CKS 240', $model->heading());
+    }
 }

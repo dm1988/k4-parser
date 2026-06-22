@@ -2,8 +2,9 @@
 
 namespace App\Services;
 
-use App\Mappers\FlightMapper;
 use App\DTOs\Flight;
+use App\Enums\ParserEventType;
+use App\Mappers\FlightMapper;
 use Illuminate\Support\Carbon;
 
 class RosterParser
@@ -257,7 +258,7 @@ class RosterParser
         }
 
         $isDeadhead = str_contains(strtoupper($lineData), ' DH ');
-        $type = $isDeadhead ? 'layover' : 'flight';
+        $type = $isDeadhead ? ParserEventType::Deadhead->value : ParserEventType::Flight->value;
         $title = "{$origin} - {$destination} ({$flightNumber})";
 
         return $this->calendarEvent($type, $title, $start, $end, [
@@ -297,7 +298,7 @@ class RosterParser
             $crewSummary = $this->extractCrewSummary($body);
 
             return $this->calendarEvent(
-                'flight',
+                $isDeadhead ? ParserEventType::Deadhead->value : ParserEventType::Flight->value,
                 trim(($flightNumber ? "{$flightNumber} " : '') . "{$route['origin']}-{$route['destination']}"),
                 $start,
                 $end,
@@ -422,7 +423,7 @@ class RosterParser
         $dutyEnd = Carbon::parse($dutyEvent['end']);
 
         foreach ($events as $index => $event) {
-            if (($event['type'] ?? null) !== 'flight') {
+            if (! ParserEventType::fromEvent($event)->isFlightLike()) {
                 continue;
             }
 

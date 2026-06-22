@@ -69,10 +69,11 @@ TEXT;
         $this->assertSame('FO', $parsed['trip']['position']);
         $this->assertCount(4, $parsed['calendar_events']);
         $this->assertIsString($parsed['calendar_events'][0]['download_id'] ?? null);
-        $this->assertSame('flight', $parsed['calendar_events'][0]['type']);
+        $this->assertSame('deadhead', $parsed['calendar_events'][0]['type']);
         $this->assertSame('G4 368', $parsed['calendar_events'][0]['metadata']['flight_number']);
         $this->assertSame('AUS', $parsed['calendar_events'][0]['metadata']['origin']);
         $this->assertSame('CVG', $parsed['calendar_events'][0]['metadata']['destination']);
+        $this->assertTrue($parsed['calendar_events'][0]['metadata']['deadhead']);
         $this->assertSame('layover', $parsed['calendar_events'][1]['type']);
         $this->assertSame('Holiday Inn Express & Suites Florence - Cincinnati Airport - Vandercar Way', $parsed['calendar_events'][1]['metadata']['hotel']);
         $this->assertSame('duty', $parsed['calendar_events'][2]['type']);
@@ -136,7 +137,7 @@ TEXT;
         $this->assertIsArray($result);
         $this->assertCount(1, $result['parsed']['calendar_events']);
         $this->assertIsString($result['parsed']['calendar_events'][0]['download_id'] ?? null);
-        $this->assertSame('flight', $result['parsed']['calendar_events'][0]['type']);
+        $this->assertSame('deadhead', $result['parsed']['calendar_events'][0]['type']);
     }
 
     public function test_roster_parser_handles_noisy_image_ocr_output(): void
@@ -180,7 +181,7 @@ TEXT;
         $events = $result['parsed']['calendar_events'];
 
         $this->assertCount(6, $events);
-        $this->assertSame('flight', $events[0]['type']);
+        $this->assertSame('deadhead', $events[0]['type']);
         $this->assertIsString($events[0]['download_id'] ?? null);
         $this->assertSame('G4 368', $events[0]['metadata']['flight_number']);
         $this->assertSame('AUS', $events[0]['metadata']['origin']);
@@ -428,7 +429,7 @@ TEXT;
             ->assertSee('SUMMARY:G4 368 AUS-CVG')
             ->assertSee('DTSTART:20260612T224400Z')
             ->assertSee('DTEND:20260613T011700Z')
-            ->assertSee('Type: Flight')
+            ->assertSee('Type: Deadhead')
             ->assertSee('Flight number: G4 368')
             ->assertSee('Origin: AUS')
             ->assertSee('Destination: CVG')
@@ -455,7 +456,7 @@ TEXT;
 
         $this->post(route('parse.roster'), [
             'text' => $text,
-            'event_types' => ['layover'],
+            'event_types' => ['flight'],
         ]);
 
         $parseKey = session('latest_parse_key');
@@ -470,8 +471,8 @@ TEXT;
 
         $response
             ->assertOk()
-            ->assertSee('Hotel: Holiday Inn Express & Suites Florence - Cincinnati Airport - Vandercar Way', false)
-            ->assertDontSee('SUMMARY:G4 368 AUS-CVG');
+            ->assertSee('SUMMARY:G4 368 AUS-CVG')
+            ->assertDontSee('Hotel: Holiday Inn Express & Suites Florence - Cincinnati Airport - Vandercar Way', false);
     }
 
     public function test_export_links_can_target_an_older_parse_result_in_the_same_session(): void

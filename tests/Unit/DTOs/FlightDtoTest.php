@@ -63,6 +63,35 @@ class FlightDtoTest extends TestCase
         $this->assertNull($dto);
     }
 
+    public function test_it_builds_a_flight_dto_from_a_deadhead_event(): void
+    {
+        $dto = app(FlightMapper::class)->fromCalendarEvent([
+            'title' => 'CKS 240 ICN-HKG',
+            'type' => 'deadhead',
+            'metadata' => [
+                'flight_number' => 'CKS 240',
+                'origin' => 'ICN',
+                'destination' => 'HKG',
+                'deadhead' => true,
+            ],
+        ]);
+
+        $this->assertNotNull($dto);
+        $this->assertSame('deadhead', $dto->type);
+        $this->assertTrue($dto->isDeadhead);
+        $this->assertSame('CKS 240', $dto->flightNumber);
+    }
+
+    public function test_it_returns_null_for_one_in_seven_events(): void
+    {
+        $dto = app(FlightMapper::class)->fromCalendarEvent([
+            'title' => '1-in-7',
+            'type' => '1in7',
+        ]);
+
+        $this->assertNull($dto);
+    }
+
     public function test_it_normalizes_snake_case_payloads(): void
     {
         $dto = Flight::fromArray([

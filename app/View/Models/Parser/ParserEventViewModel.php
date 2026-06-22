@@ -31,7 +31,7 @@ readonly class ParserEventViewModel
         $durationMinutes = $start->diffInMinutes($end);
         $hours = intdiv($durationMinutes, 60);
         $minutes = $durationMinutes % 60;
-        $eventType = ParserEventType::fromValue($event['type'] ?? null);
+        $eventType = ParserEventType::fromEvent($event);
         $downloadId = (string) ($event['download_id'] ?? '');
 
         return new self(

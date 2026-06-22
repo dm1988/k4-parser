@@ -6,7 +6,7 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex min-w-0 items-center gap-3 text-[#1F3C6D]">
                 <h3 class="truncate font-mono text-[1.05rem] font-semibold uppercase tracking-[0.16em]">
-                    {{ 'CKS ' }}{{ $model->heading() }}
+                    {{ $model->heading() }}
                 </h3>
 
                 <span aria-hidden="true" class="h-1.5 w-1.5 rounded-full bg-[#B8C4D7]"></span>
@@ -23,12 +23,6 @@
                     {{ $model->flight->typeLabel }}
                 </span>
 
-                @if ($model->flight->isDeadhead)
-                <span
-                    class="rounded-full bg-[#C5A059]/20 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#1B365D]">
-                    Deadhead
-                </span>
-                @endif
             </div>
         </div>
     </header>

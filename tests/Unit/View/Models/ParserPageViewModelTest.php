@@ -16,11 +16,11 @@ class ParserPageViewModelTest extends TestCase
         $viewModel = ParserPageViewModel::fromSession([
             'filters' => ['flight'],
         ], [
-            'event_types' => ['layover'],
+            'event_types' => ['flight'],
             'text' => 'Pasted roster text',
         ]);
 
-        $this->assertSame(['layover'], $viewModel->selectedTypes);
+        $this->assertSame(['flight'], $viewModel->selectedTypes);
         $this->assertSame('Pasted roster text', $viewModel->text);
     }
 
@@ -55,9 +55,9 @@ class ParserPageViewModelTest extends TestCase
         $this->assertSame('01JTESTPARSEKEYABC123', $viewModel->result->parseKey);
         $this->assertSame(route('parse.export', ['event_types' => ['flight'], 'parse_key' => '01JTESTPARSEKEYABC123']), $viewModel->result->exportUrl);
         $this->assertCount(1, $viewModel->result->events);
-        $this->assertSame('flight', $viewModel->result->events[0]->type);
-        $this->assertSame('Flight', $viewModel->result->events[0]->typeLabel);
-        $this->assertSame('heroicon-o-paper-airplane', $viewModel->result->events[0]->typeIcon);
+        $this->assertSame('deadhead', $viewModel->result->events[0]->type);
+        $this->assertSame('Deadhead', $viewModel->result->events[0]->typeLabel);
+        $this->assertSame('heroicon-o-arrow-trending-up', $viewModel->result->events[0]->typeIcon);
         $this->assertSame('Jun 15 • 9:00 AM - 11:30 AM', $viewModel->result->events[0]->scheduleLabel);
         $this->assertSame('2h 30m', $viewModel->result->events[0]->durationLabel);
         $this->assertSame('HL1234', $viewModel->result->events[0]->tailNumber);

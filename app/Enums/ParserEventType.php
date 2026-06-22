@@ -18,6 +18,18 @@ enum ParserEventType: string
         return self::tryFrom(strtolower((string) $value)) ?? self::Unknown;
     }
 
+    public static function fromEvent(array $event): self
+    {
+        $type = self::fromValue((string) ($event['type'] ?? null));
+        $isDeadhead = (bool) data_get($event, 'metadata.deadhead', $event['is_deadhead'] ?? false);
+
+        if ($type === self::Flight && $isDeadhead) {
+            return self::Deadhead;
+        }
+
+        return $type;
+    }
+
     /**
      * @return list<string>
      */
@@ -73,7 +85,7 @@ enum ParserEventType: string
         return match ($this) {
             self::Flight => 'heroicon-o-paper-airplane',
             self::Duty => 'heroicon-o-briefcase',
-            self::Deadhead => 'heroicon-o-arrow-trending-up',
+            self::Deadhead => 'heroicon-o-paper-airplane',
             self::Layover => 'heroicon-o-building-office-2',
             self::Off => 'heroicon-o-bed-double',
             self::Training => 'heroicon-o-academic-cap',
@@ -113,5 +125,10 @@ enum ParserEventType: string
     public function isFilterable(): bool
     {
         return in_array($this, [self::Flight, self::Duty], true);
+    }
+
+    public function isFlightLike(): bool
+    {
+        return in_array($this, [self::Flight, self::Deadhead], true);
     }
 }

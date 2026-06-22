@@ -3,6 +3,7 @@
 namespace App\View\Models\Parser;
 
 use App\DTOs\Flight;
+use App\Enums\ParserEventType;
 use Carbon\CarbonImmutable;
 
 readonly class FlightCardViewModel
@@ -19,7 +20,7 @@ readonly class FlightCardViewModel
 
     public function heading(): string
     {
-        if ($this->flight->type === 'flight' && $this->flight->flightNumber) {
+        if (ParserEventType::fromValue($this->flight->type)->isFlightLike() && $this->flight->flightNumber) {
             return $this->flight->flightNumber;
         }
 

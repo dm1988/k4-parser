@@ -10,9 +10,9 @@ final class FlightMapper
 {
     public function fromCalendarEvent(array $event, ?string $downloadId = null): ?Flight
     {
-        $eventType = ParserEventType::fromValue((string) ($event['type'] ?? null));
+        $eventType = ParserEventType::fromEvent($event);
 
-        if ($eventType !== ParserEventType::Flight) {
+        if (! $eventType->isFlightLike()) {
             return null;
         }
 

@@ -76,7 +76,7 @@ class IcsCalendarService
 
     private function formatDescription(array $event): string
     {
-        $eventType = ParserEventType::fromValue($event['type'] ?? null);
+        $eventType = ParserEventType::fromEvent($event);
         $metadata = is_array($event['metadata'] ?? null) ? $event['metadata'] : [];
         $description = [
             'Type: '.$eventType->label(),

@@ -317,6 +317,14 @@ class ParserController extends Controller
 
     private function eventType(mixed $event): string
     {
+        $eventType = $event instanceof ParsedEventDTO
+            ? ParserEventType::fromValue($event->type)
+            : (is_array($event) ? ParserEventType::fromEvent($event) : ParserEventType::Unknown);
+
+        if ($eventType->isFlightLike()) {
+            return ParserEventType::Flight->value;
+        }
+
         if ($event instanceof ParsedEventDTO) {
             return $event->type;
         }
