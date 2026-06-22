@@ -100,16 +100,16 @@ TEXT;
 
         $response
             ->assertRedirect()
-                ->assertSessionHas('result', function (array $result): bool {
+            ->assertSessionHas('result', function (array $result): bool {
                 return $result['type'] === 'hotel'
                     && is_string($result['parse_key'] ?? null)
-                    && count($result['parsed']) === 1
-                    && $result['parsed'][0]['type'] === 'layover';
-                });
-            }
+                    && count($result['parsed']['calendar_events'] ?? []) === 1
+                    && $result['parsed']['calendar_events'][0]['type'] === 'layover';
+            });
+    }
 
-            public function test_roster_parser_can_filter_calendar_events(): void
-            {
+    public function test_roster_parser_can_filter_calendar_events(): void
+    {
         $text = <<<'TEXT'
 June 2026
 Details

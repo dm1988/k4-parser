@@ -90,7 +90,7 @@ class ParserController extends Controller
         return back()->with('result', [
             'type' => 'hotel',
             'raw' => $text,
-            'parsed' => $result['parsed']['calendar_events'],
+            'parsed' => $result['parsed'],
             'parse_key' => $result['parse_key'],
         ]);
     }

@@ -4,6 +4,7 @@ namespace Tests\Unit\View\Models;
 
 use App\Enums\ParserEventType;
 use App\View\Models\Parser\ParserPageViewModel;
+use Illuminate\Support\Facades\Cache;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -65,6 +66,51 @@ class ParserPageViewModelTest extends TestCase
             route('parse.export.event', ['eventId' => '01JTESTEVENTKEYABC123', 'parse_key' => '01JTESTPARSEKEYABC123']),
             $viewModel->result->events[0]->downloadUrl
         );
+    }
+
+    #[Test]
+    public function it_hydrates_the_full_result_from_cache_when_session_only_has_a_trimmed_payload(): void
+    {
+        Cache::put('parsed_results:01JTESTPARSEKEYABC123', [
+            'type' => 'roster',
+            'source' => 'pdf',
+            'filters' => [],
+            'parse_key' => '01JTESTPARSEKEYABC123',
+            'parsed' => [
+                'trip' => ['trip_number' => '13131'],
+                'calendar_events' => [[
+                    'title' => 'CVG - NRT (206)',
+                    'type' => 'flight',
+                    'start' => '2026-06-13T06:38:00+00:00',
+                    'end' => '2026-06-13T08:31:00+00:00',
+                    'download_id' => '01JTESTEVENTKEYABC123',
+                    'metadata' => [
+                        'origin' => 'CVG',
+                        'destination' => 'NRT',
+                    ],
+                ]],
+            ],
+        ]);
+
+        $viewModel = ParserPageViewModel::fromSession([
+            'type' => 'roster',
+            'parse_key' => '01JTESTPARSEKEYABC123',
+            'parsed' => [[
+                'title' => 'CVG - NRT (206)',
+                'type' => 'flight',
+                'start' => '2026-06-13T06:38:00+00:00',
+                'end' => '2026-06-13T08:31:00+00:00',
+                'download_id' => '01JTESTEVENTKEYABC123',
+            ]],
+            'filters' => [],
+        ]);
+
+        $this->assertTrue($viewModel->hasResult());
+        $this->assertNotNull($viewModel->result);
+        $this->assertSame('Pdf', $viewModel->result->sourceLabel);
+        $this->assertSame('13131', $viewModel->result->tripNumber);
+        $this->assertSame(1, $viewModel->result->eventCount);
+        $this->assertSame('CVG - NRT (206)', $viewModel->result->events[0]->title);
     }
 
     #[Test]
