@@ -28,7 +28,7 @@ class ParseUploadTest extends TestCase
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
 
-        $parsed = Cache::get("parsed_results:{$parseKey}");
+        $parsed = Cache::get($this->cacheKeyForSession($parseKey));
         $this->assertIsArray($parsed);
         $this->assertEquals('roster', $parsed['type']);
         $this->assertEquals('text', $parsed['source']);
@@ -79,7 +79,7 @@ class ParseUploadTest extends TestCase
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
 
-        $result = Cache::get("parsed_results:{$parseKey}");
+        $result = Cache::get($this->cacheKeyForSession($parseKey));
         $this->assertIsArray($result);
         $this->assertSame('pdf', $result['source']);
         $this->assertSame(RosterSourceResolver::PDF_TYPE_PUBLISHED_ROSTER, $result['document_type']);
@@ -130,10 +130,20 @@ class ParseUploadTest extends TestCase
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
 
-        $result = Cache::get("parsed_results:{$parseKey}");
+        $result = Cache::get($this->cacheKeyForSession($parseKey));
         $this->assertIsArray($result);
         $this->assertSame('pdf', $result['source']);
         $this->assertSame(RosterSourceResolver::PDF_TYPE_TRIP_INFORMATION, $result['document_type']);
         $this->assertSame('13131', $result['meta']['trip_id']);
+    }
+
+    private function cacheKeyForSession(string $parseKey): string
+    {
+        return 'sessions:'.$this->sessionCacheNamespace().":parsed_results:{$parseKey}";
+    }
+
+    private function sessionCacheNamespace(): string
+    {
+        return (string) session('parsed_results_namespace');
     }
 }

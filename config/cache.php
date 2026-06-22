@@ -133,4 +133,6 @@ return [
 
     'serializable_classes' => false,
 
+    // Custom configuration for parsed results TTL
+    'parsed_results_ttl' => env('PARSED_RESULTS_TTL', 60)
 ];

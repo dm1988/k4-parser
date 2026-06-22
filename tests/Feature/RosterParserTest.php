@@ -56,13 +56,14 @@ TEXT;
             ->assertRedirect()
             ->assertSessionHas('result', function (array $result): bool {
                 return $result['type'] === 'roster'
-                    && is_string($result['parse_key'] ?? null);
+                    && is_string($result['parse_key'] ?? null)
+                    && isset($result['parsed']['trip'], $result['parsed']['calendar_events']);
             });
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
 
-        $result = Cache::get("parsed_results:{$parseKey}");
+        $result = Cache::get($this->cacheKeyForSession($parseKey));
         $this->assertIsArray($result);
 
         $parsed = $result['parsed'];
@@ -135,13 +136,14 @@ TEXT;
             ->assertRedirect()
             ->assertSessionHas('result', function (array $result): bool {
                 return $result['filters'] === ['flight']
-                    && is_string($result['parse_key'] ?? null);
+                    && is_string($result['parse_key'] ?? null)
+                    && isset($result['parsed']['trip'], $result['parsed']['calendar_events']);
             });
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
 
-        $result = Cache::get("parsed_results:{$parseKey}");
+        $result = Cache::get($this->cacheKeyForSession($parseKey));
         $this->assertIsArray($result);
         $this->assertCount(1, $result['parsed']['calendar_events']);
         $this->assertIsString($result['parsed']['calendar_events'][0]['download_id'] ?? null);
@@ -188,7 +190,7 @@ TEXT;
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
 
-        $result = Cache::get("parsed_results:{$parseKey}");
+        $result = Cache::get($this->cacheKeyForSession($parseKey));
         $this->assertIsArray($result);
         $events = $result['parsed']['calendar_events'];
 
@@ -238,7 +240,7 @@ TEXT;
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
 
-        $result = Cache::get("parsed_results:{$parseKey}");
+        $result = Cache::get($this->cacheKeyForSession($parseKey));
         $this->assertIsArray($result);
         $events = $result['parsed']['calendar_events'];
 
@@ -281,7 +283,7 @@ TEXT;
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
 
-        $result = Cache::get("parsed_results:{$parseKey}");
+        $result = Cache::get($this->cacheKeyForSession($parseKey));
         $this->assertIsArray($result);
         $events = $result['parsed']['calendar_events'];
 
@@ -334,7 +336,7 @@ TEXT;
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
 
-        $result = Cache::get("parsed_results:{$parseKey}");
+        $result = Cache::get($this->cacheKeyForSession($parseKey));
         $this->assertIsArray($result);
         $event = $result['parsed']['calendar_events'][0] ?? null;
 
@@ -363,7 +365,7 @@ TEXT;
         $this->post(route('parse.roster'), ['text' => $text]);
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
-        $result = Cache::get("parsed_results:{$parseKey}");
+        $result = Cache::get($this->cacheKeyForSession($parseKey));
 
         $response = $this->get(route('parse.export', ['parse_key' => $result['parse_key']]));
 
@@ -391,7 +393,7 @@ TEXT;
         $this->post(route('parse.roster'), ['text' => $text]);
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
-        $result = Cache::get("parsed_results:{$parseKey}");
+        $result = Cache::get($this->cacheKeyForSession($parseKey));
         $eventId = $result['parsed']['calendar_events'][0]['download_id'];
 
         $response = $this->get(route('parse.export.event', ['eventId' => $eventId, 'parse_key' => $result['parse_key']]));
@@ -437,7 +439,7 @@ TEXT;
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
-        $result = Cache::get("parsed_results:{$parseKey}");
+        $result = Cache::get($this->cacheKeyForSession($parseKey));
         $event = $result['parsed']['calendar_events'][0];
 
         $response = $this->get(route('parse.export.event', [
@@ -480,13 +482,13 @@ TEXT;
         $this->post(route('parse.roster'), ['text' => $firstText]);
         $firstParseKey = session('latest_parse_key');
         $this->assertIsString($firstParseKey);
-        $firstResult = Cache::get("parsed_results:{$firstParseKey}");
+        $firstResult = Cache::get($this->cacheKeyForSession($firstParseKey));
         $firstEventId = $firstResult['parsed']['calendar_events'][0]['download_id'];
 
         $this->post(route('parse.roster'), ['text' => $secondText]);
         $secondParseKey = session('latest_parse_key');
         $this->assertIsString($secondParseKey);
-        $secondResult = Cache::get("parsed_results:{$secondParseKey}");
+        $secondResult = Cache::get($this->cacheKeyForSession($secondParseKey));
 
         $oldPageResponse = $this->get(route('parse.export.event', [
             'eventId' => $firstEventId,
@@ -507,5 +509,45 @@ TEXT;
             ->assertOk()
             ->assertSee('SUMMARY:CKS 206 CVG-NRT')
             ->assertDontSee('SUMMARY:G4 368 AUS-CVG');
+    }
+
+    public function test_export_cannot_access_another_sessions_cached_parse_result(): void
+    {
+        $text = <<<'TEXT'
+        June 2026
+        Details
+        Jun 12 22:44 - Jun 13 01:17
+        G4 368
+        Pos
+        AUS - CVG
+        DH
+        TEXT;
+
+        $this->post(route('parse.roster'), ['text' => $text]);
+
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+        $originalNamespace = $this->sessionCacheNamespace();
+
+        $result = Cache::get($this->cacheKeyForSession($parseKey));
+        $this->assertIsArray($result);
+
+        session()->invalidate();
+        session()->start();
+        $this->assertNotSame($originalNamespace, $this->sessionCacheNamespace());
+
+        $response = $this->get(route('parse.export', ['parse_key' => $parseKey]));
+
+        $response->assertNotFound();
+    }
+
+    private function cacheKeyForSession(string $parseKey): string
+    {
+        return 'sessions:'.$this->sessionCacheNamespace().":parsed_results:{$parseKey}";
+    }
+
+    private function sessionCacheNamespace(): string
+    {
+        return (string) session('parsed_results_namespace', session()->getId());
     }
 }

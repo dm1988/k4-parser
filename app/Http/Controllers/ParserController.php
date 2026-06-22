@@ -52,10 +52,7 @@ class ParserController extends Controller
             ],
         );
 
-        // Cache the full parse result and keep only the parse key in session
-        $ttlMinutes = (int) env('PARSED_RESULTS_TTL', 60);
-        Cache::put("parsed_results:{$result['parse_key']}", $result, now()->addMinutes($ttlMinutes));
-        session(['latest_parse_key' => $result['parse_key']]);
+        $this->cacheResult($result);
 
         return back()->with('result', [
             'type' => 'flight',
@@ -83,9 +80,7 @@ class ParserController extends Controller
             ],
         );
 
-        $ttlMinutes = (int) env('PARSED_RESULTS_TTL', 60);
-        Cache::put("parsed_results:{$result['parse_key']}", $result, now()->addMinutes($ttlMinutes));
-        session(['latest_parse_key' => $result['parse_key']]);
+        $this->cacheResult($result);
 
         return back()->with('result', [
             'type' => 'hotel',
@@ -145,14 +140,12 @@ class ParserController extends Controller
             meta: is_array($source['meta'] ?? null) ? $source['meta'] : [],
         );
 
-        $ttlMinutes = (int) env('PARSED_RESULTS_TTL', 60);
-        Cache::put("parsed_results:{$result['parse_key']}", $result, now()->addMinutes($ttlMinutes));
-        session(['latest_parse_key' => $result['parse_key']]);
+        $this->cacheResult($result);
 
         return back()->with('result', [
             'type' => 'roster',
             'parse_key' => $result['parse_key'],
-            'parsed' => $result['parsed']['calendar_events'] ?? [],
+            'parsed' => $result['parsed'],
             'filters' => $result['filters'] ?? [],
         ]);
     }
@@ -313,6 +306,33 @@ class ParserController extends Controller
 
     private function resolveCachedResult(string $parseKey): mixed
     {
-        return Cache::get("parsed_results:{$parseKey}");
+        return Cache::get($this->cacheKey($parseKey));
+    }
+
+    private function cacheResult(array $result): void
+    {
+        $ttlMinutes = config('cache.parsed_results_ttl', 60);
+
+        Cache::put($this->cacheKey($result['parse_key']), $result, now()->addMinutes($ttlMinutes));
+        session(['latest_parse_key' => $result['parse_key']]);
+    }
+
+    private function cacheKey(string $parseKey): string
+    {
+        return 'sessions:'.$this->sessionCacheNamespace().":parsed_results:{$parseKey}";
+    }
+
+    private function sessionCacheNamespace(): string
+    {
+        $namespace = session('parsed_results_namespace');
+
+        if (is_string($namespace) && $namespace !== '') {
+            return $namespace;
+        }
+
+        $namespace = session()->getId();
+        session(['parsed_results_namespace' => $namespace]);
+
+        return $namespace;
     }
 }
