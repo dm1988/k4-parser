@@ -51,13 +51,16 @@ class ParserPageViewModelTest extends TestCase
         $this->assertNotNull($viewModel->result);
         $this->assertSame('Pdf', $viewModel->result->sourceLabel);
         $this->assertSame('1234', $viewModel->result->tripNumber);
-        $this->assertSame(1, $viewModel->result->eventCount);
-        $this->assertSame('01JTESTPARSEKEYABC123', $viewModel->result->parseKey);
-        $this->assertSame(route('parse.export', ['event_types' => ['flight'], 'parse_key' => '01JTESTPARSEKEYABC123']), $viewModel->result->exportUrl);
         $this->assertCount(1, $viewModel->result->events);
-        $this->assertSame('deadhead', $viewModel->result->events[0]->type);
-        $this->assertSame('Deadhead', $viewModel->result->events[0]->typeLabel);
-        $this->assertSame('heroicon-o-arrow-trending-up', $viewModel->result->events[0]->typeIcon);
+        $this->assertSame('01JTESTPARSEKEYABC123', $viewModel->result->parseKey);
+        $this->assertSame(
+            route('parse.export', ['event_types' => [ParserEventType::Flight->value], 'parse_key' => '01JTESTPARSEKEYABC123']),
+            $viewModel->result->exportUrl
+        );
+        $this->assertCount(1, $viewModel->result->events);
+        $this->assertSame(ParserEventType::Deadhead->value, $viewModel->result->events[0]->type);
+        $this->assertSame(ParserEventType::Deadhead->label(), $viewModel->result->events[0]->typeLabel);
+        $this->assertSame(ParserEventType::Deadhead->icon(), $viewModel->result->events[0]->typeIcon);
         $this->assertSame('Jun 15 • 9:00 AM - 11:30 AM', $viewModel->result->events[0]->scheduleLabel);
         $this->assertSame('2h 30m', $viewModel->result->events[0]->durationLabel);
         $this->assertSame('HL1234', $viewModel->result->events[0]->tailNumber);
