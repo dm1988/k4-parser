@@ -16,6 +16,26 @@
             {{ $model->flight->tailNumber ?? '—' }}
         </p>
     </div>
+    <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-[#8A97AB]">
+            Aircraft Type
+        </p>
+        <p class="mt-1 font-mono text-sm font-semibold text-[#111827]">
+            {{ $model->flight->aircraft ?? '—' }}
+        </p>
+    </div>
+    {{-- Flight Awawre Url --}}
+    @if ( $model->flight->tailNumber )
+        
+    <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-[#8A97AB]">
+            Flight Aware Tracking
+        </p>
+        <p class="mt-1 font-mono text-sm font-semibold text-[#111827] underline">
+            <a href="https://flightaware.com/live/{{  $model->flight->tailNumber  }}">Flight Aware</a>
+        </p>
+    </div>
+    @endif
 
     <div>
         <p class="text-xs font-semibold uppercase tracking-wide text-[#8A97AB]">

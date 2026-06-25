@@ -161,7 +161,7 @@
         </details>
         @endif
         <div class="mt-8 flex flex-wrap items-center gap-2">
-            @if ($model->hasAirportDetails())
+            {{-- @if ($model->hasAirportDetails())
             <x-parser.flight-card.dropdown icon="heroicon-o-map-pin" title="Airports">
                 @include('parser.partials.flight-card.airport-details', [
                 'model' => $model,
@@ -179,7 +179,27 @@
                 @include('parser.partials.flight-card.crew-details', [
                 'model' => $model,
                 ])
-            </x-parser.flight-card.dropdown>
+            </x-parser.flight-card.dropdown> --}}
+            
+            @if ($model->hasAirportDetails())
+            <x-parser.flight-card.accordion icon="heroicon-o-map-pin" title="Airports">
+                @include('parser.partials.flight-card.airport-details', [
+                'model' => $model,
+                ])
+            </x-parser.flight-card.accordion>
+            @endif
+
+            <x-parser.flight-card.accordion icon="heroicon-o-paper-airplane" title="Flight">
+                @include('parser.partials.flight-card.flight-details', [
+                'model' => $model,
+                ])
+            </x-parser.flight-card.accordion>
+
+            <x-parser.flight-card.accordion icon="heroicon-o-user-group" title="Crew" align="right">
+                @include('parser.partials.flight-card.crew-details', [
+                'model' => $model,
+                ])
+            </x-parser.flight-card.accordion>
         </div>
     </div>
 
