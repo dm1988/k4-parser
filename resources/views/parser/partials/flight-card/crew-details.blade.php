@@ -2,31 +2,31 @@
     $crew = $model->crewMembers();
 @endphp
 
-<div class="space-y-4">
-    <div class="grid gap-3 sm:grid-cols-3">
-        <div class="rounded-xl bg-[#F8FAFD] px-3 py-3">
-            <p class="text-xs font-semibold uppercase tracking-wide text-[#8A97AB]">
+<div class="space-y-2">
+    <div class="grid gap-2 sm:grid-cols-3">
+        <div class="flex items-center justify-between gap-3 rounded-lg bg-[#F8FAFD] px-3 py-2">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#8A97AB]">
                 Total Crew
             </p>
-            <p class="mt-1 text-lg font-bold text-[#111827]">
+            <p class="text-sm font-bold text-[#111827]">
                 {{ $model->crewCount() }}
             </p>
         </div>
 
-        <div class="rounded-xl bg-[#F8FAFD] px-3 py-3">
-            <p class="text-xs font-semibold uppercase tracking-wide text-[#8A97AB]">
+        <div class="flex items-center justify-between gap-3 rounded-lg bg-[#F8FAFD] px-3 py-2">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#8A97AB]">
                 Operating
             </p>
-            <p class="mt-1 text-lg font-bold text-[#111827]">
+            <p class="text-sm font-bold text-[#111827]">
                 {{ $model->operatingCrewCount() }}
             </p>
         </div>
 
-        <div class="rounded-xl bg-[#F8FAFD] px-3 py-3">
-            <p class="text-xs font-semibold uppercase tracking-wide text-[#8A97AB]">
+        <div class="flex items-center justify-between gap-3 rounded-lg bg-[#F8FAFD] px-3 py-2">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#8A97AB]">
                 Deadheading
             </p>
-            <p class="mt-1 text-lg font-bold text-[#111827]">
+            <p class="text-sm font-bold text-[#111827]">
                 {{ $model->deadheadingCrewCount() }}
             </p>
         </div>
@@ -35,12 +35,12 @@
     @if (!empty($crew))
         <div class="space-y-2">
             @foreach ($crew as $crewMember)
-                <div class="rounded-xl bg-[#F8FAFD] px-3 py-2">
-                    <p class="text-sm font-semibold text-[#111827]">
+                <div class="flex items-center justify-between gap-3 rounded-lg bg-[#F8FAFD] px-3 py-2">
+                    <p class="truncate text-sm font-semibold text-[#111827]">
                         {{ data_get($crewMember, 'name', 'Unknown Crew Member') }}
                     </p>
 
-                    <div class="mt-1 flex flex-wrap items-center gap-2">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
                         @if (data_get($crewMember, 'role'))
                             <span class="text-xs font-medium text-[#8090A9]">
                                 {{ data_get($crewMember, 'role') }}
