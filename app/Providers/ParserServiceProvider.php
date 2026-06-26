@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Services\IcsCalendarService;
 use App\Services\PdfScheduleParser;
 use App\Services\PublishedRosterParser;
+use App\Services\CrewParserService;
 use App\Services\RosterDocumentParser;
 use App\Services\RosterParser;
 use App\Services\RosterSourceResolver;
@@ -16,6 +17,7 @@ class ParserServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(PdfScheduleParser::class);
+        $this->app->singleton(CrewParserService::class);
         $this->app->singleton(RosterParser::class);
         $this->app->singleton(PublishedRosterParser::class);
         $this->app->singleton(RosterDocumentParser::class);

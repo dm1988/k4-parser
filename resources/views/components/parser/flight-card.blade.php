@@ -195,11 +195,13 @@
                 ])
             </x-parser.flight-card.accordion>
 
+            @if ($model->hasCrewDetails())
             <x-parser.flight-card.accordion icon="heroicon-o-user-group" title="Crew" align="right">
                 @include('parser.partials.flight-card.crew-details', [
                 'model' => $model,
                 ])
             </x-parser.flight-card.accordion>
+            @endif
         </div>
     </div>
 

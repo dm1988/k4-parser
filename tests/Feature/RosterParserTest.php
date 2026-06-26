@@ -250,7 +250,7 @@ Name Crew Pos Base
 w Jesper Brandt Jensen 98765 (OP ete)
 w Julio Rodriguez Batista 12456 FO EYW
 aXe Cameron Stovold 36879 DH LAX
-* David Gonzalez 34534 INZe) NUS
+* David Gonzalez 34534 INZe) AUS
 TEXT;
 
         $response = $this->post(route('parse.roster'), ['text' => $text]);
@@ -276,6 +276,11 @@ TEXT;
         $this->assertSame(4, $events[0]['metadata']['crew_count']);
         $this->assertSame(3, $events[0]['metadata']['operating_crew_count']);
         $this->assertSame(1, $events[0]['metadata']['deadheading_crew_count']);
+        $this->assertCount(4, $events[0]['metadata']['crew']);
+        $this->assertSame('David Gonzalez', $events[0]['metadata']['crew'][3]['name']);
+        $this->assertSame('34534', $events[0]['metadata']['crew'][3]['employee_id']);
+        $this->assertSame('AUS', $events[0]['metadata']['crew'][3]['base']);
+        $this->assertFalse($events[0]['metadata']['crew'][3]['deadheading']);
         $this->assertSame('2026-06-15T23:45:00+00:00', $events[0]['start']);
         $this->assertSame('2026-06-16T03:45:00+00:00', $events[0]['end']);
     }
@@ -319,6 +324,10 @@ TEXT;
         $this->assertSame(4, $event['metadata']['crew_count']);
         $this->assertSame(3, $event['metadata']['operating_crew_count']);
         $this->assertSame(1, $event['metadata']['deadheading_crew_count']);
+        $this->assertSame('Cameron Stovold', $event['metadata']['crew'][2]['name']);
+        $this->assertSame('71835', $event['metadata']['crew'][2]['employee_id']);
+        $this->assertSame('LAX', $event['metadata']['crew'][2]['base']);
+        $this->assertTrue($event['metadata']['crew'][2]['deadheading']);
     }
 
     public function test_cache_boundary_dehydrates_dto_events_before_storage(): void

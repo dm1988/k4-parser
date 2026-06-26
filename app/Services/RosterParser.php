@@ -11,6 +11,7 @@ class RosterParser
 {
     public function __construct(
         private readonly FlightMapper $flightMapper,
+        private readonly CrewParserService $crewParser,
     ) {
     }
     public function parse(string $text): array
@@ -287,7 +288,7 @@ class RosterParser
 
         if ($route = $this->extractFlightRoute($body)) {
             $flightNumber = $this->extractFlightNumber($body);
-            $position = $this->detectCrewPosition($body);
+            $position = $this->crewParser->detectPosition($body);
             $aircraft = $this->detectAircraft($body);
             $tailNumber = $this->detectTailNumber($body);
             $flightAwareUrl = $tailNumber
@@ -295,7 +296,7 @@ class RosterParser
                 : null;
             $blockTime = $this->extractBlockTime($body);
             $isDeadhead = (bool) preg_match('/\bDH\b/i', $joinedBody);
-            $crewSummary = $this->extractCrewSummary($body);
+            $crewSummary = $this->crewParser->parseWithSummary($body);
 
             return $this->calendarEvent(
                 $isDeadhead ? ParserEventType::Deadhead->value : ParserEventType::Flight->value,
@@ -314,6 +315,7 @@ class RosterParser
                     'crew_count' => $crewSummary['crew_count'],
                     'operating_crew_count' => $crewSummary['operating_crew_count'],
                     'deadheading_crew_count' => $crewSummary['deadheading_crew_count'],
+                    'crew' => $crewSummary['crew'] !== [] ? $crewSummary['crew'] : null,
                     'deadhead' => $isDeadhead,
                     'raw_lines' => $body,
                 ], fn ($value) => $value !== null && $value !== '')
@@ -335,7 +337,7 @@ class RosterParser
         }
 
         if (preg_match('/\bCrew list\b/i', $joinedBody)) {
-            $crewSummary = $this->extractCrewSummary($body);
+            $crewSummary = $this->crewParser->parseWithSummary($body);
 
             return $this->calendarEvent(
                 'duty',
@@ -346,6 +348,7 @@ class RosterParser
                     'crew_count' => $crewSummary['crew_count'],
                     'operating_crew_count' => $crewSummary['operating_crew_count'],
                     'deadheading_crew_count' => $crewSummary['deadheading_crew_count'],
+                    'crew' => $crewSummary['crew'] !== [] ? $crewSummary['crew'] : null,
                     'raw_lines' => $body,
                 ], fn ($value) => $value !== null && $value !== '')
             );
@@ -482,6 +485,10 @@ class RosterParser
             $flightMetadata['deadheading_crew_count'] = $dutyMetadata['deadheading_crew_count'];
         }
 
+        if (! empty($dutyMetadata['crew']) && empty($flightMetadata['crew'])) {
+            $flightMetadata['crew'] = $dutyMetadata['crew'];
+        }
+
         $flightEvent['metadata'] = $flightMetadata;
 
         return $flightEvent;
@@ -523,7 +530,7 @@ class RosterParser
         } elseif (preg_match('/\b\d{4,}\s*\|?\s*([A-Z]{2})\.?\s+[A-Z]{3}\b/', $fullText, $matches)) {
             $summary['position'] = strtoupper($matches[1]);
         } else {
-            $summary['position'] = $this->detectCrewPosition($lines);
+            $summary['position'] = $this->crewParser->detectPosition($lines);
         }
 
         if (preg_match('/Homebase:\s*([A-Z]{3})/i', $fullText, $matches)) {
@@ -620,23 +627,6 @@ class RosterParser
         return null;
     }
 
-    private function detectCrewPosition(array $lines): ?string
-    {
-        $positions = ['CA', 'CAPT', 'FO', 'DH', 'FE', 'AC'];
-
-        foreach ($lines as $line) {
-            if (in_array($line, $positions, true)) {
-                return $line;
-            }
-
-            if (preg_match('/\b(CA|CAPT|FO|DH|FE|AC)\b/', $line, $matches)) {
-                return $matches[1];
-            }
-        }
-
-        return null;
-    }
-
     private function detectAircraft(array $lines): ?string
     {
         foreach ($lines as $line) {
@@ -674,44 +664,4 @@ class RosterParser
         return null;
     }
 
-    private function extractCrewCount(array $lines): ?int
-    {
-        return $this->extractCrewSummary($lines)['crew_count'];
-    }
-
-    /**
-     * @return array{crew_count: ?int, operating_crew_count: ?int, deadheading_crew_count: ?int}
-     */
-    private function extractCrewSummary(array $lines): array
-    {
-        $count = 0;
-        $operatingCount = 0;
-        $deadheadingCount = 0;
-
-        foreach ($lines as $line) {
-            if (preg_match('/\b\d{5}\b/', $line) === 1) {
-                $count++;
-
-                if (preg_match('/\bDH\b/i', $line) === 1) {
-                    $deadheadingCount++;
-                } else {
-                    $operatingCount++;
-                }
-            }
-        }
-
-        if ($count === 0) {
-            return [
-                'crew_count' => null,
-                'operating_crew_count' => null,
-                'deadheading_crew_count' => null,
-            ];
-        }
-
-        return [
-            'crew_count' => $count,
-            'operating_crew_count' => $operatingCount,
-            'deadheading_crew_count' => $deadheadingCount,
-        ];
-    }
 }
