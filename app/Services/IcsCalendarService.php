@@ -6,6 +6,7 @@ use App\DTOs\Flight;
 use App\Enums\ParserEventType;
 use App\Mappers\FlightMapper;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 class IcsCalendarService
 {
@@ -78,30 +79,73 @@ class IcsCalendarService
     {
         $eventType = ParserEventType::fromEvent($event);
         $metadata = is_array($event['metadata'] ?? null) ? $event['metadata'] : [];
-        $description = [
-            'Type: '.$eventType->label(),
-            'Type description: '.$eventType->description(),
+
+        // 1. Header & Type Information
+        $lines = [
+            "✈️ TYPE: " . $eventType->label() . " (" . $eventType->description() . ")",
+            "----------------------------------------",
         ];
 
+        // 2. Separate metadata fields for logical grouping
+        $flightDetails = [];
+        $crewInfo = [];
+        $timings = [];
+
         foreach ($metadata as $key => $value) {
-            if ($key === 'raw_lines' || $key === 'flightaware_url') {
+            // Drop clutter fields that aren't useful in a calendar note
+            if (in_array($key, ['raw_lines', 'flightaware_url', 'duty_raw_lines'])) {
                 continue;
             }
 
-            if ($key === 'deadhead' && ! $value) {
+            if ($key === 'deadhead' && !$value) {
                 continue;
             }
 
-            $value = $this->stringifyMetadataValue($value);
-
-            if ($value === null || $value === '') {
+            // Clean & safe string conversion
+            $stringVal = $this->stringifyMetadataValue($value);
+            if ($stringVal === null || $stringVal === '') {
                 continue;
             }
 
-            $description[] = ucfirst(str_replace('_', ' ', $key)).': '.$value;
+            $label = ucfirst(str_replace('_', ' ', $key));
+            $formattedLine = "• {$label}: {$stringVal}";
+
+            // Sort fields into their respective blocks
+            if (in_array($key, ['utc_start', 'utc_end'])) {
+                $timings[] = $formattedLine;
+            } elseif (Str::contains($key, 'crew') || $key === 'crew_count' || $key === 'operating_crew_count') {
+                // If it's the main crew array, split members onto their own bullet lines
+                if ($key === 'crew' && is_array($value)) {
+                    $crewInfo[] = "• Crew Members:";
+                    foreach ($value as $member) {
+                        $name = $member['name'] ?? 'Unknown';
+                        $role = isset($member['role']) ? " ({$member['role']})" : '';
+                        $crewInfo[] = "  └─ {$name}{$role}";
+                    }
+                } else {
+                    $crewInfo[] = $formattedLine;
+                }
+            } else {
+                $flightDetails[] = "• {$label}: {$stringVal}";
+            }
         }
 
-        return implode("\n", $description);
+        // 3. Compile the sections neatly with double line breaks
+        if (!empty($flightDetails)) {
+            $lines[] = "📦 FLIGHT DETAILS\n" . implode("\n", $flightDetails);
+        }
+
+        if (!empty($crewInfo)) {
+            $lines[] = "\n👥 CREW LOGISTICS\n" . implode("\n", $crewInfo);
+        }
+
+        if (!empty($timings)) {
+            $lines[] = "\n⏰ TIMINGS (UTC)\n" . implode("\n", $timings);
+        }
+
+        // Return a single clean string. (The parent loop passes this to escapeValue, 
+        // which converts \n into literal calendar-safe \n syntax)
+        return implode("\n", $lines);
     }
 
     private function stringifyMetadataValue(mixed $value): ?string
