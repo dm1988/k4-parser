@@ -448,6 +448,30 @@ TEXT;
             ->assertDontSee('Raw lines:');
     }
 
+    public function test_roster_parser_can_export_ics_with_nested_crew_metadata(): void
+    {
+        $text = <<<'TEXT'
+        June 2026
+        Details
+        Jun 12 22:44 - Jun 13 01:17
+        G4 368
+        AUS - CVG
+        Jane Doe 12345 FO CVG
+        John Smith 67890 DH AUS
+        TEXT;
+
+        $this->post(route('parse.roster'), ['text' => $text]);
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+        $result = Cache::get($this->cacheKeyForSession($parseKey));
+
+        $response = $this->get(route('parse.export', ['parse_key' => $result['parse_key']]));
+
+        $response
+            ->assertOk()
+            ->assertSee('Crew: Name: Jane Doe\\, Employee id: 12345\\, Crew id: 12345\\, Base: CVG\\, Role: FO\\, Deadheading: No\\, Name: John Smith\\, Employee id: 67890\\, Crew id: 67890\\, Base: AUS\\, Role: DH\\, Deadheading: Yes');
+    }
+
     public function test_per_event_export_uses_stable_download_id_instead_of_filtered_index(): void
     {
         $text = <<<'TEXT'

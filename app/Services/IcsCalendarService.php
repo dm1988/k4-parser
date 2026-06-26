@@ -92,9 +92,7 @@ class IcsCalendarService
                 continue;
             }
 
-            if (is_array($value)) {
-                $value = implode(', ', array_filter($value, fn ($item) => $item !== null && $item !== ''));
-            }
+            $value = $this->stringifyMetadataValue($value);
 
             if ($value === null || $value === '') {
                 continue;
@@ -104,6 +102,45 @@ class IcsCalendarService
         }
 
         return implode("\n", $description);
+    }
+
+    private function stringifyMetadataValue(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_bool($value)) {
+            return $value ? 'Yes' : 'No';
+        }
+
+        if (is_scalar($value)) {
+            return (string) $value;
+        }
+
+        if (! is_array($value)) {
+            return null;
+        }
+
+        $parts = [];
+
+        foreach ($value as $key => $item) {
+            $item = $this->stringifyMetadataValue($item);
+
+            if ($item === null || $item === '') {
+                continue;
+            }
+
+            if (is_string($key)) {
+                $parts[] = ucfirst(str_replace('_', ' ', $key)).': '.$item;
+
+                continue;
+            }
+
+            $parts[] = $item;
+        }
+
+        return $parts === [] ? null : implode(', ', $parts);
     }
 
     private function escapeValue(string $value): string
