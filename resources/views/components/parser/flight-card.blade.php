@@ -204,8 +204,8 @@
     </div>
 
     <footer class="flex items-center justify-between border-t border-[#D8E0EC] bg-[#F8FAFD] px-8 py-5">
-        @if ($model->flight->tailNumber)
         <div class="flex items-center gap-3">
+            @if ($model->flight->tailNumber)
             <span class="text-sm font-semibold uppercase tracking-[0.12em] text-[#7B889D]">
                 Tail
             </span>
@@ -213,8 +213,8 @@
             <span class="font-mono text-[1.15rem] font-semibold text-[#161B25]">
                 {{ $model->flight->tailNumber }}
             </span>
+            @endif
         </div>
-        @endif
 
         <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <a href="{{ $model->flight->downloadUrl }}"
