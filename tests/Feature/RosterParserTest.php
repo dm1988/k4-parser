@@ -231,6 +231,10 @@ TEXT;
         $this->assertSame('CKS 200', $events[0]['metadata']['flight_number']);
         $this->assertSame('N793CK', $events[0]['metadata']['tail_number']);
         $this->assertSame('EEE', $events[0]['metadata']['duty_station']);
+        $this->assertSame('May 16 03:00', $events[0]['metadata']['leg_local_start']);
+        $this->assertSame('May 17 06:00', $events[0]['metadata']['leg_local_end']);
+        $this->assertSame('May 16 01:00', $events[0]['metadata']['duty_local_start']);
+        $this->assertSame('May 17 06:30', $events[0]['metadata']['duty_local_end']);
         $this->assertContains('EEE EEE Customer DHL 777 NET Catering Ordered', $events[0]['metadata']['raw_lines']);
         $this->assertContains('DEW ICN CVG NRT Flight Info', $events[0]['metadata']['duty_raw_lines']);
     }
@@ -273,6 +277,10 @@ TEXT;
         $this->assertSame('N772CK', $events[0]['metadata']['tail_number']);
         $this->assertSame('77X', $events[0]['metadata']['aircraft']);
         $this->assertSame('4:00h', $events[0]['metadata']['block_time']);
+        $this->assertSame('Jun 16 08:45', $events[0]['metadata']['leg_local_start']);
+        $this->assertSame('Jun 16 11:45', $events[0]['metadata']['leg_local_end']);
+        $this->assertSame('Jun 16 06:45', $events[0]['metadata']['duty_local_start']);
+        $this->assertSame('Jun 15 12:00', $events[0]['metadata']['duty_local_end']);
         $this->assertSame(4, $events[0]['metadata']['crew_count']);
         $this->assertSame(3, $events[0]['metadata']['operating_crew_count']);
         $this->assertSame(1, $events[0]['metadata']['deadheading_crew_count']);
@@ -438,10 +446,11 @@ TEXT;
             ->assertSee('SUMMARY:G4 368 AUS-CVG')
             ->assertSee('DTSTART:20260612T224400Z')
             ->assertSee('DTEND:20260613T011700Z')
-            ->assertSee('Type: Deadhead')
+            ->assertSee('✈️ FLIGHT DETAILS')
             ->assertSee('Flight number: G4 368')
-            ->assertSee('Origin: AUS')
-            ->assertSee('Destination: CVG')
+            ->assertSee('AUS - CVG')
+            ->assertDontSee('Origin: AUS')
+            ->assertDontSee('Destination: CVG')
             ->assertSee('Position: DH')
             ->assertDontSee('Aircraft:')
             ->assertDontSee('Block time:')
@@ -469,7 +478,12 @@ TEXT;
 
         $response
             ->assertOk()
-            ->assertSee('Crew: Name: Jane Doe\\, Employee id: 12345\\, Crew id: 12345\\, Base: CVG\\, Role: FO\\, Deadheading: No\\, Name: John Smith\\, Employee id: 67890\\, Crew id: 67890\\, Base: AUS\\, Role: DH\\, Deadheading: Yes');
+            ->assertSee('👥 CREW LOGISTICS')
+            ->assertSee('Crew count: 2')
+            ->assertSee('Operating crew count: 1')
+            ->assertSee('Deadheading crew count: 1')
+            ->assertSee('Jane Doe (FO • CVG • #12345)')
+            ->assertSee('John Smith (DH • AUS • #67890)');
     }
 
     public function test_per_event_export_uses_stable_download_id_instead_of_filtered_index(): void

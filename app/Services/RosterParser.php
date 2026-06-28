@@ -181,6 +181,14 @@ class RosterParser
             }
 
             if ($this->isDateRange($trimmedLine)) {
+                $previousLine = $currentBlock === [] ? null : end($currentBlock);
+
+                if (is_string($previousLine) && preg_match('/\b(?:Leg|Duty) LT\b/i', $previousLine) === 1) {
+                    $currentBlock[] = $trimmedLine;
+
+                    continue;
+                }
+
                 if (! empty($currentBlock)) {
                     $blocks[] = $currentBlock;
                 }
@@ -295,8 +303,11 @@ class RosterParser
                 ? 'https://www.flightaware.com/live/flight/' . rawurlencode($tailNumber)
                 : null;
             $blockTime = $this->extractBlockTime($body);
+            $dutyStation = $this->extractDutyStationFromLines($body);
+            $dutyRawLines = $this->extractDutyRawLines($body);
             $isDeadhead = (bool) preg_match('/\bDH\b/i', $joinedBody);
             $crewSummary = $this->crewParser->parseWithSummary($body);
+            $localTimes = $this->extractFlightLocalTimes($body);
 
             return $this->calendarEvent(
                 $isDeadhead ? ParserEventType::Deadhead->value : ParserEventType::Flight->value,
@@ -312,12 +323,15 @@ class RosterParser
                     'tail_number' => $tailNumber,
                     'flightaware_url' => $flightAwareUrl,
                     'block_time' => $blockTime,
+                    'duty_station' => $dutyStation,
                     'crew_count' => $crewSummary['crew_count'],
                     'operating_crew_count' => $crewSummary['operating_crew_count'],
                     'deadheading_crew_count' => $crewSummary['deadheading_crew_count'],
                     'crew' => $crewSummary['crew'] !== [] ? $crewSummary['crew'] : null,
                     'deadhead' => $isDeadhead,
                     'raw_lines' => $body,
+                    'duty_raw_lines' => $dutyRawLines !== [] ? $dutyRawLines : null,
+                    ...$localTimes,
                 ], fn ($value) => $value !== null && $value !== '')
             );
         }
@@ -468,9 +482,17 @@ class RosterParser
             ...$dutyRawLines,
         ]));
         $flightMetadata['duty_raw_lines'] = $dutyRawLines;
+        $flightMetadata = [
+            ...$flightMetadata,
+            ...$this->extractFlightLocalTimes($flightMetadata['raw_lines']),
+        ];
 
         if (! empty($dutyMetadata['station']) && empty($flightMetadata['duty_station'])) {
             $flightMetadata['duty_station'] = $dutyMetadata['station'];
+        }
+
+        if (empty($flightMetadata['duty_station'])) {
+            $flightMetadata['duty_station'] = $this->extractDutyStationFromLines($flightMetadata['raw_lines']);
         }
 
         if (! empty($dutyMetadata['crew_count']) && empty($flightMetadata['crew_count'])) {
@@ -492,6 +514,71 @@ class RosterParser
         $flightEvent['metadata'] = $flightMetadata;
 
         return $flightEvent;
+    }
+
+    /**
+     * @param  list<string>  $lines
+     * @return array{
+     *     leg_local_start?: string,
+     *     leg_local_end?: string,
+     *     duty_local_start?: string,
+     *     duty_local_end?: string
+     * }
+     */
+    private function extractFlightLocalTimes(array $lines): array
+    {
+        $joinedLines = trim(preg_replace('/\s+/', ' ', implode(' ', $lines)) ?? '');
+
+        if ($joinedLines === '') {
+            return [];
+        }
+
+        return array_filter([
+            'leg_local_start' => $this->extractLocalTimeBoundary($joinedLines, 'Leg LT', 1),
+            'leg_local_end' => $this->extractLocalTimeBoundary($joinedLines, 'Leg LT', 2),
+            'duty_local_start' => $this->extractLocalTimeBoundary($joinedLines, 'Duty LT', 1),
+            'duty_local_end' => $this->extractLocalTimeBoundary($joinedLines, 'Duty LT', 2),
+        ], static fn (?string $value): bool => $value !== null && $value !== '');
+    }
+
+    private function extractLocalTimeBoundary(string $input, string $label, int $captureGroup): ?string
+    {
+        $pattern = '/\b'.preg_quote($label, '/').'\b\s+([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2})\s*-\s*([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2})/';
+
+        if (preg_match($pattern, $input, $matches) !== 1) {
+            return null;
+        }
+
+        return $matches[$captureGroup] ?? null;
+    }
+
+    /**
+     * @param  list<string>  $lines
+     */
+    private function extractDutyStationFromLines(array $lines): ?string
+    {
+        foreach ($lines as $line) {
+            if (preg_match('/\b([A-Z]{3})\s+\1\b.*(?:Flight Info|Customer|\.)/i', $line, $matches) === 1) {
+                return strtoupper($matches[1]);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  list<string>  $lines
+     * @return list<string>
+     */
+    private function extractDutyRawLines(array $lines): array
+    {
+        foreach ($lines as $index => $line) {
+            if (preg_match('/\b(?:Duty LT|Flight Info|Crew list)\b/i', $line) === 1) {
+                return array_values(array_slice($lines, $index));
+            }
+        }
+
+        return [];
     }
 
     private function calendarEvent(string $type, string $title, Carbon $start, Carbon $end, array $metadata = []): array

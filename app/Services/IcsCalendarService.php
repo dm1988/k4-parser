@@ -6,12 +6,12 @@ use App\DTOs\Flight;
 use App\Enums\ParserEventType;
 use App\Mappers\FlightMapper;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
 
 class IcsCalendarService
 {
     public function __construct(
         private readonly FlightMapper $flightMapper,
+        private readonly CrewParserService $crewParser,
     ) {
     }
 
@@ -26,10 +26,10 @@ class IcsCalendarService
         ];
 
         if (! empty($trip['trip_number'])) {
-            $lines[] = 'X-WR-CALNAME:Crew Compass Trip '.$this->escapeValue($trip['trip_number']);
+            $lines[] = 'X-WR-CALNAME:K4 Parsed Trip '.$this->escapeValue($trip['trip_number']);
         }
 
-        $lines[] = 'X-WR-CALDESC:Calendar export from Crew Compass';
+        $lines[] = 'X-WR-CALDESC:Calendar export from Crew Compass K4 parser';
 
         foreach ($events as $event) {
             $event = $this->normalizeEvent($event);
@@ -41,8 +41,10 @@ class IcsCalendarService
             $start = Carbon::parse($event['start'])->setTimezone('UTC');
             $end = Carbon::parse($event['end'])->setTimezone('UTC');
 
-            $event['metadata']['utc_start'] = $start->format('m-d H:i').'Z';
-            $event['metadata']['utc_end'] = $end->format('m-d H:i').'Z';
+            $event['metadata']['utc_start'] = $start->format('m-d H:i').' Z';
+            $event['metadata']['utc_end'] = $end->format('m-d H:i').' Z';
+            $event['metadata']['local_start'] = $start->format('m-d H:i').' ';
+            $event['metadata']['local_end'] = $end->format('m-d H:i').' ';
 
             $flightAwareUrl = $event['metadata']['flightaware_url'] ?? null;
             $description = $this->formatDescription($event);
@@ -78,13 +80,13 @@ class IcsCalendarService
     private function formatDescription(array $event): string
     {
         $eventType = ParserEventType::fromEvent($event);
-        $metadata = is_array($event['metadata'] ?? null) ? $event['metadata'] : [];
+        $metadata = $this->normalizeCrewMetadata(
+            is_array($event['metadata'] ?? null) ? $event['metadata'] : []
+        );
+        $routeLine = $this->formatRouteLine($metadata);
 
         // 1. Header & Type Information
-        $lines = [
-            "✈️ TYPE: " . $eventType->label() . " (" . $eventType->description() . ")",
-            "----------------------------------------",
-        ];
+        $lines = [];
 
         // 2. Separate metadata fields for logical grouping
         $flightDetails = [];
@@ -93,7 +95,7 @@ class IcsCalendarService
 
         foreach ($metadata as $key => $value) {
             // Drop clutter fields that aren't useful in a calendar note
-            if (in_array($key, ['raw_lines', 'flightaware_url', 'duty_raw_lines'])) {
+            if (in_array($key, ['raw_lines', 'flightaware_url', 'duty_raw_lines', 'crew', 'crew_count', 'operating_crew_count', 'deadheading_crew_count', 'origin', 'destination'], true)) {
                 continue;
             }
 
@@ -113,26 +115,20 @@ class IcsCalendarService
             // Sort fields into their respective blocks
             if (in_array($key, ['utc_start', 'utc_end'])) {
                 $timings[] = $formattedLine;
-            } elseif (Str::contains($key, 'crew') || $key === 'crew_count' || $key === 'operating_crew_count') {
-                // If it's the main crew array, split members onto their own bullet lines
-                if ($key === 'crew' && is_array($value)) {
-                    $crewInfo[] = "• Crew Members:";
-                    foreach ($value as $member) {
-                        $name = $member['name'] ?? 'Unknown';
-                        $role = isset($member['role']) ? " ({$member['role']})" : '';
-                        $crewInfo[] = "  └─ {$name}{$role}";
-                    }
-                } else {
-                    $crewInfo[] = $formattedLine;
-                }
             } else {
                 $flightDetails[] = "• {$label}: {$stringVal}";
             }
         }
 
+        $crewInfo = $this->formatCrewSection($metadata);
+
+        if ($routeLine !== null) {
+            array_unshift($flightDetails, $routeLine);
+        }
+
         // 3. Compile the sections neatly with double line breaks
         if (!empty($flightDetails)) {
-            $lines[] = "📦 FLIGHT DETAILS\n" . implode("\n", $flightDetails);
+            $lines[] = "✈️ FLIGHT DETAILS\n" . implode("\n", $flightDetails);
         }
 
         if (!empty($crewInfo)) {
@@ -140,12 +136,127 @@ class IcsCalendarService
         }
 
         if (!empty($timings)) {
-            $lines[] = "\n⏰ TIMINGS (UTC)\n" . implode("\n", $timings);
+            $lines[] = "\n⏰ TIMES\n" . implode("\n", $timings);
         }
 
         // Return a single clean string. (The parent loop passes this to escapeValue, 
         // which converts \n into literal calendar-safe \n syntax)
         return implode("\n", $lines);
+    }
+
+    private function formatRouteLine(array $metadata): ?string
+    {
+        $origin = $metadata['origin'] ?? null;
+        $destination = $metadata['destination'] ?? null;
+
+        if (! is_string($origin) || ! is_string($destination) || $origin === '' || $destination === '') {
+            return null;
+        }
+
+        return "• {$origin} - {$destination}";
+    }
+
+    private function normalizeCrewMetadata(array $metadata): array
+    {
+        $crew = is_array($metadata['crew'] ?? null) ? $metadata['crew'] : [];
+        $summary = $this->crewParser->summarize($crew);
+
+        if ($crew === [] || $summary['crew_count'] === null) {
+            $candidateLines = [];
+
+            foreach (['duty_raw_lines', 'raw_lines'] as $key) {
+                if (is_array($metadata[$key] ?? null)) {
+                    $candidateLines = array_merge($candidateLines, $metadata[$key]);
+                }
+            }
+
+            if ($candidateLines !== []) {
+                $parsed = $this->crewParser->parseWithSummary($candidateLines);
+
+                if ($crew === [] && $parsed['crew'] !== []) {
+                    $crew = $parsed['crew'];
+                }
+
+                if ($summary['crew_count'] === null && $parsed['crew_count'] !== null) {
+                    $summary = [
+                        'crew_count' => $parsed['crew_count'],
+                        'operating_crew_count' => $parsed['operating_crew_count'],
+                        'deadheading_crew_count' => $parsed['deadheading_crew_count'],
+                    ];
+                }
+            }
+        }
+
+        if ($crew !== []) {
+            $metadata['crew'] = $crew;
+        }
+
+        foreach (['crew_count', 'operating_crew_count', 'deadheading_crew_count'] as $key) {
+            if (($metadata[$key] ?? null) === null && $summary[$key] !== null) {
+                $metadata[$key] = $summary[$key];
+            }
+        }
+
+        return $metadata;
+    }
+
+    private function formatCrewSection(array $metadata): array
+    {
+        $lines = [];
+
+        if (($metadata['crew_count'] ?? null) !== null) {
+            $lines[] = '• Crew count: '.$metadata['crew_count'];
+        }
+
+        if (($metadata['operating_crew_count'] ?? null) !== null) {
+            $lines[] = '• Operating crew count: '.$metadata['operating_crew_count'];
+        }
+
+        if (($metadata['deadheading_crew_count'] ?? null) !== null) {
+            $lines[] = '• Deadheading crew count: '.$metadata['deadheading_crew_count'];
+        }
+
+        $crew = is_array($metadata['crew'] ?? null) ? $metadata['crew'] : [];
+
+        if ($crew === []) {
+            return $lines;
+        }
+
+        $lines[] = '• Crew Members:';
+
+        foreach ($crew as $member) {
+            if (! is_array($member)) {
+                continue;
+            }
+
+            $parts = [];
+            $name = $member['name'] ?? 'Unknown';
+            $role = $member['role'] ?? null;
+            $base = $member['base'] ?? null;
+            $employeeId = $member['employee_id'] ?? null;
+            $deadheading = ($member['deadheading'] ?? false) ? 'DH' : null;
+
+            if ($role) {
+                $parts[] = $role;
+            }
+
+            if ($base) {
+                $parts[] = $base;
+            }
+
+            if ($employeeId) {
+                $parts[] = '#'.$employeeId;
+            }
+
+            if ($deadheading && $role !== 'DH') {
+                $parts[] = $deadheading;
+            }
+
+            $suffix = $parts === [] ? '' : ' ('.implode(' • ', $parts).')';
+            $lines[] = "  └─ {$name}{$suffix}";
+        }
+
+        return $lines;
     }
 
     private function stringifyMetadataValue(mixed $value): ?string

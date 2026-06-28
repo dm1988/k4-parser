@@ -50,6 +50,10 @@ final class FlightMapper
             operatingCrewCount: $this->nullableInt($metadata, 'operating_crew_count'),
             deadheadingCrewCount: $this->nullableInt($metadata, 'deadheading_crew_count'),
             dutyStation: $this->nullableString($metadata, 'duty_station'),
+            legLocalStart: $this->nullableString($metadata, 'leg_local_start'),
+            legLocalEnd: $this->nullableString($metadata, 'leg_local_end'),
+            dutyLocalStart: $this->nullableString($metadata, 'duty_local_start'),
+            dutyLocalEnd: $this->nullableString($metadata, 'duty_local_end'),
             start: $start,
             end: $end,
             timezone: $this->nullableString($event, 'timezone'),
@@ -81,6 +85,10 @@ final class FlightMapper
         $metadata['operating_crew_count'] = $flight->operatingCrewCount;
         $metadata['deadheading_crew_count'] = $flight->deadheadingCrewCount;
         $metadata['duty_station'] = $flight->dutyStation;
+        $metadata['leg_local_start'] = $flight->legLocalStart;
+        $metadata['leg_local_end'] = $flight->legLocalEnd;
+        $metadata['duty_local_start'] = $flight->dutyLocalStart;
+        $metadata['duty_local_end'] = $flight->dutyLocalEnd;
         $metadata['deadhead'] = $flight->isDeadhead;
         $metadata['flightaware_url'] = $flight->downloadUrl !== '' ? $flight->downloadUrl : ($metadata['flightaware_url'] ?? null);
         $metadata['raw_lines'] = $flight->rawLines;
