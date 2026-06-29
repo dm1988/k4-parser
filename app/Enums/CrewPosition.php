@@ -5,6 +5,7 @@ namespace App\Enums;
 enum CrewPosition: string
 {
     case Captain = 'CA';
+    case CaptainPilot = 'CP';
     case CaptainLong = 'CAPT';
     case FirstOfficer = 'FO';
     case Deadhead = 'DH';

@@ -75,6 +75,7 @@ class CrewParserServiceTest extends TestCase
         $this->assertSame(6, $summary['operating_crew_count']);
         $this->assertSame(0, $summary['deadheading_crew_count']);
 
+        $this->assertSame('CP', $summary['crew'][0]['role']);
         $this->assertSame('FME', $summary['crew'][2]['role']);
         $this->assertSame('Henry Garcia Santos', $summary['crew'][5]['name']);
         $this->assertSame('2847', $summary['crew'][5]['employee_id']);
