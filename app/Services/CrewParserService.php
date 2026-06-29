@@ -2,13 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\CrewPosition;
+
 class CrewParserService
 {
-    /**
-     * @var list<string>
-     */
-    private const POSITIONS = ['CA', 'CAPT', 'FO', 'DH', 'FE', 'AC', 'OP', 'AFO', 'ACA'];
-
     /**
      * @param  array<int, string>|string  $input
      * @return list<array{name: string, employee_id: string, crew_id: string, base: ?string, role: ?string, deadheading: bool}>
@@ -64,11 +61,11 @@ class CrewParserService
         foreach ($lines as $line) {
             $line = trim((string) $line);
 
-            if (in_array($line, self::POSITIONS, true)) {
-                return $line;
+            if (($position = CrewPosition::tryFrom(strtoupper($line))) !== null) {
+                return $position->value;
             }
 
-            if (preg_match('/\b(' . implode('|', self::POSITIONS) . ')\b/i', $line, $matches) === 1) {
+            if (preg_match('/\b(' . CrewPosition::regexPattern() . ')\b/i', $line, $matches) === 1) {
                 return strtoupper($matches[1]);
             }
         }
@@ -113,7 +110,7 @@ class CrewParserService
             return null;
         }
 
-        if (preg_match('/\b(\d{5,6})\b/', $line, $matches, PREG_OFFSET_CAPTURE) !== 1) {
+        if (preg_match('/\b(\d{4,6})\b/', $line, $matches, PREG_OFFSET_CAPTURE) !== 1) {
             return null;
         }
 
@@ -178,10 +175,10 @@ class CrewParserService
     private function extractRole(string $value, bool $deadheading): ?string
     {
         if ($deadheading) {
-            return 'DH';
+            return CrewPosition::Deadhead->value;
         }
 
-        if (preg_match('/\b(CA|CAPT|FO|FE|AC|OP|AFO|ACA)\b/i', $value, $matches) === 1) {
+        if (preg_match('/\b(' . CrewPosition::regexPattern() . ')\b/i', $value, $matches) === 1) {
             return strtoupper($matches[1]);
         }
 
