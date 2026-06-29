@@ -82,6 +82,22 @@ readonly class FlightCardViewModel
         return $this->flight->legLocalEnd ?: '—';
     }
 
+    public function hasDutyLocalTimes(): bool
+    {
+        return $this->dutyLocalStartLabel() !== '—'
+            || $this->dutyLocalEndLabel() !== '—';
+    }
+
+    public function dutyLocalStartLabel(): string
+    {
+        return $this->flight->dutyLocalStart ?: '—';
+    }
+
+    public function dutyLocalEndLabel(): string
+    {
+        return $this->flight->dutyLocalEnd ?: '—';
+    }
+
     // Airport Details
     public function hasAirportDetails(): bool
     {
