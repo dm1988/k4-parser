@@ -26,10 +26,10 @@ class IcsCalendarService
         ];
 
         if (! empty($trip['trip_number'])) {
-            $lines[] = 'X-WR-CALNAME:K4 Parsed Trip '.$this->escapeValue($trip['trip_number']);
+            $lines[] = 'X-WR-CALNAME:JCA Parsed Trip '.$this->escapeValue($trip['trip_number']);
         }
 
-        $lines[] = 'X-WR-CALDESC:Calendar export from Crew Compass K4 parser';
+        $lines[] = 'X-WR-CALDESC:Calendar export from Crew Compass JCA parser';
 
         foreach ($events as $event) {
             $event = $this->normalizeEvent($event);
@@ -139,7 +139,7 @@ class IcsCalendarService
             $lines[] = "\n⏰ TIMES\n" . implode("\n", $timings);
         }
 
-        // Return a single clean string. (The parent loop passes this to escapeValue, 
+        // Return a single clean string. (The parent loop passes this to escapeValue,
         // which converts \n into literal calendar-safe \n syntax)
         return implode("\n", $lines);
     }

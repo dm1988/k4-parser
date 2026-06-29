@@ -14,7 +14,7 @@
 
     <header class="max-w-7xl w-full mx-auto px-6 py-6 flex justify-between items-center">
         <div class="text-xl font-bold tracking-wider text-indigo-400">
-            K4 SCHEDULE PARSER
+            JCA SCHEDULE PARSER
         </div>
         <div>
             @if (Route::has('login'))
@@ -44,7 +44,7 @@
                     Your schedule, <br><span class="text-indigo-400">on your terms.</span>
                 </h1>
                 <p class="text-lg text-slate-400 max-w-xl">
-                    Drop the clunky enterprise portals. Parse your K4 schedule instantly and access it beautifully from anywhere.
+                    Drop the clunky enterprise portals. Parse your JCA schedule instantly and access it beautifully from anywhere.
                 </p>
             </div>
 

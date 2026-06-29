@@ -1,5 +1,5 @@
 @php
-// Fall back to a blank state if the controller didn't inject one, 
+// Fall back to a blank state if the controller didn't inject one,
 // rather than scanning old session payloads manually.
 $viewModel ??= new \App\View\Models\Parser\ParserPageViewModel();
 @endphp
@@ -9,7 +9,7 @@ $viewModel ??= new \App\View\Models\Parser\ParserPageViewModel();
     <section>
         <div class="mb-5 rounded-lg bg-[#1B365D] p-5 text-[#F8F9FA] shadow-lg shadow-[#1B365D]/10">
             <p class="text-sm font-semibold uppercase tracking-[0.16em] text-[#C5A059]">Flight deck</p>
-            <h2 class="mt-2 text-3xl font-bold">K4 Schedule Parsers</h2>
+            <h2 class="mt-2 text-3xl font-bold">JCA Schedule Parser</h2>
             <p class="mt-3 max-w-2xl text-sm leading-6 text-[#F8F9FA]/80">Upload a roster screenshot or trip PDF and the
                 K4 parser will extract the text, classify the trip details, and return calendar-ready events.</p>
 
