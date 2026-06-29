@@ -24,6 +24,8 @@ class FlightCardViewModelTest extends TestCase
             'badgeColor' => 'bg-blue-100 text-blue-900',
             'downloadUrl' => 'https://example.test/export',
             'flightNumber' => 'CKS 240',
+            'legLocalStart' => 'Jun 16 08:45',
+            'legLocalEnd' => 'Jun 16 12:45',
             'start' => '2026-06-15T23:45:00+00:00',
             'end' => '2026-06-16T03:45:00+00:00',
             'origin' => 'ICN',
@@ -48,6 +50,9 @@ class FlightCardViewModelTest extends TestCase
         $this->assertSame('HKG', $model->destinationLabel());
         $this->assertSame('11:45 PM', $model->originTimeLabel());
         $this->assertSame('3:45 AM', $model->destinationTimeLabel());
+        $this->assertTrue($model->hasLegLocalTimes());
+        $this->assertSame('Jun 16 08:45', $model->legLocalStartLabel());
+        $this->assertSame('Jun 16 12:45', $model->legLocalEndLabel());
         $this->assertTrue($model->hasAirportDetails());
         $this->assertSame('RKSI', $model->originIcao());
         $this->assertSame('VHHH', $model->destinationIcao());
@@ -72,6 +77,7 @@ class FlightCardViewModelTest extends TestCase
 
         $this->assertSame('Duty', $model->heading());
         $this->assertFalse($model->hasAirportDetails());
+        $this->assertFalse($model->hasLegLocalTimes());
         $this->assertSame('UNK', $model->originLabel());
         $this->assertSame('UNK', $model->destinationLabel());
     }

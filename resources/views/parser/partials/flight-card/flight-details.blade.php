@@ -40,6 +40,28 @@
         </div>
     </div>
 
+    @if ($model->hasLegLocalTimes())
+    <div class="grid grid-cols-2 gap-2 sm:col-span-2">
+        <div class="flex items-center justify-between gap-3 rounded-lg bg-[#F8FAFD] px-3 py-2">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#8A97AB]">
+                Local Start
+            </p>
+            <p class="text-sm font-semibold text-[#111827] text-right whitespace-nowrap">
+                {{ $model->legLocalStartLabel() }}
+            </p>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 rounded-lg bg-[#F8FAFD] px-3 py-2">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#8A97AB]">
+                Local End
+            </p>
+            <p class="text-sm font-semibold text-[#111827] text-right whitespace-nowrap">
+                {{ $model->legLocalEndLabel() }}
+            </p>
+        </div>
+    </div>
+    @endif
+
     <div>
         <div class="flex items-center justify-between gap-3 rounded-lg bg-[#F8FAFD] px-3 py-2">
             <p class="text-[11px] font-semibold uppercase tracking-wide text-[#8A97AB]">

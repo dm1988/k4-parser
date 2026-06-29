@@ -66,6 +66,22 @@ readonly class FlightCardViewModel
         return $this->formatTime($this->flight->end);
     }
 
+    public function hasLegLocalTimes(): bool
+    {
+        return $this->legLocalStartLabel() !== '—'
+            || $this->legLocalEndLabel() !== '—';
+    }
+
+    public function legLocalStartLabel(): string
+    {
+        return $this->flight->legLocalStart ?: '—';
+    }
+
+    public function legLocalEndLabel(): string
+    {
+        return $this->flight->legLocalEnd ?: '—';
+    }
+
     // Airport Details
     public function hasAirportDetails(): bool
     {
