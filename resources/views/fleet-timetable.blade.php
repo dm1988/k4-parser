@@ -48,7 +48,7 @@
                         </div>
                         <div class="relative min-h-20 overflow-hidden bg-white"
                             style="background-image: repeating-linear-gradient(to right, transparent 0, transparent calc(3.333333% - 1px), rgb(226 232 240) calc(3.333333% - 1px), rgb(226 232 240) 3.333333%);">
-                            <div class="absolute inset-y-0 z-10 w-px bg-rose-500" style="left: 50%" title="Current time"></div>
+                            <div class="pointer-events-none absolute inset-y-0 z-30 w-px bg-rose-500" style="left: 50%" title="Current time"></div>
 
                             @foreach ($row['events'] as $event)
                                 <div class="absolute top-2 bottom-2 z-20 overflow-hidden rounded-md border px-2 py-1 text-white shadow-sm {{ $event['status_classes'] }}"
