@@ -12,6 +12,17 @@ use Illuminate\Support\Carbon;
  */
 class FlightEventFactory extends Factory
 {
+    private const AIRPORTS = [
+        'CVG' => ['code_icao' => 'KCVG', 'name' => 'Cincinnati/Northern Kentucky International', 'city' => 'Cincinnati', 'timezone' => 'America/New_York'],
+        'ANC' => ['code_icao' => 'PANC', 'name' => 'Ted Stevens Anchorage International', 'city' => 'Anchorage', 'timezone' => 'America/Anchorage'],
+        'LAX' => ['code_icao' => 'KLAX', 'name' => 'Los Angeles International', 'city' => 'Los Angeles', 'timezone' => 'America/Los_Angeles'],
+        'JFK' => ['code_icao' => 'KJFK', 'name' => 'John F Kennedy International', 'city' => 'New York', 'timezone' => 'America/New_York'],
+        'AMS' => ['code_icao' => 'EHAM', 'name' => 'Amsterdam Airport Schiphol', 'city' => 'Amsterdam', 'timezone' => 'Europe/Amsterdam'],
+        'HKG' => ['code_icao' => 'VHHH', 'name' => 'Hong Kong International', 'city' => 'Hong Kong', 'timezone' => 'Asia/Hong_Kong'],
+        'ICN' => ['code_icao' => 'RKSI', 'name' => 'Incheon International', 'city' => 'Seoul', 'timezone' => 'Asia/Seoul'],
+        'NRT' => ['code_icao' => 'RJAA', 'name' => 'Narita International', 'city' => 'Tokyo', 'timezone' => 'Asia/Tokyo'],
+    ];
+
     protected $model = FlightEvent::class;
 
     public function configure(): static
@@ -20,6 +31,10 @@ class FlightEventFactory extends Factory
             $this->syncAircraftAttributes($flightEvent);
         })->afterCreating(function (FlightEvent $flightEvent): void {
             $this->syncAircraftAttributes($flightEvent);
+
+            if ($flightEvent->aircraft_id !== null) {
+                $this->placeAfterPreviousFlight($flightEvent);
+            }
 
             if ($flightEvent->isDirty('tail_number')) {
                 $flightEvent->save();
@@ -32,20 +47,10 @@ class FlightEventFactory extends Factory
      */
     public function definition(): array
     {
-        $airports = [
-            'KCVG' => ['code' => 'CVG', 'name' => 'Cincinnati/Northern Kentucky International', 'city' => 'Cincinnati', 'timezone' => 'America/New_York'],
-            'PANC' => ['code' => 'ANC', 'name' => 'Ted Stevens Anchorage International', 'city' => 'Anchorage', 'timezone' => 'America/Anchorage'],
-            'KLAX' => ['code' => 'LAX', 'name' => 'Los Angeles International', 'city' => 'Los Angeles', 'timezone' => 'America/Los_Angeles'],
-            'KJFK' => ['code' => 'JFK', 'name' => 'John F Kennedy International', 'city' => 'New York', 'timezone' => 'America/New_York'],
-            'EHAM' => ['code' => 'AMS', 'name' => 'Amsterdam Airport Schiphol', 'city' => 'Amsterdam', 'timezone' => 'Europe/Amsterdam'],
-            'VHHH' => ['code' => 'HKG', 'name' => 'Hong Kong International', 'city' => 'Hong Kong', 'timezone' => 'Asia/Hong_Kong'],
-            'RKSI' => ['code' => 'ICN', 'name' => 'Incheon International', 'city' => 'Seoul', 'timezone' => 'Asia/Seoul'],
-            'RJAA' => ['code' => 'NRT', 'name' => 'Narita International', 'city' => 'Tokyo', 'timezone' => 'Asia/Tokyo'],
-        ];
-        $originIcao = fake()->randomElement(array_keys($airports));
-        $destinationIcao = fake()->randomElement(array_values(array_diff(array_keys($airports), [$originIcao])));
-        $origin = $airports[$originIcao];
-        $destination = $airports[$destinationIcao];
+        $originCode = fake()->randomElement(array_keys(self::AIRPORTS));
+        $destinationCode = fake()->randomElement(array_values(array_diff(array_keys(self::AIRPORTS), [$originCode])));
+        $origin = self::AIRPORTS[$originCode];
+        $destination = self::AIRPORTS[$destinationCode];
         $status = fake()->randomElement(['Scheduled', 'En Route', 'Arrived', 'Cancelled']);
         $start = (match ($status) {
             'Scheduled', 'Cancelled' => Carbon::instance(fake()->dateTimeBetween('+1 hour', '+2 weeks')),
@@ -63,7 +68,7 @@ class FlightEventFactory extends Factory
         $distance = fake()->numberBetween(900, 6800);
 
         return [
-            'title' => sprintf('%s %s-%s', $flightNumber, $origin['code'], $destination['code']),
+            'title' => sprintf('%s %s-%s', $flightNumber, $originCode, $destinationCode),
             'type' => 'flight',
             'start' => $start,
             'end' => $end,
@@ -79,8 +84,8 @@ class FlightEventFactory extends Factory
                 'operator_iata' => 'K4',
                 'registration' => null,
                 'aircraft_type' => 'B77L',
-                'origin' => array_merge(['code_icao' => $originIcao], $origin),
-                'destination' => array_merge(['code_icao' => $destinationIcao], $destination),
+                'origin' => array_merge(['code' => $originCode], $origin),
+                'destination' => array_merge(['code' => $destinationCode], $destination),
                 'scheduled_out' => $scheduledOut->toIso8601String(),
                 'estimated_out' => $scheduledOut->copy()->addMinutes(fake()->numberBetween(0, 45))->toIso8601String(),
                 'actual_out' => $isOperating ? $scheduledOut->copy()->addMinutes(fake()->numberBetween(0, 30))->toIso8601String() : null,
@@ -106,11 +111,11 @@ class FlightEventFactory extends Factory
             'type_label' => 'FLIGHT',
             'type_description' => sprintf('%s cargo flight', $ident),
             'type_icon' => 'plane',
-            'schedule_label' => sprintf('%s-%s', $origin['code'], $destination['code']),
+            'schedule_label' => sprintf('%s-%s', $originCode, $destinationCode),
             'duration_label' => sprintf('%d:%02d', $start->diffInHours($end), $start->diffInMinutes($end) % 60),
             'tail_number' => null,
-            'origin' => $origin['code'],
-            'destination' => $destination['code'],
+            'origin' => $originCode,
+            'destination' => $destinationCode,
             'is_deadhead' => false,
             'badge_color' => match ($status) {
                 'Arrived' => 'green',
@@ -150,6 +155,76 @@ class FlightEventFactory extends Factory
             'aircraft_id' => $aircraft->getKey(),
             'tail_number' => $aircraft->tail_number,
         ]);
+    }
+
+    private function placeAfterPreviousFlight(FlightEvent $flightEvent): void
+    {
+        $previous = FlightEvent::query()
+            ->where('aircraft_id', $flightEvent->aircraft_id)
+            ->where('id', '<', $flightEvent->getKey())
+            ->orderByDesc('end')
+            ->first();
+
+        $originCode = $previous?->destination ?? $flightEvent->origin;
+
+        if (! isset(self::AIRPORTS[$originCode])) {
+            $originCode = fake()->randomElement(array_keys(self::AIRPORTS));
+        }
+
+        $destinationCode = $previous === null && isset(self::AIRPORTS[$flightEvent->destination]) && $flightEvent->destination !== $originCode
+            ? $flightEvent->destination
+            : fake()->randomElement(array_values(array_diff(array_keys(self::AIRPORTS), [$originCode])));
+        $start = $previous === null
+            ? Carbon::now('UTC')->subHours(fake()->numberBetween(24, 48))->startOfMinute()
+            : Carbon::instance($previous->end)->addMinutes(fake()->numberBetween(120, 480))->startOfMinute();
+        $end = $start->copy()->addMinutes(fake()->numberBetween(120, 840));
+        $status = match (true) {
+            $end->isPast() => 'Arrived',
+            $start->isPast() => 'En Route',
+            default => 'Scheduled',
+        };
+        $origin = self::AIRPORTS[$originCode];
+        $destination = self::AIRPORTS[$destinationCode];
+        $metadata = $flightEvent->metadata ?? [];
+        $scheduledOut = $start->copy()->subMinutes(20);
+        $scheduledIn = $end->copy()->addMinutes(15);
+
+        $metadata['origin'] = array_merge(['code' => $originCode], $origin);
+        $metadata['destination'] = array_merge(['code' => $destinationCode], $destination);
+        $metadata['scheduled_out'] = $scheduledOut->toIso8601String();
+        $metadata['estimated_out'] = $scheduledOut->toIso8601String();
+        $metadata['actual_out'] = $status !== 'Scheduled' ? $scheduledOut->toIso8601String() : null;
+        $metadata['scheduled_off'] = $start->toIso8601String();
+        $metadata['estimated_off'] = $start->toIso8601String();
+        $metadata['actual_off'] = $status !== 'Scheduled' ? $start->toIso8601String() : null;
+        $metadata['scheduled_on'] = $end->toIso8601String();
+        $metadata['estimated_on'] = $end->toIso8601String();
+        $metadata['actual_on'] = $status === 'Arrived' ? $end->toIso8601String() : null;
+        $metadata['scheduled_in'] = $scheduledIn->toIso8601String();
+        $metadata['progress_percent'] = match ($status) {
+            'Arrived' => 100,
+            'En Route' => 50,
+            default => 0,
+        };
+        $metadata['cancelled'] = false;
+
+        $flightEvent->forceFill([
+            'title' => sprintf('%s %s-%s', $flightEvent->flight_number, $originCode, $destinationCode),
+            'start' => $start,
+            'end' => $end,
+            'origin' => $originCode,
+            'destination' => $destinationCode,
+            'schedule_label' => sprintf('%s-%s', $originCode, $destinationCode),
+            'duration_label' => sprintf('%d:%02d', $start->diffInHours($end), $start->diffInMinutes($end) % 60),
+            'status' => $status,
+            'badge_color' => match ($status) {
+                'Arrived' => 'green',
+                'En Route' => 'blue',
+                default => 'gray',
+            },
+            'metadata' => $metadata,
+            'trip_id' => sprintf('%s-%s', $metadata['ident'] ?? $flightEvent->flight_number, $start->format('Ymd')),
+        ])->save();
     }
 
     private function syncAircraftAttributes(FlightEvent $flightEvent): void
