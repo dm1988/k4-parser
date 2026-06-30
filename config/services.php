@@ -39,4 +39,10 @@ return [
         'tesseract_path' => env('TESSERACT_PATH', '/usr/bin/tesseract'),
     ],
 
+    'aerodatabox' => [
+        'base_url' => env('AERODATABOX_BASE_URL', 'https://prod.api.market/api/v1/aedbx/aerodatabox'),
+        'key' => env('AERODATABOX_API_KEY'),
+        'throttle_ms' => (int) env('AERODATABOX_THROTTLE_MS', 1100),
+    ],
+
 ];
