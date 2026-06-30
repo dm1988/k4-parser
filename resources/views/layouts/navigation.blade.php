@@ -15,6 +15,9 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Parse Schedule') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('fleet-timetable')" :active="request()->routeIs('fleet-timetable')">
+                        {{ __('Fleet Timetable') }}
+                    </x-nav-link>
                     <div class="px-3 py-2 scale-75 origin-left">
                         <script
                             type="text/javascript"
@@ -84,6 +87,9 @@
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Parse Schedule') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('fleet-timetable')" :active="request()->routeIs('fleet-timetable')">
+                {{ __('Fleet Timetable') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link href="https://buymeacoffee.com/crewcompass" :active="false" target="_blank" rel="noopener">
                 Buy Me a Coffee
