@@ -52,7 +52,10 @@ return new class extends Migration
             $table->timestamps();
 
             // Indexes
-            $table->index(['tail_number', 'start', 'end']);
+            $table->index(['aircraft_id', 'start', 'end']);
+            $table->index(['start', 'end']);
+            $table->index(['trip_id']);
+            $table->index(['flight_number']);
         });
 
     }

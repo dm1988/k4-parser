@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Aircraft extends Model
 {
@@ -20,9 +21,12 @@ class Aircraft extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
-    public function flightEvents()
+    /**
+     * @return HasMany<FlightEvent, self>
+     */
+    public function flightEvents(): HasMany
     {
-        return $this->hasMany(FlightEvent::class, 'tail_number', 'tail_number');
+        return $this->hasMany(FlightEvent::class, 'aircraft_id');
     }
     public function scopeActive($query)
     {
