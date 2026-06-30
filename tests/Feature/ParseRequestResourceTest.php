@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Filament\Resources\ParseRequests\Pages\CreateParseRequest;
 use App\Filament\Resources\ParseRequests\Pages\ListParseRequests;
 use App\Models\ParseRequest;
 use App\Models\User;
@@ -14,9 +13,9 @@ class ParseRequestResourceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_authenticated_users_can_search_parse_requests_in_the_resource_table(): void
+    public function test_admins_can_search_parse_requests_in_the_resource_table(): void
     {
-        $this->actingAs(User::factory()->create());
+        $this->actingAs($this->makeAdminUser());
 
         $firstRequest = ParseRequest::create([
             'user_id' => User::factory()->create()->getKey(),
@@ -60,49 +59,23 @@ class ParseRequestResourceTest extends TestCase
             ->assertCanNotSeeTableRecords([$secondRequest]);
     }
 
-    public function test_authenticated_users_can_create_parse_requests_from_the_resource_form(): void
+    public function test_non_admin_users_can_not_access_parse_requests_table(): void
     {
         $this->actingAs(User::factory()->create());
 
-        $owner = User::factory()->create();
+        $this->get('/admin/parse-requests')->assertForbidden();
+    }
 
-        Livewire::test(CreateParseRequest::class)
-            ->fillForm([
-                'user_id' => $owner->getKey(),
-                'request_uuid' => '6a8bbf93-a9be-4f4b-bf33-4f2237f2a0a1',
-                'source_type' => 'pasted_text',
-                'parser_type' => 'roster',
-                'status' => 'success',
-                'error_code' => null,
-                'parse_duration_ms' => 124,
-                'file_size_bytes' => 2048,
-                'page_count' => 3,
-                'detected_event_count' => 8,
-                'detected_flight_count' => 5,
-                'detected_hotel_count' => 1,
-                'file_hash' => str_repeat('a', 64),
-                'app_version' => '1.0.0',
-                'parser_version' => '2026.06',
-            ])
-            ->call('create')
-            ->assertHasNoFormErrors()
-            ->assertRedirect();
+    private function makeAdminUser(): User
+    {
+        $user = User::factory()->create();
 
-        $this->assertDatabaseHas('parse_requests', [
-            'user_id' => $owner->getKey(),
-            'request_uuid' => '6a8bbf93-a9be-4f4b-bf33-4f2237f2a0a1',
-            'source_type' => 'pasted_text',
-            'parser_type' => 'roster',
-            'status' => 'success',
-            'parse_duration_ms' => 124,
-            'file_size_bytes' => 2048,
-            'page_count' => 3,
-            'detected_event_count' => 8,
-            'detected_flight_count' => 5,
-            'detected_hotel_count' => 1,
-            'file_hash' => str_repeat('a', 64),
-            'app_version' => '1.0.0',
-            'parser_version' => '2026.06',
-        ]);
+        $user->forceFill([
+            'role' => 'admin',
+            'is_active' => true,
+            'email_verified_at' => now(),
+        ])->save();
+
+        return $user->refresh();
     }
 }
