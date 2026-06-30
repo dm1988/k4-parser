@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use App\Models\Airline;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +24,7 @@ class AirlineSeeder extends Seeder
         DB::transaction(function () use ($path) {
             $handle = fopen($path, 'r');
 
-            while (($row = fgetcsv($handle)) !== false) {
+            while (($row = fgetcsv($handle, escape: '')) !== false) {
                 /**
                  * OpenFlights format:
                  *
@@ -38,9 +37,8 @@ class AirlineSeeder extends Seeder
                  * 6  Country
                  * 7  Active
                  */
-
-                $iata = $this->nullify($row[3] ?? null);
-                $icao = $this->nullify($row[4] ?? null);
+                $iata = $this->normalizeCode($row[3] ?? null, 2, 3);
+                $icao = $this->normalizeCode($row[4] ?? null, 3, 4);
 
                 // Skip records with neither code.
                 if (! $iata && ! $icao) {
@@ -48,9 +46,7 @@ class AirlineSeeder extends Seeder
                 }
 
                 Airline::updateOrCreate(
-                    [
-                        'icao_code' => $icao,
-                    ],
+                    $icao ? ['icao_code' => $icao] : ['iata_code' => $iata],
                     [
                         'name' => $row[1] ?? null,
                         'iata_code' => $iata,
@@ -75,5 +71,20 @@ class AirlineSeeder extends Seeder
         }
 
         return trim($value);
+    }
+
+    private function normalizeCode(?string $value, int $minLength, int $maxLength): ?string
+    {
+        $value = $this->nullify($value);
+
+        if ($value === null) {
+            return null;
+        }
+
+        $value = strtoupper($value);
+
+        return preg_match("/^[A-Z0-9]{{$minLength},{$maxLength}}$/", $value)
+            ? $value
+            : null;
     }
 }
