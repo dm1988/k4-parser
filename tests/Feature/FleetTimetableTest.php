@@ -7,6 +7,7 @@ use App\Models\FlightEvent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 class FleetTimetableTest extends TestCase
@@ -43,5 +44,21 @@ class FleetTimetableTest extends TestCase
             ->assertSee('https://www.flightaware.com/live/flight/N777CK');
 
         Carbon::setTestNow();
+    }
+
+    public function test_it_renders_after_livewire_generated_views_are_cleared(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('fleet-timetable'))
+            ->assertOk();
+
+        File::deleteDirectory(storage_path('framework/views/livewire'));
+
+        $this->actingAs($user)
+            ->get(route('fleet-timetable'))
+            ->assertOk()
+            ->assertSee('Fleet timetable');
     }
 }

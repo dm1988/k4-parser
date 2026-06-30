@@ -1,19 +1,3 @@
-<?php
-
-use App\View\Models\FleetTimetableViewModel;
-use Livewire\Attributes\Computed;
-use Livewire\Component;
-
-new class extends Component
-{
-    #[Computed]
-    public function viewModel(): FleetTimetableViewModel
-    {
-        return FleetTimetableViewModel::make();
-    }
-};
-?>
-
 <div wire:poll.60s>
     @php($viewModel = $this->viewModel)
 
