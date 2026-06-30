@@ -13,11 +13,15 @@ class AeroDataBoxFlightMapperTest extends TestCase
         $payload = $this->flightPayload();
 
         $flight = $mapper->map($payload, 'N772CK');
+        $payload['departure']['scheduledTime']['utc'] = '2026-06-30T18:00:00Z';
+        $reformattedFlight = $mapper->map($payload, 'N772CK');
         $payload['arrival']['revisedTime']['utc'] = '2026-07-01 03:30Z';
         $revisedFlight = $mapper->map($payload, 'N772CK');
 
         $this->assertNotNull($flight);
+        $this->assertNotNull($reformattedFlight);
         $this->assertNotNull($revisedFlight);
+        $this->assertSame($flight->externalId, $reformattedFlight->externalId);
         $this->assertSame($flight->externalId, $revisedFlight->externalId);
         $this->assertSame('N772CK', $flight->tailNumber);
         $this->assertSame('K4 304', $flight->flightNumber);
@@ -26,6 +30,14 @@ class AeroDataBoxFlightMapperTest extends TestCase
         $this->assertSame('En Route', $flight->status);
         $this->assertSame('2026-06-30T18:15:00+00:00', $flight->start->toIso8601String());
         $this->assertSame('2026-07-01T03:00:00+00:00', $flight->end->toIso8601String());
+        $this->assertSame([
+            'source' => 'aerodatabox',
+            'external_id' => $flight->externalId,
+            'aircraft_id' => 42,
+        ], array_intersect_key(
+            $flight->toFlightEventAttributes(42),
+            array_flip(['source', 'external_id', 'aircraft_id']),
+        ));
     }
 
     public function test_it_rejects_a_flight_without_required_schedule_data(): void
@@ -34,6 +46,36 @@ class AeroDataBoxFlightMapperTest extends TestCase
         unset($payload['departure']['scheduledTime']);
 
         $this->assertNull((new AeroDataBoxFlightMapper)->map($payload, 'N772CK'));
+    }
+
+    public function test_it_prefers_provider_flight_id_when_available(): void
+    {
+        $payload = $this->flightPayload();
+        $payload['flightId'] = 'adb-123';
+        $flight = (new AeroDataBoxFlightMapper)->map($payload, 'N772CK');
+
+        unset($payload['departure']['scheduledTime']);
+        $updatedFlight = (new AeroDataBoxFlightMapper)->map($payload, 'N772CK');
+
+        $this->assertNotNull($flight);
+        $this->assertNotNull($updatedFlight);
+        $this->assertSame($flight->externalId, $updatedFlight->externalId);
+        $this->assertSame('adb-123', $updatedFlight->metadata['provider_flight_id']);
+    }
+
+    public function test_it_preserves_a_flight_with_an_inconsistent_live_timeline(): void
+    {
+        $payload = $this->flightPayload();
+        $payload['departure']['actualTime']['utc'] = '2026-07-01 04:00Z';
+        $payload['arrival']['revisedTime']['utc'] = '2026-07-01 03:00Z';
+
+        $flight = (new AeroDataBoxFlightMapper)->map($payload, 'N772CK');
+
+        $this->assertNotNull($flight);
+        $this->assertSame('2026-07-01T04:00:00+00:00', $flight->start->toIso8601String());
+        $this->assertSame('2026-07-01T04:01:00+00:00', $flight->end->toIso8601String());
+        $this->assertTrue($flight->metadata['timeline_anomaly']);
+        $this->assertSame('2026-07-01T03:00:00+00:00', $flight->metadata['reported_end_utc']);
     }
 
     /** @return array<string, mixed> */

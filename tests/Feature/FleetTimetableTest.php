@@ -22,7 +22,7 @@ class FleetTimetableTest extends TestCase
     {
         Carbon::setTestNow('2026-06-30 18:00:00 UTC');
         $aircraft = Aircraft::factory()->create(['tail_number' => 'N777CK']);
-        FlightEvent::factory()->forAircraft($aircraft)->create([
+        $flight = FlightEvent::factory()->forAircraft($aircraft)->make([
             'flight_number' => 'K4777',
             'origin' => 'CVG',
             'destination' => 'ANC',
@@ -30,6 +30,7 @@ class FleetTimetableTest extends TestCase
             'start' => Carbon::now()->subHours(16),
             'end' => Carbon::now()->subHours(14),
         ]);
+        $flight->save();
 
         $this->actingAs(User::factory()->create())
             ->get(route('fleet-timetable'))

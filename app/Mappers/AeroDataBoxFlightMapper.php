@@ -18,21 +18,32 @@ class AeroDataBoxFlightMapper
         $destination = $this->airportCode($flight, 'arrival');
         $tailNumber = strtoupper(trim((string) data_get($flight, 'aircraft.reg', $fallbackTailNumber)));
         $flightNumber = trim((string) ($flight['number'] ?? $flight['callSign'] ?? ''));
+        $providerFlightId = $this->providerFlightId($flight);
 
-        if ($scheduledDeparture === null || $start === null || $end === null || $end->lessThanOrEqualTo($start)
+        if (($providerFlightId === null && $scheduledDeparture === null)
+            || $start === null || $end === null
             || $origin === null || $destination === null || $tailNumber === '' || $flightNumber === '') {
             return null;
         }
 
+        $reportedEnd = $end;
+        $hasTimelineAnomaly = $end->lessThanOrEqualTo($start);
+
+        if ($hasTimelineAnomaly) {
+            $end = $start->addMinute();
+        }
+
         $rawStatus = (string) ($flight['status'] ?? 'Unknown');
         [$status, $badgeColor] = $this->status($rawStatus);
-        $externalId = hash('sha256', implode('|', [
-            $tailNumber,
-            strtoupper($flightNumber),
-            $scheduledDeparture->toIso8601String(),
-            $origin,
-            $destination,
-        ]));
+        $externalId = $providerFlightId !== null
+            ? hash('sha256', 'aerodatabox|'.$providerFlightId)
+            : hash('sha256', implode('|', [
+                $tailNumber,
+                strtoupper($flightNumber),
+                $scheduledDeparture->toIso8601String(),
+                $origin,
+                $destination,
+            ]));
 
         return new AeroDataBoxFlightData(
             externalId: $externalId,
@@ -46,11 +57,14 @@ class AeroDataBoxFlightMapper
             badgeColor: $badgeColor,
             metadata: [
                 'source' => 'aerodatabox',
+                'provider_flight_id' => $providerFlightId,
+                'timeline_anomaly' => $hasTimelineAnomaly,
+                'reported_end_utc' => $hasTimelineAnomaly ? $reportedEnd->toIso8601String() : null,
                 'raw_status' => $rawStatus,
                 'last_updated_utc' => $flight['lastUpdatedUtc'] ?? null,
                 'call_sign' => $flight['callSign'] ?? null,
                 'is_cargo' => $flight['isCargo'] ?? null,
-                'scheduled_departure_utc' => $scheduledDeparture->toIso8601String(),
+                'scheduled_departure_utc' => $scheduledDeparture?->toIso8601String(),
                 'aircraft' => $flight['aircraft'] ?? null,
                 'airline' => $flight['airline'] ?? null,
                 'departure' => $flight['departure'] ?? null,
@@ -58,6 +72,20 @@ class AeroDataBoxFlightMapper
                 'raw' => $flight,
             ],
         );
+    }
+
+    /** @param array<string, mixed> $flight */
+    private function providerFlightId(array $flight): ?string
+    {
+        $id = $flight['id'] ?? $flight['flightId'] ?? null;
+
+        if (! is_string($id) && ! is_int($id)) {
+            return null;
+        }
+
+        $id = trim((string) $id);
+
+        return $id === '' ? null : $id;
     }
 
     /** @param array<string, mixed> $flight */

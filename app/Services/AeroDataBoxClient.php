@@ -113,6 +113,12 @@ class AeroDataBoxClient
     /** @param array<string, mixed> $flight */
     private function flightKey(array $flight): string
     {
+        $providerFlightId = $flight['id'] ?? $flight['flightId'] ?? null;
+
+        if ((is_string($providerFlightId) || is_int($providerFlightId)) && trim((string) $providerFlightId) !== '') {
+            return hash('sha256', 'aerodatabox|'.trim((string) $providerFlightId));
+        }
+
         $identity = [
             data_get($flight, 'aircraft.reg'),
             $flight['number'] ?? $flight['callSign'] ?? 'CHARTER',

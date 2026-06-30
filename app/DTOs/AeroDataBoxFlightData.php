@@ -4,7 +4,7 @@ namespace App\DTOs;
 
 use Carbon\CarbonImmutable;
 
-final readonly class AeroDataBoxFlightData
+final readonly class AeroDataBoxFlightData extends FlightDataTransferObject
 {
     /** @param array<string, mixed> $metadata */
     public function __construct(
@@ -20,33 +20,64 @@ final readonly class AeroDataBoxFlightData
         public array $metadata,
     ) {}
 
-    /** @return array<string, mixed> */
-    public function toFlightEventAttributes(int $aircraftId): array
+    public function getSource(): string
     {
-        $durationMinutes = $this->start->diffInMinutes($this->end);
+        return 'aerodatabox';
+    }
 
-        return [
-            'source' => 'aerodatabox',
-            'external_id' => $this->externalId,
-            'aircraft_id' => $aircraftId,
-            'title' => "{$this->flightNumber} {$this->origin}-{$this->destination}",
-            'type' => 'flight',
-            'start' => $this->start,
-            'end' => $this->end,
-            'timezone' => 'UTC',
-            'metadata' => $this->metadata,
-            'type_label' => 'FLIGHT',
-            'type_description' => 'AeroDataBox flight data',
-            'type_icon' => 'plane',
-            'schedule_label' => "{$this->origin}-{$this->destination}",
-            'duration_label' => sprintf('%d:%02d', intdiv($durationMinutes, 60), $durationMinutes % 60),
-            'tail_number' => $this->tailNumber,
-            'origin' => $this->origin,
-            'destination' => $this->destination,
-            'is_deadhead' => false,
-            'badge_color' => $this->badgeColor,
-            'flight_number' => $this->flightNumber,
-            'status' => $this->status,
-        ];
+    public function getExternalId(): string
+    {
+        return $this->externalId;
+    }
+
+    public function getTailNumber(): string
+    {
+        return $this->tailNumber;
+    }
+
+    public function getFlightNumber(): string
+    {
+        return $this->flightNumber;
+    }
+
+    public function getOrigin(): string
+    {
+        return $this->origin;
+    }
+
+    public function getDestination(): string
+    {
+        return $this->destination;
+    }
+
+    public function getStart(): CarbonImmutable
+    {
+        return $this->start;
+    }
+
+    public function getEnd(): CarbonImmutable
+    {
+        return $this->end;
+    }
+
+    public function getStatus(): string
+    {
+        return $this->status;
+    }
+
+    public function getBadgeColor(): string
+    {
+        return $this->badgeColor;
+    }
+
+    /** @return array<string, mixed> */
+    public function getMetadata(): array
+    {
+        return $this->metadata;
+    }
+
+    public function getTypeDescription(): string
+    {
+        return 'AeroDataBox flight data';
     }
 }

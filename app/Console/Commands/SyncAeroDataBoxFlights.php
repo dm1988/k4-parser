@@ -55,8 +55,8 @@ class SyncAeroDataBoxFlights extends Command
                     try {
                         FlightEvent::query()->updateOrCreate(
                             [
-                                'source' => 'aerodatabox',
-                                'external_id' => $flight->externalId,
+                                'source' => $flight->getSource(),
+                                'external_id' => $flight->getExternalId(),
                             ],
                             $flight->toFlightEventAttributes($plane->getKey()),
                         );
@@ -66,8 +66,8 @@ class SyncAeroDataBoxFlights extends Command
                         $this->error(sprintf(
                             'Database write failed for %s %s (%s): %s',
                             $plane->tail_number,
-                            $flight->flightNumber,
-                            $flight->externalId,
+                            $flight->getFlightNumber(),
+                            $flight->getExternalId(),
                             $exception->getMessage(),
                         ));
                         $writeFailures++;
