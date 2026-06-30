@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\ParseRequest;
 use App\Models\User;
 use App\Services\RosterDocumentParser;
 use App\Services\RosterSourceResolver;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Mockery\MockInterface;
+use RuntimeException;
 use Tests\TestCase;
 
 class ParseUploadTest extends TestCase
@@ -33,10 +36,44 @@ class ParseUploadTest extends TestCase
         $this->assertIsArray($parsed);
         $this->assertEquals('roster', $parsed['type']);
         $this->assertEquals('text', $parsed['source']);
-        $this->assertStringContainsString('Trip Information', $parsed['raw']);
+        $this->assertArrayNotHasKey('raw', $parsed);
+        $this->assertArrayNotHasKey('raw_text', $parsed);
+
+        $parseRequest = ParseRequest::query()->latest('id')->firstOrFail();
+        $this->assertSame('success', $parseRequest->status);
+        $this->assertSame('pasted_text', $parseRequest->source_type);
+        $this->assertNull($parseRequest->file_hash);
 
         $page = $this->get(route('parse.index'));
         $page->assertOk()->assertSee('Parsed Output');
+    }
+
+    public function test_parse_failure_is_recorded_and_logged_without_input_contents(): void
+    {
+        Log::spy();
+
+        $this->mock(RosterSourceResolver::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('resolve')
+                ->once()
+                ->andThrow(new RuntimeException('Parser unavailable'));
+        });
+
+        $response = $this->actingAs(User::factory()->make())->post(route('parse.roster'), [
+            'text' => 'private roster contents',
+        ]);
+
+        $response->assertRedirect();
+
+        $parseRequest = ParseRequest::query()->latest('id')->firstOrFail();
+        $this->assertSame('failed', $parseRequest->status);
+        $this->assertSame(RuntimeException::class, $parseRequest->error_code);
+        $this->assertArrayNotHasKey('raw', $parseRequest->getAttributes());
+        $this->assertArrayNotHasKey('raw_text', $parseRequest->getAttributes());
+
+        Log::shouldHaveReceived('error')->once()->with('K4 parse failed', [
+            'parse_request_id' => $parseRequest->id,
+            'error' => 'Parser unavailable',
+        ]);
     }
 
     public function test_parse_roster_routes_published_roster_uploads_to_document_parser(): void

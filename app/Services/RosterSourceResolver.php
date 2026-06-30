@@ -4,19 +4,19 @@ namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\Process\Process;
 use Intervention\Image\Laravel\Facades\Image;
+use Symfony\Component\Process\Process;
 use Throwable;
 
 class RosterSourceResolver
 {
     public const PDF_TYPE_PUBLISHED_ROSTER = 'published_roster';
+
     public const PDF_TYPE_TRIP_INFORMATION = 'trip_information';
 
     public function __construct(
         private readonly PdfScheduleParser $pdfScheduleParser,
-    ) {
-    }
+    ) {}
 
     public function resolve(?UploadedFile $file, ?string $text): array
     {
@@ -28,23 +28,23 @@ class RosterSourceResolver
                 'document_type' => null,
                 'file' => null,
                 'mime' => null,
-                'raw' => $rawText,
                 'raw_text' => $rawText,
                 'meta' => null,
             ];
         }
 
-        $path = $file->store('uploads');
         $mime = $file->getMimeType();
 
         if ($mime === 'application/pdf') {
             $tmpPath = $file->getRealPath();
 
-            $targetPath = ($tmpPath && file_exists($tmpPath))
-                ? $tmpPath
-                : storage_path('app/' . $path);
+            if (! is_string($tmpPath) || ! is_file($tmpPath)) {
+                throw ValidationException::withMessages([
+                    'file' => 'The uploaded PDF could not be read.',
+                ]);
+            }
 
-            $pdfData = $this->pdfScheduleParser->parse($targetPath);
+            $pdfData = $this->pdfScheduleParser->parse($tmpPath);
             $rawText = trim($pdfData['text'] ?? '');
 
             if ($rawText === '') {
@@ -58,9 +58,8 @@ class RosterSourceResolver
             return [
                 'source' => 'pdf',
                 'document_type' => $documentType,
-                'file' => $path,
+                'file' => null,
                 'mime' => $mime,
-                'raw' => $rawText,
                 'raw_text' => $rawText,
                 'meta' => $this->normalizePdfMeta($pdfData),
             ];
@@ -71,9 +70,8 @@ class RosterSourceResolver
         return [
             'source' => 'image',
             'document_type' => null,
-            'file' => $path,
+            'file' => null,
             'mime' => $mime,
-            'raw' => $rawText,
             'raw_text' => $rawText,
             'meta' => null,
         ];
@@ -131,7 +129,7 @@ class RosterSourceResolver
     }
 
     /**
-     * @param array<string, int> $markers
+     * @param  array<string, int>  $markers
      */
     private function scoreMarkers(string $text, array $markers): int
     {
@@ -164,6 +162,7 @@ class RosterSourceResolver
             'date' => $pdfData['pdf_meta']['date']
                 ?? $pdfData['date']
                 ?? null,
+            'page_count' => $pdfData['pdf_meta']['page_count'] ?? null,
         ];
 
         $meta = array_filter($meta, fn ($value) => $value !== null && $value !== '');
@@ -183,22 +182,22 @@ class RosterSourceResolver
 
         // --- PREPROCESSING STEP ---
         // Create a temporary path for the optimized image
-        $optimizedPath = storage_path('app/ocr_temp_' . uniqid() . '.png');
-        
+        $optimizedPath = storage_path('app/ocr_temp_'.uniqid().'.png');
+
         try {
             $image = Image::read($path);
-            
+
             // 1. Convert to greyscale
             $image->greyscale();
-            
+
             // 2. Upscale by 2x if it's a standard screenshot (helps Tesseract recognize small text)
             $image->resize($image->width() * 2, $image->height() * 2);
-            
+
             // 3. Boost contrast to make text pop against backgrounds
-            $image->contrast(15); 
+            $image->contrast(15);
 
             $image->save($optimizedPath);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // Fallback to original path if preprocessing fails
             $optimizedPath = $path;
         }
@@ -209,7 +208,7 @@ class RosterSourceResolver
             $tesseract,
             $optimizedPath,
             'stdout',
-            '--psm', '6', 
+            '--psm', '6',
         ]);
         $process->setTimeout(30);
 
@@ -224,7 +223,7 @@ class RosterSourceResolver
         }
 
         $text = trim($process->getOutput());
-        
+
         // Clean up the temporary file
         $this->cleanupTempFile($optimizedPath, $path);
 

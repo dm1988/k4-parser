@@ -11,16 +11,12 @@ class PdfScheduleParser
 
     public function __construct(
         private readonly FlightMapper $flightMapper,
-    )
-    {
-        $this->parser = new Parser();
+    ) {
+        $this->parser = new Parser;
     }
 
     /**
      * Parse a schedule PDF and return a structured array.
-     *
-     * @param string $path
-     * @return array
      */
     public function parse(string $path): array
     {
@@ -33,7 +29,7 @@ class PdfScheduleParser
         // Standardize line endings and clean up blank lines
         $lines = preg_split('/\r?\n/', $text);
         $lines = array_map('trim', $lines);
-        $lines = array_filter($lines, fn($l) => $l !== '');
+        $lines = array_filter($lines, fn ($l) => $l !== '');
         $lines = array_values($lines);
 
         $result = [
@@ -42,6 +38,7 @@ class PdfScheduleParser
             'pdf_meta' => [
                 'trip_id' => null,
                 'date' => null,
+                'page_count' => count($pdf->getPages()),
             ],
             'parsed' => [
                 'trip' => [
@@ -50,11 +47,11 @@ class PdfScheduleParser
                     'base' => null,
                     'layovers' => [],
                     'block_time' => null,
-                    'roster_range' => null
+                    'roster_range' => null,
                 ],
-                'calendar_events' => []
+                'calendar_events' => [],
             ],
-            'crew' => []
+            'crew' => [],
         ];
 
         // 2. Metadata Extraction
@@ -95,7 +92,7 @@ class PdfScheduleParser
                     // Isolate Day and Deadhead flags
                     preg_match('/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)(\s+DH)?/i', $beforeRoute, $dayDhMatch);
                     $day = $dayDhMatch[1] ?? '';
-                    $isDh = !empty($dayDhMatch[2]);
+                    $isDh = ! empty($dayDhMatch[2]);
 
                     // The remaining text in beforeRoute is the Flight ID
                     $flight = trim(substr($beforeRoute, strlen($dayDhMatch[0] ?? '')));
@@ -140,10 +137,10 @@ class PdfScheduleParser
                         'block_time' => $block,
                         'duty_start' => $dutyStart,
                         'duty_end' => $dutyEnd,
-                        'raw_times' => $times
+                        'raw_times' => $times,
                     ];
 
-                    if ($route && !in_array($route, $result['parsed']['trip']['layovers'])) {
+                    if ($route && ! in_array($route, $result['parsed']['trip']['layovers'])) {
                         $result['parsed']['trip']['layovers'][] = $route;
                     }
                 }
@@ -203,7 +200,7 @@ class PdfScheduleParser
 
             $calendarEvent = [
                 'type' => 'flight',
-                'title' => trim((string) ($ev['flight_number'] ?? '') . ' ' . ($route ?? '')),
+                'title' => trim((string) ($ev['flight_number'] ?? '').' '.($route ?? '')),
                 'start' => $ev['date'] ?? null,
                 'end' => $ev['date'] ?? null,
                 'timezone' => config('app.timezone'),
@@ -215,7 +212,7 @@ class PdfScheduleParser
                     'deadhead' => $ev['is_deadhead'] ?? false,
                     'block_time' => $ev['block_time'] ?? null,
                     'raw_times' => $ev['raw_times'] ?? null,
-                ], fn($v) => $v !== null && $v !== ''),
+                ], fn ($v) => $v !== null && $v !== ''),
             ];
 
             $flight = $this->flightMapper->fromCalendarEvent($calendarEvent);
