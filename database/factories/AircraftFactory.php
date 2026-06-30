@@ -17,10 +17,10 @@ class AircraftFactory extends Factory
      */
     public function definition(): array
     {
-        $series = fake()->randomElement(['769', '770', '771', '772', '773', '774', '775', '776', '778', '779', '780', '793', '794']);
+        $tailNumber = fake()->unique()->numerify('N###CK');
 
         return [
-            'tail_number' => sprintf('N%sCK', $series),
+            'tail_number' => $tailNumber,
             'manufacturer' => 'Boeing',
             'type' => fake()->randomElement(['Boeing 777-F', 'Boeing 777-300ERSF']),
             'model' => fake()->randomElement(['777-F', '777-300ERSF']),

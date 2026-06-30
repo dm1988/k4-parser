@@ -17,6 +17,8 @@ class FlightEventFactoryTest extends TestCase
         Carbon::setTestNow('2026-06-30 18:00:00 UTC');
         $aircraft = Aircraft::factory()->count(3)->create();
 
+        $this->assertCount(3, $aircraft->pluck('tail_number')->unique());
+
         $flights = FlightEvent::factory()
             ->count(60)
             ->recycle($aircraft)
