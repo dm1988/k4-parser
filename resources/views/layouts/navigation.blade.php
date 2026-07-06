@@ -15,6 +15,11 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Parse Schedule') }}
                     </x-nav-link>
+                    @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
+                        <x-nav-link :href="route('filament.admin.pages.dashboard')" :active="request()->routeIs('filament.admin.*')">
+                            {{ __('Admin') }}
+                        </x-nav-link>
+                    @endif
                     <div class="px-3 py-2 scale-75 origin-left">
                         <script
                             type="text/javascript"
@@ -85,6 +90,11 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Parse Schedule') }}
             </x-responsive-nav-link>
+            @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
+                <x-responsive-nav-link :href="route('filament.admin.pages.dashboard')" :active="request()->routeIs('filament.admin.*')">
+                    {{ __('Admin') }}
+                </x-responsive-nav-link>
+            @endif
             <x-responsive-nav-link href="https://buymeacoffee.com/crewcompass" :active="false" target="_blank" rel="noopener">
                 Buy Me a Coffee
             </x-responsive-nav-link>
