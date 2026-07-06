@@ -99,6 +99,51 @@ class AirlineResourceTest extends TestCase
         ]);
     }
 
+    public function test_airline_form_requires_a_name_and_active_state(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+
+        Livewire::test(CreateAirline::class)
+            ->fillForm([
+                'name' => null,
+                'active' => null,
+            ])
+            ->call('create')
+            ->assertHasFormErrors([
+                'name' => 'required',
+                'active' => 'required',
+            ]);
+    }
+
+    public function test_non_admin_users_can_not_access_airline_resource_pages(): void
+    {
+        $airline = Airline::query()->create([
+            'name' => 'Kalitta Air',
+            'active' => true,
+        ]);
+        $this->actingAs(User::factory()->create());
+
+        $this->get('/admin/airlines')->assertForbidden();
+        $this->get('/admin/airlines/create')->assertForbidden();
+        $this->get("/admin/airlines/{$airline->getKey()}/edit")->assertForbidden();
+    }
+
+    public function test_delete_actions_are_hidden_for_airlines(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+        $airline = Airline::query()->create([
+            'name' => 'Kalitta Air',
+            'active' => true,
+        ]);
+
+        Livewire::test(ListAirlines::class)
+            ->assertTableActionVisible('edit', $airline)
+            ->assertTableBulkActionHidden('delete');
+
+        Livewire::test(EditAirline::class, ['record' => $airline->getKey()])
+            ->assertActionHidden('delete');
+    }
+
     private function makeAdminUser(): User
     {
         $user = User::factory()->create();

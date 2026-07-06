@@ -113,6 +113,74 @@ class AdminAuthorizationPolicyTest extends TestCase
         $this->assertFalse($admin->can('deleteAny', User::class));
     }
 
+    public function test_non_admin_users_are_denied_all_resource_policy_abilities(): void
+    {
+        $user = $this->makeNormalUser();
+        $aircraft = Aircraft::factory()->create();
+        $airline = Airline::query()->create(['name' => 'Kalitta Air']);
+        $flightEvent = FlightEvent::factory()->create();
+        $parseRequest = ParseRequest::query()->create([
+            'user_id' => $user->getKey(),
+            'request_uuid' => fake()->uuid(),
+            'source_type' => 'pasted_text',
+            'parser_type' => 'roster',
+            'status' => 'success',
+            'parse_duration_ms' => 55,
+        ]);
+
+        foreach ([
+            Aircraft::class => $aircraft,
+            Airline::class => $airline,
+            FlightEvent::class => $flightEvent,
+            ParseRequest::class => $parseRequest,
+            User::class => $this->makeNormalUser(),
+        ] as $modelClass => $model) {
+            $this->assertFalse($user->can('viewAny', $modelClass));
+            $this->assertFalse($user->can('view', $model));
+            $this->assertFalse($user->can('create', $modelClass));
+            $this->assertFalse($user->can('update', $model));
+            $this->assertFalse($user->can('delete', $model));
+            $this->assertFalse($user->can('deleteAny', $modelClass));
+        }
+    }
+
+    public function test_guest_and_ineligible_admins_can_not_open_the_admin_dashboard(): void
+    {
+        $this->get('/admin')->assertRedirect('/admin/login');
+
+        $this->actingAs($this->makeAdminUser(isActive: false));
+        $this->get('/admin')->assertForbidden();
+
+        $this->actingAs($this->makeAdminUser(verified: false));
+        $this->get('/admin')->assertForbidden();
+    }
+
+    public function test_restore_force_delete_and_reorder_policy_abilities_match_resource_rules(): void
+    {
+        $admin = $this->makeAdminUser();
+        $aircraft = Aircraft::factory()->create();
+        $airline = Airline::query()->create(['name' => 'Kalitta Air']);
+        $flightEvent = FlightEvent::factory()->create();
+        $parseRequest = ParseRequest::query()->create([
+            'user_id' => $admin->getKey(),
+            'request_uuid' => fake()->uuid(),
+            'source_type' => 'pasted_text',
+            'parser_type' => 'roster',
+            'status' => 'success',
+            'parse_duration_ms' => 55,
+        ]);
+
+        foreach ([$aircraft, $airline, $flightEvent, $parseRequest, $this->makeNormalUser()] as $model) {
+            $this->assertFalse($admin->can('restore', $model));
+            $this->assertFalse($admin->can('forceDelete', $model));
+        }
+
+        $this->assertTrue($admin->can('reorder', Aircraft::class));
+        $this->assertTrue($admin->can('reorder', Airline::class));
+        $this->assertFalse($admin->can('reorder', FlightEvent::class));
+        $this->assertFalse($admin->can('reorder', ParseRequest::class));
+    }
+
     private function makeAdminUser(bool $verified = true, bool $isActive = true): User
     {
         $user = User::factory()->create([

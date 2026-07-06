@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Filament\Resources\FlightEvents\Pages\ListFlightEvents;
+use App\Models\Aircraft;
 use App\Models\FlightEvent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -54,6 +55,70 @@ class FlightEventResourceTest extends TestCase
         $this->actingAs(User::factory()->create());
 
         $this->get('/admin/flight-events')->assertForbidden();
+    }
+
+    public function test_admins_can_filter_flight_events_by_type_status_aircraft_and_deadhead_state(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+        $aircraft = Aircraft::factory()->create();
+        $matchingEvent = FlightEvent::factory()->forAircraft($aircraft)->deadhead()->create([
+            'status' => 'delayed',
+        ]);
+        $otherEvent = FlightEvent::factory()->withoutAircraft()->create([
+            'type' => 'flight',
+            'status' => 'scheduled',
+            'is_deadhead' => false,
+        ]);
+
+        Livewire::test(ListFlightEvents::class)
+            ->filterTable('type', 'deadhead')
+            ->filterTable('status', 'delayed')
+            ->filterTable('aircraft', $aircraft)
+            ->filterTable('is_deadhead', true)
+            ->assertCanSeeTableRecords([$matchingEvent])
+            ->assertCanNotSeeTableRecords([$otherEvent]);
+    }
+
+    public function test_flight_events_are_sorted_by_start_descending_by_default(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+        $olderEvent = FlightEvent::factory()->withoutAircraft()->create([
+            'start' => '2026-07-01 12:00:00',
+            'end' => '2026-07-01 14:00:00',
+        ]);
+        $newerEvent = FlightEvent::factory()->withoutAircraft()->create([
+            'start' => '2026-07-02 12:00:00',
+            'end' => '2026-07-02 14:00:00',
+        ]);
+
+        Livewire::test(ListFlightEvents::class)
+            ->assertCanSeeTableRecords([$newerEvent, $olderEvent], inOrder: true);
+    }
+
+    public function test_admins_can_delete_flight_events_individually_and_in_bulk(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+        $individualEvent = FlightEvent::factory()->withoutAircraft()->create();
+        $bulkEvents = FlightEvent::factory()->withoutAircraft()->count(2)->create();
+
+        Livewire::test(ListFlightEvents::class)
+            ->callTableAction('delete', $individualEvent)
+            ->callTableBulkAction('delete', $bulkEvents);
+
+        $this->assertModelMissing($individualEvent);
+        $bulkEvents->each(fn (FlightEvent $flightEvent) => $this->assertModelMissing($flightEvent));
+    }
+
+    public function test_create_and_edit_pages_are_forbidden_by_the_flight_event_policy(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+        $event = FlightEvent::factory()->withoutAircraft()->create();
+
+        $this->get('/admin/flight-events/create')->assertForbidden();
+        $this->get("/admin/flight-events/{$event->getKey()}/edit")->assertForbidden();
+
+        Livewire::test(ListFlightEvents::class)
+            ->assertTableActionHidden('edit', $event);
     }
 
     private function makeAdminUser(): User

@@ -86,6 +86,45 @@ class AircraftResourceTest extends TestCase
         ]);
     }
 
+    public function test_aircraft_form_requires_a_tail_number_and_active_state(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+
+        Livewire::test(CreateAircraft::class)
+            ->fillForm([
+                'tail_number' => null,
+                'is_active' => null,
+            ])
+            ->call('create')
+            ->assertHasFormErrors([
+                'tail_number' => 'required',
+                'is_active' => 'required',
+            ]);
+    }
+
+    public function test_non_admin_users_can_not_access_aircraft_resource_pages(): void
+    {
+        $aircraft = Aircraft::factory()->create();
+        $this->actingAs(User::factory()->create());
+
+        $this->get('/admin/aircraft')->assertForbidden();
+        $this->get('/admin/aircraft/create')->assertForbidden();
+        $this->get("/admin/aircraft/{$aircraft->getKey()}/edit")->assertForbidden();
+    }
+
+    public function test_delete_actions_are_hidden_for_aircraft(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+        $aircraft = Aircraft::factory()->create();
+
+        Livewire::test(ListAircraft::class)
+            ->assertTableActionVisible('edit', $aircraft)
+            ->assertTableBulkActionHidden('delete');
+
+        Livewire::test(EditAircraft::class, ['record' => $aircraft->getKey()])
+            ->assertActionHidden('delete');
+    }
+
     private function makeAdminUser(): User
     {
         $user = User::factory()->create();
