@@ -65,7 +65,7 @@ class AdminAuthorizationPolicyTest extends TestCase
     public function test_flight_event_policy_allows_admin_view_and_delete_only(): void
     {
         $admin = $this->makeAdminUser();
-        $flightEvent = FlightEvent::factory()->create();
+        $flightEvent = FlightEvent::factory()->withoutAircraft()->create();
 
         $this->assertTrue($admin->can('viewAny', FlightEvent::class));
         $this->assertTrue($admin->can('view', $flightEvent));
@@ -118,7 +118,7 @@ class AdminAuthorizationPolicyTest extends TestCase
         $user = $this->makeNormalUser();
         $aircraft = Aircraft::factory()->create();
         $airline = Airline::query()->create(['name' => 'Kalitta Air']);
-        $flightEvent = FlightEvent::factory()->create();
+        $flightEvent = FlightEvent::factory()->withoutAircraft()->create();
         $parseRequest = ParseRequest::query()->create([
             'user_id' => $user->getKey(),
             'request_uuid' => fake()->uuid(),
@@ -160,7 +160,7 @@ class AdminAuthorizationPolicyTest extends TestCase
         $admin = $this->makeAdminUser();
         $aircraft = Aircraft::factory()->create();
         $airline = Airline::query()->create(['name' => 'Kalitta Air']);
-        $flightEvent = FlightEvent::factory()->create();
+        $flightEvent = FlightEvent::factory()->withoutAircraft()->create();
         $parseRequest = ParseRequest::query()->create([
             'user_id' => $admin->getKey(),
             'request_uuid' => fake()->uuid(),
