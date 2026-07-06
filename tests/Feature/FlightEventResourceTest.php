@@ -95,17 +95,15 @@ class FlightEventResourceTest extends TestCase
             ->assertCanSeeTableRecords([$newerEvent, $olderEvent], inOrder: true);
     }
 
-    public function test_admins_can_delete_flight_events_individually_and_in_bulk(): void
+    public function test_flight_events_have_no_individual_delete_action_but_can_be_deleted_in_bulk(): void
     {
         $this->actingAs($this->makeAdminUser());
-        $individualEvent = FlightEvent::factory()->withoutAircraft()->create();
         $bulkEvents = FlightEvent::factory()->withoutAircraft()->count(2)->create();
 
         Livewire::test(ListFlightEvents::class)
-            ->callTableAction('delete', $individualEvent)
+            ->assertTableActionDoesNotExist('delete')
             ->callTableBulkAction('delete', $bulkEvents);
 
-        $this->assertModelMissing($individualEvent);
         $bulkEvents->each(fn (FlightEvent $flightEvent) => $this->assertModelMissing($flightEvent));
     }
 

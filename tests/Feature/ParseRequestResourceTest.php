@@ -99,20 +99,18 @@ class ParseRequestResourceTest extends TestCase
             ->assertCanSeeTableRecords([$newerRequest, $olderRequest], inOrder: true);
     }
 
-    public function test_admins_can_delete_parse_requests_individually_and_in_bulk(): void
+    public function test_parse_requests_have_no_individual_delete_action_but_can_be_deleted_in_bulk(): void
     {
         $this->actingAs($this->makeAdminUser());
-        $individualRequest = $this->createParseRequest();
         $bulkRequests = collect([
             $this->createParseRequest(),
             $this->createParseRequest(),
         ]);
 
         Livewire::test(ListParseRequests::class)
-            ->callTableAction('delete', $individualRequest)
+            ->assertTableActionDoesNotExist('delete')
             ->callTableBulkAction('delete', $bulkRequests);
 
-        $this->assertModelMissing($individualRequest);
         $bulkRequests->each(fn (ParseRequest $parseRequest) => $this->assertModelMissing($parseRequest));
     }
 
