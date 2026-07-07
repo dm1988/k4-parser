@@ -22,7 +22,7 @@ class AdminNavigationTest extends TestCase
         $this->actingAs($admin)
             ->get('/dashboard')
             ->assertOk()
-            ->assertSeeText('Admin')
+            ->assertSeeText('Admin Panel')
             ->assertSee(route('filament.admin.pages.dashboard'), escape: false);
     }
 
@@ -33,7 +33,7 @@ class AdminNavigationTest extends TestCase
         $this->actingAs($user)
             ->get('/dashboard')
             ->assertOk()
-            ->assertDontSeeText('Admin')
+            ->assertDontSeeText('Admin Panel')
             ->assertDontSee(route('filament.admin.pages.dashboard'), escape: false);
     }
 
@@ -51,7 +51,7 @@ class AdminNavigationTest extends TestCase
             $this->actingAs($admin)
                 ->get('/dashboard')
                 ->assertOk()
-                ->assertDontSeeText('Admin')
+                ->assertDontSeeText('Admin Panel')
                 ->assertDontSee(route('filament.admin.pages.dashboard'), escape: false);
         }
     }
