@@ -132,6 +132,13 @@
     >
         Feedback &amp; Bugs
     </a>
+    |
+    <a
+        href="{{ route('privacy.policy') }}"
+        class="underline hover:text-slate-800"
+    >
+        Privacy Policy
+    </a>
 </footer>
 
 </body>
