@@ -17,7 +17,7 @@
                     </x-nav-link>
                     @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
                         <x-nav-link :href="route('filament.admin.pages.dashboard')" :active="request()->routeIs('filament.admin.*')">
-                            {{ __('Admin') }}
+                            {{ __('Admin Panel') }}
                         </x-nav-link>
                     @endif
                     <div class="px-3 py-2 scale-75 origin-left">
@@ -92,7 +92,7 @@
             </x-responsive-nav-link>
             @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
                 <x-responsive-nav-link :href="route('filament.admin.pages.dashboard')" :active="request()->routeIs('filament.admin.*')">
-                    {{ __('Admin') }}
+                    {{ __('Admin Panel') }}
                 </x-responsive-nav-link>
             @endif
             <x-responsive-nav-link href="https://buymeacoffee.com/crewcompass" :active="false" target="_blank" rel="noopener">
