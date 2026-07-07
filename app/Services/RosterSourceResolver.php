@@ -180,23 +180,42 @@ class RosterSourceResolver
             ]);
         }
 
+        // Check cache for OCR results using file hash to avoid reprocessing identical images
+        $fileHash = md5_file($path);
+        $cacheKey = "ocr_result:{$fileHash}";
+
+        $cachedText = cache()->get($cacheKey);
+        if ($cachedText !== null && is_string($cachedText)) {
+            return $cachedText;
+        }
+
         // --- PREPROCESSING STEP ---
         // Create a temporary path for the optimized image
-        $optimizedPath = storage_path('app/ocr_temp_'.uniqid().'.png');
+        $optimizedPath = storage_path('app/ocr_temp_'.uniqid().'.jpg');
 
         try {
             $image = Image::read($path);
+            $originalWidth = $image->width();
+            $originalHeight = $image->height();
 
-            // 1. Convert to greyscale
-            $image->greyscale();
+            // Skip preprocessing for already high-resolution images (1000x800+)
+            $needsPreprocessing = $originalWidth < 1000 || $originalHeight < 800;
 
-            // 2. Upscale by 2x if it's a standard screenshot (helps Tesseract recognize small text)
-            $image->resize($image->width() * 2, $image->height() * 2);
+            if ($needsPreprocessing) {
+                // 1. Convert to greyscale
+                $image->greyscale();
 
-            // 3. Boost contrast to make text pop against backgrounds
-            $image->contrast(15);
+                // 2. Adaptive upscaling: only upscale if image is small (< 400px wide)
+                if ($originalWidth < 400) {
+                    $image->resize($originalWidth * 2, $originalHeight * 2);
+                }
 
-            $image->save($optimizedPath);
+                // 3. Boost contrast to make text pop against backgrounds
+                $image->contrast(15);
+            }
+
+            // Save as JPEG for faster I/O (better compression than PNG)
+            $image->toJpeg(quality: 85)->save($optimizedPath);
         } catch (Throwable $e) {
             // Fallback to original path if preprocessing fails
             $optimizedPath = $path;
@@ -232,6 +251,9 @@ class RosterSourceResolver
                 'image' => 'OCR did not find any text in that image. Try a clearer screenshot or paste the text manually.',
             ]);
         }
+
+        // Cache the result for 30 days
+        cache()->put($cacheKey, $text, now()->addDays(30));
 
         return $text;
     }
