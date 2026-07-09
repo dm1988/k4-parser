@@ -35,7 +35,7 @@
                     {{ $model->originLabel() }}
                 </span>
                 <span class="mt-2 text-base font-semibold text-slate-800">
-                    {{ $model->originTimeLabel() }}
+                    {{ $model->originCardTimeLabel() }}
                 </span>
             </div>
 
@@ -55,7 +55,7 @@
                     {{ $model->destinationLabel() }}
                 </span>
                 <span class="mt-2 text-base font-semibold text-slate-800">
-                    {{ $model->destinationTimeLabel() }}
+                    {{ $model->destinationCardTimeLabel() }}
                 </span>
             </div>
         </div>

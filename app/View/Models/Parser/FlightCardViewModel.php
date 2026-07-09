@@ -66,6 +66,16 @@ readonly class FlightCardViewModel
         return $this->formatTime($this->flight->end);
     }
 
+    public function originCardTimeLabel(): string
+    {
+        return $this->formatCardTime($this->flight->start);
+    }
+
+    public function destinationCardTimeLabel(): string
+    {
+        return $this->formatCardTime($this->flight->end);
+    }
+
     public function hasLegLocalTimes(): bool
     {
         return $this->legLocalStartLabel() !== '—'
@@ -223,10 +233,18 @@ readonly class FlightCardViewModel
 
         return (int) $value;
     }
+
     private function formatTime(?string $value): string
     {
         return $value
             ? CarbonImmutable::parse($value)->format('g:i A')
+            : '—';
+    }
+
+    private function formatCardTime(?string $value): string
+    {
+        return $value
+            ? CarbonImmutable::parse($value)->setTimezone('UTC')->format('H:i \Z')
             : '—';
     }
 
