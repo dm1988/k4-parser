@@ -18,7 +18,7 @@ class AircraftResource extends Resource
 {
     protected static ?string $model = Aircraft::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPaperAirplane;
 
     public static function form(Schema $schema): Schema
     {

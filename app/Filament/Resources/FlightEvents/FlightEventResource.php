@@ -18,7 +18,7 @@ class FlightEventResource extends Resource
 {
     protected static ?string $model = FlightEvent::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendar;
 
     protected static ?string $recordTitleAttribute = 'title';
 

@@ -18,7 +18,7 @@ class ParseRequestResource extends Resource
 {
     protected static ?string $model = ParseRequest::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBolt;
 
     public static function form(Schema $schema): Schema
     {
