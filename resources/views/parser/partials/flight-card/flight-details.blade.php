@@ -41,44 +41,26 @@
     </div>
 
     @if ($model->hasLegLocalTimes())
-    <div class="grid grid-cols-2 gap-2 sm:col-span-2">
+    <div class="sm:col-span-2">
         <div class="flex items-center justify-between gap-3 rounded-lg bg-[#F8FAFD] px-3 py-2">
             <p class="text-[11px] font-semibold uppercase tracking-wide text-[#8A97AB]">
-                Local Start
+                Flight Times (Local)
             </p>
             <p class="text-sm font-semibold text-[#111827] text-right whitespace-nowrap">
-                {{ $model->legLocalStartLabel() }}
-            </p>
-        </div>
-
-        <div class="flex items-center justify-between gap-3 rounded-lg bg-[#F8FAFD] px-3 py-2">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#8A97AB]">
-                Local End
-            </p>
-            <p class="text-sm font-semibold text-[#111827] text-right whitespace-nowrap">
-                {{ $model->legLocalEndLabel() }}
+                {{ $model->legLocalTimesLabel() }}
             </p>
         </div>
     </div>
     @endif
 
     @if ($model->hasDutyLocalTimes())
-    <div class="grid grid-cols-2 gap-2 sm:col-span-2">
+    <div class="sm:col-span-2">
         <div class="flex items-center justify-between gap-3 rounded-lg bg-[#F8FAFD] px-3 py-2">
             <p class="text-[11px] font-semibold uppercase tracking-wide text-[#8A97AB]">
-                Duty Start
+                Duty Times (Local)
             </p>
             <p class="text-sm font-semibold text-[#111827] text-right whitespace-nowrap">
-                {{ $model->dutyLocalStartLabel() }}
-            </p>
-        </div>
-
-        <div class="flex items-center justify-between gap-3 rounded-lg bg-[#F8FAFD] px-3 py-2">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#8A97AB]">
-                Duty End
-            </p>
-            <p class="text-sm font-semibold text-[#111827] text-right whitespace-nowrap">
-                {{ $model->dutyLocalEndLabel() }}
+                {{ $model->dutyLocalTimesLabel() }}
             </p>
         </div>
     </div>

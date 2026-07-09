@@ -92,6 +92,14 @@ readonly class FlightCardViewModel
         return $this->flight->legLocalEnd ?: '—';
     }
 
+    public function legLocalTimesLabel(): string
+    {
+        return $this->formatRangeLabel(
+            $this->legLocalStartLabel(),
+            $this->legLocalEndLabel(),
+        );
+    }
+
     public function hasDutyLocalTimes(): bool
     {
         return $this->dutyLocalStartLabel() !== '—'
@@ -106,6 +114,14 @@ readonly class FlightCardViewModel
     public function dutyLocalEndLabel(): string
     {
         return $this->flight->dutyLocalEnd ?: '—';
+    }
+
+    public function dutyLocalTimesLabel(): string
+    {
+        return $this->formatRangeLabel(
+            $this->dutyLocalStartLabel(),
+            $this->dutyLocalEndLabel(),
+        );
     }
 
     // Airport Details
@@ -246,6 +262,19 @@ readonly class FlightCardViewModel
         return $value
             ? CarbonImmutable::parse($value)->setTimezone('UTC')->format('H:i \Z')
             : '—';
+    }
+
+    private function formatRangeLabel(string $start, string $end): string
+    {
+        if ($start === '—') {
+            return $end;
+        }
+
+        if ($end === '—') {
+            return $start;
+        }
+
+        return "{$start} - {$end}";
     }
 
     private function metadataString(string $key): ?string

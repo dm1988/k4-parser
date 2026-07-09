@@ -57,9 +57,11 @@ class FlightCardViewModelTest extends TestCase
         $this->assertTrue($model->hasLegLocalTimes());
         $this->assertSame('Jun 16 08:45', $model->legLocalStartLabel());
         $this->assertSame('Jun 16 12:45', $model->legLocalEndLabel());
+        $this->assertSame('Jun 16 08:45 - Jun 16 12:45', $model->legLocalTimesLabel());
         $this->assertTrue($model->hasDutyLocalTimes());
         $this->assertSame('Jun 16 07:15', $model->dutyLocalStartLabel());
         $this->assertSame('Jun 16 13:30', $model->dutyLocalEndLabel());
+        $this->assertSame('Jun 16 07:15 - Jun 16 13:30', $model->dutyLocalTimesLabel());
         $this->assertTrue($model->hasAirportDetails());
         $this->assertSame('RKSI', $model->originIcao());
         $this->assertSame('VHHH', $model->destinationIcao());
