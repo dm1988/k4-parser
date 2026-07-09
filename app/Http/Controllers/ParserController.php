@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\ExportFlightDutyCalendarEvent;
 use App\DTOs\Flight;
 use App\DTOs\ParsedEventDTO;
 use App\Enums\ParserEventType;
@@ -12,6 +13,7 @@ use App\Services\RosterParser;
 use App\Services\RosterSourceResolver;
 use App\View\Models\Parser\ParserPageViewModel;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -233,6 +235,39 @@ class ParserController extends Controller
         ]);
     }
 
+    public function exportFlightDutyCalendarEvent(
+        Request $request,
+        string $eventId,
+        ExportFlightDutyCalendarEvent $exportFlightDutyCalendarEvent,
+    ): Response {
+        $sessionResult = $this->resolveExportResult($request);
+
+        if (! is_array($sessionResult) || ! isset($sessionResult['parsed']['calendar_events'])) {
+            abort(404);
+        }
+
+        $event = $this->findEventByDownloadId($sessionResult['parsed']['calendar_events'], $eventId);
+
+        if ($event === null) {
+            abort(404);
+        }
+
+        $trip = $sessionResult['parsed']['trip'] ?? [];
+        $ics = $exportFlightDutyCalendarEvent->handle($event, $trip);
+
+        if ($ics === null) {
+            abort(404);
+        }
+
+        $tripNumber = $trip['trip_number'] ?? null;
+        $filename = 'crew-compass'.($tripNumber ? "-{$tripNumber}" : '').'-duty-'.$eventId.'.ics';
+
+        return response($ics, 200, [
+            'Content-Type' => 'text/calendar; charset=utf-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
     private function buildResult(
         string $type,
         string $source,
@@ -326,7 +361,8 @@ class ParserController extends Controller
 
     private function resolveCachedResult(string $parseKey): mixed
     {
-        return Cache::get($this->cacheKey($parseKey));
+        return Cache::get($this->cacheKey($parseKey))
+            ?? Cache::get($this->parseKeyCacheKey($parseKey));
     }
 
     private function cacheResult(array $result): void
@@ -335,12 +371,18 @@ class ParserController extends Controller
         $normalizedResult = $this->normalizeForCache($result);
 
         Cache::put($this->cacheKey($result['parse_key']), $normalizedResult, now()->addMinutes($ttlMinutes));
+        Cache::put($this->parseKeyCacheKey($result['parse_key']), $normalizedResult, now()->addMinutes($ttlMinutes));
         session(['latest_parse_key' => $result['parse_key']]);
     }
 
     private function cacheKey(string $parseKey): string
     {
         return 'sessions:'.$this->sessionCacheNamespace().":parsed_results:{$parseKey}";
+    }
+
+    private function parseKeyCacheKey(string $parseKey): string
+    {
+        return "parsed_results:{$parseKey}";
     }
 
     private function sessionCacheNamespace(): string

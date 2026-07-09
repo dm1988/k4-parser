@@ -22,7 +22,8 @@ class FlightCardViewModelTest extends TestCase
             'tailNumber' => 'N772CK',
             'isDeadhead' => false,
             'badgeColor' => 'bg-blue-100 text-blue-900',
-            'downloadUrl' => 'https://example.test/export',
+            'downloadUrl' => 'https://example.test/parse/export/event/01JTESTEVENTKEYABC123?parse_key=01JTESTPARSEKEYABC123',
+            'downloadId' => '01JTESTEVENTKEYABC123',
             'flightNumber' => 'CKS 240',
             'legLocalStart' => 'Jun 16 08:45',
             'legLocalEnd' => 'Jun 16 12:45',
@@ -54,6 +55,11 @@ class FlightCardViewModelTest extends TestCase
         $this->assertSame('3:45 AM', $model->destinationTimeLabel());
         $this->assertSame('23:45 Z', $model->originCardTimeLabel());
         $this->assertSame('03:45 Z', $model->destinationCardTimeLabel());
+        $this->assertTrue($model->hasDutyCalendarDownload());
+        $this->assertSame(
+            route('parse.export.event.duty', ['eventId' => '01JTESTEVENTKEYABC123', 'parse_key' => '01JTESTPARSEKEYABC123']),
+            $model->dutyDownloadUrl()
+        );
         $this->assertTrue($model->hasLegLocalTimes());
         $this->assertSame('Jun 16 08:45', $model->legLocalStartLabel());
         $this->assertSame('Jun 16 12:45', $model->legLocalEndLabel());

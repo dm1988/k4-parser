@@ -219,6 +219,14 @@
         </div>
 
         <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            @if ($model->dutyDownloadUrl())
+            <a href="{{ $model->dutyDownloadUrl() }}"
+                class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-[#4C5C74] text-[#F8F9FA] transition hover:bg-[#374357]"
+                title="Download duty .ics">
+                <x-heroicon-o-briefcase class="h-5 w-5" />
+            </a>
+            @endif
+
             <a href="{{ $model->flight->downloadUrl }}"
                 class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-[#1B365D] text-[#F8F9FA] transition hover:bg-[#142a49]"
                 title="Download .ics">

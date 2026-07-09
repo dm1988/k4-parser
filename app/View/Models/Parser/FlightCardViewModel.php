@@ -76,6 +76,33 @@ readonly class FlightCardViewModel
         return $this->formatCardTime($this->flight->end);
     }
 
+    public function dutyDownloadUrl(): ?string
+    {
+        if (! $this->hasDutyCalendarDownload()) {
+            return null;
+        }
+
+        $parameters = ['eventId' => $this->flight->downloadId];
+        $parseKey = $this->downloadParseKey();
+
+        if ($parseKey !== null) {
+            $parameters['parse_key'] = $parseKey;
+        }
+
+        return route('parse.export.event.duty', $parameters);
+    }
+
+    public function hasDutyCalendarDownload(): bool
+    {
+        return $this->flight->downloadId !== null
+            && $this->flight->start !== null
+            && $this->flight->end !== null
+            && $this->legLocalStartLabel() !== '—'
+            && $this->legLocalEndLabel() !== '—'
+            && $this->dutyLocalStartLabel() !== '—'
+            && $this->dutyLocalEndLabel() !== '—';
+    }
+
     public function hasLegLocalTimes(): bool
     {
         return $this->legLocalStartLabel() !== '—'
@@ -275,6 +302,20 @@ readonly class FlightCardViewModel
         }
 
         return "{$start} - {$end}";
+    }
+
+    private function downloadParseKey(): ?string
+    {
+        $query = parse_url($this->flight->downloadUrl, PHP_URL_QUERY);
+
+        if (! is_string($query) || $query === '') {
+            return null;
+        }
+
+        parse_str($query, $parameters);
+        $parseKey = $parameters['parse_key'] ?? null;
+
+        return is_string($parseKey) && $parseKey !== '' ? $parseKey : null;
     }
 
     private function metadataString(string $key): ?string

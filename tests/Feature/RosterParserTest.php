@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\DTOs\Flight;
-use App\Services\RosterDocumentParser;
 use App\Models\User;
+use App\Services\RosterDocumentParser;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
@@ -580,7 +580,7 @@ TEXT;
             ->assertDontSee('SUMMARY:G4 368 AUS-CVG');
     }
 
-    public function test_export_cannot_access_another_sessions_cached_parse_result(): void
+    public function test_export_links_resolve_by_parse_key_even_after_session_changes(): void
     {
         $text = <<<'TEXT'
         June 2026
@@ -607,7 +607,9 @@ TEXT;
 
         $response = $this->get(route('parse.export', ['parse_key' => $parseKey]));
 
-        $response->assertNotFound();
+        $response
+            ->assertOk()
+            ->assertSee('SUMMARY:G4 368 AUS-CVG');
     }
 
     private function cacheKeyForSession(string $parseKey): string

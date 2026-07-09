@@ -39,7 +39,11 @@ readonly class ParserResultViewModel
             }
 
             if ($event instanceof Flight) {
-                $eventViewModels[] = $event;
+                $downloadId = (string) ($event->downloadId ?? '');
+                $eventViewModels[] = $downloadId === ''
+                    ? $event
+                    : $event->withDownloadUrl(route('parse.export.event', ['eventId' => $downloadId, 'parse_key' => $parseKey]));
+
                 continue;
             }
 
@@ -54,6 +58,7 @@ readonly class ParserResultViewModel
                 $eventViewModels[] = $downloadId === ''
                     ? $flight
                     : $flight->withDownloadUrl(route('parse.export.event', ['eventId' => $downloadId, 'parse_key' => $parseKey]));
+
                 continue;
             }
 
@@ -64,6 +69,7 @@ readonly class ParserResultViewModel
                 $eventViewModels[] = $downloadId === ''
                     ? $duty
                     : $duty->withDownloadUrl(route('parse.export.event', ['eventId' => $downloadId, 'parse_key' => $parseKey]));
+
                 continue;
             }
 

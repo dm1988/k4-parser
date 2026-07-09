@@ -12,8 +12,7 @@ class IcsCalendarService
     public function __construct(
         private readonly FlightMapper $flightMapper,
         private readonly CrewParserService $crewParser,
-    ) {
-    }
+    ) {}
 
     public function serialize(array $events, array $trip = []): string
     {
@@ -99,7 +98,7 @@ class IcsCalendarService
                 continue;
             }
 
-            if ($key === 'deadhead' && !$value) {
+            if ($key === 'deadhead' && ! $value) {
                 continue;
             }
 
@@ -109,7 +108,7 @@ class IcsCalendarService
                 continue;
             }
 
-            $label = ucfirst(str_replace('_', ' ', $key));
+            $label = $this->formatMetadataLabel($key);
             $formattedLine = "• {$label}: {$stringVal}";
 
             // Sort fields into their respective blocks
@@ -127,16 +126,16 @@ class IcsCalendarService
         }
 
         // 3. Compile the sections neatly with double line breaks
-        if (!empty($flightDetails)) {
-            $lines[] = "✈️ FLIGHT DETAILS\n" . implode("\n", $flightDetails);
+        if (! empty($flightDetails)) {
+            $lines[] = "✈️ FLIGHT DETAILS\n".implode("\n", $flightDetails);
         }
 
-        if (!empty($crewInfo)) {
-            $lines[] = "\n👥 CREW LOGISTICS\n" . implode("\n", $crewInfo);
+        if (! empty($crewInfo)) {
+            $lines[] = "\n👥 CREW LOGISTICS\n".implode("\n", $crewInfo);
         }
 
-        if (!empty($timings)) {
-            $lines[] = "\n⏰ TIMES\n" . implode("\n", $timings);
+        if (! empty($timings)) {
+            $lines[] = "\n⏰ TIMES\n".implode("\n", $timings);
         }
 
         // Return a single clean string. (The parent loop passes this to escapeValue,
@@ -154,6 +153,11 @@ class IcsCalendarService
         }
 
         return "• {$origin} - {$destination}";
+    }
+
+    private function formatMetadataLabel(string $key): string
+    {
+        return str_ireplace('utc', 'UTC', ucfirst(str_replace('_', ' ', $key)));
     }
 
     private function normalizeCrewMetadata(array $metadata): array
