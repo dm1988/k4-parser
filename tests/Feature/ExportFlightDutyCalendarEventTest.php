@@ -26,18 +26,18 @@ class ExportFlightDutyCalendarEventTest extends TestCase
             'parsed' => [
                 'trip' => ['trip_number' => '13131'],
                 'calendar_events' => [[
-                    'title' => 'CKS 271 ICN-ANC',
+                    'title' => 'CKS 240 ICN-HKG',
                     'type' => 'flight',
-                    'start' => '2026-06-26T23:45:00+00:00',
-                    'end' => '2026-06-27T08:00:00+00:00',
+                    'start' => '2026-06-15T23:45:00+00:00',
+                    'end' => '2026-06-16T03:45:00+00:00',
                     'download_id' => $eventId,
-                    'flightNumber' => 'CKS 271',
+                    'flightNumber' => 'CKS 240',
                     'origin' => 'ICN',
-                    'destination' => 'ANC',
-                    'legLocalStart' => 'Jun 26 19:45',
-                    'legLocalEnd' => 'Jun 27 05:00',
-                    'dutyLocalStart' => 'Jun 26 17:45',
-                    'dutyLocalEnd' => 'Jun 27 10:40',
+                    'destination' => 'HKG',
+                    'legLocalStart' => 'Jun 16 08:45',
+                    'legLocalEnd' => 'Jun 16 11:45',
+                    'dutyLocalStart' => 'Jun 16 06:45',
+                    'dutyLocalEnd' => 'Jun 15 12:00',
                     'metadata' => [],
                 ]],
             ],
@@ -54,13 +54,13 @@ class ExportFlightDutyCalendarEventTest extends TestCase
             ->assertSee('BEGIN:VCALENDAR')
             ->assertSee('BEGIN:VEVENT')
             ->assertSee('SUMMARY:Duty')
-            ->assertSee('DTSTART:20260626T214500Z')
-            ->assertSee('DTEND:20260627T134000Z')
-            ->assertSee('Duty UTC start: Jun 26 21:45 Z')
-            ->assertSee('Duty UTC end: Jun 27 13:40 Z')
-            ->assertSee('Duty local start: Jun 26 17:45')
-            ->assertSee('Duty local end: Jun 27 10:40')
-            ->assertSee('Duration: 15h 55m');
+            ->assertSee('DTSTART:20260615T214500Z')
+            ->assertSee('DTEND:20260616T040000Z')
+            ->assertSee('Duty UTC start: Jun 15 21:45 Z')
+            ->assertSee('Duty UTC end: Jun 16 04:00 Z')
+            ->assertSee('Duty local start: Jun 16 06:45')
+            ->assertSee('Duty local end: Jun 15 12:00')
+            ->assertSee('Duration: 6h 15m');
     }
 
     public function test_it_exports_a_flight_duty_calendar_event_from_parse_key_cache(): void

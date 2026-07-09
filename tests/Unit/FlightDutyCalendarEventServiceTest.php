@@ -78,4 +78,28 @@ class FlightDutyCalendarEventServiceTest extends TestCase
         $this->assertSame('Jun 26 17:45', $event['metadata']['duty_local_start']);
         $this->assertSame('Jun 26 19:45', $event['metadata']['flight_local_start']);
     }
+
+    public function test_it_rolls_an_ocr_duty_local_end_forward_when_it_precedes_the_flight_local_end(): void
+    {
+        $event = app(FlightDutyCalendarEventService::class)->buildFromFlight([
+            'title' => 'CKS 240 ICN-HKG',
+            'type' => 'flight',
+            'start' => '2026-06-15T23:45:00+00:00',
+            'end' => '2026-06-16T03:45:00+00:00',
+            'metadata' => [
+                'flight_number' => 'CKS 240',
+                'origin' => 'ICN',
+                'destination' => 'HKG',
+                'leg_local_start' => 'Jun 16 08:45',
+                'leg_local_end' => 'Jun 16 11:45',
+                'duty_local_start' => 'Jun 16 06:45',
+                'duty_local_end' => 'Jun 15 12:00',
+            ],
+        ]);
+
+        $this->assertIsArray($event);
+        $this->assertSame('2026-06-15T21:45:00+00:00', $event['start']);
+        $this->assertSame('2026-06-16T04:00:00+00:00', $event['end']);
+        $this->assertSame('6h 15m', $event['metadata']['duration']);
+    }
 }

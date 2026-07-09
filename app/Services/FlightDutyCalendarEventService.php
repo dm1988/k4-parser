@@ -47,6 +47,9 @@ final class FlightDutyCalendarEventService
             return null;
         }
 
+        $flightLocalEnd = $this->shiftForwardAfter($flightLocalEnd, $flightLocalStart);
+        $dutyLocalEnd = $this->shiftForwardAfter($dutyLocalEnd, $flightLocalEnd);
+
         $dutyStartUtc = $flightStartUtc->subMinutes($this->minutesBetween($dutyLocalStart, $flightLocalStart));
         $dutyEndUtc = $flightEndUtc->addMinutes($this->minutesBetween($flightLocalEnd, $dutyLocalEnd));
 
@@ -126,6 +129,15 @@ final class FlightDutyCalendarEventService
     private function minutesBetween(CarbonImmutable $start, CarbonImmutable $end): int
     {
         return (int) round(($end->getTimestamp() - $start->getTimestamp()) / 60);
+    }
+
+    private function shiftForwardAfter(CarbonImmutable $value, CarbonImmutable $reference): CarbonImmutable
+    {
+        while ($value->lessThan($reference)) {
+            $value = $value->addDay();
+        }
+
+        return $value;
     }
 
     private function formatDuration(float $durationMinutes): string
