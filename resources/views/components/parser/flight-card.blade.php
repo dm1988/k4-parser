@@ -219,7 +219,7 @@
         </div>
 
         <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            @if ($model->dutyDownloadUrl())
+            @if (Auth::user()?->isAdmin() && $model->dutyDownloadUrl())
             <a href="{{ $model->dutyDownloadUrl() }}"
                 class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-[#4C5C74] text-[#F8F9FA] transition hover:bg-[#374357]"
                 title="Download duty .ics">
