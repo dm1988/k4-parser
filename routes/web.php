@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\FlightReleaseController;
 use App\Http\Controllers\ParserController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -32,7 +33,8 @@ Route::middleware('auth')->group(function () {
         ->whereAlphaNumeric('eventId');
     Route::post('/parse/flight', [ParserController::class, 'parseFlight'])->name('parse.flight');
     Route::post('/parse/hotel', [ParserController::class, 'parseHotel'])->name('parse.hotel');
-    // Schedule uploads are handled by parseRoster
+    Route::get('/flight-route-extractor', [FlightReleaseController::class, 'index'])->name('flight-release.index');
+    Route::post('/flight-route-extractor', [FlightReleaseController::class, 'store'])->name('flight-release.store');
 });
 
 require __DIR__.'/auth.php';
