@@ -106,4 +106,35 @@ TEXT;
 
         $extractor->extractRoute('/tmp/flight-release.pdf');
     }
+
+    public function test_format_for_icao_display_wraps_route_on_token_boundaries(): void
+    {
+        $extractor = new FlightRouteExtractor(new Parser);
+
+        $formattedRoute = $extractor->formatForIcaoDisplay(
+            'OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A'
+        );
+
+        $this->assertSame(
+            "OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105\n UMKAL UMKAL6A",
+            $formattedRoute
+        );
+    }
+
+    public function test_format_for_icao_display_never_splits_fixes_coordinates_or_speed_level_tokens(): void
+    {
+        $extractor = new FlightRouteExtractor(new Parser);
+
+        $formattedRoute = $extractor->formatForIcaoDisplay(
+            'DCT 5230N05000W N0487F360 UM140 PRAWN DCT 52N030W KEMAX UL9'
+        );
+
+        $this->assertSame(
+            "DCT 5230N05000W N0487F360 UM140 PRAWN DCT 52N030W KEMAX\n UL9",
+            $formattedRoute
+        );
+        $this->assertStringNotContainsString("5230N0\n5000W", $formattedRoute);
+        $this->assertStringNotContainsString("N0487\nF360", $formattedRoute);
+        $this->assertStringNotContainsString("KE\nMAX", $formattedRoute);
+    }
 }

@@ -32,7 +32,11 @@ class FlightReleaseControllerTest extends TestCase
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
             $mock->shouldReceive('extractRoute')
                 ->once()
-                ->andReturn("OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105\nUMKAL UMKAL6A");
+                ->andReturn('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A');
+            $mock->shouldReceive('formatForIcaoDisplay')
+                ->once()
+                ->with('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A')
+                ->andReturn("OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105\n UMKAL UMKAL6A");
         });
 
         $response = $this->actingAs(User::factory()->create())
@@ -47,7 +51,7 @@ class FlightReleaseControllerTest extends TestCase
             ->assertOk()
             ->assertSeeText('Copy route')
             ->assertSee('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105', escape: false)
-            ->assertSee('UMKAL UMKAL6A', escape: false);
+            ->assertSee(' UMKAL UMKAL6A', escape: false);
     }
 
     public function test_only_pdf_uploads_are_allowed(): void

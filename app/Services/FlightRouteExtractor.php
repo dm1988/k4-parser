@@ -8,6 +8,8 @@ use Throwable;
 
 class FlightRouteExtractor
 {
+    private const ICAO_ROUTE_LINE_LENGTH = 58;
+
     public function __construct(
         private readonly Parser $parser,
     ) {}
@@ -71,5 +73,63 @@ class FlightRouteExtractor
     private static function normalizeRouteLine(string $line): string
     {
         return preg_replace('/\h+/', ' ', trim($line)) ?? '';
+    }
+
+    public function formatForIcaoDisplay(string $route): string
+    {
+        $segments = $this->routeElements($route);
+
+        if ($segments === []) {
+            return trim($route);
+        }
+
+        $lines = [];
+        $currentLine = '';
+
+        foreach ($segments as $segment) {
+            if ($segment === '') {
+                continue;
+            }
+
+            $linePrefix = $lines === [] ? '' : ' ';
+            $candidate = $currentLine === ''
+                ? $linePrefix.$segment
+                : $currentLine.' '.$segment;
+
+            if ($currentLine !== '' && strlen($candidate) > self::ICAO_ROUTE_LINE_LENGTH) {
+                $lines[] = $currentLine;
+                $currentLine = ' '.$segment;
+
+                continue;
+            }
+
+            $currentLine = $candidate;
+        }
+
+        if ($currentLine !== '') {
+            $lines[] = $currentLine;
+        }
+
+        return implode(PHP_EOL, $lines);
+    }
+
+    /**
+     * ICAO routes are whitespace-delimited elements, so wraps must happen
+     * only before the next full element and never inside one.
+     *
+     * @return array<int, string>
+     */
+    private function routeElements(string $route): array
+    {
+        $segments = preg_split('/\s+/', trim($route));
+
+        if ($segments === false) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            $segments,
+            static fn (string $segment): bool => $segment !== '',
+        ));
     }
 }
