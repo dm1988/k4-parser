@@ -30,6 +30,19 @@ TEXT;
         $this->assertSame("OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105\nUMKAL UMKAL6A", $route);
     }
 
+    public function test_extract_route_from_flattened_pdf_text_returns_the_route_block(): void
+    {
+        $extractor = new FlightRouteExtractor(new Parser);
+
+        $text = <<<'TEXT'
+(FPL-CKS272-IS-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1-SBKP1000-N0487F360 OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A-SCEL0322 SAME-PBN/A1L1B1C1D1O1S2 NAV/Z1)
+TEXT;
+
+        $route = $extractor->extractRouteFromText($text);
+
+        $this->assertSame('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A', $route);
+    }
+
     public function test_extract_route_uses_the_pdf_parser_output(): void
     {
         $document = $this->createMock(Document::class);

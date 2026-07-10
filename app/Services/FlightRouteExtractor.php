@@ -32,7 +32,7 @@ class FlightRouteExtractor
     public function extractRouteFromText(string $text): string
     {
         $flightPlanBlock = $this->extractFlightPlanBlock($text);
-        $pattern = '/-(?:N\d{4}|K\d{4}|M\d{3})[A-Z]?\d{3,4}\h+(.+?)\s+-[A-Z]{4}\d{4}\b/s';
+        $pattern = '/-(?:N\d{4}|K\d{4}|M\d{3})[A-Z]?\d{3,4}\h+(.+?)\s*-[A-Z]{4}\d{4}\b/s';
 
         if (! preg_match($pattern, $flightPlanBlock, $matches)) {
             throw FlightRouteNotFoundException::routeSegmentMissing();
