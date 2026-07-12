@@ -13,6 +13,9 @@ return [
     | a conventional file to locate the various service credentials.
     |
     */
+    'airport_provider' => [
+        'url' => env('AIRPORT_PROVIDER_URL', 'https://crewcompass.cc/api/v1'),
+    ],
 
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
