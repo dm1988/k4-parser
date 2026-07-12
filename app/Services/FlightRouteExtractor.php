@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\DTOs\AirportData;
 use App\Exceptions\FlightRouteNotFoundException;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository as CacheRepository;
@@ -18,12 +19,16 @@ class FlightRouteExtractor
 
     public function __construct(
         private readonly Parser $parser,
+        ?AirportLookupClient $airportLookupClient = null,
         ?Repository $cache = null,
     ) {
         $this->cache = $cache ?? new CacheRepository(new ArrayStore);
+        $this->airportLookupClient = $airportLookupClient;
     }
 
     private Repository $cache;
+
+    private ?AirportLookupClient $airportLookupClient;
 
     /**
      * @throws FlightRouteNotFoundException
@@ -38,6 +43,9 @@ class FlightRouteExtractor
      *     departure: string,
      *     destination: string,
      *     alternate: ?string,
+     *     departure_airport: ?AirportData,
+     *     destination_airport: ?AirportData,
+     *     alternate_airport: ?AirportData,
      *     initial_altitude: string,
      *     duration: string,
      *     route: string
@@ -70,6 +78,9 @@ class FlightRouteExtractor
      *     departure: string,
      *     destination: string,
      *     alternate: ?string,
+     *     departure_airport: ?AirportData,
+     *     destination_airport: ?AirportData,
+     *     alternate_airport: ?AirportData,
      *     initial_altitude: string,
      *     duration: string,
      *     route: string
@@ -87,14 +98,30 @@ class FlightRouteExtractor
 
         $route = $this->normalizeExtractedRoute($matches[3]);
 
+        $departure = $matches[1];
+        $destination = $matches[4];
+        $alternate = $matches[6] ?? null;
+
         return [
-            'departure' => $matches[1],
-            'destination' => $matches[4],
-            'alternate' => $matches[6] ?? null,
+            'departure' => $departure,
+            'destination' => $destination,
+            'alternate' => $alternate,
+            'departure_airport' => $this->lookupAirport($departure),
+            'destination_airport' => $this->lookupAirport($destination),
+            'alternate_airport' => $this->lookupAirport($alternate),
             'initial_altitude' => $this->formatInitialAltitude($matches[2]),
             'duration' => $this->formatDuration($matches[5]),
             'route' => $route,
         ];
+    }
+
+    private function lookupAirport(?string $icao): ?AirportData
+    {
+        if (! is_string($icao) || $icao === '') {
+            return null;
+        }
+
+        return ($this->airportLookupClient ??= new AirportLookupClient)->lookupByIcao($icao);
     }
 
     /**

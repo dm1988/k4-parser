@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\DTOs\AirportData;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Models\User;
 use App\Services\FlightRouteExtractor;
@@ -36,6 +37,9 @@ class FlightReleaseControllerTest extends TestCase
                     'departure' => 'PANC',
                     'destination' => 'KMIA',
                     'alternate' => 'KRSW',
+                    'departure_airport' => new AirportData('PANC', 'ANC', 'Ted Stevens Anchorage International Airport', 'Anchorage', 'Alaska', 'United States'),
+                    'destination_airport' => new AirportData('KMIA', 'MIA', 'Miami International Airport', 'Miami', 'Florida', 'United States'),
+                    'alternate_airport' => new AirportData('KRSW', 'RSW', 'Southwest Florida International Airport', 'Fort Myers', 'Florida', 'United States'),
                     'initial_altitude' => 'FL 330',
                     'duration' => '07h12m',
                     'route' => 'OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A',
@@ -60,8 +64,10 @@ class FlightReleaseControllerTest extends TestCase
             ->assertSeeText('PANC')
             ->assertSeeText('Destination')
             ->assertSeeText('KMIA')
+            ->assertSeeText('Miami International Airport')
             ->assertSeeText('Alternate')
             ->assertSeeText('KRSW')
+            ->assertSeeText('Southwest Florida International Airport')
             ->assertSeeText('Initial altitude')
             ->assertSeeText('FL 330')
             ->assertSeeText('Duration')
@@ -69,6 +75,88 @@ class FlightReleaseControllerTest extends TestCase
             ->assertSeeText('Copy route')
             ->assertSee('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105', escape: false)
             ->assertSee(' UMKAL UMKAL6A', escape: false);
+    }
+
+    public function test_uploaded_pdf_route_page_handles_missing_airport_details(): void
+    {
+        Storage::fake('local');
+
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('extractFlightPlanData')
+                ->once()
+                ->andReturn([
+                    'departure' => 'PANC',
+                    'destination' => 'KMIA',
+                    'alternate' => null,
+                    'departure_airport' => null,
+                    'destination_airport' => null,
+                    'alternate_airport' => null,
+                    'initial_altitude' => 'FL 330',
+                    'duration' => '07h12m',
+                    'route' => 'DCT TEST',
+                ]);
+            $mock->shouldReceive('formatForIcaoDisplay')
+                ->once()
+                ->with('DCT TEST')
+                ->andReturn('DCT TEST');
+        });
+
+        $response = $this->actingAs(User::factory()->create())
+            ->from(route('flight-release.index'))
+            ->post(route('flight-release.store'), [
+                'flight_release' => UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'),
+            ]);
+
+        $response->assertRedirect(route('flight-release.index'));
+
+        $this->get(route('flight-release.index'))
+            ->assertOk()
+            ->assertSeeText('Airport details unavailable.')
+            ->assertSeeText('No alternate airport listed.');
+    }
+
+    public function test_flight_release_page_displays_array_backed_airport_details_from_session(): void
+    {
+        $flightPlan = [
+            'departure' => 'PANC',
+            'destination' => 'KMIA',
+            'alternate' => 'KRSW',
+            'departure_airport' => [
+                'icao' => 'PANC',
+                'iata' => 'ANC',
+                'name' => 'Ted Stevens Anchorage International Airport',
+                'city' => 'Anchorage',
+                'state' => 'Alaska',
+                'country' => 'United States',
+            ],
+            'destination_airport' => [
+                'icao' => 'KMIA',
+                'iata' => 'MIA',
+                'name' => 'Miami International Airport',
+                'city' => 'Miami',
+                'state' => 'Florida',
+                'country' => 'United States',
+            ],
+            'alternate_airport' => [
+                'icao' => 'KRSW',
+                'iata' => 'RSW',
+                'name' => 'Southwest Florida International Airport',
+                'city' => 'Fort Myers',
+                'state' => 'Florida',
+                'country' => 'United States',
+            ],
+            'initial_altitude' => 'FL 330',
+            'duration' => '07h12m',
+            'route' => 'DCT TEST',
+        ];
+
+        $this->actingAs(User::factory()->create())
+            ->withSession(['flight_plan' => $flightPlan])
+            ->get(route('flight-release.index'))
+            ->assertOk()
+            ->assertSeeText('Ted Stevens Anchorage International Airport')
+            ->assertSeeText('Miami International Airport')
+            ->assertSeeText('Southwest Florida International Airport');
     }
 
     public function test_only_pdf_uploads_are_allowed(): void

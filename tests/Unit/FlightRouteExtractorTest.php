@@ -2,7 +2,9 @@
 
 namespace Tests\Unit;
 
+use App\DTOs\AirportData;
 use App\Exceptions\FlightRouteNotFoundException;
+use App\Services\AirportLookupClient;
 use App\Services\FlightRouteExtractor;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository as CacheRepository;
@@ -47,7 +49,15 @@ TEXT;
 
     public function test_extract_flight_plan_data_from_text_returns_departure_destination_alternate_altitude_duration_and_route(): void
     {
-        $extractor = new FlightRouteExtractor(new Parser);
+        $departureAirport = new AirportData('PANC', 'ANC', 'Ted Stevens Anchorage International Airport', 'Anchorage', 'Alaska', 'United States');
+        $destinationAirport = new AirportData('KMIA', 'MIA', 'Miami International Airport', 'Miami', 'Florida', 'United States');
+        $alternateAirport = new AirportData('KRSW', 'RSW', 'Southwest Florida International Airport', 'Fort Myers', 'Florida', 'United States');
+
+        $extractor = new FlightRouteExtractor(new Parser, $this->fakeAirportLookupClient([
+            'PANC' => $departureAirport,
+            'KMIA' => $destinationAirport,
+            'KRSW' => $alternateAirport,
+        ]));
 
         $text = <<<'TEXT'
 (FPL-CKS241-IS
@@ -66,6 +76,9 @@ TEXT;
             'departure' => 'PANC',
             'destination' => 'KMIA',
             'alternate' => 'KRSW',
+            'departure_airport' => $departureAirport,
+            'destination_airport' => $destinationAirport,
+            'alternate_airport' => $alternateAirport,
             'initial_altitude' => 'FL 330',
             'duration' => '07h12m',
             'route' => "DCT JOH DCT YAK J541 SSR DCT 5726N13228W DCT YXS DCT\nDESNU DCT HASOS DCT TIMMR DCT FSD Q19 DSM/N0486F350 J45 IRK DCT\nFAM J151 GETME DCT VLKNN Q139 MGMRY DCT ACORI FROGZ5",
@@ -103,12 +116,15 @@ TEXT;
             ->with('/tmp/flight-release.pdf')
             ->willReturn($document);
 
-        $extractor = new FlightRouteExtractor($parser);
+        $extractor = new FlightRouteExtractor($parser, $this->fakeAirportLookupClient());
 
         $this->assertSame([
             'departure' => 'SBKP',
             'destination' => 'SCEL',
             'alternate' => 'SAME',
+            'departure_airport' => null,
+            'destination_airport' => null,
+            'alternate_airport' => null,
             'initial_altitude' => 'FL 360',
             'duration' => '03h22m',
             'route' => 'OSUDO4A ASETA',
@@ -128,13 +144,16 @@ TEXT;
             ->with(__FILE__)
             ->willReturn($document);
 
-        $extractor = new FlightRouteExtractor($parser, new CacheRepository(new ArrayStore));
+        $extractor = new FlightRouteExtractor($parser, $this->fakeAirportLookupClient(), new CacheRepository(new ArrayStore));
 
         $this->assertSame('OSUDO4A ASETA', $extractor->extractRoute(__FILE__));
         $this->assertSame([
             'departure' => 'SBKP',
             'destination' => 'SCEL',
             'alternate' => 'SAME',
+            'departure_airport' => null,
+            'destination_airport' => null,
+            'alternate_airport' => null,
             'initial_altitude' => 'FL 360',
             'duration' => '03h22m',
             'route' => 'OSUDO4A ASETA',
@@ -143,7 +162,7 @@ TEXT;
 
     public function test_extract_flight_plan_data_from_text_sets_alternate_to_null_when_not_listed(): void
     {
-        $extractor = new FlightRouteExtractor(new Parser);
+        $extractor = new FlightRouteExtractor(new Parser, $this->fakeAirportLookupClient());
 
         $text = <<<'TEXT'
 (FPL-CKS272-IS
@@ -157,8 +176,29 @@ TEXT;
         $flightPlan = $extractor->extractFlightPlanDataFromText($text);
 
         $this->assertNull($flightPlan['alternate']);
+        $this->assertNull($flightPlan['alternate_airport']);
         $this->assertSame('SCEL', $flightPlan['destination']);
         $this->assertSame('03h22m', $flightPlan['duration']);
+    }
+
+    public function test_extract_flight_plan_data_from_text_returns_null_airport_dtos_when_lookup_finds_no_match(): void
+    {
+        $extractor = new FlightRouteExtractor(new Parser, $this->fakeAirportLookupClient());
+
+        $text = <<<'TEXT'
+(FPL-CKS272-IS
+-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1
+-SBKP1000
+-N0487F360 OSUDO4A ASETA
+-SCEL0322 SAME
+-PBN/A1L1B1C1D1O1S2 NAV/Z1)
+TEXT;
+
+        $flightPlan = $extractor->extractFlightPlanDataFromText($text);
+
+        $this->assertNull($flightPlan['departure_airport']);
+        $this->assertNull($flightPlan['destination_airport']);
+        $this->assertNull($flightPlan['alternate_airport']);
     }
 
     public function test_extract_route_from_text_throws_when_no_route_block_is_found(): void
@@ -236,5 +276,17 @@ TEXT;
         $this->assertStringNotContainsString("5230N0\n5000W", $formattedRoute);
         $this->assertStringNotContainsString("N0487\nF360", $formattedRoute);
         $this->assertStringNotContainsString("KE\nMAX", $formattedRoute);
+    }
+
+    /**
+     * @param  array<string, AirportData>  $airports
+     */
+    private function fakeAirportLookupClient(array $airports = []): AirportLookupClient
+    {
+        $client = $this->createMock(AirportLookupClient::class);
+        $client->method('lookupByIcao')
+            ->willReturnCallback(static fn (string $icao): ?AirportData => $airports[$icao] ?? null);
+
+        return $client;
     }
 }

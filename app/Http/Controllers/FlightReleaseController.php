@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Http\Requests\StoreFlightReleaseRequest;
 use App\Services\FlightRouteExtractor;
+use App\View\Models\FlightReleasePageViewModel;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -14,7 +15,9 @@ class FlightReleaseController extends Controller
 {
     public function index(): View
     {
-        return view('flight-release.index');
+        return view('flight-release.index', [
+            'model' => FlightReleasePageViewModel::fromCurrentSession(),
+        ]);
     }
 
     public function store(

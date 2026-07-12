@@ -1,0 +1,100 @@
+<?php
+
+namespace Tests\Unit\View\Models;
+
+use App\DTOs\AirportData;
+use App\View\Models\FlightReleasePageViewModel;
+use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
+
+class FlightReleasePageViewModelTest extends TestCase
+{
+    #[Test]
+    public function it_builds_airport_display_fields_from_dtos(): void
+    {
+        $viewModel = new FlightReleasePageViewModel([
+            'departure' => 'PANC',
+            'destination' => 'KMIA',
+            'alternate' => 'KRSW',
+            'departure_airport' => new AirportData('PANC', 'ANC', 'Ted Stevens Anchorage International Airport', 'Anchorage', 'Alaska', 'United States'),
+            'destination_airport' => new AirportData('KMIA', 'MIA', 'Miami International Airport', 'Miami', 'Florida', 'United States'),
+            'alternate_airport' => new AirportData('KRSW', 'RSW', 'Southwest Florida International Airport', 'Fort Myers', 'Florida', 'United States'),
+            'initial_altitude' => 'FL 330',
+            'duration' => '07h12m',
+            'route' => 'DCT TEST',
+        ]);
+
+        $this->assertTrue($viewModel->hasFlightPlan());
+        $this->assertSame('PANC', $viewModel->departure());
+        $this->assertSame('KMIA', $viewModel->destination());
+        $this->assertSame('KRSW', $viewModel->alternate());
+        $this->assertSame('KRSW', $viewModel->alternateLabel());
+        $this->assertSame('Ted Stevens Anchorage International Airport', $viewModel->departureAirport()['name']);
+        $this->assertSame('Anchorage, Alaska, United States', $viewModel->departureAirport()['location']);
+        $this->assertSame('IATA ANC · ICAO PANC', $viewModel->departureAirport()['identifiers']);
+        $this->assertSame('FL 330', $viewModel->initialAltitude());
+        $this->assertSame('07h12m', $viewModel->duration());
+        $this->assertSame('DCT TEST', $viewModel->route());
+    }
+
+    #[Test]
+    public function it_builds_airport_display_fields_from_session_arrays(): void
+    {
+        $viewModel = new FlightReleasePageViewModel([
+            'departure' => 'PANC',
+            'destination' => 'KMIA',
+            'alternate' => null,
+            'departure_airport' => [
+                'icao' => 'PANC',
+                'iata' => 'ANC',
+                'name' => 'Ted Stevens Anchorage International Airport',
+                'city' => 'Anchorage',
+                'state' => 'Alaska',
+                'country' => 'United States',
+            ],
+            'destination_airport' => null,
+            'alternate_airport' => null,
+            'initial_altitude' => 'FL 330',
+            'duration' => '07h12m',
+            'route' => 'DCT TEST',
+        ]);
+
+        $this->assertSame('None listed', $viewModel->alternateLabel());
+        $this->assertNull($viewModel->destinationAirport());
+        $this->assertNull($viewModel->alternateAirport());
+        $this->assertSame('No alternate airport listed.', $viewModel->alternateAirportFallback());
+        $this->assertSame('Ted Stevens Anchorage International Airport', $viewModel->departureAirport()['name']);
+    }
+
+    #[Test]
+    public function it_reads_the_flight_plan_from_the_current_session(): void
+    {
+        session([
+            'flight_plan' => [
+                'departure' => 'PANC',
+                'destination' => 'KMIA',
+                'alternate' => 'KRSW',
+                'initial_altitude' => 'FL 330',
+                'duration' => '07h12m',
+                'route' => 'DCT TEST',
+            ],
+        ]);
+
+        $viewModel = FlightReleasePageViewModel::fromCurrentSession();
+
+        $this->assertTrue($viewModel->hasFlightPlan());
+        $this->assertSame('PANC', $viewModel->departure());
+        $this->assertSame('KRSW', $viewModel->alternate());
+    }
+
+    #[Test]
+    public function it_reports_missing_alternate_airport_details_when_an_alternate_code_exists(): void
+    {
+        $viewModel = new FlightReleasePageViewModel([
+            'alternate' => 'KRSW',
+            'alternate_airport' => null,
+        ]);
+
+        $this->assertSame('Airport details unavailable.', $viewModel->alternateAirportFallback());
+    }
+}

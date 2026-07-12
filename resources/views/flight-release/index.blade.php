@@ -40,8 +40,10 @@
                         </div>
                     </form>
 
-                    @if (session('flight_plan'))
-                        @php($flightPlan = session('flight_plan'))
+                    @if ($model->hasFlightPlan())
+                        @php($departureAirport = $model->departureAirport())
+                        @php($destinationAirport = $model->destinationAirport())
+                        @php($alternateAirport = $model->alternateAirport())
                         <section class="rounded-lg border border-[#1B365D]/10 bg-[#F8F9FA] p-5">
                             <div>
                                 <div>
@@ -51,93 +53,47 @@
                             </div>
 
                             <div class="mt-4 grid gap-4 md:grid-cols-3">
-                                <div class="rounded-md border border-[#1B365D]/10 bg-white p-4">
-                                    <div class="flex items-center justify-between gap-4">
-                                        <div>
-                                            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-[#4A5568]">Departure</p>
-                                            <p id="departure-output" class="mt-2 font-mono text-lg text-[#0B0E14]">{{ $flightPlan['departure'] }}</p>
-                                            <p
-                                                id="departure-status"
-                                                role="status"
-                                                aria-live="polite"
-                                                class="mt-2 min-h-5 text-sm text-[#4A5568] transition-opacity duration-[3000ms]"
-                                            ></p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            data-copy-target="departure-output"
-                                            data-copy-label="Departure"
-                                            data-copy-status="departure-status"
-                                            class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-[#1B365D] text-[#F8F9FA] transition hover:bg-[#142a49]"
-                                        >
-                                            <x-heroicon-o-document-duplicate class="h-5 w-5" />
-                                            <span class="sr-only">Copy departure</span>
-                                        </button>
-                                    </div>
-                                </div>
+                                <x-flight-release.airport-card
+                                    label="Departure"
+                                    :code="$model->departure()"
+                                    copy-target="departure-output"
+                                    copy-label="Departure"
+                                    copy-status="departure-status"
+                                    :airport="$departureAirport"
+                                    fallback="Airport details unavailable."
+                                />
 
-                                <div class="rounded-md border border-[#1B365D]/10 bg-white p-4">
-                                    <div class="flex items-center justify-between gap-4">
-                                        <div>
-                                            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-[#4A5568]">Destination</p>
-                                            <p id="destination-output" class="mt-2 font-mono text-lg text-[#0B0E14]">{{ $flightPlan['destination'] }}</p>
-                                            <p
-                                                id="destination-status"
-                                                role="status"
-                                                aria-live="polite"
-                                                class="mt-2 min-h-5 text-sm text-[#4A5568] transition-opacity duration-[3000ms]"
-                                            ></p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            data-copy-target="destination-output"
-                                            data-copy-label="Destination"
-                                            data-copy-status="destination-status"
-                                            class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-[#1B365D] text-[#F8F9FA] transition hover:bg-[#142a49]"
-                                        >
-                                            <x-heroicon-o-document-duplicate class="h-5 w-5" />
-                                            <span class="sr-only">Copy destination</span>
-                                        </button>
-                                    </div>
-                                </div>
+                                <x-flight-release.airport-card
+                                    label="Destination"
+                                    :code="$model->destination()"
+                                    copy-target="destination-output"
+                                    copy-label="Destination"
+                                    copy-status="destination-status"
+                                    :airport="$destinationAirport"
+                                    fallback="Airport details unavailable."
+                                />
 
-                                <div class="rounded-md border border-[#1B365D]/10 bg-white p-4">
-                                    <div class="flex items-center justify-between gap-4">
-                                        <div>
-                                            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-[#4A5568]">Alternate</p>
-                                            <p id="alternate-output" class="mt-2 font-mono text-lg text-[#0B0E14]">{{ $flightPlan['alternate'] ?? 'None listed' }}</p>
-                                            <p
-                                                id="alternate-status"
-                                                role="status"
-                                                aria-live="polite"
-                                                class="mt-2 min-h-5 text-sm text-[#4A5568] transition-opacity duration-[3000ms]"
-                                            ></p>
-                                        </div>
-                                        @if ($flightPlan['alternate'])
-                                            <button
-                                                type="button"
-                                                data-copy-target="alternate-output"
-                                                data-copy-label="Alternate"
-                                                data-copy-status="alternate-status"
-                                                class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-[#1B365D] text-[#F8F9FA] transition hover:bg-[#142a49]"
-                                            >
-                                                <x-heroicon-o-document-duplicate class="h-5 w-5" />
-                                                <span class="sr-only">Copy alternate</span>
-                                            </button>
-                                        @endif
-                                    </div>
-                                </div>
+                                <x-flight-release.airport-card
+                                    label="Alternate"
+                                    :code="$model->alternateLabel()"
+                                    copy-target="alternate-output"
+                                    copy-label="Alternate"
+                                    copy-status="alternate-status"
+                                    :airport="$alternateAirport"
+                                    :fallback="$model->alternateAirportFallback()"
+                                    :copyable="$model->alternate() !== null"
+                                />
                             </div>
 
                             <div class="mt-4 grid gap-4 sm:grid-cols-2">
                                 <div class="rounded-md border border-[#1B365D]/10 bg-white p-4">
                                     <p class="text-xs font-semibold uppercase tracking-[0.14em] text-[#4A5568]">Initial altitude</p>
-                                    <p class="mt-2 font-mono text-lg text-[#0B0E14]">{{ $flightPlan['initial_altitude'] }}</p>
+                                    <p class="mt-2 font-mono text-lg text-[#0B0E14]">{{ $model->initialAltitude() }}</p>
                                 </div>
 
                                 <div class="rounded-md border border-[#1B365D]/10 bg-white p-4">
                                     <p class="text-xs font-semibold uppercase tracking-[0.14em] text-[#4A5568]">Duration</p>
-                                    <p class="mt-2 font-mono text-lg text-[#0B0E14]">{{ $flightPlan['duration'] }}</p>
+                                    <p class="mt-2 font-mono text-lg text-[#0B0E14]">{{ $model->duration() }}</p>
                                 </div>
                             </div>
 
@@ -148,7 +104,7 @@
                                         readonly
                                         rows="4"
                                         class="block w-full rounded-md border border-[#1B365D]/10 bg-white p-4 font-mono text-sm text-[#0B0E14]"
-                                    >{{ $flightPlan['route'] }}</textarea>
+                                    >{{ $model->route() }}</textarea>
 
                                     <p
                                         id="route-status"
