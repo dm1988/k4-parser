@@ -4,6 +4,8 @@ namespace Tests\Unit;
 
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Services\FlightRouteExtractor;
+use Illuminate\Cache\ArrayStore;
+use Illuminate\Cache\Repository as CacheRepository;
 use PHPUnit\Framework\TestCase;
 use Smalot\PdfParser\Document;
 use Smalot\PdfParser\Parser;
@@ -111,6 +113,32 @@ TEXT;
             'duration' => '03h22m',
             'route' => 'OSUDO4A ASETA',
         ], $extractor->extractFlightPlanData('/tmp/flight-release.pdf'));
+    }
+
+    public function test_extractors_reuse_cached_pdf_text_for_the_same_file_hash(): void
+    {
+        $document = $this->createMock(Document::class);
+        $document->expects($this->once())
+            ->method('getText')
+            ->willReturn("(FPL-CKS272-IS\n-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1\n-SBKP1000\n-N0487F360 OSUDO4A ASETA\n-SCEL0322 SAME)");
+
+        $parser = $this->createMock(Parser::class);
+        $parser->expects($this->once())
+            ->method('parseFile')
+            ->with(__FILE__)
+            ->willReturn($document);
+
+        $extractor = new FlightRouteExtractor($parser, new CacheRepository(new ArrayStore));
+
+        $this->assertSame('OSUDO4A ASETA', $extractor->extractRoute(__FILE__));
+        $this->assertSame([
+            'departure' => 'SBKP',
+            'destination' => 'SCEL',
+            'alternate' => 'SAME',
+            'initial_altitude' => 'FL 360',
+            'duration' => '03h22m',
+            'route' => 'OSUDO4A ASETA',
+        ], $extractor->extractFlightPlanData(__FILE__));
     }
 
     public function test_extract_flight_plan_data_from_text_sets_alternate_to_null_when_not_listed(): void

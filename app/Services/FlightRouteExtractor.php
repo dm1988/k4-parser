@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use App\Exceptions\FlightRouteNotFoundException;
+use Illuminate\Cache\ArrayStore;
+use Illuminate\Cache\Repository as CacheRepository;
+use Illuminate\Contracts\Cache\Repository;
 use Smalot\PdfParser\Parser;
 use Throwable;
 
@@ -14,20 +17,19 @@ class FlightRouteExtractor
 
     public function __construct(
         private readonly Parser $parser,
-    ) {}
+        ?Repository $cache = null,
+    ) {
+        $this->cache = $cache ?? new CacheRepository(new ArrayStore);
+    }
+
+    private Repository $cache;
 
     /**
      * @throws FlightRouteNotFoundException
      */
     public function extractRoute(string $filePath): string
     {
-        try {
-            $text = $this->parser->parseFile($filePath)->getText();
-        } catch (Throwable $throwable) {
-            throw FlightRouteNotFoundException::pdfCouldNotBeRead($throwable->getMessage());
-        }
-
-        return $this->extractRouteFromText($text);
+        return $this->extractRouteFromText($this->parsePdf($filePath));
     }
 
     /**
@@ -44,13 +46,7 @@ class FlightRouteExtractor
      */
     public function extractFlightPlanData(string $filePath): array
     {
-        try {
-            $text = $this->parser->parseFile($filePath)->getText();
-        } catch (Throwable $throwable) {
-            throw FlightRouteNotFoundException::pdfCouldNotBeRead($throwable->getMessage());
-        }
-
-        return $this->extractFlightPlanDataFromText($text);
+        return $this->extractFlightPlanDataFromText($this->parsePdf($filePath));
     }
 
     /**
@@ -110,6 +106,53 @@ class FlightRouteExtractor
         }
 
         return $matches[0];
+    }
+
+    /**
+     * @throws FlightRouteNotFoundException
+     */
+    private function parsePdf(string $filePath): string
+    {
+        $cacheKey = $this->pdfCacheKey($filePath);
+
+        if ($cacheKey !== null) {
+            return $this->cache->rememberForever($cacheKey, fn (): string => $this->readPdfText($filePath));
+        }
+
+        return $this->readPdfText($filePath);
+    }
+
+    private function pdfCacheKey(string $filePath): ?string
+    {
+        if (! is_file($filePath)) {
+            return null;
+        }
+
+        $fileHash = hash_file('sha256', $filePath);
+
+        if ($fileHash === false) {
+            return null;
+        }
+
+        return 'flight-route-extractor:pdf-text:'.$fileHash;
+    }
+
+    /**
+     * @throws FlightRouteNotFoundException
+     */
+    private function readPdfText(string $filePath): string
+    {
+        try {
+            return $this->parser->parseFile($filePath)->getText();
+        } catch (Throwable $e) {
+            try {
+                logger()->error('PDF parsing failed', ['file' => $filePath, 'error' => $e->getMessage()]);
+            } catch (Throwable) {
+                // Logging is best-effort here because some unit tests do not boot Laravel's container.
+            }
+
+            throw FlightRouteNotFoundException::pdfCouldNotBeRead($e->getMessage());
+        }
     }
 
     private static function normalizeRouteLine(string $line): string
