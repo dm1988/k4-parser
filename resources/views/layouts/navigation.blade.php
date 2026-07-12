@@ -16,6 +16,9 @@
                         {{ __('Parse Schedule') }}
                     </x-nav-link>
                     @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
+                    <x-nav-link :href="route('flight-release.index')" :active="request()->routeIs('flight-release.*')">
+                        {{ __('Route Extractor') }}
+                    </x-nav-link>
                         <x-nav-link :href="route('filament.admin.pages.dashboard')" :active="request()->routeIs('filament.admin.*')">
                             {{ __('Admin Panel') }}
                         </x-nav-link>
@@ -91,6 +94,9 @@
                 {{ __('Parse Schedule') }}
             </x-responsive-nav-link>
             @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
+            <x-responsive-nav-link :href="route('flight-release.index')" :active="request()->routeIs('flight-release.*')">
+                {{ __('Route Extractor') }}
+            </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('filament.admin.pages.dashboard')" :active="request()->routeIs('filament.admin.*')">
                     {{ __('Admin Panel') }}
                 </x-responsive-nav-link>
