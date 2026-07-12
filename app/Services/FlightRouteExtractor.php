@@ -6,6 +6,7 @@ use App\Exceptions\FlightRouteNotFoundException;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Support\Facades\Log;
 use Smalot\PdfParser\Parser;
 use Throwable;
 
@@ -146,7 +147,7 @@ class FlightRouteExtractor
             return $this->parser->parseFile($filePath)->getText();
         } catch (Throwable $e) {
             try {
-                logger()->error('PDF parsing failed', ['file' => $filePath, 'error' => $e->getMessage()]);
+                Log::error('PDF parsing failed', ['file' => $filePath, 'error' => $e->getMessage()]);
             } catch (Throwable) {
                 // Logging is best-effort here because some unit tests do not boot Laravel's container.
             }
