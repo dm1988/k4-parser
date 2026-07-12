@@ -117,7 +117,7 @@ class FlightRouteExtractor
         $cacheKey = $this->pdfCacheKey($filePath);
 
         if ($cacheKey !== null) {
-            return $this->cache->rememberForever($cacheKey, fn (): string => $this->readPdfText($filePath));
+            return $this->cache->remember($cacheKey, now()->addDays(7), fn (): string => $this->readPdfText($filePath));
         }
 
         return $this->readPdfText($filePath);
