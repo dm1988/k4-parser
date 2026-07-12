@@ -25,8 +25,8 @@ class FlightReleaseController extends Controller
         $path = $uploadedFile->store('flight-releases');
 
         try {
-            $route = $extractor->extractRoute(Storage::disk('local')->path($path));
-            $formattedRoute = $extractor->formatForIcaoDisplay($route);
+            $flightPlan = $extractor->extractFlightPlanData(Storage::disk('local')->path($path));
+            $flightPlan['route'] = $extractor->formatForIcaoDisplay($flightPlan['route']);
         } catch (FlightRouteNotFoundException $exception) {
             Log::warning('Flight release route extraction failed', [
                 'filename' => $uploadedFile->getClientOriginalName(),
@@ -44,6 +44,6 @@ class FlightReleaseController extends Controller
 
         return redirect()
             ->route('flight-release.index')
-            ->with('flight_route', $formattedRoute);
+            ->with('flight_plan', $flightPlan);
     }
 }

@@ -43,6 +43,33 @@ TEXT;
         $this->assertSame('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A', $route);
     }
 
+    public function test_extract_flight_plan_data_from_text_returns_departure_destination_alternate_altitude_duration_and_route(): void
+    {
+        $extractor = new FlightRouteExtractor(new Parser);
+
+        $text = <<<'TEXT'
+(FPL-CKS241-IS
+-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1
+-PANC1040
+-N0489F330 DCT JOH DCT YAK J541 SSR DCT 5726N13228W DCT YXS DCT
+ DESNU DCT HASOS DCT TIMMR DCT FSD Q19 DSM/N0486F350 J45 IRK DCT
+ FAM J151 GETME DCT VLKNN Q139 MGMRY DCT ACORI FROGZ5
+-KMIA0712 KRSW
+-PBN/A1L1B1C1D1O1S2 NAV/Z1)
+TEXT;
+
+        $flightPlan = $extractor->extractFlightPlanDataFromText($text);
+
+        $this->assertSame([
+            'departure' => 'PANC',
+            'destination' => 'KMIA',
+            'alternate' => 'KRSW',
+            'initial_altitude' => 'FL 330',
+            'duration' => '07h12m',
+            'route' => "DCT JOH DCT YAK J541 SSR DCT 5726N13228W DCT YXS DCT\nDESNU DCT HASOS DCT TIMMR DCT FSD Q19 DSM/N0486F350 J45 IRK DCT\nFAM J151 GETME DCT VLKNN Q139 MGMRY DCT ACORI FROGZ5",
+        ], $flightPlan);
+    }
+
     public function test_extract_route_uses_the_pdf_parser_output(): void
     {
         $document = $this->createMock(Document::class);
@@ -59,6 +86,51 @@ TEXT;
         $extractor = new FlightRouteExtractor($parser);
 
         $this->assertSame('OSUDO4A ASETA', $extractor->extractRoute('/tmp/flight-release.pdf'));
+    }
+
+    public function test_extract_flight_plan_data_uses_the_pdf_parser_output(): void
+    {
+        $document = $this->createMock(Document::class);
+        $document->expects($this->once())
+            ->method('getText')
+            ->willReturn("(FPL-CKS272-IS\n-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1\n-SBKP1000\n-N0487F360 OSUDO4A ASETA\n-SCEL0322 SAME)");
+
+        $parser = $this->createMock(Parser::class);
+        $parser->expects($this->once())
+            ->method('parseFile')
+            ->with('/tmp/flight-release.pdf')
+            ->willReturn($document);
+
+        $extractor = new FlightRouteExtractor($parser);
+
+        $this->assertSame([
+            'departure' => 'SBKP',
+            'destination' => 'SCEL',
+            'alternate' => 'SAME',
+            'initial_altitude' => 'FL 360',
+            'duration' => '03h22m',
+            'route' => 'OSUDO4A ASETA',
+        ], $extractor->extractFlightPlanData('/tmp/flight-release.pdf'));
+    }
+
+    public function test_extract_flight_plan_data_from_text_sets_alternate_to_null_when_not_listed(): void
+    {
+        $extractor = new FlightRouteExtractor(new Parser);
+
+        $text = <<<'TEXT'
+(FPL-CKS272-IS
+-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1
+-SBKP1000
+-N0487F360 OSUDO4A ASETA
+-SCEL0322
+-PBN/A1L1B1C1D1O1S2 NAV/Z1)
+TEXT;
+
+        $flightPlan = $extractor->extractFlightPlanDataFromText($text);
+
+        $this->assertNull($flightPlan['alternate']);
+        $this->assertSame('SCEL', $flightPlan['destination']);
+        $this->assertSame('03h22m', $flightPlan['duration']);
     }
 
     public function test_extract_route_from_text_throws_when_no_route_block_is_found(): void

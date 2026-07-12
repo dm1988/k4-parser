@@ -10,6 +10,8 @@ class FlightRouteExtractor
 {
     private const ICAO_ROUTE_LINE_LENGTH = 58;
 
+    private const FLIGHT_PLAN_DETAILS_PATTERN = '/\(FPL-[^-]+-[^-]+\s*-[^\r\n]*\s*-([A-Z]{4})\d{4}\s*-(?:N\d{4}|K\d{4}|M\d{3})([A-Z]\d{3,4})\h+(.+?)\s*-([A-Z]{4})(\d{4})(?:\h+([A-Z]{4}))?\b/s';
+
     public function __construct(
         private readonly Parser $parser,
     ) {}
@@ -29,6 +31,29 @@ class FlightRouteExtractor
     }
 
     /**
+     * @return array{
+     *     departure: string,
+     *     destination: string,
+     *     alternate: ?string,
+     *     initial_altitude: string,
+     *     duration: string,
+     *     route: string
+     * }
+     *
+     * @throws FlightRouteNotFoundException
+     */
+    public function extractFlightPlanData(string $filePath): array
+    {
+        try {
+            $text = $this->parser->parseFile($filePath)->getText();
+        } catch (Throwable $throwable) {
+            throw FlightRouteNotFoundException::pdfCouldNotBeRead($throwable->getMessage());
+        }
+
+        return $this->extractFlightPlanDataFromText($text);
+    }
+
+    /**
      * @throws FlightRouteNotFoundException
      */
     public function extractRouteFromText(string $text): string
@@ -40,22 +65,39 @@ class FlightRouteExtractor
             throw FlightRouteNotFoundException::routeSegmentMissing();
         }
 
-        $lines = preg_split('/\R/', trim($matches[1]));
+        return $this->normalizeExtractedRoute($matches[1]);
+    }
 
-        if ($lines === false) {
-            throw FlightRouteNotFoundException::routeSegmentEmpty();
+    /**
+     * @return array{
+     *     departure: string,
+     *     destination: string,
+     *     alternate: ?string,
+     *     initial_altitude: string,
+     *     duration: string,
+     *     route: string
+     * }
+     *
+     * @throws FlightRouteNotFoundException
+     */
+    public function extractFlightPlanDataFromText(string $text): array
+    {
+        $flightPlanBlock = $this->extractFlightPlanBlock($text);
+
+        if (! preg_match(self::FLIGHT_PLAN_DETAILS_PATTERN, $flightPlanBlock, $matches)) {
+            throw FlightRouteNotFoundException::routeSegmentMissing();
         }
 
-        $normalizedLines = array_values(array_filter(array_map(
-            static fn (string $line): string => self::normalizeRouteLine($line),
-            $lines,
-        )));
+        $route = $this->normalizeExtractedRoute($matches[3]);
 
-        if ($normalizedLines === []) {
-            throw FlightRouteNotFoundException::routeSegmentEmpty();
-        }
-
-        return implode(PHP_EOL, $normalizedLines);
+        return [
+            'departure' => $matches[1],
+            'destination' => $matches[4],
+            'alternate' => $matches[6] ?? null,
+            'initial_altitude' => $this->formatInitialAltitude($matches[2]),
+            'duration' => $this->formatDuration($matches[5]),
+            'route' => $route,
+        ];
     }
 
     /**
@@ -73,6 +115,43 @@ class FlightRouteExtractor
     private static function normalizeRouteLine(string $line): string
     {
         return preg_replace('/\h+/', ' ', trim($line)) ?? '';
+    }
+
+    /**
+     * @throws FlightRouteNotFoundException
+     */
+    private function normalizeExtractedRoute(string $routeText): string
+    {
+        $lines = preg_split('/\R/', trim($routeText));
+
+        if ($lines === false) {
+            throw FlightRouteNotFoundException::routeSegmentEmpty();
+        }
+
+        $normalizedLines = array_values(array_filter(array_map(
+            static fn (string $line): string => self::normalizeRouteLine($line),
+            $lines,
+        )));
+
+        if ($normalizedLines === []) {
+            throw FlightRouteNotFoundException::routeSegmentEmpty();
+        }
+
+        return implode(PHP_EOL, $normalizedLines);
+    }
+
+    private function formatInitialAltitude(string $level): string
+    {
+        if (preg_match('/^F(\d{3,4})$/', $level, $matches) === 1) {
+            return 'FL '.$matches[1];
+        }
+
+        return $level;
+    }
+
+    private function formatDuration(string $duration): string
+    {
+        return substr($duration, 0, 2).'h'.substr($duration, 2, 2).'m';
     }
 
     public function formatForIcaoDisplay(string $route): string

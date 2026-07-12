@@ -30,9 +30,16 @@ class FlightReleaseControllerTest extends TestCase
         Storage::fake('local');
 
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('extractRoute')
+            $mock->shouldReceive('extractFlightPlanData')
                 ->once()
-                ->andReturn('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A');
+                ->andReturn([
+                    'departure' => 'PANC',
+                    'destination' => 'KMIA',
+                    'alternate' => 'KRSW',
+                    'initial_altitude' => 'FL 330',
+                    'duration' => '07h12m',
+                    'route' => 'OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A',
+                ]);
             $mock->shouldReceive('formatForIcaoDisplay')
                 ->once()
                 ->with('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A')
@@ -49,6 +56,16 @@ class FlightReleaseControllerTest extends TestCase
 
         $this->get(route('flight-release.index'))
             ->assertOk()
+            ->assertSeeText('Departure')
+            ->assertSeeText('PANC')
+            ->assertSeeText('Destination')
+            ->assertSeeText('KMIA')
+            ->assertSeeText('Alternate')
+            ->assertSeeText('KRSW')
+            ->assertSeeText('Initial altitude')
+            ->assertSeeText('FL 330')
+            ->assertSeeText('Duration')
+            ->assertSeeText('07h12m')
             ->assertSeeText('Copy route')
             ->assertSee('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105', escape: false)
             ->assertSee(' UMKAL UMKAL6A', escape: false);
@@ -74,7 +91,7 @@ class FlightReleaseControllerTest extends TestCase
         Log::spy();
 
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('extractRoute')
+            $mock->shouldReceive('extractFlightPlanData')
                 ->once()
                 ->andThrow(FlightRouteNotFoundException::routeSegmentMissing());
         });

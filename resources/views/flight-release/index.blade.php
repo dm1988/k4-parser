@@ -40,21 +40,90 @@
                         </div>
                     </form>
 
-                    @if (session('flight_route'))
+                    @if (session('flight_plan'))
+                        @php($flightPlan = session('flight_plan'))
                         <section class="rounded-lg border border-[#1B365D]/10 bg-[#F8F9FA] p-5">
                             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                                 <div>
-                                    <p class="text-sm font-semibold uppercase tracking-[0.14em] text-[#4A5568]">Extracted route</p>
-                                    <p class="mt-1 text-sm text-[#4A5568]">Copy the filed route exactly as extracted from the release.</p>
+                                    <p class="text-sm font-semibold uppercase tracking-[0.14em] text-[#4A5568]">Extracted flight plan</p>
+                                    <p class="mt-1 text-sm text-[#4A5568]">Review the parsed identifiers and copy the route or airports directly.</p>
                                 </div>
 
                                 <button
-                                    id="copy-flight-route"
                                     type="button"
+                                    data-copy-target="flight-route-output"
+                                    data-copy-label="Route"
                                     class="inline-flex items-center justify-center rounded-md bg-[#1B365D] px-4 py-2 text-sm font-semibold text-[#F8F9FA] transition hover:bg-[#142a49]"
                                 >
                                     Copy route
                                 </button>
+                            </div>
+
+                            <div class="mt-4 grid gap-4 md:grid-cols-2">
+                                <div class="rounded-md border border-[#1B365D]/10 bg-white p-4">
+                                    <div class="flex items-center justify-between gap-4">
+                                        <div>
+                                            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-[#4A5568]">Departure</p>
+                                            <p id="departure-output" class="mt-2 font-mono text-lg text-[#0B0E14]">{{ $flightPlan['departure'] }}</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            data-copy-target="departure-output"
+                                            data-copy-label="Departure"
+                                            class="inline-flex items-center justify-center rounded-md bg-[#1B365D] px-3 py-2 text-sm font-semibold text-[#F8F9FA] transition hover:bg-[#142a49]"
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="rounded-md border border-[#1B365D]/10 bg-white p-4">
+                                    <div class="flex items-center justify-between gap-4">
+                                        <div>
+                                            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-[#4A5568]">Destination</p>
+                                            <p id="destination-output" class="mt-2 font-mono text-lg text-[#0B0E14]">{{ $flightPlan['destination'] }}</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            data-copy-target="destination-output"
+                                            data-copy-label="Destination"
+                                            class="inline-flex items-center justify-center rounded-md bg-[#1B365D] px-3 py-2 text-sm font-semibold text-[#F8F9FA] transition hover:bg-[#142a49]"
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="rounded-md border border-[#1B365D]/10 bg-white p-4">
+                                    <div class="flex items-center justify-between gap-4">
+                                        <div>
+                                            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-[#4A5568]">Alternate</p>
+                                            <p id="alternate-output" class="mt-2 font-mono text-lg text-[#0B0E14]">{{ $flightPlan['alternate'] ?? 'None listed' }}</p>
+                                        </div>
+                                        @if ($flightPlan['alternate'])
+                                            <button
+                                                type="button"
+                                                data-copy-target="alternate-output"
+                                                data-copy-label="Alternate"
+                                                class="inline-flex items-center justify-center rounded-md bg-[#1B365D] px-3 py-2 text-sm font-semibold text-[#F8F9FA] transition hover:bg-[#142a49]"
+                                            >
+                                                Copy
+                                            </button>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                <div class="grid gap-4 sm:grid-cols-2">
+                                    <div class="rounded-md border border-[#1B365D]/10 bg-white p-4">
+                                        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-[#4A5568]">Initial altitude</p>
+                                        <p class="mt-2 font-mono text-lg text-[#0B0E14]">{{ $flightPlan['initial_altitude'] }}</p>
+                                    </div>
+
+                                    <div class="rounded-md border border-[#1B365D]/10 bg-white p-4">
+                                        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-[#4A5568]">Duration</p>
+                                        <p class="mt-2 font-mono text-lg text-[#0B0E14]">{{ $flightPlan['duration'] }}</p>
+                                    </div>
+                                </div>
                             </div>
 
                             <textarea
@@ -62,22 +131,30 @@
                                 readonly
                                 rows="4"
                                 class="mt-4 block w-full rounded-md border border-[#1B365D]/10 bg-white p-4 font-mono text-sm text-[#0B0E14]"
-                            >{{ session('flight_route') }}</textarea>
+                            >{{ $flightPlan['route'] }}</textarea>
 
-                            <p id="copy-flight-route-status" class="mt-3 text-sm text-[#4A5568]"></p>
+                            <p id="copy-flight-plan-status" class="mt-3 text-sm text-[#4A5568]"></p>
                         </section>
 
                         <script>
-                            const copyFlightRouteButton = document.getElementById('copy-flight-route');
-                            const flightRouteOutput = document.getElementById('flight-route-output');
-                            const copyFlightRouteStatus = document.getElementById('copy-flight-route-status');
+                            const copyFlightPlanButtons = document.querySelectorAll('[data-copy-target]');
+                            const copyFlightPlanStatus = document.getElementById('copy-flight-plan-status');
 
-                            if (copyFlightRouteButton && flightRouteOutput && copyFlightRouteStatus) {
-                                copyFlightRouteButton.addEventListener('click', async () => {
-                                    await navigator.clipboard.writeText(flightRouteOutput.value);
-                                    copyFlightRouteStatus.textContent = 'Route copied.';
+                            copyFlightPlanButtons.forEach((button) => {
+                                button.addEventListener('click', async () => {
+                                    const output = document.getElementById(button.dataset.copyTarget);
+
+                                    if (! output || ! copyFlightPlanStatus) {
+                                        return;
+                                    }
+
+                                    const text = output.value ?? output.textContent?.trim() ?? '';
+
+                                    await navigator.clipboard.writeText(text);
+
+                                    copyFlightPlanStatus.textContent = `${button.dataset.copyLabel} copied.`;
                                 });
-                            }
+                            });
                         </script>
                     @endif
                 </div>
