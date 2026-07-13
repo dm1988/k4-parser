@@ -3,6 +3,8 @@
 namespace App\View\Models;
 
 use App\DTOs\AirportData;
+use App\Enums\RouteTokenType;
+use App\ValueObjects\FlightPlan;
 
 readonly class FlightReleasePageViewModel
 {
@@ -12,31 +14,15 @@ readonly class FlightReleasePageViewModel
         'alternate_airport',
     ];
 
-    /**
-     * @param  array{
-     *     departure?: string,
-     *     destination?: string,
-     *     alternate?: ?string,
-     *     departure_airport?: AirportData|null,
-     *     destination_airport?: AirportData|null,
-     *     alternate_airport?: AirportData|null,
-     *     initial_altitude?: string,
-     *     duration?: string,
-     *     route?: string
-     * }|null  $flightPlan
-     */
-    private ?array $flightPlan;
-
-    public function __construct(?array $flightPlan)
-    {
-        $this->flightPlan = $this->normalizeFlightPlan($flightPlan);
-    }
+    public function __construct(
+        public ?FlightPlan $flightPlan,
+    ) {}
 
     public static function fromCurrentSession(): self
     {
         $flightPlan = session('flight_plan');
 
-        return new self(is_array($flightPlan) ? $flightPlan : null);
+        return new self(is_array($flightPlan) ? self::flightPlanFromArray($flightPlan) : null);
     }
 
     public function hasFlightPlan(): bool
@@ -46,17 +32,17 @@ readonly class FlightReleasePageViewModel
 
     public function departure(): string
     {
-        return $this->stringValue('departure');
+        return $this->flightPlan?->departure ?? '';
     }
 
     public function destination(): string
     {
-        return $this->stringValue('destination');
+        return $this->flightPlan?->destination ?? '';
     }
 
     public function alternate(): ?string
     {
-        return $this->nullableStringValue('alternate');
+        return $this->flightPlan?->alternate;
     }
 
     public function alternateLabel(): string
@@ -99,25 +85,23 @@ readonly class FlightReleasePageViewModel
 
     public function initialAltitude(): string
     {
-        return $this->stringValue('initial_altitude');
+        return $this->flightPlan?->initialAltitude ?? '';
     }
 
     public function duration(): string
     {
-        return $this->stringValue('duration');
+        return $this->flightPlan?->duration ?? '';
     }
 
     public function route(): string
     {
-        return $this->stringValue('route');
+        return $this->flightPlan?->route ?? '';
     }
 
     /**
      * @return list<array{
      *     value: string,
-     *     is_airway: bool,
-     *     is_speed: bool,
-     *     is_direct: bool,
+     *     type: RouteTokenType,
      *     class: string
      * }>
      */
@@ -133,34 +117,19 @@ readonly class FlightReleasePageViewModel
             $isAirway = preg_match('/^(?:[A-Z]\d+|Q\d+)$/', $token) === 1;
             $isSpeed = str_contains($token, '/');
             $isDirect = $token === 'DCT';
+            $type = match (true) {
+                $isSpeed => RouteTokenType::SPEED,
+                $isAirway => RouteTokenType::AIRWAY,
+                $isDirect => RouteTokenType::DIRECT,
+                default => RouteTokenType::FIX,
+            };
 
             return [
                 'value' => $token,
-                'is_airway' => $isAirway,
-                'is_speed' => $isSpeed,
-                'is_direct' => $isDirect,
-                'class' => match (true) {
-                    $isSpeed => 'text-amber-700',
-                    $isAirway => 'font-bold text-[#1B365D]',
-                    $isDirect => 'text-[#4A5568]/50',
-                    default => 'text-[#0B0E14]',
-                },
+                'type' => $type,
+                'class' => $type->cssClass(),
             ];
         }, array_filter($tokens, static fn (string $token): bool => $token !== '')));
-    }
-
-    private function stringValue(string $key): string
-    {
-        $value = $this->flightPlan[$key] ?? null;
-
-        return is_string($value) ? $value : '';
-    }
-
-    private function nullableStringValue(string $key): ?string
-    {
-        $value = $this->flightPlan[$key] ?? null;
-
-        return is_string($value) && $value !== '' ? $value : null;
     }
 
     /**
@@ -168,7 +137,12 @@ readonly class FlightReleasePageViewModel
      */
     private function airportDetails(string $key): ?array
     {
-        $airport = $this->flightPlan[$key] ?? null;
+        $airport = match ($key) {
+            'departure_airport' => $this->flightPlan?->departureAirport,
+            'destination_airport' => $this->flightPlan?->destinationAirport,
+            'alternate_airport' => $this->flightPlan?->alternateAirport,
+            default => null,
+        };
 
         if (! $airport instanceof AirportData) {
             return null;
@@ -197,24 +171,10 @@ readonly class FlightReleasePageViewModel
     }
 
     /**
-     * @param  array{
-     *     departure?: string,
-     *     destination?: string,
-     *     alternate?: ?string,
-     *     departure_airport?: AirportData|array<string, mixed>|null,
-     *     destination_airport?: AirportData|array<string, mixed>|null,
-     *     alternate_airport?: AirportData|array<string, mixed>|null,
-     *     initial_altitude?: string,
-     *     duration?: string,
-     *     route?: string
-     * }|null  $flightPlan
+     * @param  array<string, mixed>  $flightPlan
      */
-    private function normalizeFlightPlan(?array $flightPlan): ?array
+    private static function flightPlanFromArray(array $flightPlan): FlightPlan
     {
-        if ($flightPlan === null) {
-            return null;
-        }
-
         foreach (self::AIRPORT_KEYS as $key) {
             $airport = $flightPlan[$key] ?? null;
 
@@ -223,6 +183,16 @@ readonly class FlightReleasePageViewModel
             }
         }
 
-        return $flightPlan;
+        return new FlightPlan(
+            departure: is_string($flightPlan['departure'] ?? null) ? $flightPlan['departure'] : '',
+            destination: is_string($flightPlan['destination'] ?? null) ? $flightPlan['destination'] : '',
+            alternate: is_string($flightPlan['alternate'] ?? null) && $flightPlan['alternate'] !== '' ? $flightPlan['alternate'] : null,
+            departureAirport: ($flightPlan['departure_airport'] ?? null) instanceof AirportData ? $flightPlan['departure_airport'] : null,
+            destinationAirport: ($flightPlan['destination_airport'] ?? null) instanceof AirportData ? $flightPlan['destination_airport'] : null,
+            alternateAirport: ($flightPlan['alternate_airport'] ?? null) instanceof AirportData ? $flightPlan['alternate_airport'] : null,
+            initialAltitude: is_string($flightPlan['initial_altitude'] ?? null) ? $flightPlan['initial_altitude'] : '',
+            duration: is_string($flightPlan['duration'] ?? null) ? $flightPlan['duration'] : '',
+            route: is_string($flightPlan['route'] ?? null) ? $flightPlan['route'] : '',
+        );
     }
 }

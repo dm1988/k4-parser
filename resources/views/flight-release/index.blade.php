@@ -102,7 +102,18 @@
                                     <div class="rounded-md border border-[#1B365D]/10 bg-white p-4">
                                         <p class="break-words font-mono text-xs leading-relaxed text-[#0B0E14]">
                                             @foreach ($model->routeTokens() as $token)
-                                                <span class="{{ $token['class'] }}">{{ $token['value'] }}</span>@if (! $loop->last) <span class="text-[#0B0E14]"> </span>@endif
+                                                @if ($token['type'] === \App\Enums\RouteTokenType::SPEED)
+                                                    <span class="{{ $token['class'] }}">{{ $token['value'] }}</span>
+                                                @elseif ($token['type'] === \App\Enums\RouteTokenType::AIRWAY)
+                                                    <span class="{{ $token['class'] }}">{{ $token['value'] }}</span>
+                                                @elseif ($token['type'] === \App\Enums\RouteTokenType::DIRECT)
+                                                    <span class="{{ $token['class'] }}">{{ $token['value'] }}</span>
+                                                @else
+                                                    <span class="{{ $token['class'] }}">{{ $token['value'] }}</span>
+                                                @endif
+                                                @if (! $loop->last)
+                                                    <span class="text-[#0B0E14]"> </span>
+                                                @endif
                                             @endforeach
                                         </p>
                                     </div>

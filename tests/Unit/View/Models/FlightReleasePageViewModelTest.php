@@ -3,6 +3,8 @@
 namespace Tests\Unit\View\Models;
 
 use App\DTOs\AirportData;
+use App\Enums\RouteTokenType;
+use App\ValueObjects\FlightPlan;
 use App\View\Models\FlightReleasePageViewModel;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -12,17 +14,17 @@ class FlightReleasePageViewModelTest extends TestCase
     #[Test]
     public function it_builds_airport_display_fields_from_dtos(): void
     {
-        $viewModel = new FlightReleasePageViewModel([
-            'departure' => 'PANC',
-            'destination' => 'KMIA',
-            'alternate' => 'KRSW',
-            'departure_airport' => new AirportData('PANC', 'ANC', 'Ted Stevens Anchorage International Airport', 'Anchorage', 'Alaska', 'United States'),
-            'destination_airport' => new AirportData('KMIA', 'MIA', 'Miami International Airport', 'Miami', 'Florida', 'United States'),
-            'alternate_airport' => new AirportData('KRSW', 'RSW', 'Southwest Florida International Airport', 'Fort Myers', 'Florida', 'United States'),
-            'initial_altitude' => 'FL 330',
-            'duration' => '07h12m',
-            'route' => 'DCT TEST',
-        ]);
+        $viewModel = new FlightReleasePageViewModel(new FlightPlan(
+            departure: 'PANC',
+            destination: 'KMIA',
+            alternate: 'KRSW',
+            departureAirport: new AirportData('PANC', 'ANC', 'Ted Stevens Anchorage International Airport', 'Anchorage', 'Alaska', 'United States'),
+            destinationAirport: new AirportData('KMIA', 'MIA', 'Miami International Airport', 'Miami', 'Florida', 'United States'),
+            alternateAirport: new AirportData('KRSW', 'RSW', 'Southwest Florida International Airport', 'Fort Myers', 'Florida', 'United States'),
+            initialAltitude: 'FL 330',
+            duration: '07h12m',
+            route: 'DCT TEST',
+        ));
 
         $this->assertTrue($viewModel->hasFlightPlan());
         $this->assertSame('PANC', $viewModel->departure());
@@ -40,44 +42,42 @@ class FlightReleasePageViewModelTest extends TestCase
     #[Test]
     public function it_classifies_route_tokens_for_display(): void
     {
-        $viewModel = new FlightReleasePageViewModel([
-            'route' => 'DCT OSUDO4A Q139 DSM/N0486F350 GETME',
-        ]);
+        $viewModel = new FlightReleasePageViewModel(new FlightPlan(
+            departure: '',
+            destination: '',
+            alternate: null,
+            departureAirport: null,
+            destinationAirport: null,
+            alternateAirport: null,
+            initialAltitude: '',
+            duration: '',
+            route: 'DCT OSUDO4A Q139 DSM/N0486F350 GETME',
+        ));
 
         $this->assertSame([
             [
                 'value' => 'DCT',
-                'is_airway' => false,
-                'is_speed' => false,
-                'is_direct' => true,
+                'type' => RouteTokenType::DIRECT,
                 'class' => 'text-[#4A5568]/50',
             ],
             [
                 'value' => 'OSUDO4A',
-                'is_airway' => false,
-                'is_speed' => false,
-                'is_direct' => false,
+                'type' => RouteTokenType::FIX,
                 'class' => 'text-[#0B0E14]',
             ],
             [
                 'value' => 'Q139',
-                'is_airway' => true,
-                'is_speed' => false,
-                'is_direct' => false,
+                'type' => RouteTokenType::AIRWAY,
                 'class' => 'font-bold text-[#1B365D]',
             ],
             [
                 'value' => 'DSM/N0486F350',
-                'is_airway' => false,
-                'is_speed' => true,
-                'is_direct' => false,
+                'type' => RouteTokenType::SPEED,
                 'class' => 'text-amber-700',
             ],
             [
                 'value' => 'GETME',
-                'is_airway' => false,
-                'is_speed' => false,
-                'is_direct' => false,
+                'type' => RouteTokenType::FIX,
                 'class' => 'text-[#0B0E14]',
             ],
         ], $viewModel->routeTokens());
@@ -86,24 +86,28 @@ class FlightReleasePageViewModelTest extends TestCase
     #[Test]
     public function it_builds_airport_display_fields_from_session_arrays(): void
     {
-        $viewModel = new FlightReleasePageViewModel([
-            'departure' => 'PANC',
-            'destination' => 'KMIA',
-            'alternate' => null,
-            'departure_airport' => [
-                'icao' => 'PANC',
-                'iata' => 'ANC',
-                'name' => 'Ted Stevens Anchorage International Airport',
-                'city' => 'Anchorage',
-                'state' => 'Alaska',
-                'country' => 'United States',
+        session([
+            'flight_plan' => [
+                'departure' => 'PANC',
+                'destination' => 'KMIA',
+                'alternate' => null,
+                'departure_airport' => [
+                    'icao' => 'PANC',
+                    'iata' => 'ANC',
+                    'name' => 'Ted Stevens Anchorage International Airport',
+                    'city' => 'Anchorage',
+                    'state' => 'Alaska',
+                    'country' => 'United States',
+                ],
+                'destination_airport' => null,
+                'alternate_airport' => null,
+                'initial_altitude' => 'FL 330',
+                'duration' => '07h12m',
+                'route' => 'DCT TEST',
             ],
-            'destination_airport' => null,
-            'alternate_airport' => null,
-            'initial_altitude' => 'FL 330',
-            'duration' => '07h12m',
-            'route' => 'DCT TEST',
         ]);
+
+        $viewModel = FlightReleasePageViewModel::fromCurrentSession();
 
         $this->assertSame('None listed', $viewModel->alternateLabel());
         $this->assertNull($viewModel->destinationAirport());
@@ -146,10 +150,17 @@ class FlightReleasePageViewModelTest extends TestCase
     #[Test]
     public function it_reports_missing_alternate_airport_details_when_an_alternate_code_exists(): void
     {
-        $viewModel = new FlightReleasePageViewModel([
-            'alternate' => 'KRSW',
-            'alternate_airport' => null,
-        ]);
+        $viewModel = new FlightReleasePageViewModel(new FlightPlan(
+            departure: '',
+            destination: '',
+            alternate: 'KRSW',
+            departureAirport: null,
+            destinationAirport: null,
+            alternateAirport: null,
+            initialAltitude: '',
+            duration: '',
+            route: '',
+        ));
 
         $this->assertSame('Airport details unavailable.', $viewModel->alternateAirportFallback());
     }
