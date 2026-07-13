@@ -28,11 +28,14 @@ class FlightReleaseControllerTest extends TestCase
 
     public function test_uploaded_pdf_route_is_displayed_after_extraction(): void
     {
-        Storage::fake('local');
+        Storage::fake('user_flight_releases');
 
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
             $mock->shouldReceive('extractFlightPlanData')
                 ->once()
+                ->withArgs(function (string $path): bool {
+                    return str_contains($path, 'framework/testing/disks/user_flight_releases');
+                })
                 ->andReturn([
                     'departure' => 'PANC',
                     'destination' => 'KMIA',
@@ -57,6 +60,7 @@ class FlightReleaseControllerTest extends TestCase
             ]);
 
         $response->assertRedirect(route('flight-release.index'));
+        $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
 
         $this->get(route('flight-release.index'))
             ->assertOk()
@@ -80,11 +84,14 @@ class FlightReleaseControllerTest extends TestCase
 
     public function test_uploaded_pdf_route_page_handles_missing_airport_details(): void
     {
-        Storage::fake('local');
+        Storage::fake('user_flight_releases');
 
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
             $mock->shouldReceive('extractFlightPlanData')
                 ->once()
+                ->withArgs(function (string $path): bool {
+                    return str_contains($path, 'framework/testing/disks/user_flight_releases');
+                })
                 ->andReturn([
                     'departure' => 'PANC',
                     'destination' => 'KMIA',
@@ -176,12 +183,15 @@ class FlightReleaseControllerTest extends TestCase
 
     public function test_route_not_found_error_is_returned_when_extractor_cannot_match_route(): void
     {
-        Storage::fake('local');
+        Storage::fake('user_flight_releases');
         Log::spy();
 
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
             $mock->shouldReceive('extractFlightPlanData')
                 ->once()
+                ->withArgs(function (string $path): bool {
+                    return str_contains($path, 'framework/testing/disks/user_flight_releases');
+                })
                 ->andThrow(FlightRouteNotFoundException::routeSegmentMissing());
         });
 
@@ -196,6 +206,7 @@ class FlightReleaseControllerTest extends TestCase
             'flight_release' => 'A flight plan block was found, but the route segment could not be identified between the speed/level and destination lines.',
         ]);
 
+        $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
         Log::shouldHaveReceived('warning')->once();
     }
 }

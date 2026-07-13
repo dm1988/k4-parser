@@ -37,6 +37,18 @@ return [
             'throw' => false,
             'report' => false,
         ],
+        'user_uploads' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/uploads'),
+            'throw' => false,
+            'report' => false,
+        ],
+        'user_flight_releases' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/flight_releases'),
+            'throw' => false,
+            'report' => false,
+        ],
 
         'public' => [
             'driver' => 'local',
