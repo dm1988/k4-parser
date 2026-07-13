@@ -219,16 +219,15 @@ class IcsCalendarService
     {
         $lines = [];
 
-        if (($metadata[MetadataKey::CrewCount->value] ?? null) !== null) {
-            $lines[] = '• Crew count: '.$metadata[MetadataKey::CrewCount->value];
-        }
+        foreach ([MetadataKey::CrewCount, MetadataKey::OperatingCrewCount, MetadataKey::DeadheadingCrewCount] as $metaKey) {
+            $value = $metadata[$metaKey->value] ?? null;
 
-        if (($metadata[MetadataKey::OperatingCrewCount->value] ?? null) !== null) {
-            $lines[] = '• Operating crew count: '.$metadata[MetadataKey::OperatingCrewCount->value];
-        }
+            if ($value === null) {
+                continue;
+            }
 
-        if (($metadata[MetadataKey::DeadheadingCrewCount->value] ?? null) !== null) {
-            $lines[] = '• Deadheading crew count: '.$metadata[MetadataKey::DeadheadingCrewCount->value];
+            $label = $metaKey->metadataLabel() ?? ucfirst(str_replace('_', ' ', $metaKey->value));
+            $lines[] = $metaKey->metadataPrefix().$label.$metaKey->metadataSuffix().$value;
         }
 
         $crew = is_array($metadata['crew'] ?? null) ? $metadata['crew'] : [];

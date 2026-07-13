@@ -35,4 +35,30 @@ enum MetadataKey: string
     {
         return array_map(static fn(self $k) => $k->value, self::cases());
     }
+
+    public function metadataLabel(): ?string
+    {
+        return match ($this) {
+            self::CrewCount => 'Crew count',
+            self::OperatingCrewCount => 'Operating crew count',
+            self::DeadheadingCrewCount => 'Deadheading crew count',
+            self::FlightNumber => 'Flight number',
+            self::Origin => 'Origin',
+            self::Destination => 'Destination',
+            self::TailNumber => 'Tail number',
+            self::BlockTime => 'Block time',
+            self::TripId => 'Trip ID',
+            default => null,
+        };
+    }
+
+    public function metadataPrefix(): string
+    {
+        return '• ';
+    }
+
+    public function metadataSuffix(): string
+    {
+        return ': ';
+    }
 }
