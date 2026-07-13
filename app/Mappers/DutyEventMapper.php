@@ -3,8 +3,8 @@
 namespace App\Mappers;
 
 use App\DTOs\DutyEvent;
-use App\Enums\ParserEventType;
 use App\Enums\MetadataKey;
+use App\Enums\ParserEventType;
 use Carbon\CarbonImmutable;
 
 final class DutyEventMapper
@@ -39,9 +39,9 @@ final class DutyEventMapper
             badgeColor: (string) ($event['badgeColor'] ?? $event['badge_color'] ?? $eventType->badgeColor()),
             downloadUrl: (string) ($metadata[MetadataKey::DownloadUrl->value] ?? $event['download_url'] ?? ''),
             downloadId: $downloadId ?? $this->nullableString($event, MetadataKey::DownloadId->value),
-            station: $this->nullableString($metadata, 'station'),
-            activityCode: $this->nullableString($metadata, 'activity_code'),
-            layoverDuration: $this->nullableString($metadata, 'layover_duration'),
+            station: $this->nullableString($metadata, MetadataKey::Station->value),
+            activityCode: $this->nullableString($metadata, MetadataKey::ActivityCode->value),
+            layoverDuration: $this->nullableString($metadata, MetadataKey::LayoverDuration->value),
             crewCount: $this->nullableInt($metadata, MetadataKey::CrewCount->value),
             operatingCrewCount: $this->nullableInt($metadata, MetadataKey::OperatingCrewCount->value),
             deadheadingCrewCount: $this->nullableInt($metadata, MetadataKey::DeadheadingCrewCount->value),
@@ -101,7 +101,6 @@ final class DutyEventMapper
     }
 
     /**
-     * @param mixed $values
      * @return list<string>
      */
     private function stringList(mixed $values): array

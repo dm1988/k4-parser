@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\DTOs\Flight;
-use App\Enums\ParserEventType;
 use App\Enums\MetadataKey;
+use App\Enums\ParserEventType;
 use App\Mappers\FlightMapper;
 use Carbon\CarbonImmutable;
 use Throwable;
@@ -70,14 +70,16 @@ final class FlightDutyCalendarEventService
                 MetadataKey::FlightNumber->value => $this->eventValue($event, $metadata, 'flightNumber', MetadataKey::FlightNumber->value),
                 MetadataKey::Origin->value => $this->eventValue($event, $metadata, 'origin'),
                 MetadataKey::Destination->value => $this->eventValue($event, $metadata, 'destination'),
-                'duty_utc_start' => $this->formatUtcNote($dutyStartUtc),
-                'duty_utc_end' => $this->formatUtcNote($dutyEndUtc),
+                MetadataKey::DutyUtcStart->value => $this->formatUtcNote($dutyStartUtc),
+                MetadataKey::DutyUtcEnd->value => $this->formatUtcNote($dutyEndUtc),
                 MetadataKey::DutyLocalStart->value => $dutyLocalStartValue,
                 MetadataKey::DutyLocalEnd->value => $dutyLocalEndValue,
-                'flight_utc_start' => $this->formatUtcNote($flightStartUtc),
-                'flight_utc_end' => $this->formatUtcNote($flightEndUtc),
+                MetadataKey::FlightUtcStart->value => $this->formatUtcNote($flightStartUtc),
+                MetadataKey::FlightUtcEnd->value => $this->formatUtcNote($flightEndUtc),
                 MetadataKey::LegLocalStart->value => $flightLocalStartValue,
                 MetadataKey::LegLocalEnd->value => $flightLocalEndValue,
+                'flight_local_start' => $flightLocalStartValue,
+                'flight_local_end' => $flightLocalEndValue,
                 'duration' => $durationLabel,
             ],
         ];

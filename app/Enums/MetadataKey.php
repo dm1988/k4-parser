@@ -30,10 +30,18 @@ enum MetadataKey: string
     case UtcEnd = 'utc_end';
     case LocalStart = 'local_start';
     case LocalEnd = 'local_end';
+    case Station = 'station';
+    case ActivityCode = 'activity_code';
+    case LayoverDuration = 'layover_duration';
+    case FlightUtcStart = 'flight_utc_start';
+    case FlightUtcEnd = 'flight_utc_end';
+    case DutyUtcStart = 'duty_utc_start';
+    case DutyUtcEnd = 'duty_utc_end';
+    case Crew = 'crew';
 
     public static function values(): array
     {
-        return array_map(static fn(self $k) => $k->value, self::cases());
+        return array_map(static fn (self $k) => $k->value, self::cases());
     }
 
     public function metadataLabel(): ?string
@@ -48,6 +56,14 @@ enum MetadataKey: string
             self::TailNumber => 'Tail number',
             self::BlockTime => 'Block time',
             self::TripId => 'Trip ID',
+            self::Station => 'Station',
+            self::ActivityCode => 'Activity code',
+            self::LayoverDuration => 'Layover duration',
+            self::FlightUtcStart => 'Flight UTC start',
+            self::FlightUtcEnd => 'Flight UTC end',
+            self::DutyUtcStart => 'Duty UTC start',
+            self::DutyUtcEnd => 'Duty UTC end',
+            self::Crew => 'Crew',
             default => null,
         };
     }

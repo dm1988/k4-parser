@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\MetadataKey;
 use Illuminate\Support\Carbon;
 
 class PublishedRosterParser
@@ -44,11 +45,11 @@ class PublishedRosterParser
 
             $events[] = $dutyEvent;
 
-            if (! empty($dutyEvent['metadata']['layover_duration'])) {
+            if (! empty($dutyEvent['metadata'][MetadataKey::LayoverDuration->value])) {
                 $events[] = $this->buildLayoverEvent(
-                    $dutyEvent['metadata']['station'] ?? null,
+                    $dutyEvent['metadata'][MetadataKey::Station->value] ?? null,
                     Carbon::parse($dutyEvent['end']),
-                    $dutyEvent['metadata']['layover_duration'],
+                    $dutyEvent['metadata'][MetadataKey::LayoverDuration->value],
                 );
             }
         }
@@ -116,7 +117,7 @@ class PublishedRosterParser
     }
 
     /**
-     * @param array{month: int, year: int} $planningPeriod
+     * @param  array{month: int, year: int}  $planningPeriod
      * @return list<array{date: Carbon, report_time: ?string, body: string}>
      */
     private function extractEntries(array $lines, array $planningPeriod): array
@@ -178,7 +179,7 @@ class PublishedRosterParser
     }
 
     /**
-     * @param array{date: Carbon, report_time: ?string, body: string} $entry
+     * @param  array{date: Carbon, report_time: ?string, body: string}  $entry
      * @return array{
      *     mode: 'complete'|'start'|'end',
      *     start_date: Carbon,
@@ -362,7 +363,7 @@ class PublishedRosterParser
     }
 
     /**
-     * @param array{date: Carbon, report_time: ?string, body: string} $entry
+     * @param  array{date: Carbon, report_time: ?string, body: string}  $entry
      */
     private function parseDutyEvent(array $entry): ?array
     {
