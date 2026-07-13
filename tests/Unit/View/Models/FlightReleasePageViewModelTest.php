@@ -110,6 +110,7 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertNull($viewModel->alternateAirport());
         $this->assertSame('No alternate airport listed.', $viewModel->alternateAirportFallback());
         $this->assertSame('Ted Stevens Anchorage International Airport', $viewModel->departureAirport()['name']);
+        $this->assertSame('IATA ANC · ICAO PANC', $viewModel->departureAirport()['identifiers']);
     }
 
     #[Test]
@@ -120,6 +121,14 @@ class FlightReleasePageViewModelTest extends TestCase
                 'departure' => 'PANC',
                 'destination' => 'KMIA',
                 'alternate' => 'KRSW',
+                'departure_airport' => [
+                    'icao' => 'PANC',
+                    'iata' => 'ANC',
+                    'name' => 'Ted Stevens Anchorage International Airport',
+                    'city' => 'Anchorage',
+                    'state' => 'Alaska',
+                    'country' => 'United States',
+                ],
                 'initial_altitude' => 'FL 330',
                 'duration' => '07h12m',
                 'route' => 'DCT TEST',
@@ -131,6 +140,7 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertTrue($viewModel->hasFlightPlan());
         $this->assertSame('PANC', $viewModel->departure());
         $this->assertSame('KRSW', $viewModel->alternate());
+        $this->assertSame('Ted Stevens Anchorage International Airport', $viewModel->departureAirport()['name']);
     }
 
     #[Test]

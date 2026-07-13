@@ -6,22 +6,31 @@ use App\DTOs\AirportData;
 
 readonly class FlightReleasePageViewModel
 {
+    private const AIRPORT_KEYS = [
+        'departure_airport',
+        'destination_airport',
+        'alternate_airport',
+    ];
+
     /**
      * @param  array{
      *     departure?: string,
      *     destination?: string,
      *     alternate?: ?string,
-     *     departure_airport?: AirportData|array<string, mixed>|null,
-     *     destination_airport?: AirportData|array<string, mixed>|null,
-     *     alternate_airport?: AirportData|array<string, mixed>|null,
+     *     departure_airport?: AirportData|null,
+     *     destination_airport?: AirportData|null,
+     *     alternate_airport?: AirportData|null,
      *     initial_altitude?: string,
      *     duration?: string,
      *     route?: string
      * }|null  $flightPlan
      */
-    public function __construct(
-        private ?array $flightPlan,
-    ) {}
+    private ?array $flightPlan;
+
+    public function __construct(?array $flightPlan)
+    {
+        $this->flightPlan = $this->normalizeFlightPlan($flightPlan);
+    }
 
     public static function fromCurrentSession(): self
     {
@@ -137,7 +146,7 @@ readonly class FlightReleasePageViewModel
                     default => 'text-[#0B0E14]',
                 },
             ];
-        }, array_values(array_filter($tokens, static fn (string $token): bool => $token !== ''))));
+        }, array_filter($tokens, static fn (string $token): bool => $token !== '')));
     }
 
     private function stringValue(string $key): string
@@ -161,48 +170,59 @@ readonly class FlightReleasePageViewModel
     {
         $airport = $this->flightPlan[$key] ?? null;
 
-        if (! is_array($airport) && ! $airport instanceof AirportData) {
+        if (! $airport instanceof AirportData) {
             return null;
         }
 
-        $name = $this->airportField($airport, 'name');
-
-        if ($name === '') {
+        if ($airport->name === '') {
             return null;
         }
 
         return [
-            'name' => $name,
+            'name' => $airport->name,
             'location' => $this->airportLocation($airport),
             'identifiers' => sprintf(
                 'IATA %s · ICAO %s',
-                $this->airportField($airport, 'iata', 'N/A'),
-                $this->airportField($airport, 'icao', 'N/A'),
+                $airport->iata !== '' ? $airport->iata : 'N/A',
+                $airport->icao !== '' ? $airport->icao : 'N/A',
             ),
         ];
     }
 
-    /**
-     * @param  AirportData|array<string, mixed>  $airport
-     */
-    private function airportLocation(AirportData|array $airport): string
+    private function airportLocation(AirportData $airport): string
     {
-        $city = $this->airportField($airport, 'city');
-        $state = $this->airportField($airport, 'state');
-        $country = $this->airportField($airport, 'country');
-
-        return collect([$city, $state, $country])
-            ->filter(static fn (string $value): bool => $value !== '')
+        return collect([$airport->city, $airport->state, $airport->country])
+            ->filter(static fn (?string $value): bool => ! empty($value))
             ->implode(', ');
     }
 
     /**
-     * @param  AirportData|array<string, mixed>  $airport
+     * @param  array{
+     *     departure?: string,
+     *     destination?: string,
+     *     alternate?: ?string,
+     *     departure_airport?: AirportData|array<string, mixed>|null,
+     *     destination_airport?: AirportData|array<string, mixed>|null,
+     *     alternate_airport?: AirportData|array<string, mixed>|null,
+     *     initial_altitude?: string,
+     *     duration?: string,
+     *     route?: string
+     * }|null  $flightPlan
      */
-    private function airportField(AirportData|array $airport, string $field, string $default = ''): string
+    private function normalizeFlightPlan(?array $flightPlan): ?array
     {
-        $value = data_get($airport, $field);
+        if ($flightPlan === null) {
+            return null;
+        }
 
-        return is_string($value) && $value !== '' ? $value : $default;
+        foreach (self::AIRPORT_KEYS as $key) {
+            $airport = $flightPlan[$key] ?? null;
+
+            if (is_array($airport)) {
+                $flightPlan[$key] = AirportData::fromApi($airport);
+            }
+        }
+
+        return $flightPlan;
     }
 }
