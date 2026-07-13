@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\DTOs\Flight;
 use App\Enums\ParserEventType;
+use App\Enums\MetadataKey;
 use App\Mappers\FlightMapper;
 use Carbon\CarbonImmutable;
 use Throwable;
@@ -33,10 +34,10 @@ final class FlightDutyCalendarEventService
             return null;
         }
 
-        $flightLocalStartValue = $this->eventValue($event, $metadata, 'legLocalStart', 'leg_local_start');
-        $flightLocalEndValue = $this->eventValue($event, $metadata, 'legLocalEnd', 'leg_local_end');
-        $dutyLocalStartValue = $this->eventValue($event, $metadata, 'dutyLocalStart', 'duty_local_start');
-        $dutyLocalEndValue = $this->eventValue($event, $metadata, 'dutyLocalEnd', 'duty_local_end');
+        $flightLocalStartValue = $this->eventValue($event, $metadata, 'legLocalStart', MetadataKey::LegLocalStart->value);
+        $flightLocalEndValue = $this->eventValue($event, $metadata, 'legLocalEnd', MetadataKey::LegLocalEnd->value);
+        $dutyLocalStartValue = $this->eventValue($event, $metadata, 'dutyLocalStart', MetadataKey::DutyLocalStart->value);
+        $dutyLocalEndValue = $this->eventValue($event, $metadata, 'dutyLocalEnd', MetadataKey::DutyLocalEnd->value);
 
         $flightLocalStart = $this->parseLocalTime($flightLocalStartValue, $flightStartUtc);
         $flightLocalEnd = $this->parseLocalTime($flightLocalEndValue, $flightEndUtc);
@@ -66,17 +67,17 @@ final class FlightDutyCalendarEventService
             'end' => $dutyEndUtc->toIso8601String(),
             'timezone' => 'UTC',
             'metadata' => [
-                'flight_number' => $this->eventValue($event, $metadata, 'flightNumber', 'flight_number'),
-                'origin' => $this->eventValue($event, $metadata, 'origin'),
-                'destination' => $this->eventValue($event, $metadata, 'destination'),
+                MetadataKey::FlightNumber->value => $this->eventValue($event, $metadata, 'flightNumber', MetadataKey::FlightNumber->value),
+                MetadataKey::Origin->value => $this->eventValue($event, $metadata, 'origin'),
+                MetadataKey::Destination->value => $this->eventValue($event, $metadata, 'destination'),
                 'duty_utc_start' => $this->formatUtcNote($dutyStartUtc),
                 'duty_utc_end' => $this->formatUtcNote($dutyEndUtc),
-                'duty_local_start' => $dutyLocalStartValue,
-                'duty_local_end' => $dutyLocalEndValue,
+                MetadataKey::DutyLocalStart->value => $dutyLocalStartValue,
+                MetadataKey::DutyLocalEnd->value => $dutyLocalEndValue,
                 'flight_utc_start' => $this->formatUtcNote($flightStartUtc),
                 'flight_utc_end' => $this->formatUtcNote($flightEndUtc),
-                'flight_local_start' => $flightLocalStartValue,
-                'flight_local_end' => $flightLocalEndValue,
+                MetadataKey::LegLocalStart->value => $flightLocalStartValue,
+                MetadataKey::LegLocalEnd->value => $flightLocalEndValue,
                 'duration' => $durationLabel,
             ],
         ];

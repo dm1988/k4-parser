@@ -6,6 +6,7 @@ use App\DTOs\DutyEvent;
 use App\DTOs\Flight;
 use App\Mappers\DutyEventMapper;
 use App\Mappers\FlightMapper;
+use App\Enums\MetadataKey;
 
 readonly class ParserResultViewModel
 {
@@ -51,10 +52,10 @@ readonly class ParserResultViewModel
                 continue;
             }
 
-            $flight = app(FlightMapper::class)->fromCalendarEvent($event, $event['download_id'] ?? null);
+            $flight = app(FlightMapper::class)->fromCalendarEvent($event, $event[MetadataKey::DownloadId->value] ?? null);
 
             if ($flight !== null) {
-                $downloadId = (string) ($event['download_id'] ?? '');
+                $downloadId = (string) ($event[MetadataKey::DownloadId->value] ?? '');
                 $eventViewModels[] = $downloadId === ''
                     ? $flight
                     : $flight->withDownloadUrl(route('parse.export.event', ['eventId' => $downloadId, 'parse_key' => $parseKey]));
@@ -62,10 +63,10 @@ readonly class ParserResultViewModel
                 continue;
             }
 
-            $duty = app(DutyEventMapper::class)->fromCalendarEvent($event, $event['download_id'] ?? null);
+            $duty = app(DutyEventMapper::class)->fromCalendarEvent($event, $event[MetadataKey::DownloadId->value] ?? null);
 
             if ($duty !== null) {
-                $downloadId = (string) ($event['download_id'] ?? '');
+                $downloadId = (string) ($event[MetadataKey::DownloadId->value] ?? '');
                 $eventViewModels[] = $downloadId === ''
                     ? $duty
                     : $duty->withDownloadUrl(route('parse.export.event', ['eventId' => $downloadId, 'parse_key' => $parseKey]));

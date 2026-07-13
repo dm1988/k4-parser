@@ -4,6 +4,7 @@ namespace App\Mappers;
 
 use App\DTOs\DutyEvent;
 use App\Enums\ParserEventType;
+use App\Enums\MetadataKey;
 use Carbon\CarbonImmutable;
 
 final class DutyEventMapper
@@ -34,20 +35,20 @@ final class DutyEventMapper
             typeIcon: (string) ($event['typeIcon'] ?? $event['type_icon'] ?? $eventType->icon()),
             scheduleLabel: $scheduleLabel,
             durationLabel: $durationLabel,
-            isDeadhead: (bool) ($metadata['deadhead'] ?? $event['is_deadhead'] ?? false),
+            isDeadhead: (bool) ($metadata[MetadataKey::Deadhead->value] ?? $event['is_deadhead'] ?? false),
             badgeColor: (string) ($event['badgeColor'] ?? $event['badge_color'] ?? $eventType->badgeColor()),
-            downloadUrl: (string) ($metadata['download_url'] ?? $event['download_url'] ?? ''),
-            downloadId: $downloadId ?? $this->nullableString($event, 'download_id'),
+            downloadUrl: (string) ($metadata[MetadataKey::DownloadUrl->value] ?? $event['download_url'] ?? ''),
+            downloadId: $downloadId ?? $this->nullableString($event, MetadataKey::DownloadId->value),
             station: $this->nullableString($metadata, 'station'),
             activityCode: $this->nullableString($metadata, 'activity_code'),
             layoverDuration: $this->nullableString($metadata, 'layover_duration'),
-            crewCount: $this->nullableInt($metadata, 'crew_count'),
-            operatingCrewCount: $this->nullableInt($metadata, 'operating_crew_count'),
-            deadheadingCrewCount: $this->nullableInt($metadata, 'deadheading_crew_count'),
+            crewCount: $this->nullableInt($metadata, MetadataKey::CrewCount->value),
+            operatingCrewCount: $this->nullableInt($metadata, MetadataKey::OperatingCrewCount->value),
+            deadheadingCrewCount: $this->nullableInt($metadata, MetadataKey::DeadheadingCrewCount->value),
             start: $start,
             end: $end,
             timezone: $this->nullableString($event, 'timezone'),
-            rawLines: $this->stringList($metadata['raw_lines'] ?? []),
+            rawLines: $this->stringList($metadata[MetadataKey::RawLines->value] ?? []),
             metadata: $metadata,
         );
     }

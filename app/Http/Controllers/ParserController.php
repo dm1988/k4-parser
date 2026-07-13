@@ -6,6 +6,7 @@ use App\Actions\ExportFlightDutyCalendarEvent;
 use App\DTOs\Flight;
 use App\DTOs\ParsedEventDTO;
 use App\Enums\ParserEventType;
+use App\Enums\MetadataKey;
 use App\Services\IcsCalendarService;
 use App\Services\ParseRequestLogger;
 use App\Services\RosterDocumentParser;
@@ -316,7 +317,7 @@ class ParserController extends Controller
 
             // 3. Fallback for array matrices
             if (is_array($event)) {
-                $event['download_id'] = $downloadId;
+                $event[MetadataKey::DownloadId->value] = $downloadId;
                 $events[] = $event;
             }
         }
@@ -351,7 +352,7 @@ class ParserController extends Controller
                 return $event;
             }
 
-            if (is_array($event) && ($event['download_id'] ?? null) === $eventId) {
+            if (is_array($event) && ($event[MetadataKey::DownloadId->value] ?? null) === $eventId) {
                 return $event;
             }
         }

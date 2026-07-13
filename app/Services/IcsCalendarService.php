@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DTOs\Flight;
 use App\Enums\ParserEventType;
 use App\Mappers\FlightMapper;
+use App\Enums\MetadataKey;
 use Illuminate\Support\Carbon;
 
 class IcsCalendarService
@@ -40,12 +41,12 @@ class IcsCalendarService
             $start = Carbon::parse($event['start'])->setTimezone('UTC');
             $end = Carbon::parse($event['end'])->setTimezone('UTC');
 
-            $event['metadata']['utc_start'] = $start->format('m-d H:i').' Z';
-            $event['metadata']['utc_end'] = $end->format('m-d H:i').' Z';
-            $event['metadata']['local_start'] = $start->format('m-d H:i').' ';
-            $event['metadata']['local_end'] = $end->format('m-d H:i').' ';
+            $event['metadata'][MetadataKey::UtcStart->value] = $start->format('m-d H:i').' Z';
+            $event['metadata'][MetadataKey::UtcEnd->value] = $end->format('m-d H:i').' Z';
+            $event['metadata'][MetadataKey::LocalStart->value] = $start->format('m-d H:i').' ';
+            $event['metadata'][MetadataKey::LocalEnd->value] = $end->format('m-d H:i').' ';
 
-            $flightAwareUrl = $event['metadata']['flightaware_url'] ?? null;
+            $flightAwareUrl = $event['metadata'][MetadataKey::FlightawareUrl->value] ?? null;
             $description = $this->formatDescription($event);
             $uid = sha1($event['title'].$event['start'].$event['end']);
 
@@ -94,11 +95,21 @@ class IcsCalendarService
 
         foreach ($metadata as $key => $value) {
             // Drop clutter fields that aren't useful in a calendar note
-            if (in_array($key, ['raw_lines', 'flightaware_url', 'duty_raw_lines', 'crew', 'crew_count', 'operating_crew_count', 'deadheading_crew_count', 'origin', 'destination'], true)) {
+            if (in_array($key, [
+                MetadataKey::RawLines->value,
+                MetadataKey::FlightawareUrl->value,
+                MetadataKey::DutyRawLines->value,
+                'crew',
+                MetadataKey::CrewCount->value,
+                MetadataKey::OperatingCrewCount->value,
+                MetadataKey::DeadheadingCrewCount->value,
+                MetadataKey::Origin->value,
+                MetadataKey::Destination->value,
+            ], true)) {
                 continue;
             }
 
-            if ($key === 'deadhead' && ! $value) {
+            if ($key === MetadataKey::Deadhead->value && ! $value) {
                 continue;
             }
 
@@ -112,7 +123,7 @@ class IcsCalendarService
             $formattedLine = "• {$label}: {$stringVal}";
 
             // Sort fields into their respective blocks
-            if (in_array($key, ['utc_start', 'utc_end'])) {
+            if (in_array($key, [MetadataKey::UtcStart->value, MetadataKey::UtcEnd->value], true)) {
                 $timings[] = $formattedLine;
             } else {
                 $flightDetails[] = "• {$label}: {$stringVal}";
@@ -145,8 +156,8 @@ class IcsCalendarService
 
     private function formatRouteLine(array $metadata): ?string
     {
-        $origin = $metadata['origin'] ?? null;
-        $destination = $metadata['destination'] ?? null;
+        $origin = $metadata[MetadataKey::Origin->value] ?? null;
+        $destination = $metadata[MetadataKey::Destination->value] ?? null;
 
         if (! is_string($origin) || ! is_string($destination) || $origin === '' || $destination === '') {
             return null;
@@ -168,7 +179,7 @@ class IcsCalendarService
         if ($crew === [] || $summary['crew_count'] === null) {
             $candidateLines = [];
 
-            foreach (['duty_raw_lines', 'raw_lines'] as $key) {
+            foreach ([MetadataKey::DutyRawLines->value, MetadataKey::RawLines->value] as $key) {
                 if (is_array($metadata[$key] ?? null)) {
                     $candidateLines = array_merge($candidateLines, $metadata[$key]);
                 }
@@ -195,7 +206,7 @@ class IcsCalendarService
             $metadata['crew'] = $crew;
         }
 
-        foreach (['crew_count', 'operating_crew_count', 'deadheading_crew_count'] as $key) {
+        foreach ([MetadataKey::CrewCount->value, MetadataKey::OperatingCrewCount->value, MetadataKey::DeadheadingCrewCount->value] as $key) {
             if (($metadata[$key] ?? null) === null && $summary[$key] !== null) {
                 $metadata[$key] = $summary[$key];
             }
@@ -208,16 +219,16 @@ class IcsCalendarService
     {
         $lines = [];
 
-        if (($metadata['crew_count'] ?? null) !== null) {
-            $lines[] = '• Crew count: '.$metadata['crew_count'];
+        if (($metadata[MetadataKey::CrewCount->value] ?? null) !== null) {
+            $lines[] = '• Crew count: '.$metadata[MetadataKey::CrewCount->value];
         }
 
-        if (($metadata['operating_crew_count'] ?? null) !== null) {
-            $lines[] = '• Operating crew count: '.$metadata['operating_crew_count'];
+        if (($metadata[MetadataKey::OperatingCrewCount->value] ?? null) !== null) {
+            $lines[] = '• Operating crew count: '.$metadata[MetadataKey::OperatingCrewCount->value];
         }
 
-        if (($metadata['deadheading_crew_count'] ?? null) !== null) {
-            $lines[] = '• Deadheading crew count: '.$metadata['deadheading_crew_count'];
+        if (($metadata[MetadataKey::DeadheadingCrewCount->value] ?? null) !== null) {
+            $lines[] = '• Deadheading crew count: '.$metadata[MetadataKey::DeadheadingCrewCount->value];
         }
 
         $crew = is_array($metadata['crew'] ?? null) ? $metadata['crew'] : [];

@@ -3,6 +3,7 @@
 namespace App\View\Models\Parser;
 
 use App\Enums\ParserEventType;
+use App\Enums\MetadataKey;
 use Carbon\CarbonImmutable;
 
 readonly class ParserEventViewModel
@@ -32,7 +33,7 @@ readonly class ParserEventViewModel
         $hours = intdiv($durationMinutes, 60);
         $minutes = $durationMinutes % 60;
         $eventType = ParserEventType::fromEvent($event);
-        $downloadId = (string) ($event['download_id'] ?? '');
+        $downloadId = (string) ($event[MetadataKey::DownloadId->value] ?? '');
 
         return new self(
             title: (string) ($event['title'] ?? 'Untitled event'),
@@ -47,7 +48,7 @@ readonly class ParserEventViewModel
                 : $start->format('M j, g:i A').' -> '.$end->format('M j, g:i A'),
             durationLabel: $hours > 0 ? "{$hours}h {$minutes}m" : "{$minutes}m",
             tailNumber: self::tailNumber($event),
-            isDeadhead: (bool) data_get($event, 'metadata.deadhead', data_get($event, 'is_deadhead', false)),
+            isDeadhead: (bool) data_get($event, 'metadata.'.MetadataKey::Deadhead->value, data_get($event, 'is_deadhead', false)),
             badgeColor: $eventType->badgeColor(),
             downloadUrl: route('parse.export.event', ['eventId' => $downloadId, 'parse_key' => $parseKey]),
         );
@@ -55,7 +56,7 @@ readonly class ParserEventViewModel
 
     private static function tailNumber(array $event): ?string
     {
-        $tailNumber = strtoupper((string) data_get($event, 'metadata.tail_number', ''));
+        $tailNumber = strtoupper((string) data_get($event, 'metadata.'.MetadataKey::TailNumber->value, ''));
 
         return $tailNumber === '' ? null : $tailNumber;
     }
