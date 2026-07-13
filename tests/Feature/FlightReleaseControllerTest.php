@@ -60,6 +60,7 @@ class FlightReleaseControllerTest extends TestCase
 
         $this->get(route('flight-release.index'))
             ->assertOk()
+            ->assertSeeText('Extracted flight plan')
             ->assertSeeText('Departure')
             ->assertSeeText('PANC')
             ->assertSeeText('Destination')
@@ -68,10 +69,10 @@ class FlightReleaseControllerTest extends TestCase
             ->assertSeeText('Alternate')
             ->assertSeeText('KRSW')
             ->assertSeeText('Southwest Florida International Airport')
-            ->assertSeeText('Initial altitude')
             ->assertSeeText('FL 330')
-            ->assertSeeText('Duration')
             ->assertSeeText('07h12m')
+            ->assertSeeText('Airport details')
+            ->assertSeeText('Route')
             ->assertSeeText('Copy route')
             ->assertSee('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105', escape: false)
             ->assertSee(' UMKAL UMKAL6A', escape: false);
