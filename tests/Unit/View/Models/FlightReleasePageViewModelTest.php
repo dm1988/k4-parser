@@ -38,6 +38,52 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
+    public function it_classifies_route_tokens_for_display(): void
+    {
+        $viewModel = new FlightReleasePageViewModel([
+            'route' => 'DCT OSUDO4A Q139 DSM/N0486F350 GETME',
+        ]);
+
+        $this->assertSame([
+            [
+                'value' => 'DCT',
+                'is_airway' => false,
+                'is_speed' => false,
+                'is_direct' => true,
+                'class' => 'text-[#4A5568]/50',
+            ],
+            [
+                'value' => 'OSUDO4A',
+                'is_airway' => false,
+                'is_speed' => false,
+                'is_direct' => false,
+                'class' => 'text-[#0B0E14]',
+            ],
+            [
+                'value' => 'Q139',
+                'is_airway' => true,
+                'is_speed' => false,
+                'is_direct' => false,
+                'class' => 'font-bold text-[#1B365D]',
+            ],
+            [
+                'value' => 'DSM/N0486F350',
+                'is_airway' => false,
+                'is_speed' => true,
+                'is_direct' => false,
+                'class' => 'text-amber-700',
+            ],
+            [
+                'value' => 'GETME',
+                'is_airway' => false,
+                'is_speed' => false,
+                'is_direct' => false,
+                'class' => 'text-[#0B0E14]',
+            ],
+        ], $viewModel->routeTokens());
+    }
+
+    #[Test]
     public function it_builds_airport_display_fields_from_session_arrays(): void
     {
         $viewModel = new FlightReleasePageViewModel([

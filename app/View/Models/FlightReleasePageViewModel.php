@@ -103,6 +103,43 @@ readonly class FlightReleasePageViewModel
         return $this->stringValue('route');
     }
 
+    /**
+     * @return list<array{
+     *     value: string,
+     *     is_airway: bool,
+     *     is_speed: bool,
+     *     is_direct: bool,
+     *     class: string
+     * }>
+     */
+    public function routeTokens(): array
+    {
+        $tokens = preg_split('/\s+/', trim($this->route()));
+
+        if ($tokens === false) {
+            return [];
+        }
+
+        return array_values(array_map(function (string $token): array {
+            $isAirway = preg_match('/^(?:[A-Z]\d+|Q\d+)$/', $token) === 1;
+            $isSpeed = str_contains($token, '/');
+            $isDirect = $token === 'DCT';
+
+            return [
+                'value' => $token,
+                'is_airway' => $isAirway,
+                'is_speed' => $isSpeed,
+                'is_direct' => $isDirect,
+                'class' => match (true) {
+                    $isSpeed => 'text-amber-700',
+                    $isAirway => 'font-bold text-[#1B365D]',
+                    $isDirect => 'text-[#4A5568]/50',
+                    default => 'text-[#0B0E14]',
+                },
+            ];
+        }, array_values(array_filter($tokens, static fn (string $token): bool => $token !== ''))));
+    }
+
     private function stringValue(string $key): string
     {
         $value = $this->flightPlan[$key] ?? null;

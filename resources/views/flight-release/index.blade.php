@@ -99,11 +99,19 @@
 
                             <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
                                 <div class="sm:flex-1">
+                                    <div class="rounded-md border border-[#1B365D]/10 bg-white p-4">
+                                        <p class="break-words font-mono text-xs leading-relaxed text-[#0B0E14]">
+                                            @foreach ($model->routeTokens() as $token)
+                                                <span class="{{ $token['class'] }}">{{ $token['value'] }}</span>@if (! $loop->last) <span class="text-[#0B0E14]"> </span>@endif
+                                            @endforeach
+                                        </p>
+                                    </div>
+
                                     <textarea
                                         id="flight-route-output"
                                         readonly
                                         rows="4"
-                                        class="block w-full rounded-md border border-[#1B365D]/10 bg-white p-4 font-mono text-sm text-[#0B0E14]"
+                                        class="sr-only"
                                     >{{ $model->route() }}</textarea>
 
                                     <p
