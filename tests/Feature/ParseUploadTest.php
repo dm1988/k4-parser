@@ -20,7 +20,7 @@ class ParseUploadTest extends TestCase
 
         $page->assertOk();
         $page->assertSee('id="parserStatus"', false);
-        $page->assertSee('class="mt-4 hidden rounded-lg border border-[#1B365D]/10 bg-[#1B365D]/[0.03] px-4 py-3"', false);
+        $page->assertSee('class="mt-4 hidden rounded-lg border border-[#1B365D]/10 px-4 py-3"', false);
         $page->assertSee('data-state="idle"', false);
         $page->assertSee('data-parse-submit', false);
         $page->assertSee('disabled:bg-[#1B365D]/55', false);
