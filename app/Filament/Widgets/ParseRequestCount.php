@@ -8,6 +8,7 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 class ParseRequestCount extends StatsOverviewWidget
 {
     protected static ?int $sort = 3;
+    protected int|string|array $columnSpan = 1;
 
     protected function getStats(): array
     {

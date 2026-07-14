@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 class ParseRequestsPerDayChart extends ChartWidget
 {
     protected static ?int $sort = 4;
+    protected int|string|array $columnSpan = 1;
 
     protected ?string $heading = 'Parse Requests Per Day';
 
