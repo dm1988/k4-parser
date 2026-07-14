@@ -78,7 +78,7 @@ readonly class FlightCardViewModel
 
     public function dutyDownloadUrl(): ?string
     {
-        if (! $this->hasDutyCalendarDownload()) {
+        if (! $this->showsDutyDownload()) {
             return null;
         }
 
@@ -101,6 +101,12 @@ readonly class FlightCardViewModel
             && $this->legLocalEndLabel() !== '—'
             && $this->dutyLocalStartLabel() !== '—'
             && $this->dutyLocalEndLabel() !== '—';
+    }
+
+    public function showsDutyDownload(): bool
+    {
+        return (auth()->user()?->canExportScheduleParserDuty() ?? false)
+            && $this->hasDutyCalendarDownload();
     }
 
     public function hasLegLocalTimes(): bool

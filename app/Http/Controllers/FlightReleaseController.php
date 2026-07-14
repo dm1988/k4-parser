@@ -7,14 +7,17 @@ use App\Http\Requests\StoreFlightReleaseRequest;
 use App\Services\FlightRouteExtractor;
 use App\View\Models\FlightReleasePageViewModel;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class FlightReleaseController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $this->authorizeFlightRelease($request);
+
         return view('flight-release.index', [
             'model' => FlightReleasePageViewModel::fromCurrentSession(),
         ]);
@@ -24,6 +27,8 @@ class FlightReleaseController extends Controller
         StoreFlightReleaseRequest $request,
         FlightRouteExtractor $extractor,
     ): RedirectResponse {
+        $this->authorizeFlightRelease($request);
+
         $uploadedFile = $request->file('flight_release');
         $disk = Storage::disk('user_flight_releases');
         $path = $uploadedFile->store('', 'user_flight_releases');
@@ -49,5 +54,16 @@ class FlightReleaseController extends Controller
         return redirect()
             ->route('flight-release.index')
             ->with('flight_plan', $flightPlan);
+    }
+
+    private function authorizeFlightRelease(Request $request): void
+    {
+        if (! config('features.flight_release.enabled', true)) {
+            abort(404);
+        }
+
+        if (! $request->user()?->canUseFlightRelease()) {
+            abort(403);
+        }
     }
 }

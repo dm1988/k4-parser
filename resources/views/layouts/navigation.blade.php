@@ -12,13 +12,17 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    @if (Auth::user()?->canUseScheduleParser())
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Parse Schedule') }}
                     </x-nav-link>
-                    @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
+                    @endif
+                    @if (Auth::user()?->canUseFlightRelease())
                     <x-nav-link :href="route('flight-release.index')" :active="request()->routeIs('flight-release.*')">
                         {{ __('Route Extractor') }}
                     </x-nav-link>
+                    @endif
+                    @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
                         <x-nav-link :href="route('filament.admin.pages.dashboard')" :active="request()->routeIs('filament.admin.*')">
                             {{ __('Admin Panel') }}
                         </x-nav-link>
@@ -90,13 +94,17 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
+            @if (Auth::user()?->canUseScheduleParser())
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Parse Schedule') }}
             </x-responsive-nav-link>
-            @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
+            @endif
+            @if (Auth::user()?->canUseFlightRelease())
             <x-responsive-nav-link :href="route('flight-release.index')" :active="request()->routeIs('flight-release.*')">
                 {{ __('Route Extractor') }}
             </x-responsive-nav-link>
+            @endif
+            @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
                 <x-responsive-nav-link :href="route('filament.admin.pages.dashboard')" :active="request()->routeIs('filament.admin.*')">
                     {{ __('Admin Panel') }}
                 </x-responsive-nav-link>

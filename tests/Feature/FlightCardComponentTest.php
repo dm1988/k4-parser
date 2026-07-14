@@ -6,6 +6,7 @@ use App\DTOs\Flight;
 use App\Models\User;
 use App\View\Models\Parser\FlightCardViewModel;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
 
 class FlightCardComponentTest extends TestCase
@@ -35,6 +36,21 @@ class FlightCardComponentTest extends TestCase
 
         $this->assertStringNotContainsString('title="Download duty .ics"', $html);
         $this->assertStringContainsString('title="Download .ics"', $html);
+    }
+
+    public function test_non_admins_can_see_the_duty_calendar_download_button_when_the_feature_is_enabled_for_all_users(): void
+    {
+        Config::set('features.schedule_parser.duty_export_for_all_users', true);
+
+        $user = User::factory()->make([
+            'role' => 'user',
+        ]);
+
+        $html = $this
+            ->actingAs($user)
+            ->renderFlightCard();
+
+        $this->assertStringContainsString('title="Download duty .ics"', $html);
     }
 
     private function renderFlightCard(): string

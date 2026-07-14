@@ -3,6 +3,7 @@
 namespace Tests\Unit\View\Models;
 
 use App\DTOs\Flight;
+use App\Models\User;
 use App\View\Models\Parser\FlightCardViewModel;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -46,6 +47,9 @@ class FlightCardViewModelTest extends TestCase
         ]);
 
         $model = FlightCardViewModel::fromFlight($flight);
+        $this->actingAs(User::factory()->make([
+            'role' => 'admin',
+        ]));
 
         $this->assertSame($flight, $model->flight);
         $this->assertSame('CKS 240', $model->heading());

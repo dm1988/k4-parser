@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\FlightRouteExtractor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Mockery\MockInterface;
@@ -17,13 +18,25 @@ class FlightReleaseControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_authenticated_user_can_view_the_flight_release_extractor_page(): void
+    public function test_admins_can_view_the_flight_release_extractor_page(): void
     {
-        $response = $this->actingAs(User::factory()->create())
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $response = $this->actingAs($admin)
             ->get(route('flight-release.index'));
 
         $response->assertOk();
         $response->assertSeeText('Flight Release Route Extractor');
+    }
+
+    public function test_non_admin_users_can_not_view_the_flight_release_extractor_page(): void
+    {
+        $response = $this->actingAs(User::factory()->create())
+            ->get(route('flight-release.index'));
+
+        $response->assertForbidden();
     }
 
     public function test_uploaded_pdf_route_is_displayed_after_extraction(): void
@@ -53,7 +66,9 @@ class FlightReleaseControllerTest extends TestCase
                 ->andReturn("OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105\n UMKAL UMKAL6A");
         });
 
-        $response = $this->actingAs(User::factory()->create())
+        $response = $this->actingAs(User::factory()->create([
+            'role' => 'admin',
+        ]))
             ->from(route('flight-release.index'))
             ->post(route('flight-release.store'), [
                 'flight_release' => UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'),
@@ -62,7 +77,9 @@ class FlightReleaseControllerTest extends TestCase
         $response->assertRedirect(route('flight-release.index'));
         $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
 
-        $this->get(route('flight-release.index'))
+        $this->actingAs(User::factory()->create([
+            'role' => 'admin',
+        ]))->get(route('flight-release.index'))
             ->assertOk()
             ->assertSeeText('Extracted flight plan')
             ->assertSeeText('Departure')
@@ -109,7 +126,9 @@ class FlightReleaseControllerTest extends TestCase
                 ->andReturn('DCT TEST');
         });
 
-        $response = $this->actingAs(User::factory()->create())
+        $response = $this->actingAs(User::factory()->create([
+            'role' => 'admin',
+        ]))
             ->from(route('flight-release.index'))
             ->post(route('flight-release.store'), [
                 'flight_release' => UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'),
@@ -117,7 +136,9 @@ class FlightReleaseControllerTest extends TestCase
 
         $response->assertRedirect(route('flight-release.index'));
 
-        $this->get(route('flight-release.index'))
+        $this->actingAs(User::factory()->create([
+            'role' => 'admin',
+        ]))->get(route('flight-release.index'))
             ->assertOk()
             ->assertSeeText('Airport details unavailable.')
             ->assertSeeText('No alternate airport listed.');
@@ -158,7 +179,9 @@ class FlightReleaseControllerTest extends TestCase
             'route' => 'DCT TEST',
         ];
 
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(User::factory()->create([
+            'role' => 'admin',
+        ]))
             ->withSession(['flight_plan' => $flightPlan])
             ->get(route('flight-release.index'))
             ->assertOk()
@@ -169,7 +192,9 @@ class FlightReleaseControllerTest extends TestCase
 
     public function test_only_pdf_uploads_are_allowed(): void
     {
-        $response = $this->actingAs(User::factory()->create())
+        $response = $this->actingAs(User::factory()->create([
+            'role' => 'admin',
+        ]))
             ->from(route('flight-release.index'))
             ->post(route('flight-release.store'), [
                 'flight_release' => UploadedFile::fake()->create('flight-release.txt', 8, 'text/plain'),
@@ -195,7 +220,9 @@ class FlightReleaseControllerTest extends TestCase
                 ->andThrow(FlightRouteNotFoundException::routeSegmentMissing());
         });
 
-        $response = $this->actingAs(User::factory()->create())
+        $response = $this->actingAs(User::factory()->create([
+            'role' => 'admin',
+        ]))
             ->from(route('flight-release.index'))
             ->post(route('flight-release.store'), [
                 'flight_release' => UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'),
@@ -208,5 +235,16 @@ class FlightReleaseControllerTest extends TestCase
 
         $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
         Log::shouldHaveReceived('warning')->once();
+    }
+
+    public function test_flight_release_returns_not_found_when_the_feature_is_disabled(): void
+    {
+        Config::set('features.flight_release.enabled', false);
+
+        $response = $this->actingAs(User::factory()->create([
+            'role' => 'admin',
+        ]))->get(route('flight-release.index'));
+
+        $response->assertNotFound();
     }
 }

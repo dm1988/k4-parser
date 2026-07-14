@@ -48,4 +48,37 @@ class User extends Authenticatable implements FilamentUser
     {
         return in_array($this->role, ['admin', 'super_admin'], true);
     }
+
+    public function canUseFlightRelease(): bool
+    {
+        return $this->canUseConfiguredFeature(
+            enabled: (bool) config('features.flight_release.enabled', true),
+            forAllUsers: (bool) config('features.flight_release.for_all_users', false),
+        );
+    }
+
+    public function canUseScheduleParser(): bool
+    {
+        return $this->canUseConfiguredFeature(
+            enabled: (bool) config('features.schedule_parser.enabled', true),
+            forAllUsers: (bool) config('features.schedule_parser.for_all_users', true),
+        );
+    }
+
+    public function canExportScheduleParserDuty(): bool
+    {
+        return $this->canUseConfiguredFeature(
+            enabled: (bool) config('features.schedule_parser.enabled', true),
+            forAllUsers: (bool) config('features.schedule_parser.duty_export_for_all_users', false),
+        );
+    }
+
+    private function canUseConfiguredFeature(bool $enabled, bool $forAllUsers): bool
+    {
+        if (! $enabled) {
+            return false;
+        }
+
+        return $forAllUsers || $this->isAdmin();
+    }
 }

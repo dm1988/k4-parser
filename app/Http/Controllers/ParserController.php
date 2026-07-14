@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Actions\ExportFlightDutyCalendarEvent;
 use App\DTOs\Flight;
 use App\DTOs\ParsedEventDTO;
-use App\Enums\ParserEventType;
 use App\Enums\MetadataKey;
+use App\Enums\ParserEventType;
 use App\Services\IcsCalendarService;
 use App\Services\ParseRequestLogger;
 use App\Services\RosterDocumentParser;
@@ -39,6 +39,8 @@ class ParserController extends Controller
 
     public function parseFlight(Request $request)
     {
+        $this->authorizeScheduleParser($request);
+
         $text = $request->validate([
             'text' => ['required', 'string'],
         ])['text'];
@@ -71,6 +73,8 @@ class ParserController extends Controller
 
     public function parseHotel(Request $request)
     {
+        $this->authorizeScheduleParser($request);
+
         $text = $request->validate([
             'text' => ['required', 'string'],
         ])['text'];
@@ -103,6 +107,8 @@ class ParserController extends Controller
 
     public function parseRoster(Request $request)
     {
+        $this->authorizeScheduleParser($request);
+
         $data = $request->validate([
             'file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,bmp,tif,tiff,webp', 'max:20480', 'required_without:text'],
             'text' => ['nullable', 'string', 'required_without:file'],
@@ -182,6 +188,8 @@ class ParserController extends Controller
 
     public function exportCalendar(Request $request)
     {
+        $this->authorizeScheduleParser($request);
+
         $sessionResult = $this->resolveExportResult($request);
 
         if (! is_array($sessionResult) || ! isset($sessionResult['parsed']['calendar_events'])) {
@@ -213,6 +221,8 @@ class ParserController extends Controller
 
     public function exportCalendarEvent(Request $request, string $eventId)
     {
+        $this->authorizeScheduleParser($request);
+
         $sessionResult = $this->resolveExportResult($request);
 
         if (! is_array($sessionResult) || ! isset($sessionResult['parsed']['calendar_events'])) {
@@ -241,6 +251,8 @@ class ParserController extends Controller
         string $eventId,
         ExportFlightDutyCalendarEvent $exportFlightDutyCalendarEvent,
     ): Response {
+        $this->authorizeScheduleParserDutyExport($request);
+
         $sessionResult = $this->resolveExportResult($request);
 
         if (! is_array($sessionResult) || ! isset($sessionResult['parsed']['calendar_events'])) {
@@ -463,5 +475,27 @@ class ParserController extends Controller
         }
 
         return $value;
+    }
+
+    private function authorizeScheduleParser(Request $request): void
+    {
+        if (! config('features.schedule_parser.enabled', true)) {
+            abort(404);
+        }
+
+        if (! $request->user()?->canUseScheduleParser()) {
+            abort(403);
+        }
+    }
+
+    private function authorizeScheduleParserDutyExport(Request $request): void
+    {
+        if (! config('features.schedule_parser.enabled', true)) {
+            abort(404);
+        }
+
+        if (! $request->user()?->canExportScheduleParserDuty()) {
+            abort(403);
+        }
     }
 }

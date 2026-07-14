@@ -16,6 +16,7 @@ readonly class ParserPageViewModel
         public array $selectedTypes,
         public array $filterOptions,
         public string $text,
+        public bool $available,
     ) {}
 
     /**
@@ -40,8 +41,8 @@ readonly class ParserPageViewModel
     public static function fromSession(mixed $result, array $oldInput = []): self
     {
         // 1. Ensure result filters fall back gracefully to an array if null/missing
-        $cachedFilters = is_array($result) && isset($result['filters']) && is_array($result['filters']) 
-            ? $result['filters'] 
+        $cachedFilters = is_array($result) && isset($result['filters']) && is_array($result['filters'])
+            ? $result['filters']
             : [];
 
         // 2. Resolve selected event types prioritizing user form input over historical filters
@@ -62,6 +63,7 @@ readonly class ParserPageViewModel
                 ParserEventType::filterable(),
             ),
             text: is_string($oldInput['text'] ?? null) ? $oldInput['text'] : '',
+            available: auth()->user()?->canUseScheduleParser() ?? false,
         );
     }
 
