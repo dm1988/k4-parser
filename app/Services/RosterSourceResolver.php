@@ -233,18 +233,18 @@ class RosterSourceResolver
 
         try {
             $process->mustRun();
+            $text = trim($process->getOutput());
         } catch (Throwable $exception) {
             report($exception);
-            $this->cleanupTempFile($optimizedPath, $path);
+
             throw ValidationException::withMessages([
                 'image' => 'OCR failed. Try a sharper roster screenshot or paste the extracted text instead.',
             ]);
+        } finally {
+            // Pass both paths. The variadic helper will safely deduplicate them
+            // if $optimizedPath fell back to $path.
+            $this->cleanupTempFiles($optimizedPath, $path);
         }
-
-        $text = trim($process->getOutput());
-
-        // Clean up the temporary file
-        $this->cleanupTempFile($optimizedPath, $path);
 
         if ($text === '') {
             throw ValidationException::withMessages([
@@ -258,10 +258,15 @@ class RosterSourceResolver
         return $text;
     }
 
-    private function cleanupTempFile($optimizedPath, $originalPath)
+    /**
+     * Clean up any generated temporary files safely.
+     */
+    private function cleanupTempFiles(string ...$paths): void
     {
-        if ($optimizedPath !== $originalPath && file_exists($optimizedPath)) {
-            unlink($optimizedPath);
+        foreach (array_unique($paths) as $path) {
+            if (file_exists($path)) {
+                unlink($path);
+            }
         }
     }
 }
