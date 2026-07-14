@@ -14,6 +14,18 @@ use Tests\TestCase;
 
 class ParseUploadTest extends TestCase
 {
+    public function test_parse_page_renders_processing_status_panel_and_disabled_button_styles(): void
+    {
+        $page = $this->actingAs(User::factory()->make())->get(route('parse.index'));
+
+        $page->assertOk();
+        $page->assertSee('id="parserStatus"', false);
+        $page->assertSee('class="mt-4 hidden rounded-lg border border-[#1B365D]/10 bg-[#1B365D]/[0.03] px-4 py-3"', false);
+        $page->assertSee('data-state="idle"', false);
+        $page->assertSee('data-parse-submit', false);
+        $page->assertSee('disabled:bg-[#1B365D]/55', false);
+    }
+
     public function test_parse_pasted_text_stores_parse_key_in_session_and_result_in_cache()
     {
         $text = "Trip Information\nDate: 13Jun2026\nTrip ID: 13131\nCrew on trip - (5)\nCP 4620 Michael Blackburn";
