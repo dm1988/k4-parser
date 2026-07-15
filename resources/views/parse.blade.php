@@ -5,16 +5,16 @@ $viewModel ??= \App\View\Models\Parser\ParserPageViewModel::fromSession(null);
 @endphp
 
 @if (! $viewModel->available)
-<main class="mx-auto max-w-4xl px-5 py-6">
+<section class="mx-auto max-w-4xl px-5 py-6">
     <section class="rounded-lg border border-amber-200 bg-amber-50 p-5 text-amber-900">
         <p class="text-sm font-semibold uppercase tracking-[0.16em]">Feature unavailable</p>
         <h2 class="mt-2 text-2xl font-bold">Schedule parser access is currently unavailable.</h2>
         <p class="mt-3 text-sm leading-6">This feature is disabled or restricted for your account.</p>
     </section>
-</main>
+</section>
 @else
 
-<main
+<div
     class="mx-auto grid max-w-6xl gap-6 px-5 py-6 @if($viewModel->hasResult()) lg:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)] @endif">
     <section>
         <div class="mb-5 rounded-lg bg-[#1B365D] p-5 text-[#F8F9FA] shadow-lg shadow-[#1B365D]/10">
@@ -42,5 +42,5 @@ $viewModel ??= \App\View\Models\Parser\ParserPageViewModel::fromSession(null);
     @if($viewModel->hasResult())
     <x-parser.result :model="$viewModel->result" />
     @endif
-</main>
+</div>
 @endif

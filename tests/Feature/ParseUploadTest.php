@@ -17,6 +17,7 @@ class ParseUploadTest extends TestCase
     public function test_parse_page_renders_processing_status_panel_and_disabled_button_styles(): void
     {
         $page = $this->actingAs(User::factory()->make())->get(route('parse.index'));
+        $content = $page->getContent();
 
         $page->assertOk();
         $page->assertSee('id="parserStatus"', false);
@@ -24,6 +25,8 @@ class ParseUploadTest extends TestCase
         $page->assertSee('data-state="idle"', false);
         $page->assertSee('data-parse-submit', false);
         $page->assertSee('disabled:bg-[#1B365D]/55', false);
+        $this->assertLessThanOrEqual(1, substr_count($content, '<main'));
+        $this->assertSame(substr_count($content, '<main'), substr_count($content, '</main>'));
     }
 
     public function test_parse_pasted_text_stores_parse_key_in_session_and_result_in_cache()
