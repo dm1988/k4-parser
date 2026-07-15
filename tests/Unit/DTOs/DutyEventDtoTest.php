@@ -33,7 +33,7 @@ class DutyEventDtoTest extends TestCase
         $this->assertSame('CVG', $dto->station);
         $this->assertSame('R2', $dto->activityCode);
         $this->assertSame('2:00', $dto->layoverDuration);
-        $this->assertSame('Jun 13 • 7:35 AM - 9:35 AM', $dto->scheduleLabel);
+        $this->assertSame('Jun 13 • 0735 Z - 0935 Z', $dto->scheduleLabel);
         $this->assertSame('2h 0m', $dto->durationLabel);
         $this->assertSame(['Crew list'], $dto->rawLines);
     }

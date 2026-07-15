@@ -61,6 +61,8 @@ final class DutyEventMapper
 
         $start = CarbonImmutable::parse($startValue);
         $end = CarbonImmutable::parse($endValue);
+        $utcStart = $start->setTimezone('UTC');
+        $utcEnd = $end->setTimezone('UTC');
         $sameDay = $start->isSameDay($end);
         $durationMinutes = $start->diffInMinutes($end);
         $hours = intdiv($durationMinutes, 60);
@@ -69,8 +71,8 @@ final class DutyEventMapper
         return [
             $scheduleLabel ?? (
                 $sameDay
-                    ? $start->format('M j • g:i A').' - '.$end->format('g:i A')
-                    : $start->format('M j, g:i A').' -> '.$end->format('M j, g:i A')
+                    ? $utcStart->format('M j').' • '.$utcStart->format('Hi \Z').' - '.$utcEnd->format('Hi \Z')
+                    : $utcStart->format('M j, Hi \Z').' -> '.$utcEnd->format('M j, Hi \Z')
             ),
             $durationLabel ?? ($hours > 0 ? "{$hours}h {$minutes}m" : "{$minutes}m"),
         ];
