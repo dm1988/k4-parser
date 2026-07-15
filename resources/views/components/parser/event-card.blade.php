@@ -14,21 +14,21 @@
         <div class="flex flex-nowrap items-center justify-between gap-3">
             <div class="flex min-w-0 items-center gap-3">
                 <!-- Icon and Title -->
-                <div class="flex items-center gap-2 min-w-0">
+                <div class="flex min-w-0 shrink-0 items-center gap-2">
                     <h3 class="truncate font-mono text-[1.05rem] font-semibold uppercase tracking-[0.12em] text-[#1B365D]">
                         {{ $event->title }}
                     </h3>
                 </div>
 
                 <!-- Brand gold separator dot -->
-                <span aria-hidden="true" class="h-1.5 w-1.5 rounded-full bg-[#C5A059]"></span>
+                <span aria-hidden="true" class="shrink-0 h-1.5 w-1.5 rounded-full bg-[#C5A059]"></span>
 
                 <p class="text-[1.05rem] font-medium tracking-[0.01em] text-[#4A5568] truncate">
                     {{ $headerDateLabel }}
                 </p>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex shrink-0 items-center gap-2">
                 <span
                     class="inline-flex shrink-0 items-center gap-1 rounded-full {{ $event->badgeColor }} px-2.5 py-1 text-xs font-bold uppercase"
                     title="{{ $event->typeDescription }}">

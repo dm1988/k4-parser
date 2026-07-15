@@ -1,5 +1,5 @@
 <form method="POST" action="{{ route('parse.roster') }}" enctype="multipart/form-data" class="cc-card" id="parserForm"
-    x-data="parserForm()" x-on:submit="handleSubmit">
+    x-data="parserForm()" x-on:submit.submit="handleSubmit">
     @csrf
 
     <div class="border-b border-[#1B365D]/10 p-5">

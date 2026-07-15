@@ -7,18 +7,24 @@ export default () => ({
     progressTimers: [],
 
     init() {
-        window.addEventListener('pageshow', () => {
+        const handlePageShow = () => {
             this.clearProgressTimers();
             this.isSubmitting = false;
+        };
+
+        window.addEventListener('pageshow', handlePageShow);
+
+        this.$cleanup(() => {
+            window.removeEventListener('pageshow', handlePageShow);
         });
     },
 
     get statusPanelClasses() {
         return {
             hidden: !this.statusVisible,
-            'bg-[#C5A059]/10': this.statusState === 'ready',
-            'bg-[#1B365D]/10': this.statusState === 'processing',
-            'bg-[#1B365D]/[0.03]': ! ['ready', 'processing'].includes(this.statusState),
+            'bg-[#C5A059]/10 border border-[#C5A059]/20': this.statusState === 'ready',
+            'bg-[#1B365D]/10 border border-[#1B365D]/20': this.statusState === 'processing',
+            'bg-[#1B365D]/[0.03] border border-transparent': !['ready', 'processing'].includes(this.statusState),
         };
     },
 
@@ -26,18 +32,17 @@ export default () => ({
         return {
             'bg-[#C5A059]': this.statusState === 'ready',
             'bg-[#1B365D]': this.statusState === 'processing',
-            'bg-emerald-500': ! ['ready', 'processing'].includes(this.statusState),
+            'bg-emerald-500': !['ready', 'processing'].includes(this.statusState),
         };
     },
 
     handleFileChange(event) {
         const selectedFile = event.target.files?.[0];
 
-        if (! selectedFile) {
+        if (!selectedFile) {
             this.clearProgressTimers();
             this.statusVisible = false;
             this.statusState = 'idle';
-
             return;
         }
 
@@ -60,6 +65,7 @@ export default () => ({
     handleSubmit() {
         this.clearProgressTimers();
         this.isSubmitting = true;
+        
         this.setStatus(
             'processing',
             'Uploading your file...',
@@ -105,14 +111,19 @@ export default () => ({
     },
 
     formatFileSize(size) {
-        if (! Number.isFinite(size) || size <= 0) {
+        if (!Number.isFinite(size) || size < 0) {
             return null;
         }
-
-        if (size < 1024 * 1024) {
-            return `${(size / 1024).toFixed(1)} KB`;
+        if (size === 0) {
+            return '0 KB';
         }
 
-        return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+        const kb = size / 1024;
+        if (kb < 1024) {
+            return `${kb.toFixed(1)} KB`;
+        }
+
+        const mb = kb / 1024;
+        return `${mb.toFixed(1)} MB`;
     },
 });
