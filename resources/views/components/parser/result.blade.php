@@ -56,6 +56,7 @@
         </div>
     </section>
 
+    @if (auth()->user()?->isAdmin() ?? false)
     <!-- Raw JSON Component aligned with the overall style -->
     <details class="group rounded-lg border border-[#1B365D]/15 bg-white p-5 shadow-sm">
         <summary
@@ -67,5 +68,6 @@
         <pre
             class="mt-4 max-h-[28rem] overflow-auto rounded-md bg-[#0B0E14] p-4 text-xs text-[#C5A059] font-mono leading-relaxed border border-[#1B365D]/15 shadow-inner">{{ $model->rawJson }}</pre>
     </details>
+    @endif
 </aside>
 @endif
