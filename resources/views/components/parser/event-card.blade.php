@@ -10,7 +10,7 @@
 
 <article class="overflow-hidden rounded-lg border border-[#1B365D]/15 bg-white shadow-sm">
     <!-- HEADER: Aligns with the Flight Card visual system -->
-    <header class="border-b border-[#1B365D]/10 bg-[#F8FAFD] px-6 py-4 text-[#1B365D]">
+    <header class="border-b border-[#1B365D]/10 bg-[#E9F0F8] px-6 py-4 text-[#1B365D]">
         <div class="flex flex-nowrap items-center justify-between gap-3">
             <div class="flex min-w-0 items-center gap-3">
                 <!-- Icon and Title -->
