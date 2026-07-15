@@ -3,8 +3,19 @@
     <section class="rounded-lg border border-[#1B365D]/15 bg-white shadow-sm">
         <!-- REVISED HEADER: Removed harsh black background, matched to the soft slate/navy flight card style -->
         <div class="border-b border-[#1B365D]/10 bg-[#F8FAFD] px-5 py-4">
-            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#C5A059]">Manifest</p>
-            <h2 class="mt-1 text-lg font-bold text-[#1B365D]">Parsed Output</h2>
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#C5A059]">Manifest</p>
+                    <h2 class="mt-1 text-lg font-bold text-[#1B365D]">Parsed Output</h2>
+                </div>
+
+                @if ($model->exportUrl)
+                <a href="{{ $model->exportUrl }}"
+                    class="inline-flex items-center justify-center rounded-md bg-[#C5A059] px-4 py-2 text-sm font-semibold text-[#0B0E14] transition hover:bg-[#b6914b]">
+                    Download all (.ics)
+                </a>
+                @endif
+            </div>
         </div>
 
         <div class="space-y-4 p-5">
@@ -29,15 +40,6 @@
             </div>
 
             @if ($model->exportUrl)
-            <div
-                class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-[#1B365D]/10 pb-4">
-                <p class="text-sm text-[#4A5568]">Download the parsed events as a calendar file.</p>
-                <a href="{{ $model->exportUrl }}"
-                    class="inline-flex items-center justify-center rounded-md bg-[#C5A059] px-4 py-2 text-sm font-semibold text-[#0B0E14] transition hover:bg-[#b6914b]">
-                    Download all (.ics)
-                </a>
-            </div>
-
             <div class="space-y-3">
                 @foreach ($model->events as $event)
                 @if ($event instanceof \App\DTOs\Flight)
