@@ -2,8 +2,8 @@
 
 namespace App\View\Models\Parser;
 
-use App\Enums\ParserEventType;
 use App\Enums\MetadataKey;
+use App\Enums\ParserEventType;
 use Carbon\CarbonImmutable;
 
 readonly class ParserEventViewModel
@@ -22,6 +22,8 @@ readonly class ParserEventViewModel
         public bool $isDeadhead,
         public string $badgeColor,
         public string $downloadUrl,
+        public ?string $start = null,
+        public ?string $end = null,
     ) {}
 
     public static function fromArray(array $event, string $parseKey): self
@@ -34,6 +36,8 @@ readonly class ParserEventViewModel
         $minutes = $durationMinutes % 60;
         $eventType = ParserEventType::fromEvent($event);
         $downloadId = (string) ($event[MetadataKey::DownloadId->value] ?? '');
+        $utcStart = $start->setTimezone('UTC');
+        $utcEnd = $end->setTimezone('UTC');
 
         return new self(
             title: (string) ($event['title'] ?? 'Untitled event'),
@@ -42,16 +46,27 @@ readonly class ParserEventViewModel
             typeDescription: $eventType->description(),
             typeIcon: $eventType->icon(),
             // origin: (string) $event['origin'] ?? '',
-            // destination: (string) $event['destination'] ?? '', 
+            // destination: (string) $event['destination'] ?? '',
             scheduleLabel: $sameDay
-                ? $start->format('M j • g:i A').' - '.$end->format('g:i A')
-                : $start->format('M j, g:i A').' -> '.$end->format('M j, g:i A'),
+                ? $utcStart->format('M j').' • '.$utcStart->format('Hi \Z').' - '.$utcEnd->format('Hi \Z')
+                : $utcStart->format('M j, Hi \Z').' -> '.$utcEnd->format('M j, Hi \Z'),
             durationLabel: $hours > 0 ? "{$hours}h {$minutes}m" : "{$minutes}m",
             tailNumber: self::tailNumber($event),
             isDeadhead: (bool) data_get($event, 'metadata.'.MetadataKey::Deadhead->value, data_get($event, 'is_deadhead', false)),
             badgeColor: $eventType->badgeColor(),
             downloadUrl: route('parse.export.event', ['eventId' => $downloadId, 'parse_key' => $parseKey]),
+            start: $start->toIso8601String(),
+            end: $end->toIso8601String(),
         );
+    }
+
+    public function headingDateLabel(): string
+    {
+        if ($this->start === null) {
+            return $this->scheduleLabel;
+        }
+
+        return CarbonImmutable::parse($this->start)->format('M j');
     }
 
     private static function tailNumber(array $event): ?string

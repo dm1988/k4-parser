@@ -57,8 +57,8 @@ class FlightCardViewModelTest extends TestCase
         $this->assertSame('HKG', $model->destinationLabel());
         $this->assertSame('11:45 PM', $model->originTimeLabel());
         $this->assertSame('3:45 AM', $model->destinationTimeLabel());
-        $this->assertSame('23:45 Z', $model->originCardTimeLabel());
-        $this->assertSame('03:45 Z', $model->destinationCardTimeLabel());
+        $this->assertSame('2345 Z', $model->originCardTimeLabel());
+        $this->assertSame('0345 Z', $model->destinationCardTimeLabel());
         $this->assertTrue($model->hasDutyCalendarDownload());
         $this->assertSame(
             route('parse.export.event.duty', ['eventId' => '01JTESTEVENTKEYABC123', 'parse_key' => '01JTESTPARSEKEYABC123']),

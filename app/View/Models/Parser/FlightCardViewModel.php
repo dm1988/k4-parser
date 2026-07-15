@@ -321,7 +321,7 @@ readonly class FlightCardViewModel
     private function formatCardTime(?string $value): string
     {
         return $value
-            ? CarbonImmutable::parse($value)->setTimezone('UTC')->format('H:i \Z')
+            ? CarbonImmutable::parse($value)->setTimezone('UTC')->format('Hi \Z')
             : '—';
     }
 
