@@ -2,7 +2,7 @@
     'title' => null,
     'icon' => null,
     'open' => false,
-    'align' => 'left', // left or right
+    'position' => 'left',
 ])
 
 <details
@@ -35,8 +35,8 @@
     <div
         @class([
             'absolute z-30 mt-2 w-72 rounded-2xl border border-[#E1E7F0] bg-white p-4 shadow-xl',
-            'left-0' => $align === 'left',
-            'right-0' => $align === 'right',
+            'left-0' => $position === 'left',
+            'right-0' => $position === 'right',
         ])
     >
         {{ $slot }}

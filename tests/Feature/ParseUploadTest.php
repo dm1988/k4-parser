@@ -21,10 +21,13 @@ class ParseUploadTest extends TestCase
 
         $page->assertOk();
         $page->assertSee('id="parserStatus"', false);
-        $page->assertSee('class="mt-4 hidden rounded-lg border border-[#1B365D]/10 px-4 py-3"', false);
-        $page->assertSee('data-state="idle"', false);
+        $page->assertSee('class="mt-4 rounded-lg border border-[#1B365D]/10 px-4 py-3"', false);
+        $page->assertSee('x-bind:class="statusPanelClasses"', false);
+        $page->assertSee('x-bind:data-state="statusState"', false);
         $page->assertSee('data-parse-submit', false);
         $page->assertSee('disabled:bg-[#1B365D]/55', false);
+        $page->assertSee('x-data="parserForm()"', false);
+        $page->assertDontSee("const parserForm = document.getElementById('parserForm');", false);
         $page->assertSee('class="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-5 py-6 "', false);
         $this->assertLessThanOrEqual(1, substr_count($content, '<main'));
         $this->assertSame(substr_count($content, '<main'), substr_count($content, '</main>'));
@@ -61,7 +64,61 @@ class ParseUploadTest extends TestCase
         $this->assertNull($parseRequest->file_hash);
 
         $page = $this->get(route('parse.index'));
-        $page->assertOk()->assertSee('Parsed Output');
+        $page->assertOk()
+            ->assertSee('Parsed Output')
+            ->assertSee('rounded-lg border border-[#1B365D]/15 bg-white shadow-sm', false)
+            ->assertSee('border-b border-[#1B365D]/10 bg-[#F8FAFD] px-5 py-4', false)
+            ->assertDontSee('rounded-[1.9rem]', false);
+    }
+
+    public function test_non_flight_event_card_header_displays_date_without_times(): void
+    {
+        $source = [
+            'source' => 'text',
+            'document_type' => null,
+            'file' => null,
+            'mime' => null,
+            'raw_text' => 'Duty event raw text',
+            'meta' => [],
+        ];
+
+        $parsed = [
+            'trip' => ['trip_number' => '13131'],
+            'calendar_events' => [[
+                'title' => 'Hotel Check-In',
+                'type' => 'duty',
+                'start' => '2026-06-13T14:00:00Z',
+                'end' => '2026-06-13T16:00:00Z',
+                'metadata' => [
+                    'download_id' => 'event-123',
+                ],
+            ]],
+        ];
+
+        $this->mock(RosterSourceResolver::class, function (MockInterface $mock) use ($source): void {
+            $mock->shouldReceive('resolve')
+                ->once()
+                ->andReturn($source);
+        });
+
+        $this->mock(RosterDocumentParser::class, function (MockInterface $mock) use ($parsed): void {
+            $mock->shouldReceive('parse')
+                ->once()
+                ->with('Duty event raw text', null)
+                ->andReturn($parsed);
+        });
+
+        $response = $this->actingAs(User::factory()->make())->post(route('parse.roster'), [
+            'text' => 'ignored because resolver is mocked',
+        ]);
+
+        $response->assertRedirect();
+
+        $page = $this->get(route('parse.index'));
+
+        $page->assertOk()
+            ->assertSee('Jun 13', false)
+            ->assertSee('Jun 13 • 2:00 PM - 4:00 PM', false);
     }
 
     public function test_parse_failure_is_recorded_and_logged_without_input_contents(): void
