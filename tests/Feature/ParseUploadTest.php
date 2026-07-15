@@ -25,6 +25,7 @@ class ParseUploadTest extends TestCase
         $page->assertSee('data-state="idle"', false);
         $page->assertSee('data-parse-submit', false);
         $page->assertSee('disabled:bg-[#1B365D]/55', false);
+        $page->assertSee('class="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-5 py-6 "', false);
         $this->assertLessThanOrEqual(1, substr_count($content, '<main'));
         $this->assertSame(substr_count($content, '<main'), substr_count($content, '</main>'));
     }
