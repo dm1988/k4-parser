@@ -188,13 +188,13 @@
 
     <footer class="flex items-center justify-between border-t border-[#1B365D]/10 bg-[#F8F9FA] px-6 py-4">
         <div class="flex items-center gap-3">
-            @if ($model->flight->tailNumber)
+            @if ($model->hasFooterContext())
             <span class="text-sm font-semibold uppercase tracking-[0.12em] text-[#4A5568]">
-                Tail
+                {{ $model->footerContextLabel() }}
             </span>
 
             <span class="font-mono text-[1.15rem] font-semibold text-[#1B365D]">
-                {{ $model->flight->tailNumber }}
+                {{ $model->footerContextValue() }}
             </span>
             @endif
         </div>

@@ -225,6 +225,34 @@ readonly class FlightCardViewModel
         return $this->flight->tailNumber;
     }
 
+    public function airlineName(): ?string
+    {
+        return $this->metadataString('airline_name');
+    }
+
+    public function hasFooterContext(): bool
+    {
+        return $this->tailNumber() !== null || $this->airlineName() !== null;
+    }
+
+    public function footerContextLabel(): ?string
+    {
+        if ($this->tailNumber() !== null) {
+            return 'Tail';
+        }
+
+        if ($this->airlineName() !== null) {
+            return 'Airline';
+        }
+
+        return null;
+    }
+
+    public function footerContextValue(): ?string
+    {
+        return $this->tailNumber() ?? $this->airlineName();
+    }
+
     // Crew Details
     public function crewMembers(): array
     {

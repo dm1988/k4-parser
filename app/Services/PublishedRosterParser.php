@@ -7,6 +7,10 @@ use Illuminate\Support\Carbon;
 
 class PublishedRosterParser
 {
+    public function __construct(
+        private readonly AirlineCodeLookup $airlineCodeLookup,
+    ) {}
+
     public function parse(string $text): array
     {
         $lines = $this->normaliseLines($text);
@@ -223,14 +227,20 @@ class PublishedRosterParser
         preg_match('/77[A-Z]/', $tail, $aircraftMatches);
         preg_match('/(?:^|\s)(\d{4,})\s*$/', $entry['body'], $tripIdMatches);
 
+        $commercialDeadhead = $this->resolveCommercialDeadhead(
+            $this->normalizeFlightNumber($flightNumber),
+            $matches[1] === 'DH',
+        );
+
         $fragment = [
             'start_date' => $entry['date'],
             'end_date' => $entry['date'],
-            'flight_number' => $this->normalizeFlightNumber($flightNumber),
+            'flight_number' => $commercialDeadhead['flight_number'],
             'origin' => $origin,
             'deadhead' => $matches[1] === 'DH',
             'aircraft' => $aircraftMatches[0] ?? null,
             'trip_id' => $tripIdMatches[1] ?? null,
+            'airline_name' => $commercialDeadhead['airline_name'],
         ];
 
         if ($destination !== null && count($times) >= 2) {
@@ -302,6 +312,7 @@ class PublishedRosterParser
                 'aircraft' => $fragment['aircraft'] ?? null,
                 'deadhead' => $fragment['deadhead'],
                 'trip_id' => $fragment['trip_id'] ?? null,
+                'airline_name' => $fragment['airline_name'] ?? null,
             ], $tripIds];
         }
 
@@ -317,6 +328,7 @@ class PublishedRosterParser
                 deadhead: $pendingFlight['deadhead'],
                 aircraft: $fragment['aircraft'] ?? $pendingFlight['aircraft'] ?? null,
                 tripId: $pendingFlight['trip_id'] ?? $fragment['trip_id'] ?? null,
+                airlineName: $pendingFlight['airline_name'] ?? $fragment['airline_name'] ?? null,
             );
 
             $events[] = $flightEvent;
@@ -344,6 +356,7 @@ class PublishedRosterParser
                 deadhead: $fragment['deadhead'],
                 aircraft: $fragment['aircraft'] ?? null,
                 tripId: $fragment['trip_id'] ?? null,
+                airlineName: $fragment['airline_name'] ?? null,
             );
 
             $events[] = $flightEvent;
@@ -411,6 +424,7 @@ class PublishedRosterParser
         bool $deadhead,
         ?string $aircraft,
         ?string $tripId,
+        ?string $airlineName,
     ): array {
         $start = $this->applyTime($startDate, $startTime);
         $end = $this->applyTime($endDate, $endTime);
@@ -431,8 +445,36 @@ class PublishedRosterParser
                 'aircraft' => $aircraft,
                 'deadhead' => $deadhead,
                 'trip_id' => $tripId,
+                'airline_name' => $airlineName,
             ], fn (mixed $value): bool => $value !== null && $value !== ''),
         );
+    }
+
+    /**
+     * @return array{flight_number: string, airline_name: ?string}
+     */
+    private function resolveCommercialDeadhead(string $flightNumber, bool $isDeadhead): array
+    {
+        if (! $isDeadhead || preg_match('/^([A-Z0-9]{2})\s?(\d+)$/', $flightNumber, $matches) !== 1) {
+            return [
+                'flight_number' => $flightNumber,
+                'airline_name' => null,
+            ];
+        }
+
+        $airlineName = $this->airlineCodeLookup->airlineNameForIataCode($matches[1]);
+
+        if ($airlineName === null) {
+            return [
+                'flight_number' => $flightNumber,
+                'airline_name' => null,
+            ];
+        }
+
+        return [
+            'flight_number' => "{$matches[1]} {$matches[2]}",
+            'airline_name' => $airlineName,
+        ];
     }
 
     private function buildLayoverEvent(?string $station, Carbon $start, string $duration): array

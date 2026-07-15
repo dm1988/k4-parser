@@ -12,8 +12,9 @@ class RosterParser
     public function __construct(
         private readonly FlightMapper $flightMapper,
         private readonly CrewParserService $crewParser,
-    ) {
-    }
+        private readonly AirlineCodeLookup $airlineCodeLookup,
+    ) {}
+
     public function parse(string $text): array
     {
         $lines = $this->normaliseLines($text);
@@ -177,6 +178,7 @@ class RosterParser
 
                 $currentBlock = [$trimmedLine];
                 $mode = 'duty';
+
                 continue;
             }
 
@@ -195,6 +197,7 @@ class RosterParser
 
                 $currentBlock = [$trimmedLine];
                 $mode = 'date-range';
+
                 continue;
             }
 
@@ -267,6 +270,8 @@ class RosterParser
         }
 
         $isDeadhead = str_contains(strtoupper($lineData), ' DH ');
+        $commercialDeadhead = $this->resolveCommercialDeadhead($flightNumber, $isDeadhead);
+        $flightNumber = $commercialDeadhead['flight_number'];
         $type = $isDeadhead ? ParserEventType::Deadhead->value : ParserEventType::Flight->value;
         $title = "{$origin} - {$destination} ({$flightNumber})";
 
@@ -275,6 +280,7 @@ class RosterParser
             'origin' => $origin,
             'destination' => $destination,
             'deadhead' => $isDeadhead,
+            'airline_name' => $commercialDeadhead['airline_name'],
         ]);
     }
 
@@ -300,18 +306,20 @@ class RosterParser
             $aircraft = $this->detectAircraft($body);
             $tailNumber = $this->detectTailNumber($body);
             $flightAwareUrl = $tailNumber
-                ? 'https://www.flightaware.com/live/flight/' . rawurlencode($tailNumber)
+                ? 'https://www.flightaware.com/live/flight/'.rawurlencode($tailNumber)
                 : null;
             $blockTime = $this->extractBlockTime($body);
             $dutyStation = $this->extractDutyStationFromLines($body);
             $dutyRawLines = $this->extractDutyRawLines($body);
             $isDeadhead = (bool) preg_match('/\bDH\b/i', $joinedBody);
+            $commercialDeadhead = $this->resolveCommercialDeadhead($flightNumber, $isDeadhead);
+            $flightNumber = $commercialDeadhead['flight_number'];
             $crewSummary = $this->crewParser->parseWithSummary($body);
             $localTimes = $this->extractFlightLocalTimes($body);
 
             return $this->calendarEvent(
                 $isDeadhead ? ParserEventType::Deadhead->value : ParserEventType::Flight->value,
-                trim(($flightNumber ? "{$flightNumber} " : '') . "{$route['origin']}-{$route['destination']}"),
+                trim(($flightNumber ? "{$flightNumber} " : '')."{$route['origin']}-{$route['destination']}"),
                 $start,
                 $end,
                 array_filter([
@@ -329,6 +337,7 @@ class RosterParser
                     'deadheading_crew_count' => $crewSummary['deadheading_crew_count'],
                     'crew' => $crewSummary['crew'] !== [] ? $crewSummary['crew'] : null,
                     'deadhead' => $isDeadhead,
+                    'airline_name' => $commercialDeadhead['airline_name'],
                     'raw_lines' => $body,
                     'duty_raw_lines' => $dutyRawLines !== [] ? $dutyRawLines : null,
                     ...$localTimes,
@@ -514,6 +523,42 @@ class RosterParser
         $flightEvent['metadata'] = $flightMetadata;
 
         return $flightEvent;
+    }
+
+    /**
+     * @return array{flight_number: ?string, airline_name: ?string}
+     */
+    private function resolveCommercialDeadhead(?string $flightNumber, bool $isDeadhead): array
+    {
+        if (! $isDeadhead || $flightNumber === null) {
+            return [
+                'flight_number' => $flightNumber,
+                'airline_name' => null,
+            ];
+        }
+
+        $condensedFlightNumber = strtoupper(str_replace(' ', '', $flightNumber));
+
+        if (preg_match('/^([A-Z0-9]{2})(\d+)$/', $condensedFlightNumber, $matches) !== 1) {
+            return [
+                'flight_number' => $flightNumber,
+                'airline_name' => null,
+            ];
+        }
+
+        $airlineName = $this->airlineCodeLookup->airlineNameForIataCode($matches[1]);
+
+        if (! is_string($airlineName) || trim($airlineName) === '') {
+            return [
+                'flight_number' => $flightNumber,
+                'airline_name' => null,
+            ];
+        }
+
+        return [
+            'flight_number' => "{$matches[1]} {$matches[2]}",
+            'airline_name' => trim($airlineName),
+        ];
     }
 
     /**
@@ -750,5 +795,4 @@ class RosterParser
 
         return null;
     }
-
 }

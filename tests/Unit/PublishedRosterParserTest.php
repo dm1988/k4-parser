@@ -53,7 +53,8 @@ TEXT;
         $this->assertGreaterThanOrEqual(10, count($events));
 
         $this->assertSame('flight', $events[0]['type']);
-        $this->assertSame('G4368', $events[0]['metadata']['flight_number']);
+        $this->assertSame('G4 368', $events[0]['metadata']['flight_number']);
+        $this->assertSame('Allegiant Air', $events[0]['metadata']['airline_name']);
         $this->assertSame('AUS', $events[0]['metadata']['origin']);
         $this->assertSame('CVG', $events[0]['metadata']['destination']);
         $this->assertTrue($events[0]['metadata']['deadhead']);

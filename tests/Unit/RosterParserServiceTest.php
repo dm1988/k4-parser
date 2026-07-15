@@ -2,13 +2,23 @@
 
 namespace Tests\Unit;
 
+use App\Models\Airline;
 use App\Services\RosterParser;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class RosterParserServiceTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_it_parses_a_duty_block_into_a_flight_event(): void
     {
+        Airline::query()->create([
+            'name' => 'Allegiant Air',
+            'iata_code' => 'G4',
+            'active' => true,
+        ]);
+
         $text = <<<'TEXT'
 June 2026
 Details
@@ -21,8 +31,9 @@ TEXT;
         $event = $parsed['calendar_events'][0];
 
         $this->assertSame('deadhead', $event['type']);
-        $this->assertSame('AUS - CVG (G4368)', $event['title']);
-        $this->assertSame('G4368', $event['metadata']['flight_number']);
+        $this->assertSame('AUS - CVG (G4 368)', $event['title']);
+        $this->assertSame('G4 368', $event['metadata']['flight_number']);
+        $this->assertSame('Allegiant Air', $event['metadata']['airline_name']);
         $this->assertSame('AUS', $event['metadata']['origin']);
         $this->assertSame('CVG', $event['metadata']['destination']);
         $this->assertTrue($event['metadata']['deadhead']);
@@ -51,6 +62,24 @@ TEXT;
         $this->assertFalse($event['metadata']['deadhead']);
         $this->assertSame('2026-06-13T09:35:00+00:00', $event['start']);
         $this->assertSame('2026-06-13T23:25:00+00:00', $event['end']);
+    }
+
+    public function test_it_falls_back_to_the_bundled_airline_data_when_the_database_has_no_matching_airline(): void
+    {
+        $text = <<<'TEXT'
+July 2026
+Details
+Duty start 15:09
+Sun DH UA5445 LAX-AUS 15:09 18:29 15:09 18:29 -
+5Jul Duty end 18:29
+TEXT;
+
+        $parsed = app(RosterParser::class)->parse($text);
+        $event = $parsed['calendar_events'][0];
+
+        $this->assertSame('LAX - AUS (UA 5445)', $event['title']);
+        $this->assertSame('UA 5445', $event['metadata']['flight_number']);
+        $this->assertSame('United Airlines', $event['metadata']['airline_name']);
     }
 
     public function test_it_extracts_trip_summary_fields_from_roster_text(): void

@@ -53,6 +53,40 @@ class FlightCardComponentTest extends TestCase
         $this->assertStringContainsString('title="Download duty .ics"', $html);
     }
 
+    public function test_it_shows_the_airline_name_when_a_tail_number_is_not_available(): void
+    {
+        $html = Blade::render('<x-parser.flight-card :model="$model" />', [
+            'model' => FlightCardViewModel::fromFlight(Flight::fromArray([
+                'title' => 'G4 368 AUS-CVG',
+                'type' => 'deadhead',
+                'typeLabel' => 'Deadhead',
+                'typeDescription' => 'Time spent traveling as a passenger for work purposes.',
+                'typeIcon' => 'heroicon-o-paper-airplane',
+                'scheduleLabel' => 'Jun 12 • 5:44 PM - 9:17 PM',
+                'durationLabel' => '3h 33m',
+                'isDeadhead' => true,
+                'badgeColor' => 'bg-yellow-100 text-yellow-900',
+                'downloadUrl' => route('parse.export.event', [
+                    'eventId' => '01JTESTEVENTKEYABC123',
+                    'parse_key' => '01JTESTPARSEKEYABC123',
+                ]),
+                'downloadId' => '01JTESTEVENTKEYABC123',
+                'flightNumber' => 'G4 368',
+                'start' => '2026-06-12T17:44:00+00:00',
+                'end' => '2026-06-12T21:17:00+00:00',
+                'origin' => 'AUS',
+                'destination' => 'CVG',
+                'metadata' => [
+                    'airline_name' => 'Allegiant Air',
+                ],
+            ])),
+        ]);
+
+        $this->assertStringContainsString('Airline', $html);
+        $this->assertStringContainsString('Allegiant Air', $html);
+        $this->assertStringNotContainsString('Tail</span>', $html);
+    }
+
     private function renderFlightCard(): string
     {
         return Blade::render('<x-parser.flight-card :model="$model" />', [

@@ -122,4 +122,30 @@ class FlightCardViewModelTest extends TestCase
 
         $this->assertSame('CKS 240', $model->heading());
     }
+
+    #[Test]
+    public function it_uses_the_airline_name_in_the_footer_when_no_tail_number_exists(): void
+    {
+        $flight = Flight::fromArray([
+            'title' => 'G4 368 AUS-CVG',
+            'type' => 'deadhead',
+            'typeLabel' => 'Deadhead',
+            'typeDescription' => 'Time spent traveling as a passenger for work purposes.',
+            'scheduleLabel' => 'Jun 12 • 5:44 PM - 9:17 PM',
+            'durationLabel' => '3h 33m',
+            'isDeadhead' => true,
+            'badgeColor' => 'bg-yellow-100 text-yellow-900',
+            'downloadUrl' => 'https://example.test/export',
+            'flightNumber' => 'G4 368',
+            'metadata' => [
+                'airline_name' => 'Allegiant Air',
+            ],
+        ]);
+
+        $model = FlightCardViewModel::fromFlight($flight);
+
+        $this->assertTrue($model->hasFooterContext());
+        $this->assertSame('Airline', $model->footerContextLabel());
+        $this->assertSame('Allegiant Air', $model->footerContextValue());
+    }
 }

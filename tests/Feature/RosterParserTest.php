@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\DTOs\Flight;
+use App\Models\Airline;
 use App\Models\User;
 use App\Services\RosterDocumentParser;
 use Illuminate\Support\Facades\Cache;
@@ -19,6 +20,12 @@ class RosterParserTest extends TestCase
 
     public function test_roster_text_is_parsed_into_calendar_events(): void
     {
+        Airline::query()->create([
+            'name' => 'Allegiant Air',
+            'iata_code' => 'G4',
+            'active' => true,
+        ]);
+
         $text = <<<'TEXT'
 June 2026
 Roster
@@ -71,6 +78,7 @@ TEXT;
         $this->assertIsString($parsed['calendar_events'][0]['download_id'] ?? null);
         $this->assertSame('deadhead', $parsed['calendar_events'][0]['type']);
         $this->assertSame('G4 368', $parsed['calendar_events'][0]['metadata']['flight_number']);
+        $this->assertSame('Allegiant Air', $parsed['calendar_events'][0]['metadata']['airline_name']);
         $this->assertSame('AUS', $parsed['calendar_events'][0]['metadata']['origin']);
         $this->assertSame('CVG', $parsed['calendar_events'][0]['metadata']['destination']);
         $this->assertTrue($parsed['calendar_events'][0]['metadata']['deadhead']);
@@ -142,6 +150,12 @@ TEXT;
 
     public function test_roster_parser_handles_noisy_image_ocr_output(): void
     {
+        Airline::query()->create([
+            'name' => 'Allegiant Air',
+            'iata_code' => 'G4',
+            'active' => true,
+        ]);
+
         $text = <<<'TEXT'
 June 2026 @) Jun 12 22:44 - Jun 28 18:30 (17d)
 Trip Pos Stn Layovers n
@@ -184,6 +198,7 @@ TEXT;
         $this->assertSame('deadhead', $events[0]['type']);
         $this->assertIsString($events[0]['download_id'] ?? null);
         $this->assertSame('G4 368', $events[0]['metadata']['flight_number']);
+        $this->assertSame('Allegiant Air', $events[0]['metadata']['airline_name']);
         $this->assertSame('AUS', $events[0]['metadata']['origin']);
         $this->assertSame('flight', $events[3]['type']);
         $this->assertSame('CVG', $events[3]['metadata']['origin']);
