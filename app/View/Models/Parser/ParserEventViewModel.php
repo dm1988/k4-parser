@@ -19,6 +19,7 @@ readonly class ParserEventViewModel
         public string $scheduleLabel,
         public string $durationLabel,
         public ?string $tailNumber,
+        public ?string $hotel,
         public bool $isDeadhead,
         public string $badgeColor,
         public string $downloadUrl,
@@ -52,6 +53,7 @@ readonly class ParserEventViewModel
                 : $utcStart->format('M j, Hi \Z').' -> '.$utcEnd->format('M j, Hi \Z'),
             durationLabel: $hours > 0 ? "{$hours}h {$minutes}m" : "{$minutes}m",
             tailNumber: self::tailNumber($event),
+            hotel: self::metadataString($event, 'hotel'),
             isDeadhead: (bool) data_get($event, 'metadata.'.MetadataKey::Deadhead->value, data_get($event, 'is_deadhead', false)),
             badgeColor: $eventType->badgeColor(),
             downloadUrl: route('parse.export.event', ['eventId' => $downloadId, 'parse_key' => $parseKey]),
@@ -74,5 +76,18 @@ readonly class ParserEventViewModel
         $tailNumber = strtoupper((string) data_get($event, 'metadata.'.MetadataKey::TailNumber->value, ''));
 
         return $tailNumber === '' ? null : $tailNumber;
+    }
+
+    private static function metadataString(array $event, string $key): ?string
+    {
+        $value = data_get($event, "metadata.{$key}");
+
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 }

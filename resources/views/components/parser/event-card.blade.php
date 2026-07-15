@@ -54,6 +54,15 @@
                     </span>
                 </div>
 
+                @if (filled($event->hotel ?? null))
+                <div class="rounded-md border border-[#1B365D]/10 bg-[#F8FAFD] px-3 py-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-[#4A5568]/70">Hotel</span>
+                    <p class="mt-1 text-sm font-medium text-[#0B0E14]">
+                        {{ $event->hotel }}
+                    </p>
+                </div>
+                @endif
+
                 @if ($event->tailNumber)
                 <div class="inline-flex items-center gap-1.5 pt-1">
                     <span class="text-xs font-semibold uppercase tracking-wider text-[#4A5568]/70">Tail:</span>

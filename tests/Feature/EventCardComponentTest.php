@@ -17,7 +17,9 @@ class EventCardComponentTest extends TestCase
                 'type' => 'layover',
                 'start' => '2026-07-02T23:59:00+00:00',
                 'end' => '2026-07-04T09:00:00+00:00',
-                'metadata' => [],
+                'metadata' => [
+                    'hotel' => 'Grand Hyatt Incheon',
+                ],
                 'download_id' => '01JTESTEVENTKEYABC123',
             ], '01JTESTPARSEKEYABC123'),
         ]);
@@ -25,6 +27,8 @@ class EventCardComponentTest extends TestCase
         $this->assertStringContainsString('Layover ICN', $html);
         $this->assertStringContainsString('Jul 2', $html);
         $this->assertStringContainsString('Jul 2, 2359 Z -&gt; Jul 4, 0900 Z', $html);
+        $this->assertStringContainsString('Hotel', $html);
+        $this->assertStringContainsString('Grand Hyatt Incheon', $html);
         $this->assertStringNotContainsString('Jul 2, 11:59 PM -&gt; Jul 4, 9:00 AM', $html);
     }
 
