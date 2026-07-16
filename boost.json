@@ -1,12 +1,15 @@
 {
     "agents": [
-        "cursor"
+        "codex"
     ],
     "cloud": false,
     "guidelines": true,
     "mcp": true,
     "nightwatch": false,
-    "sail": false,
+    "packages": [
+        "filament/filament"
+    ],
+    "sail": true,
     "skills": [
         "cashier-stripe-development",
         "laravel-best-practices",
