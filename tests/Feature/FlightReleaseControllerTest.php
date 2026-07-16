@@ -95,6 +95,16 @@ class FlightReleaseControllerTest extends TestCase
             ->assertSeeText('Airport details')
             ->assertSeeText('Route')
             ->assertSeeText('Copy route')
+            ->assertSeeInOrder([
+                '<div class="flex items-center gap-2">',
+                'Airport details',
+                '</div>',
+            ], escape: false)
+            ->assertSeeInOrder([
+                '<div class="flex items-center gap-2">',
+                'Route',
+                '</div>',
+            ], escape: false)
             ->assertSee('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105', escape: false)
             ->assertSee(' UMKAL UMKAL6A', escape: false);
     }

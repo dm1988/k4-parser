@@ -48,7 +48,12 @@
 
     <details class="group border-t border-[#1B365D]/8">
         <summary class="flex cursor-pointer list-none items-center justify-between gap-2 bg-[#F8F9FA] px-4 py-2 text-left transition-colors hover:bg-[#eef0f3] [&::-webkit-details-marker]:hidden">
-            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568]">Airport details</span>
+            <div class="flex items-center gap-2">
+                <x-heroicon-o-information-circle class="h-4 w-4 text-[#1B365D]" />
+                <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568]">
+                    Airport details
+                </span>
+            </div>
             <x-heroicon-o-chevron-down class="h-3.5 w-3.5 text-[#4A5568]/60 transition group-open:rotate-180" />
         </summary>
 
@@ -76,7 +81,12 @@
 
     <div class="border-t border-[#1B365D]/8">
         <div class="flex items-center justify-between gap-3 bg-[#F8F9FA] px-4 py-2">
-            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568]">Route</span>
+            <div class="flex items-center gap-2">
+                <x-heroicon-o-map class="h-4 w-4 text-[#1B365D]" />
+                <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568]">
+                    Route
+                </span>
+            </div>
             <x-flight-release.copy-button
                 target="flight-route-output"
                 label="Route"
