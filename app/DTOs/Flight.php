@@ -215,4 +215,43 @@ final readonly class Flight extends ParsedEventDTO
             metadata: $this->metadata,
         );
     }
+
+    public function withMetadata(array $metadata): self
+    {
+        return new self(
+            title: $this->title,
+            type: $this->type,
+            typeLabel: $this->typeLabel,
+            typeDescription: $this->typeDescription,
+            typeIcon: $this->typeIcon,
+            scheduleLabel: $this->scheduleLabel,
+            durationLabel: $this->durationLabel,
+            tailNumber: $this->tailNumber,
+            isDeadhead: $this->isDeadhead,
+            badgeColor: $this->badgeColor,
+            downloadUrl: $this->downloadUrl,
+            downloadId: $this->downloadId,
+            flightNumber: $this->flightNumber,
+            position: $this->position,
+            aircraft: $this->aircraft,
+            blockTime: $this->blockTime,
+            tripId: $this->tripId,
+            crewCount: $this->crewCount,
+            operatingCrewCount: $this->operatingCrewCount,
+            deadheadingCrewCount: $this->deadheadingCrewCount,
+            dutyStation: $this->dutyStation,
+            legLocalStart: $this->legLocalStart,
+            legLocalEnd: $this->legLocalEnd,
+            dutyLocalStart: $this->dutyLocalStart,
+            dutyLocalEnd: $this->dutyLocalEnd,
+            start: $this->start,
+            end: $this->end,
+            timezone: $this->timezone,
+            origin: $this->origin,
+            destination: $this->destination,
+            rawLines: $this->rawLines,
+            dutyRawLines: $this->dutyRawLines,
+            metadata: $metadata,
+        );
+    }
 }
