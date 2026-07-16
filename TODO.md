@@ -1,9 +1,12 @@
 # Current Task: Add airport info popover
 
 ## 🎯 Goal
+  - Expose the view model to the airport lookup client service
+  - Look up the departure and arrival airport by IATA code
+  - Convert the Airport Data DTO for use in the blade view
 	- Add a click-triggered popover on each airport code 
-    — it keeps the clean flight route visualization intact while revealing ICAO, IATA, and full name on demand. 
-    - A small info badge under the code signals interactivity without cluttering the layout.
+  — it keeps the clean flight route visualization intact while revealing ICAO, IATA, and full name on demand. 
+  - A small info badge under the code signals interactivity without cluttering the layout.
 
 ## Design choices:
 
