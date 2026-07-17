@@ -16,8 +16,8 @@
   - redirect/response generation
 
 [x] Revisit repeated try/catch/logging blocks in parser actions and centralize the shared parse lifecycle where possible.
-- Add or update focused feature tests covering the new request classes and extracted services.
-- Move export classes to app/Exports
+[x] Add or update focused feature tests covering the new request classes and extracted services.
+[x] Move export classes to app/Exports
 ├── app/
 │   └── Exports/            <-- Your export classes are placed here
 

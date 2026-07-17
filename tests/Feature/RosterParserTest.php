@@ -108,8 +108,54 @@ TEXT;
         $response->assertRedirect();
         $response->assertSessionMissing('result');
 
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+
+        $result = Cache::get($this->cacheKeyForSession($parseKey));
+        $this->assertIsArray($result);
+        $this->assertSame('hotel', $result['type']);
+        $this->assertSame('text', $result['source']);
+        $this->assertCount(1, $result['parsed']['calendar_events']);
+        $this->assertSame('layover', $result['parsed']['calendar_events'][0]['type']);
+
         $page = $this->get(route('parse.index'));
         $page->assertOk()->assertSee('Parsed Output');
+    }
+
+    public function test_flight_parser_stores_only_flight_events_in_cache(): void
+    {
+        $text = <<<'TEXT'
+June 2026
+Details
+Jun 12 22:44 - Jun 13 01:17
+G4 368
+Pos
+AUS - CVG
+DH
+Jun 13 01:17 - Jun 13 07:35
+CVG - Holiday Inn Express & Suites Florence - Cincinnati Airport - Vandercar Way
+6:18h
+Jun 13 07:35 - Jun 13 09:35
+CVG
+2:00
+TEXT;
+
+        $response = $this->post(route('parse.flight'), ['text' => $text]);
+
+        $response->assertRedirect();
+        $response->assertSessionMissing('result');
+
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+
+        $result = Cache::get($this->cacheKeyForSession($parseKey));
+        $this->assertIsArray($result);
+        $this->assertSame('flight', $result['type']);
+        $this->assertSame('text', $result['source']);
+        $this->assertCount(1, $result['parsed']['calendar_events']);
+        $this->assertSame('deadhead', $result['parsed']['calendar_events'][0]['type']);
+        $this->assertSame('G4 368', $result['parsed']['calendar_events'][0]['flightNumber']);
+        $this->assertIsString($result['parsed']['calendar_events'][0]['download_id'] ?? null);
     }
 
     public function test_roster_parser_can_filter_calendar_events(): void

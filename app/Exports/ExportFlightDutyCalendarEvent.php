@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Actions;
+namespace App\Exports;
 
 use App\Services\FlightDutyCalendarEventService;
 use App\Services\IcsCalendarService;

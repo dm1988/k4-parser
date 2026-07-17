@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
-use App\Actions\ExportFlightDutyCalendarEvent;
 use App\DTOs\ParsedEventDTO;
 use App\Enums\MetadataKey;
 use App\Enums\ParserEventType;
+use App\Exports\ExportFlightDutyCalendarEvent;
 use Illuminate\Http\Response;
 
 class ParserCalendarExportService
@@ -35,8 +35,7 @@ class ParserCalendarExportService
         }
 
         $trip = is_array($sessionResult['parsed']['trip'] ?? null) ? $sessionResult['parsed']['trip'] : [];
-        $tripNumber = $trip['trip_number'] ?? null;
-        $filename = 'crew-compass'.($tripNumber ? "-{$tripNumber}" : '').'.ics';
+        $filename = $this->calendarFilename($trip);
 
         return $this->calendarResponse(
             $this->icsCalendarService->serialize($events, $trip),
@@ -51,8 +50,7 @@ class ParserCalendarExportService
     {
         $event = $this->findEventOrAbort($sessionResult['parsed']['calendar_events'], $eventId);
         $trip = is_array($sessionResult['parsed']['trip'] ?? null) ? $sessionResult['parsed']['trip'] : [];
-        $tripNumber = $trip['trip_number'] ?? null;
-        $filename = 'crew-compass'.($tripNumber ? "-{$tripNumber}" : '')."-event-{$eventId}.ics";
+        $filename = $this->eventFilename($trip, $eventId);
 
         return $this->calendarResponse(
             $this->icsCalendarService->serialize([$event], $trip),
@@ -73,8 +71,7 @@ class ParserCalendarExportService
             abort(404);
         }
 
-        $tripNumber = $trip['trip_number'] ?? null;
-        $filename = 'crew-compass'.($tripNumber ? "-{$tripNumber}" : '')."-duty-{$eventId}.ics";
+        $filename = $this->dutyEventFilename($trip, $eventId);
 
         return $this->calendarResponse($ics, $filename);
     }
@@ -120,5 +117,40 @@ class ParserCalendarExportService
             'Content-Type' => 'text/calendar; charset=utf-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $trip
+     */
+    private function calendarFilename(array $trip): string
+    {
+        return $this->tripFilenamePrefix($trip).'.ics';
+    }
+
+    /**
+     * @param  array<string, mixed>  $trip
+     */
+    private function eventFilename(array $trip, string $eventId): string
+    {
+        return $this->tripFilenamePrefix($trip)."-event-{$eventId}.ics";
+    }
+
+    /**
+     * @param  array<string, mixed>  $trip
+     */
+    private function dutyEventFilename(array $trip, string $eventId): string
+    {
+        return $this->tripFilenamePrefix($trip)."-duty-{$eventId}.ics";
+    }
+
+    /**
+     * @param  array<string, mixed>  $trip
+     */
+    private function tripFilenamePrefix(array $trip): string
+    {
+        $tripNumber = $trip['trip_number'] ?? null;
+        $tripSuffix = $tripNumber ? "-{$tripNumber}" : '';
+
+        return "crew-compass{$tripSuffix}";
     }
 }
