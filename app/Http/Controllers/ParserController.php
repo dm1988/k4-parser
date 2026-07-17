@@ -110,7 +110,7 @@ class ParserController extends Controller
         $this->authorizeScheduleParser($request);
 
         $data = $request->validate([
-            'file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,bmp,tif,tiff,webp', 'max:20480', 'required_without:text'],
+            'file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,bmp,tif,tiff,webp', 'max:12288', 'required_without:text'],
             'text' => ['nullable', 'string', 'required_without:file'],
             'event_types' => ['nullable', 'array'],
             'event_types.*' => [Rule::in(ParserEventType::filterValues())],
