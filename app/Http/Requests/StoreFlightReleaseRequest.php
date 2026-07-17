@@ -34,7 +34,7 @@ class StoreFlightReleaseRequest extends FormRequest
             'flight_release.file' => 'The upload could not be processed as a file.',
             'flight_release.mimes' => 'Only PDF flight release uploads are supported.',
             'flight_release.mimetypes' => 'The uploaded file was not recognized as a PDF.',
-            'flight_release.max' => 'The PDF is too large. The maximum allowed size is 20 MB.',
+            'flight_release.max' => 'The PDF is too large. The maximum allowed size is 12 MB.',
         ];
     }
 }
