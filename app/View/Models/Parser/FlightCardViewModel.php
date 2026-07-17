@@ -160,12 +160,54 @@ readonly class FlightCardViewModel
     // Airport Details
     public function hasAirportDetails(): bool
     {
-        return $this->originIcao() !== null
-            || $this->originName() !== null
-            || $this->originCity() !== null
-            || $this->destinationIcao() !== null
-            || $this->destinationName() !== null
-            || $this->destinationCity() !== null;
+        return $this->originAirportInfo() !== null
+            || $this->destinationAirportInfo() !== null;
+    }
+
+    /**
+     * @return array{
+     *     iata: string,
+     *     icao: string,
+     *     name: string,
+     *     city: ?string,
+     *     state: ?string,
+     *     country: ?string,
+     *     location: ?string
+     * }|null
+     */
+    public function originAirportInfo(): ?array
+    {
+        return $this->airportInfo(
+            iata: $this->originIata(),
+            icao: $this->originIcao(),
+            name: $this->originName(),
+            city: $this->originCity(),
+            state: $this->originState(),
+            country: $this->originCountry(),
+        );
+    }
+
+    /**
+     * @return array{
+     *     iata: string,
+     *     icao: string,
+     *     name: string,
+     *     city: ?string,
+     *     state: ?string,
+     *     country: ?string,
+     *     location: ?string
+     * }|null
+     */
+    public function destinationAirportInfo(): ?array
+    {
+        return $this->airportInfo(
+            iata: $this->destinationIata(),
+            icao: $this->destinationIcao(),
+            name: $this->destinationName(),
+            city: $this->destinationCity(),
+            state: $this->destinationState(),
+            country: $this->destinationCountry(),
+        );
     }
 
     public function originIcao(): ?string
@@ -185,7 +227,19 @@ readonly class FlightCardViewModel
 
     public function originCountryCode(): ?string
     {
-        return $this->metadataString('origin_country_code');
+        return $this->metadataString('origin_country_code')
+            ?? $this->metadataString('origin_country');
+    }
+
+    public function originState(): ?string
+    {
+        return $this->metadataString('origin_state');
+    }
+
+    public function originCountry(): ?string
+    {
+        return $this->metadataString('origin_country')
+            ?? $this->metadataString('origin_country_code');
     }
 
     public function destinationIcao(): ?string
@@ -205,7 +259,19 @@ readonly class FlightCardViewModel
 
     public function destinationCountryCode(): ?string
     {
-        return $this->metadataString('destination_country_code');
+        return $this->metadataString('destination_country_code')
+            ?? $this->metadataString('destination_country');
+    }
+
+    public function destinationState(): ?string
+    {
+        return $this->metadataString('destination_state');
+    }
+
+    public function destinationCountry(): ?string
+    {
+        return $this->metadataString('destination_country')
+            ?? $this->metadataString('destination_country_code');
     }
 
     // Aircraft Details
@@ -338,8 +404,63 @@ readonly class FlightCardViewModel
         return "{$start} - {$end}";
     }
 
+    /**
+     * @return array{
+     *     iata: string,
+     *     icao: string,
+     *     name: string,
+     *     city: ?string,
+     *     state: ?string,
+     *     country: ?string,
+     *     location: ?string
+     * }|null
+     */
+    private function airportInfo(
+        string $iata,
+        ?string $icao,
+        ?string $name,
+        ?string $city,
+        ?string $state,
+        ?string $country,
+    ): ?array {
+        if ($icao === null && $name === null && $city === null && $state === null && $country === null) {
+            return null;
+        }
+
+        $location = collect([$city, $state, $country])
+            ->filter(static fn (?string $value): bool => $value !== null && $value !== '')
+            ->implode(', ');
+
+        return [
+            'iata' => $iata,
+            'icao' => $icao ?? 'N/A',
+            'name' => $name ?? 'Airport details unavailable.',
+            'city' => $city,
+            'state' => $state,
+            'country' => $country,
+            'location' => $location !== '' ? $location : null,
+        ];
+    }
+
+    private function metadataString(string $key): ?string
+    {
+        $value = $this->flight->metadata[$key] ?? null;
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed !== '' ? $trimmed : null;
+    }
+
     private function downloadParseKey(): ?string
     {
+        if ($this->flight->downloadUrl === '') {
+            return null;
+        }
+
         $query = parse_url($this->flight->downloadUrl, PHP_URL_QUERY);
 
         if (! is_string($query) || $query === '') {
@@ -347,21 +468,9 @@ readonly class FlightCardViewModel
         }
 
         parse_str($query, $parameters);
+
         $parseKey = $parameters['parse_key'] ?? null;
 
         return is_string($parseKey) && $parseKey !== '' ? $parseKey : null;
-    }
-
-    private function metadataString(string $key): ?string
-    {
-        $value = $this->flight->metadata[$key] ?? null;
-
-        if ($value === null) {
-            return null;
-        }
-
-        $value = trim((string) $value);
-
-        return $value === '' ? null : $value;
     }
 }

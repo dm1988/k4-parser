@@ -75,6 +75,24 @@ class FlightCardViewModelTest extends TestCase
         $this->assertTrue($model->hasAirportDetails());
         $this->assertSame('RKSI', $model->originIcao());
         $this->assertSame('VHHH', $model->destinationIcao());
+        $this->assertSame([
+            'iata' => 'ICN',
+            'icao' => 'RKSI',
+            'name' => 'Incheon International Airport',
+            'city' => 'Seoul',
+            'state' => null,
+            'country' => 'KR',
+            'location' => 'Seoul, KR',
+        ], $model->originAirportInfo());
+        $this->assertSame([
+            'iata' => 'HKG',
+            'icao' => 'VHHH',
+            'name' => 'Hong Kong International Airport',
+            'city' => 'Hong Kong',
+            'state' => null,
+            'country' => 'HK',
+            'location' => 'Hong Kong, HK',
+        ], $model->destinationAirportInfo());
     }
 
     #[Test]
