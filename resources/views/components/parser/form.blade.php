@@ -40,29 +40,49 @@
         </div>
     </div>
 
-    <fieldset class="p-5">
-        <legend class="text-sm font-semibold text-[#1B365D]">Filters</legend>
-        <div class="mt-3 grid gap-3 sm:grid-cols-2">
-            @foreach ($model->filterOptions as $option)
-            <label
-                class="flex items-center gap-3 rounded-md border border-[#1B365D]/15 bg-[#F8F9FA] px-4 py-3 text-sm font-medium text-[#0B0E14]">
-                <input type="checkbox" name="event_types[]" value="{{ $option['value'] }}"
-                    class="h-4 w-4 accent-[#C5A059]" @checked(in_array($option['value'], $model->selectedTypes, true))>
-                <span>
-                    <span class="block">{{ $option['label'] }}</span>
-                    <span class="block text-xs font-normal text-[#4A5568]">{{ $option['description'] }}</span>
-                </span>
-            </label>
-            @endforeach
+    @php
+        $hasFilterSelections = $model->selectedTypes !== [];
+        $hasFilterErrors = $errors->has('event_types') || $errors->has('event_types.*');
+    @endphp
+
+    <details class="border-t border-[#1B365D]/10 p-5 group" @open($hasFilterSelections || $hasFilterErrors)>
+        <summary
+            class="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold text-[#1B365D] [&::-webkit-details-marker]:hidden">
+            <span>Filters</span>
+
+            <span class="inline-flex items-center gap-2 text-sm text-[#4A5568]">
+                <span class="hidden sm:inline">Show options</span>
+                <x-heroicon-o-chevron-down class="h-4 w-4 group-open:hidden" />
+                <x-heroicon-o-chevron-up class="hidden h-4 w-4 group-open:block" />
+            </span>
+        </summary>
+
+        <div class="mt-4">
+            <div class="grid gap-3 sm:grid-cols-2">
+                @foreach ($model->filterOptions as $option)
+                <label
+                    class="flex items-center gap-3 rounded-md border border-[#1B365D]/15 bg-[#F8F9FA] px-4 py-3 text-sm font-medium text-[#0B0E14]">
+                    <input type="checkbox" name="event_types[]" value="{{ $option['value'] }}"
+                        class="h-4 w-4 accent-[#C5A059]" @checked(in_array($option['value'], $model->selectedTypes, true))>
+                    <span>
+                        <span class="block">{{ $option['label'] }}</span>
+                        <span class="block text-xs font-normal text-[#4A5568]">{{ $option['description'] }}</span>
+                    </span>
+                </label>
+                @endforeach
+            </div>
+
+            <p class="mt-2 text-sm text-[#4A5568]">Leave all unchecked to include duties, flights, and layovers.</p>
+
+            @error('event_types')
+            <p class="mt-2 text-sm font-medium text-red-700">{{ $message }}</p>
+            @enderror
+
+            @error('event_types.*')
+            <p class="mt-2 text-sm font-medium text-red-700">{{ $message }}</p>
+            @enderror
         </div>
-        <p class="mt-2 text-sm text-[#4A5568]">Leave all unchecked to include duties, flights, and layovers.</p>
-        @error('event_types')
-        <p class="mt-2 text-sm font-medium text-red-700">{{ $message }}</p>
-        @enderror
-        @error('event_types.*')
-        <p class="mt-2 text-sm font-medium text-red-700">{{ $message }}</p>
-        @enderror
-    </fieldset>
+    </details>
 
     {{--
         Temporarily hidden fallback text-entry flow.
