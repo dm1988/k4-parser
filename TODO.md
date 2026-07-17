@@ -127,3 +127,24 @@
   - `Aircraft` / `FlightEvent` relationship integrity
   - mobile/UI rendering edge cases for the flight release page where practical
 - Prefer small, focused tests tied directly to each bug or refactor target instead of broad end-to-end additions.
+
+### 13. Failed test
+
+Tests\Feature\ParseUploadTest > non flight event card header displays…    
+  Expected: <div\n
+      class="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-5 py-6  lg:grid-cols-2 ">\n
+      <section>\n
+  ... (207 more lines)
+
+  To contain: Jun 13 • 2:00 PM - 4:00 PM
+
+  at tests/Feature/ParseUploadTest.php:121
+    117▕         $page = $this->get(route('parse.index'));
+    118▕ 
+    119▕         $page->assertOk()
+    120▕             ->assertSee('Jun 13', false)
+  ➜ 121▕             ->assertSee('Jun 13 • 2:00 PM - 4:00 PM', false);
+    122▕     }
+    123▕ 
+    124▕     public function test_parse_failure_is_recorded_and_logged_without_input_contents(): void
+    125▕     {
