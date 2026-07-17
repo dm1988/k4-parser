@@ -4,18 +4,33 @@
 
 ### 1. Refactor parser request handling and controller responsibilities
 
-- Replace inline validation in `app/Http/Controllers/ParserController.php` with dedicated Form Request classes for:
+[x] Replace inline validation in `app/Http/Controllers/ParserController.php` with dedicated Form Request classes for:
   - `parseFlight`
   - `parseHotel`
   - `parseRoster`
-- Move parsing, result assembly, and cache persistence out of `ParserController` into smaller action or service classes.
+[x] Move parsing, result assembly, and cache persistence out of `ParserController` into smaller action or service classes.
 - Reduce controller method size so each action mainly coordinates:
   - authorization
   - validated input
   - service/action execution
   - redirect/response generation
+
 - Revisit repeated try/catch/logging blocks in parser actions and centralize the shared parse lifecycle where possible.
 - Add or update focused feature tests covering the new request classes and extracted services.
+
+### 2. Parser result DTO
+- Introduce a `ParserResultData` DTO so parser result assembly, caching, and view-model hydration use a typed outer result shape instead of loose arrays. 
+- Refactor: BuildParserResult, ScheduleParserService, ParserResultCache,ParserController. 
+- Refactor View models: ParserPageViewModel, Parser,ResultViewModel. 
+- Update Tests:
+[tests/Unit/BuildParserResultTest.php]
+[tests/Unit/ParserResultCacheTest.php]
+[tests/Unit/View/Models/ParserPageViewModelTest.php]
+[tests/Feature/ParserResultComponentTest.php]
+[tests/Feature/RosterParserTest.php]
+[tests/Feature/ParseUploadTest.php]
+[tests/Feature/ExportFlightDutyCalendarEventTest.php]
+[tests/Feature/FlightCardComponentTest.php]
 
 ### 2. Harden outbound airport lookup HTTP behavior
 
@@ -97,7 +112,17 @@
 - Confirm temp image cleanup is safe under all failure paths.
 - Review validation error keys for OCR/PDF failures to ensure they map cleanly back to the form fields the UI actually renders.
 
-### 10. Fix airport details popover layering and mobile overflow behavior
+### 10. Use route middleware for auth
+Move Authorization to Route Middleware
+Your inline authorization blocks check explicit user capabilities and feature flags:
+
+PHP
+$this->authorizeScheduleParser($request);
+Putting authorization directly inside controller methods prevents standard route caching optimizations and muddies the request mapping responsibility.
+
+Fix: Wrap these rules into custom route middleware (e.g., EnsureFeatureIsEnabled, can:use-schedule-parser)
+
+### 11. Fix airport details popover layering and mobile overflow behavior
 
 - Fix the airport popover/card z-index issue on small screens.
 - Ensure large airport metadata content does not render under surrounding UI.
@@ -107,7 +132,7 @@
   - desktop widths
 - Confirm the popover remains accessible and readable when airport names or location strings are long.
 
-### 11. Review migrations and schema consistency for `flight_events`
+### 12. Review migrations and schema consistency for `flight_events`
 
 - Revisit `database/migrations/2026_06_22_002913_flight_event.php` for:
   - table naming consistency
@@ -117,7 +142,7 @@
 - Confirm the schema accurately reflects the intended relationship with `aircraft`.
 - Document any forward-fix migration needed rather than mutating an already-run migration if this has been used outside local development.
 
-### 12. Add targeted regression coverage for the issues already found
+### 13. Add targeted regression coverage for the issues already found
 
 - Add or update tests for:
   - parser request validation behavior
@@ -128,7 +153,7 @@
   - mobile/UI rendering edge cases for the flight release page where practical
 - Prefer small, focused tests tied directly to each bug or refactor target instead of broad end-to-end additions.
 
-### 13. Failed test
+### 14. Failed test
 
 Tests\Feature\ParseUploadTest > non flight event card header displays…    
   Expected: <div\n
@@ -148,3 +173,29 @@ Tests\Feature\ParseUploadTest > non flight event card header displays…
     123▕ 
     124▕     public function test_parse_failure_is_recorded_and_logged_without_input_contents(): void
     125▕     {
+    
+### 15. Failed test
+
+Tests\Feature\ParseUploadTest > non flight event card…   
+  Expected: <div\n
+      class="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-5 py-6  lg:grid-cols-2 ">\n
+      <section>\n
+  ... (207 more lines)
+
+  To contain: Jun 13 • 2:00 PM - 4:00 PM
+
+### 16. Failed test
+
+Tests\Feature\AdminNavigationTest > inactive or unver…   
+  Expected response status code [200] but received 302.
+Failed asserting that 302 is identical to 200.
+
+  at tests/Feature/AdminNavigationTest.php:53
+     49▕             ], $attributes))->save();
+     50▕ 
+     51▕             $this->actingAs($admin)
+     52▕                 ->get('/dashboard')
+  ➜  53▕                 ->assertOk()
+     54▕                 ->assertDontSeeText('Admin Panel')
+     55▕                 ->assertDontSee(route('filament.admin.pages.dashboard'), escape: false);
+     56▕         }

@@ -3,33 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Actions\ExportFlightDutyCalendarEvent;
-use App\DTOs\Flight;
+use App\Actions\HandleParseExecution;
 use App\DTOs\ParsedEventDTO;
 use App\Enums\MetadataKey;
 use App\Enums\ParserEventType;
+use App\Exceptions\ParseSourceResolutionException;
 use App\Http\Requests\ParseFlightRequest;
 use App\Http\Requests\ParseHotelRequest;
 use App\Http\Requests\ParseRosterRequest;
 use App\Services\IcsCalendarService;
-use App\Services\ParseRequestLogger;
-use App\Services\RosterDocumentParser;
-use App\Services\RosterParser;
-use App\Services\RosterSourceResolver;
+use App\Services\ParserResultCache;
+use App\Services\ScheduleParserService;
 use App\View\Models\Parser\ParserPageViewModel;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
-use Throwable;
 
 class ParserController extends Controller
 {
     public function __construct(
+        private readonly HandleParseExecution $handleParseExecution,
         private readonly IcsCalendarService $icsCalendarService,
-        private readonly ParseRequestLogger $parseRequestLogger,
-        private readonly RosterDocumentParser $rosterDocumentParser,
-        private readonly RosterParser $rosterParser,
-        private readonly RosterSourceResolver $rosterSourceResolver,
+        private readonly ParserResultCache $parserResultCache,
+        private readonly ScheduleParserService $scheduleParserService,
     ) {}
 
     public function index()
@@ -43,28 +38,13 @@ class ParserController extends Controller
     {
         $text = $request->validated()['text'];
 
-        $startedAt = hrtime(true);
-        $parseRequest = $this->parseRequestLogger->start($request->user()?->id, 'pasted_text', 'unknown');
-
-        try {
-            $parsed = [
-                'trip' => [],
-                'calendar_events' => $this->rosterParser->extractFlightsDto($text), // Keep as DTO array!
-            ];
-            $result = $this->buildResult(
-                type: 'flight',
-                source: 'text',
-                documentType: null,
-                parsed: $parsed,
-            );
-
-            $this->cacheResult($result);
-            $this->parseRequestLogger->success($parseRequest, $startedAt, $parsed);
-        } catch (Throwable $e) {
-            $this->parseRequestLogger->error($parseRequest, $startedAt, $e);
-
-            throw $e;
-        }
+        $this->handleParseExecution->handle(
+            userId: $request->user()?->id,
+            sourceType: 'pasted_text',
+            parserType: 'unknown',
+            file: null,
+            operation: fn (): array => $this->scheduleParserService->parseFlight($text),
+        );
 
         return back();
     }
@@ -73,28 +53,13 @@ class ParserController extends Controller
     {
         $text = $request->validated()['text'];
 
-        $startedAt = hrtime(true);
-        $parseRequest = $this->parseRequestLogger->start($request->user()?->id, 'pasted_text', 'unknown');
-
-        try {
-            $parsed = [
-                'trip' => [],
-                'calendar_events' => $this->rosterParser->extractHotels($text),
-            ];
-            $result = $this->buildResult(
-                type: 'hotel',
-                source: 'text',
-                documentType: null,
-                parsed: $parsed,
-            );
-
-            $this->cacheResult($result);
-            $this->parseRequestLogger->success($parseRequest, $startedAt, $parsed);
-        } catch (Throwable $e) {
-            $this->parseRequestLogger->error($parseRequest, $startedAt, $e);
-
-            throw $e;
-        }
+        $this->handleParseExecution->handle(
+            userId: $request->user()?->id,
+            sourceType: 'pasted_text',
+            parserType: 'unknown',
+            file: null,
+            operation: fn (): array => $this->scheduleParserService->parseHotel($text),
+        );
 
         return back();
     }
@@ -102,72 +67,25 @@ class ParserController extends Controller
     public function parseRoster(ParseRosterRequest $request)
     {
         $data = $request->validated();
-
-        $eventTypes = $data['event_types'] ?? [];
         $file = $request->file('file');
         $sourceType = $file === null
             ? 'pasted_text'
             : ($file->getMimeType() === 'application/pdf' ? 'pdf' : 'image');
-        $startedAt = hrtime(true);
-        $parseRequest = $this->parseRequestLogger->start(
-            $request->user()?->id,
-            $sourceType,
-            $sourceType === 'image' ? 'screenshot' : 'unknown',
-            $file,
-        );
 
         try {
-            $source = $this->rosterSourceResolver->resolve(
-                $file,
-                $data['text'] ?? null,
+            $this->handleParseExecution->handle(
+                userId: $request->user()?->id,
+                sourceType: $sourceType,
+                parserType: $sourceType === 'image' ? 'screenshot' : 'unknown',
+                file: $file,
+                operation: fn (): array => $this->scheduleParserService->parseRoster(
+                    $file,
+                    $data['text'] ?? null,
+                    $data['event_types'] ?? [],
+                ),
             );
-        } catch (Throwable $e) {
-            $this->parseRequestLogger->error($parseRequest, $startedAt, $e);
-            $message = $request->hasFile('file')
-                ? 'Source resolution failed: '
-                : 'Roster text resolution failed: ';
-
-            return back()->withInput()->withErrors(['file' => $message.$e->getMessage()]);
-        }
-
-        try {
-            $text = $source['raw_text'];
-            $parsed = $this->rosterDocumentParser->parse(
-                $text,
-                $source['document_type'] ?? null,
-            );
-            $detectedParsed = $parsed;
-
-            if (! empty($eventTypes)) {
-                $parsed['calendar_events'] = array_values(array_filter(
-                    $parsed['calendar_events'] ?? [],
-                    fn (mixed $event) => in_array($this->eventType($event), $eventTypes, true)
-                ));
-            }
-
-            $result = $this->buildResult(
-                type: 'roster',
-                source: $source['source'],
-                documentType: $source['document_type'] ?? null,
-                parsed: $parsed,
-                filters: $eventTypes,
-                file: $source['file'],
-                mime: $source['mime'],
-                meta: is_array($source['meta'] ?? null) ? $source['meta'] : [],
-            );
-
-            $this->cacheResult($result);
-            $this->parseRequestLogger->success(
-                $parseRequest,
-                $startedAt,
-                $detectedParsed,
-                $this->parserType($source['source'], $source['document_type'] ?? null),
-                data_get($source, 'meta.page_count'),
-            );
-        } catch (Throwable $e) {
-            $this->parseRequestLogger->error($parseRequest, $startedAt, $e);
-
-            throw $e;
+        } catch (ParseSourceResolutionException $exception) {
+            return back()->withInput()->withErrors($exception->errors());
         }
 
         return back();
@@ -177,11 +95,7 @@ class ParserController extends Controller
     {
         $this->authorizeScheduleParser($request);
 
-        $sessionResult = $this->resolveExportResult($request);
-
-        if (! is_array($sessionResult) || ! isset($sessionResult['parsed']['calendar_events'])) {
-            abort(404);
-        }
+        $sessionResult = $this->resolveCachedEventsOrAbort($request);
 
         $eventTypes = $request->query('event_types', $sessionResult['filters'] ?? []);
         $events = $sessionResult['parsed']['calendar_events'];
@@ -210,11 +124,7 @@ class ParserController extends Controller
     {
         $this->authorizeScheduleParser($request);
 
-        $sessionResult = $this->resolveExportResult($request);
-
-        if (! is_array($sessionResult) || ! isset($sessionResult['parsed']['calendar_events'])) {
-            abort(404);
-        }
+        $sessionResult = $this->resolveCachedEventsOrAbort($request);
 
         $event = $this->findEventByDownloadId($sessionResult['parsed']['calendar_events'], $eventId);
 
@@ -240,11 +150,7 @@ class ParserController extends Controller
     ): Response {
         $this->authorizeScheduleParserDutyExport($request);
 
-        $sessionResult = $this->resolveExportResult($request);
-
-        if (! is_array($sessionResult) || ! isset($sessionResult['parsed']['calendar_events'])) {
-            abort(404);
-        }
+        $sessionResult = $this->resolveCachedEventsOrAbort($request);
 
         $event = $this->findEventByDownloadId($sessionResult['parsed']['calendar_events'], $eventId);
 
@@ -268,79 +174,15 @@ class ParserController extends Controller
         ]);
     }
 
-    private function buildResult(
-        string $type,
-        string $source,
-        ?string $documentType,
-        array $parsed,
-        array $filters = [],
-        mixed $file = null,
-        ?string $mime = null,
-        array $meta = [],
-    ): array {
-        $parseKey = (string) Str::ulid();
-
-        return [
-            'type' => $type,
-            'source' => $source,
-            'document_type' => $documentType,
-            'file' => $file,
-            'mime' => $mime,
-            'parsed' => $this->attachDownloadIds($parsed),
-            'filters' => $filters,
-            'meta' => $meta,
-            'parse_key' => $parseKey,
-        ];
-    }
-
-    private function attachDownloadIds(array $parsed): array
+    private function resolveCachedEventsOrAbort(Request $request): array
     {
-        $events = [];
+        $sessionResult = $this->parserResultCache->resolveForRequest($request);
 
-        foreach (($parsed['calendar_events'] ?? []) as $event) {
-            $downloadId = (string) Str::ulid();
-
-            // 1. If it's your concrete Flight DTO, use its internal mutation method
-            if ($event instanceof Flight) {
-                $events[] = $event->withDownloadId($downloadId);
-
-                continue;
-            }
-
-            // 2. Future-proofing: Catch any other broad ParsedEventDTO types
-            if ($event instanceof ParsedEventDTO) {
-                $events[] = $event;
-
-                continue;
-            }
-
-            // 3. Fallback for array matrices
-            if (is_array($event)) {
-                $event[MetadataKey::DownloadId->value] = $downloadId;
-                $events[] = $event;
-            }
+        if (! is_array($sessionResult) || ! isset($sessionResult['parsed']['calendar_events'])) {
+            abort(404);
         }
 
-        $parsed['calendar_events'] = $events;
-
-        return $parsed;
-    }
-
-    private function resolveExportResult(Request $request): mixed
-    {
-        $parseKey = $request->query('parse_key');
-
-        if (is_string($parseKey) && $parseKey !== '') {
-            return $this->resolveCachedResult($parseKey);
-        }
-
-        $latestParseKey = session('latest_parse_key');
-
-        if (is_string($latestParseKey) && $latestParseKey !== '') {
-            return $this->resolveCachedResult($latestParseKey);
-        }
-
-        return null;
+        return $sessionResult;
     }
 
     private function findEventByDownloadId(array $events, string $eventId): mixed
@@ -359,46 +201,6 @@ class ParserController extends Controller
         return null;
     }
 
-    private function resolveCachedResult(string $parseKey): mixed
-    {
-        return Cache::get($this->cacheKey($parseKey))
-            ?? Cache::get($this->parseKeyCacheKey($parseKey));
-    }
-
-    private function cacheResult(array $result): void
-    {
-        $ttlMinutes = config('cache.parsed_results_ttl', 60);
-        $normalizedResult = $this->normalizeForCache($result);
-
-        Cache::put($this->cacheKey($result['parse_key']), $normalizedResult, now()->addMinutes($ttlMinutes));
-        Cache::put($this->parseKeyCacheKey($result['parse_key']), $normalizedResult, now()->addMinutes($ttlMinutes));
-        session(['latest_parse_key' => $result['parse_key']]);
-    }
-
-    private function cacheKey(string $parseKey): string
-    {
-        return 'sessions:'.$this->sessionCacheNamespace().":parsed_results:{$parseKey}";
-    }
-
-    private function parseKeyCacheKey(string $parseKey): string
-    {
-        return "parsed_results:{$parseKey}";
-    }
-
-    private function sessionCacheNamespace(): string
-    {
-        $namespace = session('parsed_results_namespace');
-
-        if (is_string($namespace) && $namespace !== '') {
-            return $namespace;
-        }
-
-        $namespace = (string) Str::ulid();
-        session(['parsed_results_namespace' => $namespace]);
-
-        return $namespace;
-    }
-
     private function eventType(mixed $event): string
     {
         $eventType = $event instanceof ParsedEventDTO
@@ -414,54 +216,6 @@ class ParserController extends Controller
         }
 
         return is_array($event) ? (string) ($event['type'] ?? '') : '';
-    }
-
-    private function parserType(string $source, ?string $documentType): string
-    {
-        if ($source === 'image') {
-            return 'screenshot';
-        }
-
-        return match ($documentType) {
-            RosterSourceResolver::PDF_TYPE_TRIP_INFORMATION => 'trip_pdf',
-            RosterSourceResolver::PDF_TYPE_PUBLISHED_ROSTER => 'roster_pdf',
-            default => 'unknown',
-        };
-    }
-
-    private function normalizeForCache(mixed $value): mixed
-    {
-        if ($value instanceof ParsedEventDTO) {
-            return $this->normalizeForCache($value->toArray());
-        }
-
-        if ($value instanceof \JsonSerializable) {
-            return $this->normalizeForCache($value->jsonSerialize());
-        }
-
-        if ($value instanceof \BackedEnum) {
-            return $value->value;
-        }
-
-        if ($value instanceof \UnitEnum) {
-            return $value->name;
-        }
-
-        if (is_array($value)) {
-            $normalized = [];
-
-            foreach ($value as $key => $item) {
-                $normalized[$key] = $this->normalizeForCache($item);
-            }
-
-            return $normalized;
-        }
-
-        if (is_object($value)) {
-            throw new \LogicException('Unsupported object passed to cache boundary: '.$value::class);
-        }
-
-        return $value;
     }
 
     private function authorizeScheduleParser(Request $request): void
