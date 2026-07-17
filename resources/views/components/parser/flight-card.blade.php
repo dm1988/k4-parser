@@ -77,14 +77,6 @@
         </div>
 
         <div class="mt-8 flex flex-wrap items-center gap-2">
-            @if ($model->hasAirportDetails())
-            <x-parser.flight-card.accordion icon="heroicon-o-map-pin" title="Airports">
-                @include('parser.partials.flight-card.airport-details', [
-                'model' => $model,
-                ])
-            </x-parser.flight-card.accordion>
-            @endif
-
             <x-parser.flight-card.accordion icon="heroicon-o-paper-airplane" title="Flight">
                 @include('parser.partials.flight-card.flight-details', [
                 'model' => $model,
