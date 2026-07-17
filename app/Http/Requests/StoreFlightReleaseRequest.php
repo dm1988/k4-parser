@@ -20,7 +20,7 @@ class StoreFlightReleaseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'flight_release' => ['required', 'file', 'mimes:pdf', 'mimetypes:application/pdf', 'max:12288'],
+            'flight_release' => ['required', 'file', 'mimes:pdf', 'max:12288'],
         ];
     }
 
