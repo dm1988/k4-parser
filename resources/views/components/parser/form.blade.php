@@ -64,6 +64,10 @@
         @enderror
     </fieldset>
 
+    {{--
+        Temporarily hidden fallback text-entry flow.
+        Keep this block intact so "Paste extracted text instead" can be restored quickly.
+
     <details class="border-t border-[#1B365D]/10 p-5">
         <summary class="cursor-pointer font-semibold text-[#1B365D]">Paste extracted text instead</summary>
         <textarea name="text"
@@ -81,4 +85,5 @@
             </button>
         </p>
     </details>
+    --}}
 </form>
