@@ -15,7 +15,7 @@
   - service/action execution
   - redirect/response generation
 
-- Revisit repeated try/catch/logging blocks in parser actions and centralize the shared parse lifecycle where possible.
+[x] Revisit repeated try/catch/logging blocks in parser actions and centralize the shared parse lifecycle where possible.
 - Add or update focused feature tests covering the new request classes and extracted services.
 - Move export classes to app/Exports
 ├── app/
@@ -177,17 +177,8 @@ Tests\Feature\ParseUploadTest > non flight event card header displays…
     124▕     public function test_parse_failure_is_recorded_and_logged_without_input_contents(): void
     125▕     {
     
+
 ### 15. Failed test
-
-Tests\Feature\ParseUploadTest > non flight event card…   
-  Expected: <div\n
-      class="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-5 py-6  lg:grid-cols-2 ">\n
-      <section>\n
-  ... (207 more lines)
-
-  To contain: Jun 13 • 2:00 PM - 4:00 PM
-
-### 16. Failed test
 
 Tests\Feature\AdminNavigationTest > inactive or unver…   
   Expected response status code [200] but received 302.

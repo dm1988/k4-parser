@@ -11,8 +11,10 @@ use App\Services\ParserCalendarExportService;
 use App\Services\ParserResultCache;
 use App\Services\ScheduleParserService;
 use App\View\Models\Parser\ParserPageViewModel;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Http\UploadedFile;
 
 class ParserController extends Controller
 {
@@ -34,30 +36,26 @@ class ParserController extends Controller
     {
         $text = $request->validated()['text'];
 
-        $this->handleParseExecution->handle(
+        return $this->handleParseAction(
             userId: $request->user()?->id,
             sourceType: 'pasted_text',
             parserType: 'unknown',
             file: null,
             operation: fn (): array => $this->scheduleParserService->parseFlight($text),
         );
-
-        return back();
     }
 
     public function parseHotel(ParseHotelRequest $request)
     {
         $text = $request->validated()['text'];
 
-        $this->handleParseExecution->handle(
+        return $this->handleParseAction(
             userId: $request->user()?->id,
             sourceType: 'pasted_text',
             parserType: 'unknown',
             file: null,
             operation: fn (): array => $this->scheduleParserService->parseHotel($text),
         );
-
-        return back();
     }
 
     public function parseRoster(ParseRosterRequest $request)
@@ -68,23 +66,17 @@ class ParserController extends Controller
             ? 'pasted_text'
             : ($file->getMimeType() === 'application/pdf' ? 'pdf' : 'image');
 
-        try {
-            $this->handleParseExecution->handle(
-                userId: $request->user()?->id,
-                sourceType: $sourceType,
-                parserType: $sourceType === 'image' ? 'screenshot' : 'unknown',
-                file: $file,
-                operation: fn (): array => $this->scheduleParserService->parseRoster(
-                    $file,
-                    $data['text'] ?? null,
-                    $data['event_types'] ?? [],
-                ),
-            );
-        } catch (ParseSourceResolutionException $exception) {
-            return back()->withInput()->withErrors($exception->errors());
-        }
-
-        return back();
+        return $this->handleParseAction(
+            userId: $request->user()?->id,
+            sourceType: $sourceType,
+            parserType: $sourceType === 'image' ? 'screenshot' : 'unknown',
+            file: $file,
+            operation: fn (): array => $this->scheduleParserService->parseRoster(
+                $file,
+                $data['text'] ?? null,
+                $data['event_types'] ?? [],
+            ),
+        );
     }
 
     public function exportCalendar(Request $request)
@@ -128,6 +120,28 @@ class ParserController extends Controller
         }
 
         return $sessionResult;
+    }
+
+    private function handleParseAction(
+        ?int $userId,
+        string $sourceType,
+        string $parserType,
+        ?UploadedFile $file,
+        callable $operation,
+    ): RedirectResponse {
+        try {
+            $this->handleParseExecution->handle(
+                userId: $userId,
+                sourceType: $sourceType,
+                parserType: $parserType,
+                file: $file,
+                operation: $operation,
+            );
+        } catch (ParseSourceResolutionException $exception) {
+            return back()->withInput()->withErrors($exception->errors());
+        }
+
+        return back();
     }
 
     private function authorizeScheduleParser(Request $request): void
