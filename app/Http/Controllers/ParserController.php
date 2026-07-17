@@ -7,6 +7,9 @@ use App\DTOs\Flight;
 use App\DTOs\ParsedEventDTO;
 use App\Enums\MetadataKey;
 use App\Enums\ParserEventType;
+use App\Http\Requests\ParseFlightRequest;
+use App\Http\Requests\ParseHotelRequest;
+use App\Http\Requests\ParseRosterRequest;
 use App\Services\IcsCalendarService;
 use App\Services\ParseRequestLogger;
 use App\Services\RosterDocumentParser;
@@ -17,7 +20,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Throwable;
 
 class ParserController extends Controller
@@ -37,13 +39,9 @@ class ParserController extends Controller
         ]);
     }
 
-    public function parseFlight(Request $request)
+    public function parseFlight(ParseFlightRequest $request)
     {
-        $this->authorizeScheduleParser($request);
-
-        $text = $request->validate([
-            'text' => ['required', 'string'],
-        ])['text'];
+        $text = $request->validated()['text'];
 
         $startedAt = hrtime(true);
         $parseRequest = $this->parseRequestLogger->start($request->user()?->id, 'pasted_text', 'unknown');
@@ -71,13 +69,9 @@ class ParserController extends Controller
         return back();
     }
 
-    public function parseHotel(Request $request)
+    public function parseHotel(ParseHotelRequest $request)
     {
-        $this->authorizeScheduleParser($request);
-
-        $text = $request->validate([
-            'text' => ['required', 'string'],
-        ])['text'];
+        $text = $request->validated()['text'];
 
         $startedAt = hrtime(true);
         $parseRequest = $this->parseRequestLogger->start($request->user()?->id, 'pasted_text', 'unknown');
@@ -105,16 +99,9 @@ class ParserController extends Controller
         return back();
     }
 
-    public function parseRoster(Request $request)
+    public function parseRoster(ParseRosterRequest $request)
     {
-        $this->authorizeScheduleParser($request);
-
-        $data = $request->validate([
-            'file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,bmp,tif,tiff,webp', 'max:12288', 'required_without:text'],
-            'text' => ['nullable', 'string', 'required_without:file'],
-            'event_types' => ['nullable', 'array'],
-            'event_types.*' => [Rule::in(ParserEventType::filterValues())],
-        ]);
+        $data = $request->validated();
 
         $eventTypes = $data['event_types'] ?? [];
         $file = $request->file('file');
