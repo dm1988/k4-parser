@@ -13,7 +13,9 @@
         "laravel/cashier": "^16.5",
         "laravel/framework": "^13.8",
         "laravel/tinker": "^3.0",
-        "smalot/pdfparser": "^2.12"
+        "smalot/pdfparser": "^2.12",
+        "symfony/http-client": "^8.1",
+        "symfony/mailgun-mailer": "^8.1"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
