@@ -14,7 +14,10 @@
     @if ($airport)
         <p class="text-xs font-semibold leading-snug text-[#0B0E14]">{{ $airport['name'] }}</p>
         <p class="text-[11px] leading-relaxed text-[#4A5568]">{{ $airport['location'] }}</p>
-        <p class="font-mono text-[11px] text-[#4A5568]/70">{{ $airport['identifiers'] }}</p>
+        <div class="font-mono text-[11px] leading-relaxed text-[#4A5568]/70">
+            <p>ICAO {{ $airport['icao'] }}</p>
+            <p>IATA {{ $airport['iata'] }}</p>
+        </div>
     @elseif ($fallback)
         <p class="text-[11px] leading-relaxed text-[#4A5568]">{{ $fallback }}</p>
     @endif

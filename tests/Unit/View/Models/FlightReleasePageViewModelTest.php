@@ -33,7 +33,8 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('KRSW', $viewModel->alternateLabel());
         $this->assertSame('Ted Stevens Anchorage International Airport', $viewModel->departureAirport()['name']);
         $this->assertSame('Anchorage, Alaska, United States', $viewModel->departureAirport()['location']);
-        $this->assertSame('IATA ANC · ICAO PANC', $viewModel->departureAirport()['identifiers']);
+        $this->assertSame('ANC', $viewModel->departureAirport()['iata']);
+        $this->assertSame('PANC', $viewModel->departureAirport()['icao']);
         $this->assertSame('FL 330', $viewModel->initialAltitude());
         $this->assertSame('07h12m', $viewModel->duration());
         $this->assertSame('DCT TEST', $viewModel->route());
@@ -114,7 +115,8 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertNull($viewModel->alternateAirport());
         $this->assertSame('No alternate airport listed.', $viewModel->alternateAirportFallback());
         $this->assertSame('Ted Stevens Anchorage International Airport', $viewModel->departureAirport()['name']);
-        $this->assertSame('IATA ANC · ICAO PANC', $viewModel->departureAirport()['identifiers']);
+        $this->assertSame('ANC', $viewModel->departureAirport()['iata']);
+        $this->assertSame('PANC', $viewModel->departureAirport()['icao']);
     }
 
     #[Test]

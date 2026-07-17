@@ -51,7 +51,7 @@ readonly class FlightReleasePageViewModel
     }
 
     /**
-     * @return array{name: string, location: string, identifiers: string}|null
+     * @return array{name: string, location: string, iata: string, icao: string}|null
      */
     public function departureAirport(): ?array
     {
@@ -59,7 +59,7 @@ readonly class FlightReleasePageViewModel
     }
 
     /**
-     * @return array{name: string, location: string, identifiers: string}|null
+     * @return array{name: string, location: string, iata: string, icao: string}|null
      */
     public function destinationAirport(): ?array
     {
@@ -67,7 +67,7 @@ readonly class FlightReleasePageViewModel
     }
 
     /**
-     * @return array{name: string, location: string, identifiers: string}|null
+     * @return array{name: string, location: string, iata: string, icao: string}|null
      */
     public function alternateAirport(): ?array
     {
@@ -133,7 +133,7 @@ readonly class FlightReleasePageViewModel
     }
 
     /**
-     * @return array{name: string, location: string, identifiers: string}|null
+     * @return array{name: string, location: string, iata: string, icao: string}|null
      */
     private function airportDetails(string $key): ?array
     {
@@ -155,11 +155,8 @@ readonly class FlightReleasePageViewModel
         return [
             'name' => $airport->name,
             'location' => $this->airportLocation($airport),
-            'identifiers' => sprintf(
-                'IATA %s · ICAO %s',
-                $airport->iata !== '' ? $airport->iata : 'N/A',
-                $airport->icao !== '' ? $airport->icao : 'N/A',
-            ),
+            'iata' => $airport->iata !== '' ? $airport->iata : 'N/A',
+            'icao' => $airport->icao !== '' ? $airport->icao : 'N/A',
         ];
     }
 
