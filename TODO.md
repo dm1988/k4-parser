@@ -9,7 +9,7 @@
   - `parseHotel`
   - `parseRoster`
 [x] Move parsing, result assembly, and cache persistence out of `ParserController` into smaller action or service classes.
-- Reduce controller method size so each action mainly coordinates:
+[x] Reduce controller method size so each action mainly coordinates:
   - authorization
   - validated input
   - service/action execution
@@ -17,6 +17,9 @@
 
 - Revisit repeated try/catch/logging blocks in parser actions and centralize the shared parse lifecycle where possible.
 - Add or update focused feature tests covering the new request classes and extracted services.
+- Move export classes to app/Exports
+├── app/
+│   └── Exports/            <-- Your export classes are placed here
 
 ### 2. Parser result DTO
 - Introduce a `ParserResultData` DTO so parser result assembly, caching, and view-model hydration use a typed outer result shape instead of loose arrays. 

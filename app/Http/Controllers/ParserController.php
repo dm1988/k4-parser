@@ -2,16 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\ExportFlightDutyCalendarEvent;
 use App\Actions\HandleParseExecution;
-use App\DTOs\ParsedEventDTO;
-use App\Enums\MetadataKey;
-use App\Enums\ParserEventType;
 use App\Exceptions\ParseSourceResolutionException;
 use App\Http\Requests\ParseFlightRequest;
 use App\Http\Requests\ParseHotelRequest;
 use App\Http\Requests\ParseRosterRequest;
-use App\Services\IcsCalendarService;
+use App\Services\ParserCalendarExportService;
 use App\Services\ParserResultCache;
 use App\Services\ScheduleParserService;
 use App\View\Models\Parser\ParserPageViewModel;
@@ -22,7 +18,7 @@ class ParserController extends Controller
 {
     public function __construct(
         private readonly HandleParseExecution $handleParseExecution,
-        private readonly IcsCalendarService $icsCalendarService,
+        private readonly ParserCalendarExportService $parserCalendarExportService,
         private readonly ParserResultCache $parserResultCache,
         private readonly ScheduleParserService $scheduleParserService,
     ) {}
@@ -95,83 +91,32 @@ class ParserController extends Controller
     {
         $this->authorizeScheduleParser($request);
 
-        $sessionResult = $this->resolveCachedEventsOrAbort($request);
-
-        $eventTypes = $request->query('event_types', $sessionResult['filters'] ?? []);
-        $events = $sessionResult['parsed']['calendar_events'];
-
-        if ($eventTypes !== []) {
-            $events = array_values(array_filter(
-                $events,
-                fn (mixed $event) => in_array($this->eventType($event), $eventTypes, true),
-            ));
-        }
-
-        if (count($events) === 0) {
-            abort(404);
-        }
-
-        $tripNumber = $sessionResult['parsed']['trip']['trip_number'] ?? null;
-        $filename = 'crew-compass'.($tripNumber ? "-{$tripNumber}" : '').'.ics';
-
-        return response($this->icsCalendarService->serialize($events, $sessionResult['parsed']['trip'] ?? []), 200, [
-            'Content-Type' => 'text/calendar; charset=utf-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+        return $this->parserCalendarExportService->exportCalendar(
+            $this->resolveCachedEventsOrAbort($request),
+            $request->query('event_types', []),
+        );
     }
 
     public function exportCalendarEvent(Request $request, string $eventId)
     {
         $this->authorizeScheduleParser($request);
 
-        $sessionResult = $this->resolveCachedEventsOrAbort($request);
-
-        $event = $this->findEventByDownloadId($sessionResult['parsed']['calendar_events'], $eventId);
-
-        if ($event === null) {
-            abort(404);
-        }
-
-        $trip = $sessionResult['parsed']['trip'] ?? [];
-        $tripNumber = $trip['trip_number'] ?? null;
-        $slug = 'event-'.$eventId;
-        $filename = 'crew-compass'.($tripNumber ? "-{$tripNumber}" : '').'-'.$slug.'.ics';
-
-        return response($this->icsCalendarService->serialize([$event], $trip), 200, [
-            'Content-Type' => 'text/calendar; charset=utf-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+        return $this->parserCalendarExportService->exportCalendarEvent(
+            $this->resolveCachedEventsOrAbort($request),
+            $eventId,
+        );
     }
 
     public function exportFlightDutyCalendarEvent(
         Request $request,
         string $eventId,
-        ExportFlightDutyCalendarEvent $exportFlightDutyCalendarEvent,
     ): Response {
         $this->authorizeScheduleParserDutyExport($request);
 
-        $sessionResult = $this->resolveCachedEventsOrAbort($request);
-
-        $event = $this->findEventByDownloadId($sessionResult['parsed']['calendar_events'], $eventId);
-
-        if ($event === null) {
-            abort(404);
-        }
-
-        $trip = $sessionResult['parsed']['trip'] ?? [];
-        $ics = $exportFlightDutyCalendarEvent->handle($event, $trip);
-
-        if ($ics === null) {
-            abort(404);
-        }
-
-        $tripNumber = $trip['trip_number'] ?? null;
-        $filename = 'crew-compass'.($tripNumber ? "-{$tripNumber}" : '').'-duty-'.$eventId.'.ics';
-
-        return response($ics, 200, [
-            'Content-Type' => 'text/calendar; charset=utf-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+        return $this->parserCalendarExportService->exportFlightDutyCalendarEvent(
+            $this->resolveCachedEventsOrAbort($request),
+            $eventId,
+        );
     }
 
     private function resolveCachedEventsOrAbort(Request $request): array
@@ -183,39 +128,6 @@ class ParserController extends Controller
         }
 
         return $sessionResult;
-    }
-
-    private function findEventByDownloadId(array $events, string $eventId): mixed
-    {
-        foreach ($events as $event) {
-            // Use abstract parent properties or ArrayAccess fallbacks smoothly
-            if ($event instanceof ParsedEventDTO && $event->downloadId === $eventId) {
-                return $event;
-            }
-
-            if (is_array($event) && ($event[MetadataKey::DownloadId->value] ?? null) === $eventId) {
-                return $event;
-            }
-        }
-
-        return null;
-    }
-
-    private function eventType(mixed $event): string
-    {
-        $eventType = $event instanceof ParsedEventDTO
-            ? ParserEventType::fromValue($event->type)
-            : (is_array($event) ? ParserEventType::fromEvent($event) : ParserEventType::Unknown);
-
-        if ($eventType->isFlightLike()) {
-            return ParserEventType::Flight->value;
-        }
-
-        if ($event instanceof ParsedEventDTO) {
-            return $event->type;
-        }
-
-        return is_array($event) ? (string) ($event['type'] ?? '') : '';
     }
 
     private function authorizeScheduleParser(Request $request): void
