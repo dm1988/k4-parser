@@ -128,9 +128,11 @@ class ParserResultComponentTest extends TestCase
         $this->assertSame('RKSI', $flight->metadata['origin_icao']);
         $this->assertSame('Incheon International Airport', $flight->metadata['origin_name']);
         $this->assertSame('Seoul', $flight->metadata['origin_city']);
+        $this->assertSame('South Korea', $flight->metadata['origin_country']);
         $this->assertSame('VHHH', $flight->metadata['destination_icao']);
         $this->assertSame('Hong Kong International Airport', $flight->metadata['destination_name']);
         $this->assertSame('Hong Kong', $flight->metadata['destination_city']);
+        $this->assertSame('Hong Kong', $flight->metadata['destination_country']);
     }
 
     private function makeResultModel(): ParserResultViewModel
