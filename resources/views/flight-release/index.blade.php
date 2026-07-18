@@ -41,71 +41,12 @@
                     </form>
 
                     @if ($model->hasFlightPlan())
-                        @php($departureAirport = $model->departureAirport())
-                        @php($destinationAirport = $model->destinationAirport())
-                        @php($alternateAirport = $model->alternateAirport())
                         <x-flight-release.plan-card
                             :model="$model"
-                            :departure-airport="$departureAirport"
-                            :destination-airport="$destinationAirport"
-                            :alternate-airport="$alternateAirport"
+                            :departure-airport="$model->departureAirport()"
+                            :destination-airport="$model->destinationAirport()"
+                            :alternate-airport="$model->alternateAirport()"
                         />
-
-                        <script>
-                            const copyFlightPlanButtons = document.querySelectorAll('[data-copy-target]');
-                            const copyStatusTimeouts = new Map();
-
-                            const showCopyStatus = (status, message) => {
-                                const existingTimeouts = copyStatusTimeouts.get(status.id);
-
-                                if (existingTimeouts) {
-                                    window.clearTimeout(existingTimeouts.fadeTimeout);
-                                    window.clearTimeout(existingTimeouts.clearTimeout);
-                                }
-
-                                status.textContent = message;
-                                status.classList.remove('opacity-0');
-                                status.classList.add('opacity-100');
-
-                                const fadeTimeout = window.setTimeout(() => {
-                                    status.classList.remove('opacity-100');
-                                    status.classList.add('opacity-0');
-                                }, 50);
-
-                                const clearTimeout = window.setTimeout(() => {
-                                    status.textContent = '';
-                                }, 3050);
-
-                                copyStatusTimeouts.set(status.id, {fadeTimeout, clearTimeout});
-                            };
-
-                            copyFlightPlanButtons.forEach((button) => {
-                                button.addEventListener('click', async () => {
-                                    const output = document.getElementById(button.dataset.copyTarget);
-                                    const status = document.getElementById(button.dataset.copyStatus);
-
-                                    if (! output || ! status) {
-                                        return;
-                                    }
-
-                                    const text = output.value ?? output.textContent?.trim() ?? '';
-                                    const label = button.dataset.copyLabel ?? 'Value';
-
-                                    if (text === '') {
-                                        showCopyStatus(status, `Unable to copy ${label.toLowerCase()}.`);
-
-                                        return;
-                                    }
-
-                                    try {
-                                        await navigator.clipboard.writeText(text);
-                                        showCopyStatus(status, `${label} copied.`);
-                                    } catch (error) {
-                                        showCopyStatus(status, `Unable to copy ${label.toLowerCase()}.`);
-                                    }
-                                });
-                            });
-                        </script>
                     @endif
                 </div>
             </div>

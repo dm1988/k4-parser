@@ -28,9 +28,27 @@ class ParseUploadTest extends TestCase
         $page->assertSee('disabled:bg-[#1B365D]/55', false);
         $page->assertSee('x-data="parserForm()"', false);
         $page->assertDontSee("const parserForm = document.getElementById('parserForm');", false);
-        $page->assertSee('class="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-5 py-6 "', false);
-        $this->assertLessThanOrEqual(1, substr_count($content, '<main'));
+        $page->assertSee('mx-auto grid max-w-6xl grid-cols-1 gap-6 px-5 py-6', false);
+        $this->assertSame(1, substr_count($content, '<main'));
         $this->assertSame(substr_count($content, '<main'), substr_count($content, '</main>'));
+    }
+
+    public function test_dashboard_and_parse_routes_use_the_same_parser_page_composition(): void
+    {
+        $user = User::factory()->make();
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertViewIs('dashboard')
+            ->assertViewHas('viewModel')
+            ->assertSeeText('JCA Schedule Parser');
+
+        $this->get(route('parse.index'))
+            ->assertOk()
+            ->assertViewIs('dashboard')
+            ->assertViewHas('viewModel')
+            ->assertSeeText('JCA Schedule Parser');
     }
 
     public function test_parse_pasted_text_stores_parse_key_in_session_and_result_in_cache()

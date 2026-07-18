@@ -38,11 +38,13 @@ If the button above says "expired" or doesn't work, enter this 6-digit code on t
 
 Completed: added keyed SHA-256 hashed, single-use 6-digit OTPs with a 15-minute expiry, OTP delivery alongside the signed verification link, an inline verification form, route throttling, and regression coverage.
 
-### 2. Remove inline JavaScript and view-level composition drift
+### 2. ✅ Remove inline JavaScript and view-level composition drift
 
 - Move the inline clipboard script out of `resources/views/flight-release/index.blade.php` into a proper frontend asset/module.
 - Remove the third-party inline script injection from `resources/views/layouts/navigation.blade.php` and integrate it in a safer, more maintainable way.
 - Review `resources/views/parse.blade.php` and `resources/views/dashboard.blade.php` to avoid building page state directly inside views when controllers/routes should own that responsibility.
+
+Completed: moved flight-release clipboard behavior into the Vite JavaScript entry point, replaced the third-party navigation widget and inline logout handlers with native links/forms, and consolidated `/dashboard` and `/parse` on one controller-composed parser view.
 
 ### 3. Enable development guardrails for Eloquent performance issues
 

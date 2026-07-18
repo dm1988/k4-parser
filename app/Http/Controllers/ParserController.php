@@ -29,12 +29,15 @@ class ParserController extends Controller
 
     public function index(): View
     {
-        return view('parse', [
-            'viewModel' => $this->parserPageViewModel(),
-        ]);
+        return $this->parserPage();
     }
 
     public function dashboard(): View
+    {
+        return $this->parserPage();
+    }
+
+    private function parserPage(): View
     {
         return view('dashboard', [
             'viewModel' => $this->parserPageViewModel(),

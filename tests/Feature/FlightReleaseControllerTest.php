@@ -95,6 +95,8 @@ class FlightReleaseControllerTest extends TestCase
             ->assertSeeText('Airport details')
             ->assertSeeText('Route')
             ->assertSeeText('Copy route')
+            ->assertSee('data-copy-target=', escape: false)
+            ->assertDontSee('navigator.clipboard', escape: false)
             ->assertSeeInOrder([
                 '<div class="flex items-center gap-2">',
                 'Airport details',

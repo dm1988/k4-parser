@@ -71,6 +71,19 @@ class AdminNavigationTest extends TestCase
             ->assertDontSee(route('filament.admin.pages.dashboard'), escape: false);
     }
 
+    public function test_navigation_uses_safe_links_and_forms_without_inline_javascript(): void
+    {
+        $response = $this->actingAs(User::factory()->create())
+            ->get(route('dashboard'));
+
+        $response->assertOk()
+            ->assertSee('https://buymeacoffee.com/crewcompass', escape: false)
+            ->assertSee('rel="noopener noreferrer"', escape: false)
+            ->assertSee('action="'.route('logout').'"', escape: false)
+            ->assertDontSee('cdnjs.buymeacoffee.com', escape: false)
+            ->assertDontSee('onclick=', escape: false);
+    }
+
     public function test_inactive_verified_admins_can_not_see_the_admin_navigation_link(): void
     {
         $admin = User::factory()->admin()->inactive()->create();
