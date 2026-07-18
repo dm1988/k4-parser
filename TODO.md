@@ -2,18 +2,6 @@
 
 ## 🎯 Goal
 
-### 5. ✅ Use route middleware for auth
-Move Authorization to Route Middleware
-Your inline authorization blocks check explicit user capabilities and feature flags:
-
-PHP
-$this->authorizeScheduleParser($request);
-Putting authorization directly inside controller methods prevents standard route caching optimizations and muddies the request mapping responsibility.
-
-Fix: Wrap these rules into custom route middleware (e.g., EnsureFeatureIsEnabled, can:use-schedule-parser)
-
-Completed: moved feature availability and user capability checks to route middleware using a parameterized feature middleware and Laravel gates, while preserving disabled-feature 404 and unauthorized-user 403 responses.
-
 ### 6. ✅ Fix airport details popover layering and mobile overflow behavior
 
 - Fix the airport popover/card z-index issue on small screens.
@@ -26,7 +14,7 @@ Completed: moved feature availability and user capability checks to route middle
 
 Completed: allowed airport popovers to escape the flight card's clipping boundary, raised the active popover above sibling content, constrained panels to the mobile viewport, wrapped long metadata, and linked each trigger to its uniquely identified panel while preserving Escape-key focus behavior.
 
-### 7. Review migrations and schema consistency for `flight_events`
+### 7. ✅ Review migrations and schema consistency for `flight_events`
 
 - Revisit `database/migrations/2026_06_22_002913_flight_event.php` for:
   - table naming consistency
@@ -35,6 +23,8 @@ Completed: allowed airport popovers to escape the flight card's clipping boundar
   - leftover commented scaffolding
 - Confirm the schema accurately reflects the intended relationship with `aircraft`.
 - Document any forward-fix migration needed rather than mutating an already-run migration if this has been used outside local development.
+
+Completed: confirmed the conventional `flight_events` / `aircraft` naming and nullable `aircraft_id` relationship with `SET NULL` deletion behavior. Preserved the already-run migration despite its nonstandard filename and stale scaffolding, added a forward migration for `start` and `aircraft_id` query indexes, mirrored the `is_deadhead` database default in the model, and added schema and referential-integrity regression coverage.
 
 ### 8. Use spatie icalendar-generator package
   - Install package with composer

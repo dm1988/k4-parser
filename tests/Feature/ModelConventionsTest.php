@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class ModelConventionsTest extends TestCase
@@ -119,5 +120,34 @@ class ModelConventionsTest extends TestCase
         $this->assertNull($relatedEvent->getRawOriginal('tail_number'));
         $this->assertSame('N773CK', $relatedEvent->display_tail_number);
         $this->assertSame('N773CK', $fallbackEvent->display_tail_number);
+    }
+
+    public function test_deleting_aircraft_nulls_the_flight_event_relationship(): void
+    {
+        $aircraft = Aircraft::factory()->create();
+        $flightEvent = FlightEvent::factory()->forAircraft($aircraft)->create();
+
+        $aircraft->delete();
+
+        $this->assertModelExists($flightEvent);
+        $this->assertNull($flightEvent->fresh()->aircraft_id);
+    }
+
+    public function test_flight_event_query_columns_are_indexed(): void
+    {
+        $indexes = collect(Schema::getIndexes('flight_events'))
+            ->mapWithKeys(fn (array $index): array => [$index['name'] => $index['columns']]);
+
+        $this->assertSame(['start'], $indexes->get('flight_events_start_index'));
+        $this->assertSame(['aircraft_id'], $indexes->get('flight_events_aircraft_id_index'));
+        $this->assertSame(
+            ['tail_number', 'start', 'end'],
+            $indexes->get('flight_events_tail_number_start_end_index'),
+        );
+    }
+
+    public function test_flight_event_defaults_match_the_database_defaults(): void
+    {
+        $this->assertFalse((new FlightEvent)->is_deadhead);
     }
 }

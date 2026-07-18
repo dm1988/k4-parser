@@ -41,6 +41,11 @@ class FlightEvent extends Model
     /** @use HasFactory<FlightEventFactory> */
     use HasFactory;
 
+    /** @var array<string, mixed> */
+    protected $attributes = [
+        'is_deadhead' => false,
+    ];
+
     /**
      * @return BelongsTo<Aircraft, $this>
      */
