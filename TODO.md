@@ -2,13 +2,6 @@
 
 ## 🎯 Goal
 
-### 4. ✅ Improve OCR cache consistency and temporary file handling
-
-- Review `app/Services/RosterSourceResolver.php` caching and temp file management.
-- Replace `md5_file()` OCR cache key generation with the same stronger file identity strategy used elsewhere in the app unless there is a deliberate reason not to.
-- Confirm temp image cleanup is safe under all failure paths.
-- Review validation error keys for OCR/PDF failures to ensure they map cleanly back to the form fields the UI actually renders.
-
 ### 5. ✅ Use route middleware for auth
 Move Authorization to Route Middleware
 Your inline authorization blocks check explicit user capabilities and feature flags:
@@ -21,7 +14,7 @@ Fix: Wrap these rules into custom route middleware (e.g., EnsureFeatureIsEnabled
 
 Completed: moved feature availability and user capability checks to route middleware using a parameterized feature middleware and Laravel gates, while preserving disabled-feature 404 and unauthorized-user 403 responses.
 
-### 6. Fix airport details popover layering and mobile overflow behavior
+### 6. ✅ Fix airport details popover layering and mobile overflow behavior
 
 - Fix the airport popover/card z-index issue on small screens.
 - Ensure large airport metadata content does not render under surrounding UI.
@@ -30,6 +23,8 @@ Completed: moved feature availability and user capability checks to route middle
   - tablet widths
   - desktop widths
 - Confirm the popover remains accessible and readable when airport names or location strings are long.
+
+Completed: allowed airport popovers to escape the flight card's clipping boundary, raised the active popover above sibling content, constrained panels to the mobile viewport, wrapped long metadata, and linked each trigger to its uniquely identified panel while preserving Escape-key focus behavior.
 
 ### 7. Review migrations and schema consistency for `flight_events`
 

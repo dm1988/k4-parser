@@ -1,8 +1,8 @@
 @props(['model'])
 
-<article class="overflow-hidden rounded-lg border border-[#1B365D]/15 bg-white shadow-sm">
+<article class="overflow-visible rounded-lg border border-[#1B365D]/15 bg-white shadow-sm">
     <!-- REVISED HEADER: Changed background to clean, light blue-gray tint with navy text -->
-    <header class="border-b border-[#1B365D]/10 bg-[#E9F0F8] px-6 py-4 text-[#1B365D]">
+    <header class="rounded-t-lg border-b border-[#1B365D]/10 bg-[#E9F0F8] px-6 py-4 text-[#1B365D]">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex min-w-0 items-center gap-3">
                 <h3 class="truncate font-mono text-[1.05rem] font-semibold uppercase tracking-[0.16em] text-[#1B365D]">
@@ -93,7 +93,7 @@
         </div>
     </div>
 
-    <footer class="flex items-center justify-between border-t border-[#1B365D]/10 bg-[#F8F9FA] px-6 py-4">
+    <footer class="flex items-center justify-between rounded-b-lg border-t border-[#1B365D]/10 bg-[#F8F9FA] px-6 py-4">
         <div class="flex items-center gap-3">
             @if ($model->hasFooterContext())
             <span class="text-sm font-semibold uppercase tracking-[0.12em] text-[#4A5568]">

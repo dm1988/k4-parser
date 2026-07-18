@@ -127,6 +127,14 @@ class FlightCardComponentTest extends TestCase
         $this->assertStringContainsString('aria-label="Airport info for HKG"', $html);
         $this->assertStringContainsString('Airport Info', $html);
         $this->assertStringNotContainsString('Airport details', $html);
+        $this->assertStringContainsString('overflow-visible rounded-lg', $html);
+        $this->assertStringNotContainsString('<article class="overflow-hidden', $html);
+        $this->assertStringContainsString("x-bind:class=\"{ 'z-50': open }\"", $html);
+        $this->assertStringContainsString('max-w-[calc(100vw-3rem)]', $html);
+        $this->assertStringContainsString('break-words text-[13px]', $html);
+        $this->assertStringContainsString('break-words text-[12px]', $html);
+        $this->assertStringContainsString('x-bind:aria-controls="$id(\'airport-popover\')"', $html);
+        $this->assertStringContainsString('x-bind:id="$id(\'airport-popover\')"', $html);
     }
 
     private function renderFlightCard(): string

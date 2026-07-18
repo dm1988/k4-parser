@@ -5,7 +5,9 @@
 
 <div
     x-data="{ open: false }"
-    x-on:keydown.escape.window="open = false"
+    x-id="['airport-popover']"
+    x-on:keydown.escape.window="if (open) { open = false; $refs.trigger.focus() }"
+    x-bind:class="{ 'z-50': open }"
     @class([
         'relative inline-block',
         'text-right' => $align === 'right',
@@ -14,8 +16,10 @@
 >
     <button
         type="button"
+        x-ref="trigger"
         x-on:click="open = ! open"
         x-bind:aria-expanded="open.toString()"
+        x-bind:aria-controls="$id('airport-popover')"
         aria-label="Airport info for {{ $info['iata'] }}"
         @class([
             'group flex flex-col gap-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059]/50 focus-visible:ring-offset-2 rounded-md',
@@ -34,12 +38,13 @@
     </button>
 
     <div
+        x-bind:id="$id('airport-popover')"
         x-show="open"
         x-on:click.outside="open = false"
         x-transition.opacity.scale.95.origin.top
         style="display: none;"
         @class([
-            'absolute top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-[#1B365D]/12 bg-white shadow-xl shadow-[#1B365D]/10 ring-1 ring-[#1B365D]/5',
+            'absolute top-full z-50 mt-2 w-64 max-w-[calc(100vw-3rem)] overflow-hidden rounded-xl border border-[#1B365D]/12 bg-white shadow-xl shadow-[#1B365D]/10 ring-1 ring-[#1B365D]/5',
             'right-0' => $align === 'right',
             'left-0' => $align !== 'right',
         ])
@@ -60,12 +65,12 @@
         </div>
 
         <div class="space-y-3 px-4 py-3">
-            <p class="text-[13px] font-semibold leading-snug text-[#0B0E14]">
+            <p class="break-words text-[13px] font-semibold leading-snug text-[#0B0E14]">
                 {{ $info['name'] }}
             </p>
 
             @if ($info['location'])
-                <p class="text-[12px] text-[#4A5568]">
+                <p class="break-words text-[12px] text-[#4A5568]">
                     {{ $info['location'] }}
                 </p>
             @endif
