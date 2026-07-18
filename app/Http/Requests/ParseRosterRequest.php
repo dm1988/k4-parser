@@ -3,24 +3,16 @@
 namespace App\Http\Requests;
 
 use App\Enums\ParserEventType;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class ParseRosterRequest extends FormRequest
 {
-    public function authorize(): bool
-    {
-        if (! config('features.schedule_parser.enabled', true)) {
-            abort(404);
-        }
-
-        return (bool) $this->user()?->canUseScheduleParser();
-    }
-
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {

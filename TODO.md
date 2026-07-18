@@ -2,14 +2,6 @@
 
 ## 🎯 Goal
 
-### 3. ✅ Enable development guardrails for Eloquent performance issues
-
-- Add `Model::preventLazyLoading()` in non-production environments in `app/Providers/AppServiceProvider.php`.
-- Consider whether other local/dev guardrails should also be enabled for query visibility and accidental lazy loading detection.
-- Run the affected test set after enabling this to identify hidden relationship-loading problems.
-
-Completed: enabled Eloquent strict mode outside production to prevent lazy loading, silently discarded attributes, and access to missing attributes, with focused regression coverage.
-
 ### 4. ✅ Improve OCR cache consistency and temporary file handling
 
 - Review `app/Services/RosterSourceResolver.php` caching and temp file management.
@@ -17,7 +9,7 @@ Completed: enabled Eloquent strict mode outside production to prevent lazy loadi
 - Confirm temp image cleanup is safe under all failure paths.
 - Review validation error keys for OCR/PDF failures to ensure they map cleanly back to the form fields the UI actually renders.
 
-### 5. Use route middleware for auth
+### 5. ✅ Use route middleware for auth
 Move Authorization to Route Middleware
 Your inline authorization blocks check explicit user capabilities and feature flags:
 
@@ -26,6 +18,8 @@ $this->authorizeScheduleParser($request);
 Putting authorization directly inside controller methods prevents standard route caching optimizations and muddies the request mapping responsibility.
 
 Fix: Wrap these rules into custom route middleware (e.g., EnsureFeatureIsEnabled, can:use-schedule-parser)
+
+Completed: moved feature availability and user capability checks to route middleware using a parameterized feature middleware and Laravel gates, while preserving disabled-feature 404 and unauthorized-user 403 responses.
 
 ### 6. Fix airport details popover layering and mobile overflow behavior
 
@@ -113,3 +107,11 @@ public function toMail(mixed $notifiable): MailMessage
  - Fix: Nest the file upload and filters section inside a single, unified container card, where the dark blue header serves as the hero header of that card. This removes the double-card stacking look and groups the context ("what this tool does") directly with the action ("upload your file").
 
 - Spacing: Increase the vertical spacing (gap or margin-bottom) between the hero header card and the upload card if you keep them separate.
+
+## 15. Improve Grid/Flex Alignment
+- Filters Section: The "Filters" label and the "Show options" dropdown toggle are pushed to the extreme edges of the container. If a user expands "Show options," the checkboxes will likely appear far away from the initial visual anchor. Aligning these elements or placing the filter options directly in a collapsible accordion that spans a more readable, centered width would feel more cohesive.
+
+- Alignment: Ensure the text inside the "Choose File" button box vertically aligns perfectly with the text baseline of the "Parse" button.
+
+## 16. Navbar Typography
+- The navbar items ("Parse Schedule", "Route Extractor", etc.) are quite close to the top edge of the viewport. Adding a bit more top and bottom padding to the navbar container will give the text room to breathe and look cleaner.

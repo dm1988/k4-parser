@@ -44,7 +44,7 @@ class ParserController extends Controller
         ]);
     }
 
-    public function parseFlight(ParseFlightRequest $request)
+    public function parseFlight(ParseFlightRequest $request): RedirectResponse
     {
         $text = $request->validated()['text'];
 
@@ -57,7 +57,7 @@ class ParserController extends Controller
         );
     }
 
-    public function parseHotel(ParseHotelRequest $request)
+    public function parseHotel(ParseHotelRequest $request): RedirectResponse
     {
         $text = $request->validated()['text'];
 
@@ -70,7 +70,7 @@ class ParserController extends Controller
         );
     }
 
-    public function parseRoster(ParseRosterRequest $request)
+    public function parseRoster(ParseRosterRequest $request): RedirectResponse
     {
         $data = $request->validated();
         $file = $request->file('file');
@@ -91,20 +91,16 @@ class ParserController extends Controller
         );
     }
 
-    public function exportCalendar(Request $request)
+    public function exportCalendar(Request $request): Response
     {
-        $this->authorizeScheduleParser($request);
-
         return $this->parserCalendarExportService->exportCalendar(
             $this->resolveCachedEventsOrAbort($request),
             $request->query('event_types', []),
         );
     }
 
-    public function exportCalendarEvent(Request $request, string $eventId)
+    public function exportCalendarEvent(Request $request, string $eventId): Response
     {
-        $this->authorizeScheduleParser($request);
-
         return $this->parserCalendarExportService->exportCalendarEvent(
             $this->resolveCachedEventsOrAbort($request),
             $eventId,
@@ -115,8 +111,6 @@ class ParserController extends Controller
         Request $request,
         string $eventId,
     ): Response {
-        $this->authorizeScheduleParserDutyExport($request);
-
         return $this->parserCalendarExportService->exportFlightDutyCalendarEvent(
             $this->resolveCachedEventsOrAbort($request),
             $eventId,
@@ -162,27 +156,5 @@ class ParserController extends Controller
         }
 
         return back();
-    }
-
-    private function authorizeScheduleParser(Request $request): void
-    {
-        if (! config('features.schedule_parser.enabled', true)) {
-            abort(404);
-        }
-
-        if (! $request->user()?->canUseScheduleParser()) {
-            abort(403);
-        }
-    }
-
-    private function authorizeScheduleParserDutyExport(Request $request): void
-    {
-        if (! config('features.schedule_parser.enabled', true)) {
-            abort(404);
-        }
-
-        if (! $request->user()?->canExportScheduleParserDuty()) {
-            abort(403);
-        }
     }
 }
