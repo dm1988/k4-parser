@@ -53,6 +53,15 @@ readonly class ParserResultViewModel
                 continue;
             }
 
+            if ($event instanceof DutyEvent) {
+                $downloadId = (string) ($event->downloadId ?? '');
+                $eventViewModels[] = $downloadId === ''
+                    ? $event
+                    : $event->withDownloadUrl(route('parse.export.event', ['eventId' => $downloadId, 'parse_key' => $parseKey]));
+
+                continue;
+            }
+
             if (! is_array($event)) {
                 continue;
             }

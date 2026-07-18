@@ -1,83 +1,59 @@
-# Current Task: 
+# Current Task:
 
 ## 🎯 Goal
+### 1. Failed tests
+Tests\Feature\AdminNavigationTest > non admin users can not see the admin navigat…
+  Expected response status code [200] but received 500.
+Failed asserting that 500 is identical to 200.
 
-### 1. [x] Refactor parser request handling and controller responsibilities
+The following exception occurred during the last request:
 
-[x] Replace inline validation in `app/Http/Controllers/ParserController.php` with dedicated Form Request classes for:
-  - `parseFlight`
-  - `parseHotel`
-  - `parseRoster`
-[x] Move parsing, result assembly, and cache persistence out of `ParserController` into smaller action or service classes.
-[x] Reduce controller method size so each action mainly coordinates:
-  - authorization
-  - validated input
-  - service/action execution
-  - redirect/response generation
+Error: Call to undefined method App\View\Models\Parser\ParserPageViewModel::fromCurrentSession() in /var/www/html/storage/framework/views/68e1cbe7cb02a05af7b5f0a462942f4b.php:20
 
-[x] Revisit repeated try/catch/logging blocks in parser actions and centralize the shared parse lifecycle where possible.
-[x] Add or update focused feature tests covering the new request classes and extracted services.
-[x] Move export classes to app/Exports
-├── app/
-│   └── Exports/            <-- Your export classes are placed here
+-----
 
-### 2. [x] Parser result DTO
-[x] Introduce a `ParserResultData` DTO so parser result assembly, caching, and view-model hydration use a typed outer result shape instead of loose arrays.
-[x] Refactor: BuildParserResult, ScheduleParserService, ParserResultCache, ParserController.
-[x] Refactor view models: ParserPageViewModel, ParserResultViewModel.
-[x] Update and run the focused tests:
-  - [tests/Unit/BuildParserResultTest.php]
-  - [tests/Unit/ParserResultCacheTest.php]
-  - [tests/Unit/View/Models/ParserPageViewModelTest.php]
-  - [tests/Feature/ParserResultComponentTest.php]
-  - [tests/Feature/RosterParserTest.php]
-  - [tests/Feature/ParseUploadTest.php]
-  - [tests/Feature/ExportFlightDutyCalendarEventTest.php]
-  - [tests/Feature/FlightCardComponentTest.php]
+Call to undefined method App\View\Models\Parser\ParserPageViewModel::fromCurrentSession() (View: /var/www/html/resources/views/dashboard.blade.php)
 
-Verification: Laravel Pint passed. The DTO-focused suite passed 41 tests, and the separately corrected non-flight event schedule-format regression now passes with 6 assertions.
+  at tests/Feature/AdminNavigationTest.php:35
+     31▕         $user = User::factory()->create();
+     32▕
+     33▕         $this->actingAs($user)
+     34▕             ->get('/dashboard')
+  ➜  35▕             ->assertOk()
+     36▕             ->assertDontSeeText('Admin Panel')
+     37▕             ->assertDontSee(route('filament.admin.pages.dashboard'), escape: false);
+     38▕     }
+     39▕
 
-### 3. [x] Harden outbound airport lookup HTTP behavior
+  ────────────────────────────────────────────────────────────────────────────────────────────
+   FAILED  Tests\Feature\AdminNavigationTest > inactive or unverified admins can not see the…
+  Expected response status code [200] but received 500.
+Failed asserting that 500 is identical to 200.
 
-[x] Update `app/Services/AirportLookupClient.php` to include:
-  - `connectTimeout()`
-  - explicit `retry()` behavior with bounded backoff
-  - consistent handling for transient upstream failures
-[x] Review whether 404, 422, 429, 500, and 503 responses should be handled differently.
-[x] Confirm logging includes enough context for debugging without leaking unnecessary payload data.
-[x] Add tests covering:
-  - successful lookups
-  - timeout / connection failures
-  - 404 not found responses
-  - temporary upstream failures that should retry
+The following exception occurred during the last request:
 
-Verification: Laravel Pint passed. The focused airport lookup, extractor, flight release controller, and parser result component tests passed 34 tests with 129 assertions.
+Error: Call to undefined method App\View\Models\Parser\ParserPageViewModel::fromCurrentSession() in /var/www/html/storage/framework/views/68e1cbe7cb02a05af7b5f0a462942f4b.php:20
+Stack trace:
+### 2. Fix event export download ID assignment for all DTO types
 
-### 4. [x] Fix `FlightRouteExtractor` dependency and caching behavior
-
-[x] Remove the implicit fallback to `ArrayStore` in `app/Services/FlightRouteExtractor.php`.
-[x] Ensure the extractor always uses Laravel-managed dependencies from the container instead of constructing fallback implementations directly.
-[x] Stop instantiating `AirportLookupClient` with `new AirportLookupClient`; inject and resolve it through the container.
-[x] Confirm PDF text caching is real cross-request caching, not object-lifetime-only caching.
-[x] Verify the class remains easy to unit test after dependency cleanup.
-[x] Add tests proving:
-  - parsed PDF text is cached through the configured cache repository
-  - airport lookup dependencies are injected rather than constructed internally
-
-Verification: Laravel Pint passed. The focused `FlightRouteExtractorTest` and `FlightReleaseControllerTest` suite passed 22 tests with 88 assertions.
-
-### 5. Fix event export download ID assignment for all DTO types
-
-- Update `app/Http/Controllers/ParserController.php` so `attachDownloadIds()` assigns IDs to:
+[x] Keep download ID assignment in `app/Actions/BuildParserResult.php` rather than `ParserController`.
+[x] Assign download IDs to the currently supported event payloads:
   - `Flight`
   - `DutyEvent`
-  - any other `ParsedEventDTO` implementation
   - array-backed event payloads
-- Confirm per-event export URLs work for both flight and duty-style events.
-- Review `app/View/Models/Parser/ParserResultViewModel.php` and related DTOs to ensure all render paths preserve `downloadId` consistently.
-- Add tests covering event export for non-`Flight` DTOs so this regression cannot reappear.
+[x] Add `withDownloadId(string $downloadId): static` to the `ParsedEventDTO` contract so every future implementation must support ID assignment.
+[x] Remove the `method_exists()` fallback from `BuildParserResult` after enforcing the DTO contract.
+[x] Update `ParserResultViewModel` to preserve and render direct `DutyEvent` instances, not only normalized array payloads.
+[x] Confirm per-event lookup supports both `ParsedEventDTO` objects and normalized array payloads.
+[x] Add regression coverage proving a non-`Flight` DTO survives:
+  - result assembly and download ID assignment
+  - cache normalization and hydration
+  - view-model URL generation
+  - per-event calendar export
 
-### 6. Correct inconsistent `Aircraft` / `FlightEvent` relationship mapping
+Verification: Laravel Pint passed. The focused DTO, cache, hydration, component, roster, and export suite passed 48 tests with 348 assertions.
+
+### 3. Correct inconsistent `Aircraft` / `FlightEvent` relationship mapping
 
 - Reconcile the mismatch between:
   - `app/Models/FlightEvent.php` using `aircraft_id`
@@ -90,7 +66,7 @@ Verification: Laravel Pint passed. The focused `FlightRouteExtractorTest` and `F
 - Review whether `tail_number` should remain denormalized on `flight_events` or be derived from the related aircraft when possible.
 - Add tests proving `$flightEvent->aircraft` and `$aircraft->flightEvents` are true inverses.
 
-### 7. Normalize Eloquent model conventions and typing
+### 4. Normalize Eloquent model conventions and typing
 
 [x] Clean up `app/Models/Aircraft.php`, `app/Models/Airline.php`, and `app/Models/FlightEvent.php` to match current Laravel conventions.
 [x] Add explicit return types for:
@@ -103,27 +79,27 @@ Verification: Laravel Pint passed. The focused `FlightRouteExtractorTest` and `F
 
 Verification: Laravel Pint passed. The focused model, Filament resource, policy, seeder, and parser regression suite passed 51 tests with 384 assertions.
 
-### 8. Remove inline JavaScript and view-level composition drift
+### 5. Remove inline JavaScript and view-level composition drift
 
 - Move the inline clipboard script out of `resources/views/flight-release/index.blade.php` into a proper frontend asset/module.
 - Remove the third-party inline script injection from `resources/views/layouts/navigation.blade.php` and integrate it in a safer, more maintainable way.
 - Review `resources/views/parse.blade.php` and `resources/views/dashboard.blade.php` to avoid building page state directly inside views when controllers/routes should own that responsibility.
 - Decide whether `/dashboard` and `/parse` should remain separate entry points or be consolidated around one composition path.
 
-### 9. Enable development guardrails for Eloquent performance issues
+### 6. Enable development guardrails for Eloquent performance issues
 
 - Add `Model::preventLazyLoading()` in non-production environments in `app/Providers/AppServiceProvider.php`.
 - Consider whether other local/dev guardrails should also be enabled for query visibility and accidental lazy loading detection.
 - Run the affected test set after enabling this to identify hidden relationship-loading problems.
 
-### 10. Improve OCR cache consistency and temporary file handling
+### 7. Improve OCR cache consistency and temporary file handling
 
 - Review `app/Services/RosterSourceResolver.php` caching and temp file management.
 - Replace `md5_file()` OCR cache key generation with the same stronger file identity strategy used elsewhere in the app unless there is a deliberate reason not to.
 - Confirm temp image cleanup is safe under all failure paths.
 - Review validation error keys for OCR/PDF failures to ensure they map cleanly back to the form fields the UI actually renders.
 
-### 11. Use route middleware for auth
+### 8. Use route middleware for auth
 Move Authorization to Route Middleware
 Your inline authorization blocks check explicit user capabilities and feature flags:
 
@@ -133,7 +109,7 @@ Putting authorization directly inside controller methods prevents standard route
 
 Fix: Wrap these rules into custom route middleware (e.g., EnsureFeatureIsEnabled, can:use-schedule-parser)
 
-### 12. Fix airport details popover layering and mobile overflow behavior
+### 9. Fix airport details popover layering and mobile overflow behavior
 
 - Fix the airport popover/card z-index issue on small screens.
 - Ensure large airport metadata content does not render under surrounding UI.
@@ -143,7 +119,7 @@ Fix: Wrap these rules into custom route middleware (e.g., EnsureFeatureIsEnabled
   - desktop widths
 - Confirm the popover remains accessible and readable when airport names or location strings are long.
 
-### 13. Review migrations and schema consistency for `flight_events`
+### 10. Review migrations and schema consistency for `flight_events`
 
 - Revisit `database/migrations/2026_06_22_002913_flight_event.php` for:
   - table naming consistency
@@ -153,12 +129,12 @@ Fix: Wrap these rules into custom route middleware (e.g., EnsureFeatureIsEnabled
 - Confirm the schema accurately reflects the intended relationship with `aircraft`.
 - Document any forward-fix migration needed rather than mutating an already-run migration if this has been used outside local development.
 
-### 14. Use spatie icalendar-generator package
+### 11. Use spatie icalendar-generator package
   - Install package with composer
   - Refactor export and affected services
   - Update tests
 
-### 15. Add targeted regression coverage for the issues already found
+### 12. Add targeted regression coverage for the issues already found
 
 - Add or update tests for:
   - parser request validation behavior
@@ -169,20 +145,20 @@ Fix: Wrap these rules into custom route middleware (e.g., EnsureFeatureIsEnabled
   - mobile/UI rendering edge cases for the flight release page where practical
 - Prefer small, focused tests tied directly to each bug or refactor target instead of broad end-to-end additions.
 
-### 16. Non-flight event schedule-format test
+### 13. Non-flight event schedule-format test
 
 [x] Update `ParseUploadTest` to assert the UTC schedule format rendered by non-flight event cards: `Jun 13 • 1400 Z - 1600 Z`.
 [x] Verify the targeted test passes with 6 assertions.
 
-### 17. Failed test
+### 14. Failed test
 
-Tests\Feature\AdminNavigationTest > inactive or unver…   
+Tests\Feature\AdminNavigationTest > inactive or unver…
   Expected response status code [200] but received 302.
 Failed asserting that 302 is identical to 200.
 
   at tests/Feature/AdminNavigationTest.php:53
      49▕             ], $attributes))->save();
-     50▕ 
+     50▕
      51▕             $this->actingAs($admin)
      52▕                 ->get('/dashboard')
   ➜  53▕                 ->assertOk()

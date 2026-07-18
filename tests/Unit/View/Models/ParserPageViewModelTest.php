@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\View\Models;
 
+use App\DTOs\DutyEvent;
 use App\DTOs\Flight;
 use App\DTOs\ParserResultData;
 use App\Enums\ParserEventType;
@@ -112,6 +113,34 @@ class ParserPageViewModelTest extends TestCase
         $this->assertSame(
             route('parse.export.event', ['eventId' => '01JTESTEVENTKEYABC123', 'parse_key' => '01JTESTPARSEKEYABC123']),
             $viewModel->result->events[0]->downloadUrl
+        );
+    }
+
+    #[Test]
+    public function it_adds_parse_scoped_export_urls_to_duty_event_dtos(): void
+    {
+        $viewModel = ParserPageViewModel::fromResult(ParserResultData::fromArray([
+            'source' => 'text',
+            'filters' => [],
+            'parse_key' => '01JTESTPARSEKEYABC123',
+            'parsed' => [
+                'trip' => ['trip_number' => '1234'],
+                'calendar_events' => [
+                    DutyEvent::fromArray([
+                        'title' => 'Hotel Check-In',
+                        'type' => 'duty',
+                        'start' => '2026-06-13T14:00:00+00:00',
+                        'end' => '2026-06-13T16:00:00+00:00',
+                        'download_id' => '01JTESTEVENTKEYABC123',
+                    ]),
+                ],
+            ],
+        ]));
+
+        $this->assertInstanceOf(DutyEvent::class, $viewModel->result->events[0]);
+        $this->assertSame(
+            route('parse.export.event', ['eventId' => '01JTESTEVENTKEYABC123', 'parse_key' => '01JTESTPARSEKEYABC123']),
+            $viewModel->result->events[0]->downloadUrl,
         );
     }
 

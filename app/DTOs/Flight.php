@@ -138,7 +138,7 @@ final readonly class Flight extends ParsedEventDTO
         ];
     }
 
-    public function withDownloadId(string $downloadId): self
+    public function withDownloadId(string $downloadId): static
     {
         return new self(
             title: $this->title,

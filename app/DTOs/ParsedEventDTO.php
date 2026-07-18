@@ -23,10 +23,11 @@ abstract readonly class ParsedEventDTO implements ArrayAccess, JsonSerializable
         public ?string $end = null,
         public ?string $timezone = null,
         public array $metadata = [],
-    ) {
-    }
+    ) {}
 
     abstract public function toArray(): array;
+
+    abstract public function withDownloadId(string $downloadId): static;
 
     public function jsonSerialize(): array
     {
@@ -143,7 +144,6 @@ abstract readonly class ParsedEventDTO implements ArrayAccess, JsonSerializable
     }
 
     /**
-     * @param mixed $values
      * @return list<string>
      */
     protected static function stringList(mixed $values): array

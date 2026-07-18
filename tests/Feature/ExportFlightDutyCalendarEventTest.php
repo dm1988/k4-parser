@@ -2,13 +2,56 @@
 
 namespace Tests\Feature;
 
+use App\Actions\BuildParserResult;
+use App\DTOs\DutyEvent;
 use App\Models\User;
+use App\Services\ParserResultCache;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
 
 class ExportFlightDutyCalendarEventTest extends TestCase
 {
+    public function test_non_flight_dto_survives_result_assembly_cache_and_per_event_export(): void
+    {
+        $result = app(BuildParserResult::class)->handle(
+            type: 'roster',
+            source: 'text',
+            documentType: null,
+            parsed: [
+                'trip' => ['trip_number' => '13131'],
+                'calendar_events' => [
+                    DutyEvent::fromArray([
+                        'title' => 'Hotel Check-In',
+                        'type' => 'duty',
+                        'start' => '2026-06-13T14:00:00+00:00',
+                        'end' => '2026-06-13T16:00:00+00:00',
+                        'metadata' => ['station' => 'NRT'],
+                    ]),
+                ],
+            ],
+        );
+        app(ParserResultCache::class)->put($result);
+
+        /** @var DutyEvent $event */
+        $event = $result->parsed['calendar_events'][0];
+        $this->assertNotNull($event->downloadId);
+
+        $response = $this
+            ->actingAs(User::factory()->make())
+            ->get(route('parse.export.event', [
+                'eventId' => $event->downloadId,
+                'parse_key' => $result->parseKey,
+            ]));
+
+        $response
+            ->assertOk()
+            ->assertHeader('content-type', 'text/calendar; charset=utf-8')
+            ->assertSee('SUMMARY:Hotel Check-In')
+            ->assertSee('DTSTART:20260613T140000Z')
+            ->assertSee('DTEND:20260613T160000Z');
+    }
+
     public function test_it_exports_a_flight_duty_calendar_event(): void
     {
         $parseKey = '01JTESTPARSEKEYABC123';

@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\DTOs\Flight;
+use App\DTOs\DutyEvent;
 use App\DTOs\ParserResultData;
 use App\Services\ParserResultCache;
 use Illuminate\Http\Request;
@@ -23,9 +23,9 @@ class ParserResultCacheTest extends TestCase
             'parsed' => [
                 'trip' => [],
                 'calendar_events' => [
-                    Flight::fromArray([
-                        'title' => 'CKS 240 ICN-HKG',
-                        'type' => 'flight',
+                    DutyEvent::fromArray([
+                        'title' => 'Hotel Check-In',
+                        'type' => 'duty',
                         'download_url' => '',
                         'download_id' => '01JTESTEVENTKEYABC123',
                     ]),
@@ -45,6 +45,7 @@ class ParserResultCacheTest extends TestCase
         $this->assertInstanceOf(ParserResultData::class, $cached);
         $this->assertIsArray($cached->parsed['calendar_events'][0]);
         $this->assertSame('01JTESTEVENTKEYABC123', $cached->parsed['calendar_events'][0]['download_id']);
+        $this->assertSame('duty', $cached->parsed['calendar_events'][0]['type']);
         $this->assertIsString(session('parsed_results_namespace'));
         $this->assertNotNull(Cache::get('parsed_results:01JTESTPARSEKEYABC123'));
     }

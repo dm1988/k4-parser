@@ -48,7 +48,7 @@ class BuildParserResult
         foreach (($parsed['calendar_events'] ?? []) as $event) {
             $downloadId = (string) Str::ulid();
 
-            if ($event instanceof ParsedEventDTO && method_exists($event, 'withDownloadId')) {
+            if ($event instanceof ParsedEventDTO) {
                 $events[] = $event->withDownloadId($downloadId);
 
                 continue;
