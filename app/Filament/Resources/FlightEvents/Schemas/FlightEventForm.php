@@ -10,6 +10,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class FlightEventForm
@@ -66,6 +67,9 @@ class FlightEventForm
                                     ->searchable()
                                     ->preload(),
                                 TextInput::make('tail_number')
+                                    ->label('Fallback Tail Number')
+                                    ->helperText('Used only when no aircraft record is selected.')
+                                    ->disabled(fn (Get $get): bool => filled($get('aircraft_id')))
                                     ->maxLength(255),
                             ]),
                     ]),

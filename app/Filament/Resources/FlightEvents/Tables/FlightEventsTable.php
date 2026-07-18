@@ -10,12 +10,14 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class FlightEventsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('aircraft'))
             ->columns([
                 TextColumn::make('title')
                     ->searchable()
@@ -42,13 +44,20 @@ class FlightEventsTable
                     ->badge()
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('aircraft.tail_number')
+                TextColumn::make('display_tail_number')
                     ->label('Aircraft')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('tail_number')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
+                        ->where(function (Builder $query) use ($search): void {
+                            $query
+                                ->whereHas('aircraft', fn (Builder $query): Builder => $query
+                                    ->where('tail_number', 'like', "%{$search}%"))
+                                ->orWhere(function (Builder $query) use ($search): void {
+                                    $query
+                                        ->whereNull('aircraft_id')
+                                        ->where('tail_number', 'like', "%{$search}%");
+                                });
+                        }))
+                    ->placeholder('—'),
                 IconColumn::make('is_deadhead')
                     ->boolean(),
                 TextColumn::make('start')

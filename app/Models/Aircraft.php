@@ -29,7 +29,7 @@ class Aircraft extends Model
      */
     public function flightEvents(): HasMany
     {
-        return $this->hasMany(FlightEvent::class, 'tail_number', 'tail_number');
+        return $this->hasMany(FlightEvent::class);
     }
 
     /**

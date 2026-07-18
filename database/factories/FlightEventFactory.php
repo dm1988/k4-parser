@@ -14,19 +14,6 @@ class FlightEventFactory extends Factory
 {
     protected $model = FlightEvent::class;
 
-    public function configure(): static
-    {
-        return $this->afterMaking(function (FlightEvent $flightEvent): void {
-            $this->syncAircraftAttributes($flightEvent);
-        })->afterCreating(function (FlightEvent $flightEvent): void {
-            $this->syncAircraftAttributes($flightEvent);
-
-            if ($flightEvent->isDirty('tail_number')) {
-                $flightEvent->save();
-            }
-        });
-    }
-
     /**
      * @return array<string, mixed>
      */
@@ -92,20 +79,7 @@ class FlightEventFactory extends Factory
     {
         return $this->state(fn (): array => [
             'aircraft_id' => $aircraft->getKey(),
-            'tail_number' => $aircraft->tail_number,
+            'tail_number' => null,
         ]);
-    }
-
-    private function syncAircraftAttributes(FlightEvent $flightEvent): void
-    {
-        if ($flightEvent->aircraft_id === null || ! empty($flightEvent->tail_number)) {
-            return;
-        }
-
-        $aircraft = $flightEvent->aircraft;
-
-        if ($aircraft !== null) {
-            $flightEvent->tail_number = $aircraft->tail_number;
-        }
     }
 }

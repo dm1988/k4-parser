@@ -110,4 +110,9 @@ class FlightEvent extends Model
             return sprintf('%d:%02d', intdiv($minutes, 60), $minutes % 60);
         });
     }
+
+    protected function displayTailNumber(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->aircraft?->tail_number ?? $this->tail_number);
+    }
 }

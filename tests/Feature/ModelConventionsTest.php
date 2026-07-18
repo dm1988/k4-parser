@@ -102,4 +102,22 @@ class ModelConventionsTest extends TestCase
         $this->assertSame('2:30', $result->duration);
         $this->assertTrue($matchingEvent->aircraft() instanceof BelongsTo);
     }
+
+    public function test_aircraft_and_flight_event_relationships_are_true_inverses(): void
+    {
+        $aircraft = Aircraft::factory()->create([
+            'tail_number' => 'N773CK',
+        ]);
+        $relatedEvent = FlightEvent::factory()->forAircraft($aircraft)->create();
+        $fallbackEvent = FlightEvent::factory()->withoutAircraft()->create([
+            'tail_number' => 'N773CK',
+        ]);
+
+        $this->assertTrue($aircraft->is($relatedEvent->aircraft));
+        $this->assertTrue($aircraft->flightEvents->contains($relatedEvent));
+        $this->assertFalse($aircraft->flightEvents->contains($fallbackEvent));
+        $this->assertNull($relatedEvent->getRawOriginal('tail_number'));
+        $this->assertSame('N773CK', $relatedEvent->display_tail_number);
+        $this->assertSame('N773CK', $fallbackEvent->display_tail_number);
+    }
 }

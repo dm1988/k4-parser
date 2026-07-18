@@ -50,6 +50,22 @@ class FlightEventResourceTest extends TestCase
             ->assertCanNotSeeTableRecords([$secondEvent]);
     }
 
+    public function test_aircraft_column_uses_the_relationship_then_falls_back_to_the_event_tail_number(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+        $aircraft = Aircraft::factory()->create([
+            'tail_number' => 'N770CK',
+        ]);
+        FlightEvent::factory()->forAircraft($aircraft)->create();
+        FlightEvent::factory()->withoutAircraft()->create([
+            'tail_number' => 'N771CK',
+        ]);
+
+        Livewire::test(ListFlightEvents::class)
+            ->assertSee('N770CK')
+            ->assertSee('N771CK');
+    }
+
     public function test_non_admin_users_can_not_access_the_flight_events_table(): void
     {
         $this->actingAs(User::factory()->create());
