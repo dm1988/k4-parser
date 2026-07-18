@@ -19,7 +19,7 @@ Completed: added focused coverage for missing and unsupported roster inputs, dir
 
 Completed: admins can delete other users from the user table or edit page after confirming a danger modal that identifies the account. Policy enforcement prevents admins from deleting themselves, while user creation, bulk deletion, restore, and force-delete actions remain disabled.
 
-### 3. Improve verify email markdown
+### 3. ✅ Improve verify email markdown
 - Use markdown in VerifyEmailWithOtp.php
 public function toMail(mixed $notifiable): MailMessage
 {

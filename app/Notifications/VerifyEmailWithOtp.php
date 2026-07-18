@@ -15,15 +15,19 @@ class VerifyEmailWithOtp extends VerifyEmail
     public function toMail(mixed $notifiable): MailMessage
     {
         $verificationUrl = $this->verificationUrl($notifiable);
-        $formattedOtp = substr($this->otp, 0, 3).' '.substr($this->otp, 3);
+        $formattedOtp = substr($this->otp, 0, 3).' - '.substr($this->otp, 3);
 
         return (new MailMessage)
             ->subject('Verify Your Account')
-            ->line('Click the button below to verify your email address:')
+            ->greeting('Verify your email address')
+            ->line('Please click the button below to complete your account setup:')
             ->action('Verify Email Address', $verificationUrl)
-            ->line('Using an enterprise email network?')
-            ->line('If the button above says expired or does not work, enter this 6-digit code on the verification page instead:')
-            ->line($formattedOtp.' (Expires in 15 minutes)')
-            ->line('If you did not create an account, no further action is required.');
+            ->line('---')
+            ->line('**Alternative Verification Code**')
+            ->line('If you are on an enterprise network where links are blocked, or if the button above has expired, enter this code on the verification page:')
+            ->line('**'.$formattedOtp.'**')
+            ->line('*This code expires in 15 minutes.*')
+            ->line('---')
+            ->line('If you did not create an account, you can safely ignore this email.');
     }
 }

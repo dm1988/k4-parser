@@ -100,6 +100,20 @@ class EmailVerificationTest extends TestCase
         ));
     }
 
+    public function test_verification_email_renders_markdown_with_a_formatted_otp(): void
+    {
+        $user = User::factory()->unverified()->create();
+        $mailMessage = (new VerifyEmailWithOtp('149822'))->toMail($user);
+        $renderedMessage = $mailMessage->render()->toHtml();
+
+        $this->assertSame('Verify Your Account', $mailMessage->subject);
+        $this->assertSame('Verify your email address', $mailMessage->greeting);
+        $this->assertMatchesRegularExpression('/<strong[^>]*>Alternative Verification Code<\/strong>/', $renderedMessage);
+        $this->assertMatchesRegularExpression('/<strong[^>]*>149 - 822<\/strong>/', $renderedMessage);
+        $this->assertMatchesRegularExpression('/<em[^>]*>This code expires in 15 minutes.<\/em>/', $renderedMessage);
+        $this->assertSame(2, substr_count($renderedMessage, '<hr'));
+    }
+
     public function test_email_can_be_verified_with_an_otp_only_once(): void
     {
         $user = User::factory()->unverified()->create([
