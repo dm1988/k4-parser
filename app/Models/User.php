@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\VerifyEmailWithOtp;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -12,7 +13,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 #[Fillable(['name', 'email', 'email_verified_at', 'password', 'remember_token', 'role', 'is_active', 'last_admin_login_at', 'stripe_id', 'pm_type', 'pm_last_four', 'trial_ends_at'])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token', 'email_verification_otp_hash'])]
 class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
@@ -29,9 +30,27 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
     {
         return [
             'email_verified_at' => 'datetime',
+            'email_verification_otp_expires_at' => 'datetime',
             'is_active' => 'boolean',
             'password' => 'hashed',
         ];
+    }
+
+    public function sendEmailVerificationNotification(): void
+    {
+        $otp = (string) random_int(100000, 999999);
+
+        $this->forceFill([
+            'email_verification_otp_hash' => self::hashEmailVerificationOtp($otp),
+            'email_verification_otp_expires_at' => now()->addMinutes(15),
+        ])->save();
+
+        $this->notify(new VerifyEmailWithOtp($otp));
+    }
+
+    public static function hashEmailVerificationOtp(string $otp): string
+    {
+        return hash_hmac('sha256', $otp, (string) config('app.key'));
     }
 
     public function canAccessPanel(Panel $panel): bool
