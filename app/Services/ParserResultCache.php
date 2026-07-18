@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\DTOs\ParsedEventDTO;
+use App\DTOs\ParserResultData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -10,12 +11,9 @@ use LogicException;
 
 class ParserResultCache
 {
-    /**
-     * @param  array<string, mixed>  $result
-     */
-    public function put(array $result): void
+    public function put(ParserResultData $result): void
     {
-        $parseKey = (string) ($result['parse_key'] ?? '');
+        $parseKey = $result->parseKey ?? '';
         $ttlMinutes = config('cache.parsed_results_ttl', 60);
         $normalizedResult = $this->normalizeForCache($result);
 
@@ -25,13 +23,15 @@ class ParserResultCache
         session(['latest_parse_key' => $parseKey]);
     }
 
-    public function get(string $parseKey): mixed
+    public function get(string $parseKey): ?ParserResultData
     {
-        return Cache::get($this->sessionCacheKey($parseKey))
+        $result = Cache::get($this->sessionCacheKey($parseKey))
             ?? Cache::get($this->parseKeyCacheKey($parseKey));
+
+        return is_array($result) ? ParserResultData::fromArray($result) : null;
     }
 
-    public function resolveForRequest(Request $request): mixed
+    public function resolveForRequest(Request $request): ?ParserResultData
     {
         $parseKey = $request->query('parse_key');
 
@@ -46,6 +46,13 @@ class ParserResultCache
         }
 
         return null;
+    }
+
+    public function latest(): ?ParserResultData
+    {
+        $parseKey = session('latest_parse_key');
+
+        return is_string($parseKey) && $parseKey !== '' ? $this->get($parseKey) : null;
     }
 
     private function sessionCacheKey(string $parseKey): string

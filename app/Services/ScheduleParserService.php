@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Actions\BuildParserResult;
 use App\DTOs\ParsedEventDTO;
+use App\DTOs\ParserResultData;
 use App\Enums\ParserEventType;
 use App\Exceptions\ParseSourceResolutionException;
 use Illuminate\Http\UploadedFile;
@@ -22,7 +23,7 @@ class ScheduleParserService
     /**
      * @return array{
      *     parsed: array<string, mixed>,
-     *     result: array<string, mixed>
+     *     result: ParserResultData
      * }
      */
     public function parseFlight(string $text): array
@@ -50,7 +51,7 @@ class ScheduleParserService
     /**
      * @return array{
      *     parsed: array<string, mixed>,
-     *     result: array<string, mixed>
+     *     result: ParserResultData
      * }
      */
     public function parseHotel(string $text): array
@@ -79,7 +80,7 @@ class ScheduleParserService
      * @param  list<string>  $eventTypes
      * @return array{
      *     parsed: array<string, mixed>,
-     *     result: array<string, mixed>,
+     *     result: ParserResultData,
      *     parser_type: string,
      *     page_count: ?int
      * }

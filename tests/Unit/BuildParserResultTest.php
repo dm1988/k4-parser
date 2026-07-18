@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Actions\BuildParserResult;
 use App\DTOs\DutyEvent;
 use App\DTOs\Flight;
+use App\DTOs\ParserResultData;
 use Tests\TestCase;
 
 class BuildParserResultTest extends TestCase
@@ -36,10 +37,11 @@ class BuildParserResultTest extends TestCase
             ],
         );
 
-        $events = $result['parsed']['calendar_events'];
+        $events = $result->parsed['calendar_events'];
 
-        $this->assertIsString($result['parse_key']);
-        $this->assertNotSame('', $result['parse_key']);
+        $this->assertInstanceOf(ParserResultData::class, $result);
+        $this->assertIsString($result->parseKey);
+        $this->assertNotSame('', $result->parseKey);
         $this->assertInstanceOf(Flight::class, $events[0]);
         $this->assertIsString($events[0]->downloadId);
         $this->assertNotSame('', $events[0]->downloadId);

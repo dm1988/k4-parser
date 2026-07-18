@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\DTOs\ParsedEventDTO;
+use App\DTOs\ParserResultData;
 use App\Enums\MetadataKey;
 use Illuminate\Support\Str;
 
@@ -12,7 +13,6 @@ class BuildParserResult
      * @param  list<string>  $filters
      * @param  array<string, mixed>  $parsed
      * @param  array<string, mixed>  $meta
-     * @return array<string, mixed>
      */
     public function handle(
         string $type,
@@ -23,18 +23,18 @@ class BuildParserResult
         mixed $file = null,
         ?string $mime = null,
         array $meta = [],
-    ): array {
-        return [
-            'type' => $type,
-            'source' => $source,
-            'document_type' => $documentType,
-            'file' => $file,
-            'mime' => $mime,
-            'parsed' => $this->attachDownloadIds($parsed),
-            'filters' => $filters,
-            'meta' => $meta,
-            'parse_key' => (string) Str::ulid(),
-        ];
+    ): ParserResultData {
+        return new ParserResultData(
+            type: $type,
+            source: $source,
+            documentType: $documentType,
+            file: $file,
+            mime: $mime,
+            parsed: $this->attachDownloadIds($parsed),
+            filters: $filters,
+            meta: $meta,
+            parseKey: (string) Str::ulid(),
+        );
     }
 
     /**

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\DTOs\AirportData;
 use App\DTOs\Flight;
+use App\DTOs\ParserResultData;
 use App\Models\User;
 use App\Services\AirportLookupClient;
 use App\View\Models\Parser\ParserResultViewModel;
@@ -15,7 +16,7 @@ class ParserResultComponentTest extends TestCase
     public function test_it_renders_the_export_button_in_the_header_without_helper_copy(): void
     {
         $html = Blade::render('<x-parser.result :model="$model" />', [
-            'model' => ParserResultViewModel::fromArray([
+            'model' => ParserResultViewModel::fromData(ParserResultData::fromArray([
                 'source' => 'text',
                 'parse_key' => '01KXK47PE0HNRXE4VV2N8K8N58',
                 'filters' => [],
@@ -34,7 +35,7 @@ class ParserResultComponentTest extends TestCase
                         ],
                     ],
                 ],
-            ]),
+            ])),
         ]);
 
         $this->assertStringContainsString('Parsed Output', $html);
@@ -95,7 +96,7 @@ class ParserResultComponentTest extends TestCase
 
         $this->app->instance(AirportLookupClient::class, $airportLookupClient);
 
-        $model = ParserResultViewModel::fromArray([
+        $model = ParserResultViewModel::fromData(ParserResultData::fromArray([
             'source' => 'text',
             'parse_key' => '01KXK47PE0HNRXE4VV2N8K8N58',
             'filters' => [],
@@ -120,7 +121,7 @@ class ParserResultComponentTest extends TestCase
                     ]),
                 ],
             ],
-        ]);
+        ]));
 
         /** @var Flight $flight */
         $flight = $model->events[0];
@@ -137,7 +138,7 @@ class ParserResultComponentTest extends TestCase
 
     private function makeResultModel(): ParserResultViewModel
     {
-        return ParserResultViewModel::fromArray([
+        return ParserResultViewModel::fromData(ParserResultData::fromArray([
             'source' => 'text',
             'parse_key' => '01KXK47PE0HNRXE4VV2N8K8N58',
             'filters' => [],
@@ -156,6 +157,6 @@ class ParserResultComponentTest extends TestCase
                     ],
                 ],
             ],
-        ]);
+        ]));
     }
 }

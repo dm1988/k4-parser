@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\DTOs\ParserResultData;
 use App\Exceptions\ParseSourceResolutionException;
 use App\Services\ParseRequestLogger;
 use Illuminate\Http\UploadedFile;
@@ -16,13 +17,13 @@ class HandleParseExecution
     /**
      * @param  callable(): array{
      *     parsed: array<string, mixed>,
-     *     result: array<string, mixed>,
+     *     result: ParserResultData,
      *     parser_type?: ?string,
      *     page_count?: ?int
      * }  $operation
      * @return array{
      *     parsed: array<string, mixed>,
-     *     result: array<string, mixed>,
+     *     result: ParserResultData,
      *     parser_type?: ?string,
      *     page_count?: ?int
      * }

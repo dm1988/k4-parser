@@ -3,7 +3,9 @@
 namespace Tests\Unit\View\Models;
 
 use App\DTOs\Flight;
+use App\DTOs\ParserResultData;
 use App\Enums\ParserEventType;
+use App\Services\ParserResultCache;
 use App\View\Models\Parser\ParserPageViewModel;
 use Illuminate\Support\Facades\Cache;
 use PHPUnit\Framework\Attributes\Test;
@@ -14,9 +16,9 @@ class ParserPageViewModelTest extends TestCase
     #[Test]
     public function it_uses_old_input_to_build_form_state(): void
     {
-        $viewModel = ParserPageViewModel::fromSession([
+        $viewModel = ParserPageViewModel::fromResult(ParserResultData::fromArray([
             'filters' => ['flight'],
-        ], [
+        ]), [
             'event_types' => ['flight'],
             'text' => 'Pasted roster text',
         ]);
@@ -28,7 +30,7 @@ class ParserPageViewModelTest extends TestCase
     #[Test]
     public function it_formats_result_events_for_the_view(): void
     {
-        $viewModel = ParserPageViewModel::fromSession([
+        $viewModel = ParserPageViewModel::fromResult(ParserResultData::fromArray([
             'source' => 'pdf',
             'filters' => ['flight'],
             'parse_key' => '01JTESTPARSEKEYABC123',
@@ -46,7 +48,7 @@ class ParserPageViewModelTest extends TestCase
                     ],
                 ]],
             ],
-        ]);
+        ]));
 
         $this->assertTrue($viewModel->hasResult());
         $this->assertNotNull($viewModel->result);
@@ -75,7 +77,7 @@ class ParserPageViewModelTest extends TestCase
     #[Test]
     public function it_adds_parse_scoped_export_urls_to_flight_dtos(): void
     {
-        $viewModel = ParserPageViewModel::fromSession([
+        $viewModel = ParserPageViewModel::fromResult(ParserResultData::fromArray([
             'source' => 'text',
             'filters' => [],
             'parse_key' => '01JTESTPARSEKEYABC123',
@@ -105,7 +107,7 @@ class ParserPageViewModelTest extends TestCase
                     ]),
                 ],
             ],
-        ]);
+        ]));
 
         $this->assertSame(
             route('parse.export.event', ['eventId' => '01JTESTEVENTKEYABC123', 'parse_key' => '01JTESTPARSEKEYABC123']),
@@ -142,7 +144,7 @@ class ParserPageViewModelTest extends TestCase
             ],
         ]);
 
-        $viewModel = ParserPageViewModel::fromCurrentSession();
+        $viewModel = ParserPageViewModel::fromResult(app(ParserResultCache::class)->latest());
 
         $this->assertTrue($viewModel->hasResult());
         $this->assertNotNull($viewModel->result);
@@ -155,9 +157,9 @@ class ParserPageViewModelTest extends TestCase
     #[Test]
     public function it_marks_error_results(): void
     {
-        $viewModel = ParserPageViewModel::fromSession([
+        $viewModel = ParserPageViewModel::fromResult(ParserResultData::fromArray([
             'error' => 'Roster text resolution failed.',
-        ]);
+        ]));
 
         $this->assertTrue($viewModel->hasResult());
         $this->assertNotNull($viewModel->result);
@@ -169,7 +171,7 @@ class ParserPageViewModelTest extends TestCase
     #[Test]
     public function it_builds_filter_options_from_the_event_type_enum(): void
     {
-        $viewModel = ParserPageViewModel::fromSession(null);
+        $viewModel = ParserPageViewModel::fromResult(null);
 
         $this->assertSame(ParserEventType::filterValues(), array_column($viewModel->filterOptions, 'value'));
         $this->assertSame('Flights only', $viewModel->filterOptions[0]['label']);

@@ -2,8 +2,8 @@
 
 namespace App\View\Models\Parser;
 
+use App\DTOs\ParserResultData;
 use App\Enums\ParserEventType;
-use Illuminate\Support\Facades\Cache;
 
 readonly class ParserPageViewModel
 {
@@ -19,40 +19,15 @@ readonly class ParserPageViewModel
         public bool $available,
     ) {}
 
-    /**
-     * Resolves the view model state using the secure cache keys stored in the session.
-     */
-    public static function fromCurrentSession(array $oldInput = []): self
+    public static function fromResult(?ParserResultData $result, array $oldInput = []): self
     {
-        $parseKey = session('latest_parse_key');
-        $namespace = session('parsed_results_namespace');
-        $result = null;
-
-        if (is_string($parseKey) && $parseKey !== '' && is_string($namespace) && $namespace !== '') {
-            $result = Cache::get("sessions:{$namespace}:parsed_results:{$parseKey}");
-        }
-
-        return self::fromSession($result, $oldInput);
-    }
-
-    /**
-     * Builds the view model from a resolved cache result array.
-     */
-    public static function fromSession(mixed $result, array $oldInput = []): self
-    {
-        // 1. Ensure result filters fall back gracefully to an array if null/missing
-        $cachedFilters = is_array($result) && isset($result['filters']) && is_array($result['filters'])
-            ? $result['filters']
-            : [];
-
-        // 2. Resolve selected event types prioritizing user form input over historical filters
         $selectedTypes = array_values(array_filter(
-            is_array($oldInput['event_types'] ?? null) ? $oldInput['event_types'] : $cachedFilters,
+            is_array($oldInput['event_types'] ?? null) ? $oldInput['event_types'] : ($result?->filters ?? []),
             fn (mixed $value): bool => is_string($value) && in_array($value, ParserEventType::filterValues(), true),
         ));
 
         return new self(
-            result: is_array($result) ? ParserResultViewModel::fromArray($result) : null,
+            result: $result === null ? null : ParserResultViewModel::fromData($result),
             selectedTypes: $selectedTypes,
             filterOptions: array_map(
                 static fn (ParserEventType $type): array => [

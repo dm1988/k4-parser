@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\HandleParseExecution;
+use App\DTOs\ParserResultData;
 use App\Exceptions\ParseSourceResolutionException;
 use App\Http\Requests\ParseFlightRequest;
 use App\Http\Requests\ParseHotelRequest;
@@ -28,7 +29,10 @@ class ParserController extends Controller
     public function index()
     {
         return view('parse', [
-            'viewModel' => ParserPageViewModel::fromCurrentSession(session()->getOldInput()),
+            'viewModel' => ParserPageViewModel::fromResult(
+                $this->parserResultCache->latest(),
+                session()->getOldInput(),
+            ),
         ]);
     }
 
@@ -111,11 +115,11 @@ class ParserController extends Controller
         );
     }
 
-    private function resolveCachedEventsOrAbort(Request $request): array
+    private function resolveCachedEventsOrAbort(Request $request): ParserResultData
     {
         $sessionResult = $this->parserResultCache->resolveForRequest($request);
 
-        if (! is_array($sessionResult) || ! isset($sessionResult['parsed']['calendar_events'])) {
+        if ($sessionResult === null || ! isset($sessionResult->parsed['calendar_events'])) {
             abort(404);
         }
 

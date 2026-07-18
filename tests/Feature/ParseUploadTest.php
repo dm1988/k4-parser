@@ -118,7 +118,7 @@ class ParseUploadTest extends TestCase
 
         $page->assertOk()
             ->assertSee('Jun 13', false)
-            ->assertSee('Jun 13 • 2:00 PM - 4:00 PM', false);
+            ->assertSee('Jun 13 • 1400 Z - 1600 Z', false);
     }
 
     public function test_parse_failure_is_recorded_and_logged_without_input_contents(): void

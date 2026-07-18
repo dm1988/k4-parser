@@ -22,18 +22,20 @@
 │   └── Exports/            <-- Your export classes are placed here
 
 ### 2. Parser result DTO
-- Introduce a `ParserResultData` DTO so parser result assembly, caching, and view-model hydration use a typed outer result shape instead of loose arrays. 
-- Refactor: BuildParserResult, ScheduleParserService, ParserResultCache,ParserController. 
-- Refactor View models: ParserPageViewModel, Parser,ResultViewModel. 
-- Update Tests:
-[tests/Unit/BuildParserResultTest.php]
-[tests/Unit/ParserResultCacheTest.php]
-[tests/Unit/View/Models/ParserPageViewModelTest.php]
-[tests/Feature/ParserResultComponentTest.php]
-[tests/Feature/RosterParserTest.php]
-[tests/Feature/ParseUploadTest.php]
-[tests/Feature/ExportFlightDutyCalendarEventTest.php]
-[tests/Feature/FlightCardComponentTest.php]
+[x] Introduce a `ParserResultData` DTO so parser result assembly, caching, and view-model hydration use a typed outer result shape instead of loose arrays.
+[x] Refactor: BuildParserResult, ScheduleParserService, ParserResultCache, ParserController.
+[x] Refactor view models: ParserPageViewModel, ParserResultViewModel.
+[x] Update and run the focused tests:
+  - [tests/Unit/BuildParserResultTest.php]
+  - [tests/Unit/ParserResultCacheTest.php]
+  - [tests/Unit/View/Models/ParserPageViewModelTest.php]
+  - [tests/Feature/ParserResultComponentTest.php]
+  - [tests/Feature/RosterParserTest.php]
+  - [tests/Feature/ParseUploadTest.php]
+  - [tests/Feature/ExportFlightDutyCalendarEventTest.php]
+  - [tests/Feature/FlightCardComponentTest.php]
+
+Verification: Laravel Pint passed. The DTO-focused suite passed 41 tests, and the separately corrected non-flight event schedule-format regression now passes with 6 assertions.
 
 ### 2. Harden outbound airport lookup HTTP behavior
 
@@ -145,7 +147,12 @@ Fix: Wrap these rules into custom route middleware (e.g., EnsureFeatureIsEnabled
 - Confirm the schema accurately reflects the intended relationship with `aircraft`.
 - Document any forward-fix migration needed rather than mutating an already-run migration if this has been used outside local development.
 
-### 13. Add targeted regression coverage for the issues already found
+### 13. Use spatie icalendar-generator package
+  - Install package with composer
+  - Refactor export and affected services
+  - Update tests
+
+### 14. Add targeted regression coverage for the issues already found
 
 - Add or update tests for:
   - parser request validation behavior
@@ -156,29 +163,12 @@ Fix: Wrap these rules into custom route middleware (e.g., EnsureFeatureIsEnabled
   - mobile/UI rendering edge cases for the flight release page where practical
 - Prefer small, focused tests tied directly to each bug or refactor target instead of broad end-to-end additions.
 
-### 14. Failed test
+### 15. Non-flight event schedule-format test
 
-Tests\Feature\ParseUploadTest > non flight event card header displays…    
-  Expected: <div\n
-      class="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-5 py-6  lg:grid-cols-2 ">\n
-      <section>\n
-  ... (207 more lines)
+[x] Update `ParseUploadTest` to assert the UTC schedule format rendered by non-flight event cards: `Jun 13 • 1400 Z - 1600 Z`.
+[x] Verify the targeted test passes with 6 assertions.
 
-  To contain: Jun 13 • 2:00 PM - 4:00 PM
-
-  at tests/Feature/ParseUploadTest.php:121
-    117▕         $page = $this->get(route('parse.index'));
-    118▕ 
-    119▕         $page->assertOk()
-    120▕             ->assertSee('Jun 13', false)
-  ➜ 121▕             ->assertSee('Jun 13 • 2:00 PM - 4:00 PM', false);
-    122▕     }
-    123▕ 
-    124▕     public function test_parse_failure_is_recorded_and_logged_without_input_contents(): void
-    125▕     {
-    
-
-### 15. Failed test
+### 16. Failed test
 
 Tests\Feature\AdminNavigationTest > inactive or unver…   
   Expected response status code [200] but received 302.

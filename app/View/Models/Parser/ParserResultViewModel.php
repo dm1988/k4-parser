@@ -5,6 +5,7 @@ namespace App\View\Models\Parser;
 use App\DTOs\AirportData;
 use App\DTOs\DutyEvent;
 use App\DTOs\Flight;
+use App\DTOs\ParserResultData;
 use App\Enums\MetadataKey;
 use App\Mappers\DutyEventMapper;
 use App\Mappers\FlightMapper;
@@ -27,17 +28,17 @@ readonly class ParserResultViewModel
         public string $rawJson,
     ) {}
 
-    public static function fromArray(array $result): self
+    public static function fromData(ParserResultData $result): self
     {
         $filters = array_values(array_filter(
-            $result['filters'] ?? [],
+            $result->filters,
             fn (mixed $value): bool => is_string($value) && $value !== '',
         ));
-        $parseKey = is_string($result['parse_key'] ?? null) ? $result['parse_key'] : null;
+        $parseKey = $result->parseKey;
         $eventViewModels = [];
         $airportLookupClient = app(AirportLookupClient::class);
 
-        foreach (($result['parsed']['calendar_events'] ?? []) as $event) {
+        foreach (($result->parsed['calendar_events'] ?? []) as $event) {
             if ($parseKey === null) {
                 continue;
             }
@@ -83,15 +84,15 @@ readonly class ParserResultViewModel
         }
 
         return new self(
-            errorMessage: is_string($result['error'] ?? null) ? $result['error'] : null,
-            sourceLabel: ucfirst((string) ($result['source'] ?? 'text')),
-            tripNumber: (string) ($result['parsed']['trip']['trip_number'] ?? 'Pending'),
+            errorMessage: $result->error,
+            sourceLabel: ucfirst($result->source),
+            tripNumber: (string) ($result->parsed['trip']['trip_number'] ?? 'Pending'),
             eventCount: count($eventViewModels),
             events: $eventViewModels,
             parseKey: $parseKey,
-            exportUrl: $eventViewModels === [] || ! is_string($result['parse_key'] ?? null)
+            exportUrl: $eventViewModels === [] || $result->parseKey === null
                 ? null
-                : route('parse.export', ['event_types' => $filters, 'parse_key' => $result['parse_key']]),
+                : route('parse.export', ['event_types' => $filters, 'parse_key' => $result->parseKey]),
             rawJson: json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) ?: '{}',
         );
     }

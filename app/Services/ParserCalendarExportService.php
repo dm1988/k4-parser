@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\DTOs\ParsedEventDTO;
+use App\DTOs\ParserResultData;
 use App\Enums\MetadataKey;
 use App\Enums\ParserEventType;
 use App\Exports\ExportFlightDutyCalendarEvent;
@@ -16,12 +17,11 @@ class ParserCalendarExportService
     ) {}
 
     /**
-     * @param  array<string, mixed>  $sessionResult
      * @param  list<string>  $eventTypes
      */
-    public function exportCalendar(array $sessionResult, array $eventTypes = []): Response
+    public function exportCalendar(ParserResultData $sessionResult, array $eventTypes = []): Response
     {
-        $events = $sessionResult['parsed']['calendar_events'];
+        $events = $sessionResult->parsed['calendar_events'];
 
         if ($eventTypes !== []) {
             $events = array_values(array_filter(
@@ -34,7 +34,7 @@ class ParserCalendarExportService
             abort(404);
         }
 
-        $trip = is_array($sessionResult['parsed']['trip'] ?? null) ? $sessionResult['parsed']['trip'] : [];
+        $trip = is_array($sessionResult->parsed['trip'] ?? null) ? $sessionResult->parsed['trip'] : [];
         $filename = $this->calendarFilename($trip);
 
         return $this->calendarResponse(
@@ -43,13 +43,10 @@ class ParserCalendarExportService
         );
     }
 
-    /**
-     * @param  array<string, mixed>  $sessionResult
-     */
-    public function exportCalendarEvent(array $sessionResult, string $eventId): Response
+    public function exportCalendarEvent(ParserResultData $sessionResult, string $eventId): Response
     {
-        $event = $this->findEventOrAbort($sessionResult['parsed']['calendar_events'], $eventId);
-        $trip = is_array($sessionResult['parsed']['trip'] ?? null) ? $sessionResult['parsed']['trip'] : [];
+        $event = $this->findEventOrAbort($sessionResult->parsed['calendar_events'], $eventId);
+        $trip = is_array($sessionResult->parsed['trip'] ?? null) ? $sessionResult->parsed['trip'] : [];
         $filename = $this->eventFilename($trip, $eventId);
 
         return $this->calendarResponse(
@@ -58,13 +55,10 @@ class ParserCalendarExportService
         );
     }
 
-    /**
-     * @param  array<string, mixed>  $sessionResult
-     */
-    public function exportFlightDutyCalendarEvent(array $sessionResult, string $eventId): Response
+    public function exportFlightDutyCalendarEvent(ParserResultData $sessionResult, string $eventId): Response
     {
-        $event = $this->findEventOrAbort($sessionResult['parsed']['calendar_events'], $eventId);
-        $trip = is_array($sessionResult['parsed']['trip'] ?? null) ? $sessionResult['parsed']['trip'] : [];
+        $event = $this->findEventOrAbort($sessionResult->parsed['calendar_events'], $eventId);
+        $trip = is_array($sessionResult->parsed['trip'] ?? null) ? $sessionResult->parsed['trip'] : [];
         $ics = $this->exportFlightDutyCalendarEvent->handle($event, $trip);
 
         if ($ics === null) {
