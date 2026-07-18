@@ -2,69 +2,6 @@
 
 ## 🎯 Goal
 
-### 8. ✅ Use `spatie/icalendar-generator` for RFC-compliant calendar exports
-
-Recommendation: proceed. The current `IcsCalendarService` is a useful application adapter, but its hand-built serializer owns RFC 5545 escaping and does not fold long content lines at the 75-octet boundary. Moving serialization to a maintained package is worthwhile because calendar descriptions can contain long, Unicode-heavy crew and flight metadata.
-
-Keep this refactor narrowly scoped: retain the existing application-facing service and domain formatting, and replace only the manual `VCALENDAR` / `VEVENT` generation. Do not move filtering, event lookup, filenames, HTTP headers, or duty-time calculations into the package integration.
-
-#### 8.1 Capture the existing export contract before installing the package
-
-- Expand `IcsCalendarServiceTest` with characterization coverage for:
-  - multiple events in one calendar
-  - array events and supported DTO variants
-  - UTC conversion for offset-aware start and end values
-  - deterministic event UIDs
-  - calendar name and description derived from trip metadata
-  - optional FlightAware URLs
-  - commas, semicolons, backslashes, and embedded newlines
-  - long Unicode descriptions that require standards-compliant line folding
-  - unsupported event values being skipped consistently
-- Keep endpoint tests for full-calendar, single-event, and duty-event downloads.
-- Assert semantic calendar properties where property ordering may legitimately change; avoid requiring byte-for-byte output compatibility.
-
-#### 8.2 Install and verify the dependency
-
-- Confirm the selected release supports the project PHP version and required extensions.
-- Install with Sail Composer, using an intentional compatible constraint such as:
-  - `vendor/bin/sail composer require spatie/icalendar-generator:^3.3`
-- Review `composer.json` and `composer.lock`, then run Composer's security audit.
-- Do not add a Laravel service provider unless the package documentation explicitly requires one; this is a framework-independent generator.
-
-#### 8.3 Refactor only the serialization boundary
-
-- Keep `IcsCalendarService::serialize(array $events, array $trip = []): string` as the stable application API.
-- Preserve the existing event normalization and crew/flight description formatting.
-- Replace manual line assembly and `escapeValue()` usage with Spatie `Calendar` and `Event` components.
-- Preserve these observable contracts:
-  - UTC `DTSTART` and `DTEND` values
-  - deterministic UID derived from title, start, and end, including the `@crew-compass` suffix
-  - summary, formatted description, and optional FlightAware URL
-  - Crew Compass product/calendar metadata
-  - trip-specific calendar name
-  - CRLF-compatible generated output
-- Leave `ParserCalendarExportService`, `ExportFlightDutyCalendarEvent`, and `FlightDutyCalendarEventService` responsible for their current orchestration and domain behavior.
-- Remove obsolete custom escaping/serialization helpers only after replacement coverage passes.
-
-#### 8.4 Update regression and compatibility coverage
-
-- Verify response content type and attachment filenames remain unchanged.
-- Verify filtered exports, complete exports, individual events, and generated duty events.
-- Account for valid package differences in property order, `PRODID`, `DTSTAMP`, escaping, and line folding.
-- Validate at least one long, Unicode-heavy generated file with an independent iCalendar parser or validator.
-- Perform an import smoke test in the calendar clients the application supports, ideally Apple Calendar, Google Calendar, and Outlook.
-
-#### 8.5 Completion criteria
-
-- All existing calendar behavior remains semantically equivalent.
-- Long content lines are folded correctly without corrupting multibyte characters.
-- Calendar files import successfully in supported clients.
-- Focused calendar/export tests and the full test suite pass.
-- Laravel Pint and Composer security audit pass.
-- Document any intentional output differences discovered during compatibility testing.
-
-Completed: replaced manual `VCALENDAR` / `VEVENT` serialization with `spatie/icalendar-generator` while retaining `IcsCalendarService` as the application adapter. Preserved UTC timestamps, deterministic Crew Compass UIDs, response headers, filenames, event filtering, duty calculations, calendar metadata, and trailing CRLF output. Added support for every `ParsedEventDTO` variant plus regression coverage for special-character escaping, long Unicode line folding, multiple event types, and existing download endpoints. Intentional output differences are standards-compliant line folding and the package's additional standard `NAME` / `DESCRIPTION` properties alongside their existing `X-WR-*` aliases. Automated tests, Pint, and Composer audit pass; manual Apple Calendar, Google Calendar, and Outlook imports remain a release smoke test.
-
 ### 9. ✅ Add targeted regression coverage for the issues already found
 
 - Add or update tests for:
@@ -78,8 +15,9 @@ Completed: replaced manual `VCALENDAR` / `VEVENT` serialization with `spatie/ica
 
 Completed: added focused coverage for missing and unsupported roster inputs, direct `Flight` DTO calendar serialization, PDF-text cache invalidation when file contents change at the same path, and mobile-first flight release rendering with long airport metadata. Confirmed the existing suites already cover bounded airport lookup retries/timeouts, all calendar DTO variants, cross-instance route cache reuse, and `Aircraft` / `FlightEvent` inverse and `SET NULL` relationship integrity. The responsive regression exposed and fixed missing word wrapping on flight release airport names and locations.
 
-### 10. In filement, allow admins to delete a user
-- have a modal to confirm the action
+### 10. ✅ In Filament, allow admins to delete a user
+
+Completed: admins can delete other users from the user table or edit page after confirming a danger modal that identifies the account. Policy enforcement prevents admins from deleting themselves, while user creation, bulk deletion, restore, and force-delete actions remain disabled.
 
 ### 11. Improve verify email markdown
 - Use markdown in VerifyEmailWithOtp.php

@@ -31,7 +31,7 @@ class UserPolicy
 
     public function delete(User $user, User $model): bool
     {
-        return false;
+        return $this->admin($user) && ! $user->is($model);
     }
 
     public function deleteAny(User $user): bool

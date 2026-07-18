@@ -159,18 +159,41 @@ class UserResourceTest extends TestCase
         $this->get("/admin/users/{$targetUser->getKey()}/edit")->assertForbidden();
     }
 
-    public function test_user_create_and_delete_actions_are_hidden_from_admins(): void
+    public function test_admins_can_confirm_and_delete_other_users(): void
     {
-        $this->actingAs($this->makeAdminUser());
+        $admin = $this->makeAdminUser();
+        $this->actingAs($admin);
+        $targetUser = User::factory()->create();
+
+        Livewire::test(ListUsers::class)
+            ->assertTableActionVisible('edit', $targetUser)
+            ->assertTableActionVisible('delete', $targetUser)
+            ->mountTableAction('delete', $targetUser)
+            ->assertMountedActionModalSee('Delete user')
+            ->assertMountedActionModalSee($targetUser->name)
+            ->assertMountedActionModalSee($targetUser->email)
+            ->callMountedTableAction();
+
+        $this->assertModelMissing($targetUser);
+    }
+
+    public function test_admins_cannot_create_users_delete_themselves_or_delete_users_in_bulk(): void
+    {
+        $admin = $this->makeAdminUser();
+        $this->actingAs($admin);
         $targetUser = User::factory()->create();
 
         $this->get('/admin/users/create')->assertForbidden();
 
         Livewire::test(ListUsers::class)
-            ->assertTableActionVisible('edit', $targetUser)
+            ->assertTableActionHidden('delete', $admin)
+            ->assertTableActionVisible('delete', $targetUser)
             ->assertTableBulkActionHidden('delete');
 
         Livewire::test(EditUser::class, ['record' => $targetUser->getKey()])
+            ->assertActionVisible('delete');
+
+        Livewire::test(EditUser::class, ['record' => $admin->getKey()])
             ->assertActionHidden('delete');
     }
 

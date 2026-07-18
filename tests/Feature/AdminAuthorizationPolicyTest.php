@@ -100,7 +100,7 @@ class AdminAuthorizationPolicyTest extends TestCase
         $this->assertTrue($admin->can('deleteAny', ParseRequest::class));
     }
 
-    public function test_user_policy_allows_admin_view_and_update_but_not_create_or_delete(): void
+    public function test_user_policy_allows_admins_to_delete_other_users_but_not_themselves_or_users_in_bulk(): void
     {
         $admin = $this->makeAdminUser();
         $targetUser = $this->makeNormalUser();
@@ -109,7 +109,8 @@ class AdminAuthorizationPolicyTest extends TestCase
         $this->assertTrue($admin->can('view', $targetUser));
         $this->assertFalse($admin->can('create', User::class));
         $this->assertTrue($admin->can('update', $targetUser));
-        $this->assertFalse($admin->can('delete', $targetUser));
+        $this->assertTrue($admin->can('delete', $targetUser));
+        $this->assertFalse($admin->can('delete', $admin));
         $this->assertFalse($admin->can('deleteAny', User::class));
     }
 
