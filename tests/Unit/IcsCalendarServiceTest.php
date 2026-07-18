@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\DTOs\DutyEvent;
+use App\DTOs\Flight;
 use App\Services\IcsCalendarService;
 use Tests\TestCase;
 
@@ -76,6 +77,28 @@ class IcsCalendarServiceTest extends TestCase
         $this->assertStringContainsString('SUMMARY:Hotel Check-In', $unfoldedIcs);
         $this->assertStringContainsString('DTSTART:20260616T050000Z', $unfoldedIcs);
         $this->assertStringContainsString('DTEND:20260616T060000Z', $unfoldedIcs);
+    }
+
+    public function test_it_serializes_flight_dtos(): void
+    {
+        $ics = app(IcsCalendarService::class)->serialize([
+            Flight::fromArray([
+                'title' => 'CKS 206 CVG-NRT',
+                'type' => 'flight',
+                'start' => '2026-06-13T09:35:00+00:00',
+                'end' => '2026-06-13T23:25:00+00:00',
+                'flightNumber' => 'CKS 206',
+                'origin' => 'CVG',
+                'destination' => 'NRT',
+            ]),
+        ]);
+
+        $unfoldedIcs = $this->unfold($ics);
+
+        $this->assertStringContainsString('SUMMARY:CKS 206 CVG-NRT', $unfoldedIcs);
+        $this->assertStringContainsString('DTSTART:20260613T093500Z', $unfoldedIcs);
+        $this->assertStringContainsString('DTEND:20260613T232500Z', $unfoldedIcs);
+        $this->assertStringContainsString('Flight number: CKS 206', $unfoldedIcs);
     }
 
     public function test_it_folds_long_unicode_content_lines_without_corrupting_utf8(): void

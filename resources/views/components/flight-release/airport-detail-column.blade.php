@@ -12,8 +12,8 @@
     <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568]">{{ $label }}</p>
 
     @if ($airport)
-        <p class="text-xs font-semibold leading-snug text-[#0B0E14]">{{ $airport['name'] }}</p>
-        <p class="text-[11px] leading-relaxed text-[#4A5568]">{{ $airport['location'] }}</p>
+        <p class="break-words text-xs font-semibold leading-snug text-[#0B0E14]">{{ $airport['name'] }}</p>
+        <p class="break-words text-[11px] leading-relaxed text-[#4A5568]">{{ $airport['location'] }}</p>
         <div class="font-mono text-[11px] leading-relaxed text-[#4A5568]/70">
             <p>ICAO {{ $airport['icao'] }}</p>
             <p>IATA {{ $airport['iata'] }}</p>

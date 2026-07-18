@@ -2,18 +2,6 @@
 
 ## 🎯 Goal
 
-### 7. ✅ Review migrations and schema consistency for `flight_events`
-
-- Revisit `database/migrations/2026_06_22_002913_flight_event.php` for:
-  - table naming consistency
-  - foreign key target naming
-  - index strategy
-  - leftover commented scaffolding
-- Confirm the schema accurately reflects the intended relationship with `aircraft`.
-- Document any forward-fix migration needed rather than mutating an already-run migration if this has been used outside local development.
-
-Completed: confirmed the conventional `flight_events` / `aircraft` naming and nullable `aircraft_id` relationship with `SET NULL` deletion behavior. Preserved the already-run migration despite its nonstandard filename and stale scaffolding, added a forward migration for `start` and `aircraft_id` query indexes, mirrored the `is_deadhead` database default in the model, and added schema and referential-integrity regression coverage.
-
 ### 8. ✅ Use `spatie/icalendar-generator` for RFC-compliant calendar exports
 
 Recommendation: proceed. The current `IcsCalendarService` is a useful application adapter, but its hand-built serializer owns RFC 5545 escaping and does not fold long content lines at the 75-octet boundary. Moving serialization to a maintained package is worthwhile because calendar descriptions can contain long, Unicode-heavy crew and flight metadata.
@@ -77,7 +65,7 @@ Keep this refactor narrowly scoped: retain the existing application-facing servi
 
 Completed: replaced manual `VCALENDAR` / `VEVENT` serialization with `spatie/icalendar-generator` while retaining `IcsCalendarService` as the application adapter. Preserved UTC timestamps, deterministic Crew Compass UIDs, response headers, filenames, event filtering, duty calculations, calendar metadata, and trailing CRLF output. Added support for every `ParsedEventDTO` variant plus regression coverage for special-character escaping, long Unicode line folding, multiple event types, and existing download endpoints. Intentional output differences are standards-compliant line folding and the package's additional standard `NAME` / `DESCRIPTION` properties alongside their existing `X-WR-*` aliases. Automated tests, Pint, and Composer audit pass; manual Apple Calendar, Google Calendar, and Outlook imports remain a release smoke test.
 
-### 9. Add targeted regression coverage for the issues already found
+### 9. ✅ Add targeted regression coverage for the issues already found
 
 - Add or update tests for:
   - parser request validation behavior
@@ -87,6 +75,8 @@ Completed: replaced manual `VCALENDAR` / `VEVENT` serialization with `spatie/ica
   - `Aircraft` / `FlightEvent` relationship integrity
   - mobile/UI rendering edge cases for the flight release page where practical
 - Prefer small, focused tests tied directly to each bug or refactor target instead of broad end-to-end additions.
+
+Completed: added focused coverage for missing and unsupported roster inputs, direct `Flight` DTO calendar serialization, PDF-text cache invalidation when file contents change at the same path, and mobile-first flight release rendering with long airport metadata. Confirmed the existing suites already cover bounded airport lookup retries/timeouts, all calendar DTO variants, cross-instance route cache reuse, and `Aircraft` / `FlightEvent` inverse and `SET NULL` relationship integrity. The responsive regression exposed and fixed missing word wrapping on flight release airport names and locations.
 
 ### 10. In filement, allow admins to delete a user
 - have a modal to confirm the action

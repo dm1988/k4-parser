@@ -167,6 +167,40 @@ TEXT;
         $this->assertSame($pdfText, $cache->get($cacheKey));
     }
 
+    public function test_pdf_text_cache_is_invalidated_when_file_contents_change_at_the_same_path(): void
+    {
+        $path = tempnam('/tmp', 'flight-release-cache-');
+        $this->assertIsString($path);
+
+        $firstDocument = $this->createMock(Document::class);
+        $firstDocument->expects($this->once())
+            ->method('getText')
+            ->willReturn("(FPL-CKS272-IS\n-N0487F360 OSUDO4A ASETA\n-SCEL0322)");
+
+        $secondDocument = $this->createMock(Document::class);
+        $secondDocument->expects($this->once())
+            ->method('getText')
+            ->willReturn("(FPL-CKS273-IS\n-N0487F360 DCT KEMAX UL9\n-SCEL0322)");
+
+        $parser = $this->createMock(Parser::class);
+        $parser->expects($this->exactly(2))
+            ->method('parseFile')
+            ->with($path)
+            ->willReturnOnConsecutiveCalls($firstDocument, $secondDocument);
+
+        $extractor = $this->makeExtractor($parser);
+
+        try {
+            file_put_contents($path, 'first PDF contents');
+            $this->assertSame('OSUDO4A ASETA', $extractor->extractRoute($path));
+
+            file_put_contents($path, 'different PDF contents');
+            $this->assertSame('DCT KEMAX UL9', $extractor->extractRoute($path));
+        } finally {
+            unlink($path);
+        }
+    }
+
     public function test_container_injects_the_airport_lookup_client(): void
     {
         $lookups = [];

@@ -202,6 +202,41 @@ class FlightReleaseControllerTest extends TestCase
             ->assertSeeText('Southwest Florida International Airport');
     }
 
+    public function test_flight_release_results_use_mobile_first_layout_and_wrap_long_content(): void
+    {
+        $longAirportName = 'São Paulo–Guarulhos International Airport Cargo Operations Annex';
+        $flightPlan = [
+            'departure' => 'SBGR',
+            'destination' => 'PANC',
+            'alternate' => null,
+            'departure_airport' => [
+                'icao' => 'SBGR',
+                'iata' => 'GRU',
+                'name' => $longAirportName,
+                'city' => 'Guarulhos',
+                'state' => 'São Paulo',
+                'country' => 'Brazil',
+            ],
+            'destination_airport' => null,
+            'alternate_airport' => null,
+            'initial_altitude' => 'FL 350',
+            'duration' => '11h45m',
+            'route' => str_repeat('DCT LONGROUTE ', 20),
+        ];
+
+        $response = $this->actingAs(User::factory()->create(['role' => 'admin']))
+            ->withSession(['flight_plan' => $flightPlan])
+            ->get(route('flight-release.index'));
+
+        $response->assertOk();
+        $response->assertSeeText($longAirportName);
+        $response->assertSee('grid divide-y divide-[#1B365D]/6 md:grid-cols-3 md:divide-x md:divide-y-0', false);
+        $response->assertSee('flex min-w-0 flex-col gap-1 px-4 py-3', false);
+        $response->assertSee('break-words text-xs font-semibold leading-snug', false);
+        $response->assertSee('break-words text-[11px] leading-relaxed', false);
+        $response->assertSee('break-words font-mono text-xs leading-relaxed', false);
+    }
+
     public function test_only_pdf_uploads_are_allowed(): void
     {
         $response = $this->actingAs(User::factory()->create([
