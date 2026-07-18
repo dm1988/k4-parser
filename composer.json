@@ -14,6 +14,7 @@
         "laravel/framework": "^13.8",
         "laravel/tinker": "^3.0",
         "smalot/pdfparser": "^2.12",
+        "spatie/icalendar-generator": "^3.3",
         "symfony/http-client": "^8.1",
         "symfony/mailgun-mailer": "^8.1"
     },

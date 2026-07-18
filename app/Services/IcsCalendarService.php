@@ -3,10 +3,13 @@
 namespace App\Services;
 
 use App\DTOs\Flight;
-use App\Enums\ParserEventType;
-use App\Mappers\FlightMapper;
+use App\DTOs\ParsedEventDTO;
 use App\Enums\MetadataKey;
+use App\Mappers\FlightMapper;
 use Illuminate\Support\Carbon;
+use Spatie\IcalendarGenerator\Components\Calendar;
+use Spatie\IcalendarGenerator\Components\Event;
+use Spatie\IcalendarGenerator\Properties\TextProperty;
 
 class IcsCalendarService
 {
@@ -17,19 +20,15 @@ class IcsCalendarService
 
     public function serialize(array $events, array $trip = []): string
     {
-        $lines = [
-            'BEGIN:VCALENDAR',
-            'VERSION:2.0',
-            'CALSCALE:GREGORIAN',
-            'METHOD:PUBLISH',
-            'PRODID:-//Crew Compass//Roster Parser//EN',
-        ];
+        $tripNumber = $trip['trip_number'] ?? null;
+        $calendarName = filled($tripNumber) ? 'JCA Parsed Trip '.$tripNumber : null;
+        $calendar = Calendar::create($calendarName)
+            ->description('Calendar export from Crew Compass JCA parser')
+            ->productIdentifier('-//Crew Compass//Roster Parser//EN')
+            ->withoutAutoTimezoneComponents();
 
-        if (! empty($trip['trip_number'])) {
-            $lines[] = 'X-WR-CALNAME:JCA Parsed Trip '.$this->escapeValue($trip['trip_number']);
-        }
-
-        $lines[] = 'X-WR-CALDESC:Calendar export from Crew Compass JCA parser';
+        $calendar->appendProperty(TextProperty::create('CALSCALE', 'GREGORIAN'));
+        $calendar->appendProperty(TextProperty::create('METHOD', 'PUBLISH'));
 
         foreach ($events as $event) {
             $event = $this->normalizeEvent($event);
@@ -50,22 +49,21 @@ class IcsCalendarService
             $description = $this->formatDescription($event);
             $uid = sha1($event['title'].$event['start'].$event['end']);
 
-            $lines[] = 'BEGIN:VEVENT';
-            $lines[] = 'UID:'.$uid.'@crew-compass';
-            $lines[] = 'DTSTAMP:'.now()->setTimezone('UTC')->format('Ymd\THis\Z');
-            $lines[] = 'DTSTART:'.$start->format('Ymd\THis\Z');
-            $lines[] = 'DTEND:'.$end->format('Ymd\THis\Z');
-            $lines[] = 'SUMMARY:'.$this->escapeValue($event['title']);
-            if ($flightAwareUrl) {
-                $lines[] = 'URL:'.$this->escapeValue($flightAwareUrl);
+            $calendarEvent = Event::create($event['title'])
+                ->uniqueIdentifier($uid.'@crew-compass')
+                ->createdAt(now()->setTimezone('UTC'))
+                ->startsAt($start)
+                ->endsAt($end)
+                ->description($description);
+
+            if (is_string($flightAwareUrl) && $flightAwareUrl !== '') {
+                $calendarEvent->url($flightAwareUrl);
             }
-            $lines[] = 'DESCRIPTION:'.$this->escapeValue($description);
-            $lines[] = 'END:VEVENT';
+
+            $calendar->event($calendarEvent);
         }
 
-        $lines[] = 'END:VCALENDAR';
-
-        return implode("\r\n", $lines)."\r\n";
+        return $calendar->get()."\r\n";
     }
 
     private function normalizeEvent(mixed $event): ?array
@@ -74,12 +72,15 @@ class IcsCalendarService
             return $this->flightMapper->toCalendarEvent($event);
         }
 
+        if ($event instanceof ParsedEventDTO) {
+            return $event->toArray();
+        }
+
         return is_array($event) ? $event : null;
     }
 
     private function formatDescription(array $event): string
     {
-        $eventType = ParserEventType::fromEvent($event);
         $metadata = $this->normalizeCrewMetadata(
             is_array($event['metadata'] ?? null) ? $event['metadata'] : []
         );
@@ -310,14 +311,5 @@ class IcsCalendarService
         }
 
         return $parts === [] ? null : implode(', ', $parts);
-    }
-
-    private function escapeValue(string $value): string
-    {
-        return str_replace(
-            ['\\', "\r\n", "\n", ',', ';'],
-            ['\\\\', '\\n', '\\n', '\\,', '\\;'],
-            $value,
-        );
     }
 }

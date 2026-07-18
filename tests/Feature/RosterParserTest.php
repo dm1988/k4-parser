@@ -537,14 +537,16 @@ TEXT;
 
         $response = $this->get(route('parse.export', ['parse_key' => $result['parse_key']]));
 
-        $response
-            ->assertOk()
-            ->assertSee('👥 CREW LOGISTICS')
-            ->assertSee('Crew count: 2')
-            ->assertSee('Operating crew count: 1')
-            ->assertSee('Deadheading crew count: 1')
-            ->assertSee('Jane Doe (FO • CVG • #12345)')
-            ->assertSee('John Smith (DH • AUS • #67890)');
+        $response->assertOk();
+
+        $ics = $this->unfoldIcs($response->getContent());
+
+        $this->assertStringContainsString('👥 CREW LOGISTICS', $ics);
+        $this->assertStringContainsString('Crew count: 2', $ics);
+        $this->assertStringContainsString('Operating crew count: 1', $ics);
+        $this->assertStringContainsString('Deadheading crew count: 1', $ics);
+        $this->assertStringContainsString('Jane Doe (FO • CVG • #12345)', $ics);
+        $this->assertStringContainsString('John Smith (DH • AUS • #67890)', $ics);
     }
 
     public function test_per_event_export_uses_stable_download_id_instead_of_filtered_index(): void
@@ -681,5 +683,10 @@ TEXT;
     private function sessionCacheNamespace(): string
     {
         return (string) session('parsed_results_namespace', session()->getId());
+    }
+
+    private function unfoldIcs(string $ics): string
+    {
+        return preg_replace('/\r\n[ \t]/', '', $ics) ?? $ics;
     }
 }

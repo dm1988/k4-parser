@@ -96,17 +96,20 @@ class ExportFlightDutyCalendarEventTest extends TestCase
         $response
             ->assertOk()
             ->assertHeader('content-type', 'text/calendar; charset=utf-8')
-            ->assertHeader('content-disposition', 'attachment; filename="crew-compass-13131-duty-'.$eventId.'.ics"')
-            ->assertSee('BEGIN:VCALENDAR')
-            ->assertSee('BEGIN:VEVENT')
-            ->assertSee('SUMMARY:Duty')
-            ->assertSee('DTSTART:20260615T214500Z')
-            ->assertSee('DTEND:20260616T040000Z')
-            ->assertSee('Duty UTC start: Jun 15 21:45 Z')
-            ->assertSee('Duty UTC end: Jun 16 04:00 Z')
-            ->assertSee('Duty local start: Jun 16 06:45')
-            ->assertSee('Duty local end: Jun 15 12:00')
-            ->assertSee('Duration: 6h 15m');
+            ->assertHeader('content-disposition', 'attachment; filename="crew-compass-13131-duty-'.$eventId.'.ics"');
+
+        $ics = $this->unfoldIcs($response->getContent());
+
+        $this->assertStringContainsString('BEGIN:VCALENDAR', $ics);
+        $this->assertStringContainsString('BEGIN:VEVENT', $ics);
+        $this->assertStringContainsString('SUMMARY:Duty', $ics);
+        $this->assertStringContainsString('DTSTART:20260615T214500Z', $ics);
+        $this->assertStringContainsString('DTEND:20260616T040000Z', $ics);
+        $this->assertStringContainsString('Duty UTC start: Jun 15 21:45 Z', $ics);
+        $this->assertStringContainsString('Duty UTC end: Jun 16 04:00 Z', $ics);
+        $this->assertStringContainsString('Duty local start: Jun 16 06:45', $ics);
+        $this->assertStringContainsString('Duty local end: Jun 15 12:00', $ics);
+        $this->assertStringContainsString('Duration: 6h 15m', $ics);
     }
 
     public function test_it_exports_a_flight_duty_calendar_event_from_parse_key_cache(): void
@@ -204,5 +207,10 @@ class ExportFlightDutyCalendarEventTest extends TestCase
     private function sessionCacheNamespace(): string
     {
         return (string) session('parsed_results_namespace', session()->getId());
+    }
+
+    private function unfoldIcs(string $ics): string
+    {
+        return preg_replace('/\r\n[ \t]/', '', $ics) ?? $ics;
     }
 }
