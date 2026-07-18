@@ -43,7 +43,6 @@ Completed: added keyed SHA-256 hashed, single-use 6-digit OTPs with a 15-minute 
 - Move the inline clipboard script out of `resources/views/flight-release/index.blade.php` into a proper frontend asset/module.
 - Remove the third-party inline script injection from `resources/views/layouts/navigation.blade.php` and integrate it in a safer, more maintainable way.
 - Review `resources/views/parse.blade.php` and `resources/views/dashboard.blade.php` to avoid building page state directly inside views when controllers/routes should own that responsibility.
-- Decide whether `/dashboard` and `/parse` should remain separate entry points or be consolidated around one composition path.
 
 ### 3. Enable development guardrails for Eloquent performance issues
 
@@ -103,3 +102,42 @@ Fix: Wrap these rules into custom route middleware (e.g., EnsureFeatureIsEnabled
   - `Aircraft` / `FlightEvent` relationship integrity
   - mobile/UI rendering edge cases for the flight release page where practical
 - Prefer small, focused tests tied directly to each bug or refactor target instead of broad end-to-end additions.
+
+### 10. In filement, allow admins to delete a user
+- have a modal to confirm the action
+
+### 11. Improve verify email markdown
+- Use markdown in VerifyEmailWithOtp.php
+public function toMail(mixed $notifiable): MailMessage
+{
+    $verificationUrl = $this->verificationUrl($notifiable);
+    // Format OTP as "123 - 456" for even cleaner visual separation
+    $formattedOtp = substr($this->otp, 0, 3) . ' - ' . substr($this->otp, 3);
+
+    return (new MailMessage)
+        ->subject('Verify Your Account')
+        ->greeting('Verify your email address')
+        ->line('Please click the button below to complete your account setup:')
+        ->action('Verify Email Address', $verificationUrl)
+        ->line('---') // Visual separator line
+        ->line('**Alternative Verification Code**')
+        ->line('If you are on an enterprise network where links are blocked, or if the button above has expired, enter this code on the verification page:')
+        ->line('**' . $formattedOtp . '**') // Bolded OTP
+        ->line('*This code expires in 15 minutes.*') // Italicized secondary context
+        ->line('---')
+        ->line('If you did not create an account, you can safely ignore this email.');
+}
+- Update tests
+
+### 12. Clarify JCA schedule parsing service names
+
+- Rename services whose current names hide their role in the four supported input paths (parsed text, screenshot OCR, Trip Information PDF, and Published Roster PDF):
+  - `RosterParser` to `TripInformationParser` because it parses Trip Information-formatted text, including pasted text and screenshot OCR output, rather than every roster format.
+  - `RosterSourceResolver` to `ScheduleInputResolver` because it normalizes all four schedule inputs and identifies PDF document formats.
+  - `RosterDocumentParser` to `ScheduleFormatParser` because it dispatches normalized schedule text to the parser for the detected document format.
+  - `ScheduleParserService` to `JcaScheduleParsingService` because it is the top-level JCA parsing workflow rather than a generic schedule parser.
+  - `CrewParserService` to `CrewListParser` to describe the crew-row parsing and summary responsibility without the generic `Service` suffix.
+- Refactor `PdfScheduleParser` before renaming it: separate generic PDF text/metadata extraction from its legacy Trip Information-specific parsing, then name the extraction service `SchedulePdfExtractor`.
+- Keep `PublishedRosterParser`, `AirlineCodeLookup`, and `AirportLookupClient`; their names already describe their responsibilities accurately.
+- Update dependency injection, service-provider bindings, command/controller call sites, tests, and filenames for each rename.
+- Run the focused parser and upload test suites after the rename.

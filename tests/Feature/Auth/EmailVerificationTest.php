@@ -25,8 +25,14 @@ class EmailVerificationTest extends TestCase
         $response = $this->actingAs($user)->get('/verify-email');
 
         $response->assertStatus(200);
-        $response->assertSee('Waiting for verification...');
-        $response->assertSee('Enter 6-digit code');
+        $response->assertSeeInOrder([
+            'Waiting for verification... Use the link in the email we sent you.',
+            'Resend Verification Email',
+            'Use an OTP code',
+            'Enter 6-digit code',
+        ]);
+        $response->assertSee('x-on:click="showOtp = true"', false);
+        $response->assertSee('x-if="showOtp"', false);
     }
 
     public function test_email_can_be_verified(): void
