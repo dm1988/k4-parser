@@ -2,14 +2,6 @@
 
 ## 🎯 Goal
 
-### 2. ✅ Remove inline JavaScript and view-level composition drift
-
-- Move the inline clipboard script out of `resources/views/flight-release/index.blade.php` into a proper frontend asset/module.
-- Remove the third-party inline script injection from `resources/views/layouts/navigation.blade.php` and integrate it in a safer, more maintainable way.
-- Review `resources/views/parse.blade.php` and `resources/views/dashboard.blade.php` to avoid building page state directly inside views when controllers/routes should own that responsibility.
-
-Completed: moved flight-release clipboard behavior into the Vite JavaScript entry point, replaced the third-party navigation widget and inline logout handlers with native links/forms, and consolidated `/dashboard` and `/parse` on one controller-composed parser view.
-
 ### 3. ✅ Enable development guardrails for Eloquent performance issues
 
 - Add `Model::preventLazyLoading()` in non-production environments in `app/Providers/AppServiceProvider.php`.
@@ -18,7 +10,7 @@ Completed: moved flight-release clipboard behavior into the Vite JavaScript entr
 
 Completed: enabled Eloquent strict mode outside production to prevent lazy loading, silently discarded attributes, and access to missing attributes, with focused regression coverage.
 
-### 4. Improve OCR cache consistency and temporary file handling
+### 4. ✅ Improve OCR cache consistency and temporary file handling
 
 - Review `app/Services/RosterSourceResolver.php` caching and temp file management.
 - Replace `md5_file()` OCR cache key generation with the same stronger file identity strategy used elsewhere in the app unless there is a deliberate reason not to.
@@ -109,3 +101,15 @@ public function toMail(mixed $notifiable): MailMessage
 - Keep `PublishedRosterParser`, `AirlineCodeLookup`, and `AirportLookupClient`; their names already describe their responsibilities accurately.
 - Update dependency injection, service-provider bindings, command/controller call sites, tests, and filenames for each rename.
 - Run the focused parser and upload test suites after the rename.
+
+## 13. Streamline the Upload Card Structure
+- The file upload input and the "Parse" button feel somewhat detached because they are aligned horizontally with wide gaps.
+
+- Fix: Consider stacking the input elements or tightening the container width. Alternatively, transform the upload zone into a larger, centered drag-and-drop target box with an icon, placing a full-width or cleanly aligned "Parse" button directly beneath it.
+
+## 14. Refine Card Hierarchy and Margins
+ - The main blue header card ("Flight Deck") and the white upload card are stacked close together with identical widths, creating a rigid block appearance.
+
+ - Fix: Nest the file upload and filters section inside a single, unified container card, where the dark blue header serves as the hero header of that card. This removes the double-card stacking look and groups the context ("what this tool does") directly with the action ("upload your file").
+
+- Spacing: Increase the vertical spacing (gap or margin-bottom) between the hero header card and the upload card if you keep them separate.

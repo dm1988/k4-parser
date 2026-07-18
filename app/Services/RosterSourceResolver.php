@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Illuminate\Validation\ValidationException;
 use Intervention\Image\Laravel\Facades\Image;
 use Symfony\Component\Process\Process;
@@ -34,17 +35,16 @@ class RosterSourceResolver
         }
 
         $mime = $file->getMimeType();
+        $path = $file->getRealPath();
+
+        if (! is_string($path) || ! is_file($path)) {
+            throw ValidationException::withMessages([
+                'file' => 'The uploaded schedule could not be read.',
+            ]);
+        }
 
         if ($mime === 'application/pdf') {
-            $tmpPath = $file->getRealPath();
-
-            if (! is_string($tmpPath) || ! is_file($tmpPath)) {
-                throw ValidationException::withMessages([
-                    'file' => 'The uploaded PDF could not be read.',
-                ]);
-            }
-
-            $pdfData = $this->pdfScheduleParser->parse($tmpPath);
+            $pdfData = $this->pdfScheduleParser->parse($path);
             $rawText = trim($pdfData['text'] ?? '');
 
             if ($rawText === '') {
@@ -65,7 +65,7 @@ class RosterSourceResolver
             ];
         }
 
-        $rawText = $this->extractTextFromImage($file->getRealPath());
+        $rawText = $this->extractTextFromImage($path);
 
         return [
             'source' => 'image',
@@ -172,60 +172,91 @@ class RosterSourceResolver
 
     private function extractTextFromImage(string $path): string
     {
+        $cacheKey = 'roster-source-resolver:ocr-text:'.$this->fileHash($path);
+
+        $cachedText = cache()->get($cacheKey);
+
+        if (is_string($cachedText) && $cachedText !== '') {
+            return $cachedText;
+        }
+
         $tesseract = config('services.ocr.tesseract_path', '/usr/bin/tesseract');
 
         if (! is_executable($tesseract)) {
             throw ValidationException::withMessages([
-                'image' => "OCR is not installed in the web server container. Expected Tesseract at {$tesseract}.",
+                'file' => "OCR is not installed in the web server container. Expected Tesseract at {$tesseract}.",
             ]);
         }
 
-        // Check cache for OCR results using file hash to avoid reprocessing identical images
-        $fileHash = md5_file($path);
-        $cacheKey = "ocr_result:{$fileHash}";
+        $optimizedPath = tempnam(storage_path('app'), 'ocr-');
 
-        $cachedText = cache()->get($cacheKey);
-        if ($cachedText !== null && is_string($cachedText)) {
-            return $cachedText;
+        if ($optimizedPath === false) {
+            throw ValidationException::withMessages([
+                'file' => 'A temporary OCR image could not be created. Try the upload again.',
+            ]);
         }
 
-        // --- PREPROCESSING STEP ---
-        // Create a temporary path for the optimized image
-        $optimizedPath = storage_path('app/ocr_temp_'.uniqid().'.jpg');
-
         try {
-            $image = Image::read($path);
+            $ocrInputPath = $this->prepareImageForOcr($path, $optimizedPath);
+            $text = $this->runOcr($tesseract, $ocrInputPath);
+        } finally {
+            $this->cleanupGeneratedFile($optimizedPath);
+        }
+
+        if ($text === '') {
+            throw ValidationException::withMessages([
+                'file' => 'OCR did not find any text in that image. Try a clearer screenshot or paste the text manually.',
+            ]);
+        }
+
+        cache()->put($cacheKey, $text, now()->addDays(30));
+
+        return $text;
+    }
+
+    private function fileHash(string $path): string
+    {
+        $fileHash = hash_file('sha256', $path);
+
+        if ($fileHash === false) {
+            throw ValidationException::withMessages([
+                'file' => 'The uploaded image could not be read for OCR.',
+            ]);
+        }
+
+        return $fileHash;
+    }
+
+    private function prepareImageForOcr(string $sourcePath, string $optimizedPath): string
+    {
+        try {
+            $image = Image::read($sourcePath);
             $originalWidth = $image->width();
             $originalHeight = $image->height();
 
-            // Skip preprocessing for already high-resolution images (1000x800+)
-            $needsPreprocessing = $originalWidth < 1000 || $originalHeight < 800;
-
-            if ($needsPreprocessing) {
-                // 1. Convert to greyscale
+            if ($originalWidth < 1000 || $originalHeight < 800) {
                 $image->greyscale();
 
-                // 2. Adaptive upscaling: only upscale if image is small (< 400px wide)
                 if ($originalWidth < 400) {
                     $image->resize($originalWidth * 2, $originalHeight * 2);
                 }
 
-                // 3. Boost contrast to make text pop against backgrounds
                 $image->contrast(15);
             }
 
-            // Save as JPEG for faster I/O (better compression than PNG)
             $image->toJpeg(quality: 85)->save($optimizedPath);
-        } catch (Throwable $e) {
-            // Fallback to original path if preprocessing fails
-            $optimizedPath = $path;
-        }
-        // ---------------------------
 
-        // Use $optimizedPath instead of $path
+            return $optimizedPath;
+        } catch (Throwable) {
+            return $sourcePath;
+        }
+    }
+
+    private function runOcr(string $tesseract, string $path): string
+    {
         $process = new Process([
             $tesseract,
-            $optimizedPath,
+            $path,
             'stdout',
             '--psm', '6',
         ]);
@@ -233,40 +264,19 @@ class RosterSourceResolver
 
         try {
             $process->mustRun();
-            $text = trim($process->getOutput());
+
+            return trim($process->getOutput());
         } catch (Throwable $exception) {
             report($exception);
 
             throw ValidationException::withMessages([
-                'image' => 'OCR failed. Try a sharper roster screenshot or paste the extracted text instead.',
-            ]);
-        } finally {
-            // Pass both paths. The variadic helper will safely deduplicate them
-            // if $optimizedPath fell back to $path.
-            $this->cleanupTempFiles($optimizedPath, $path);
-        }
-
-        if ($text === '') {
-            throw ValidationException::withMessages([
-                'image' => 'OCR did not find any text in that image. Try a clearer screenshot or paste the text manually.',
+                'file' => 'OCR failed. Try a sharper roster screenshot or paste the extracted text instead.',
             ]);
         }
-
-        // Cache the result for 30 days
-        cache()->put($cacheKey, $text, now()->addDays(30));
-
-        return $text;
     }
 
-    /**
-     * Clean up any generated temporary files safely.
-     */
-    private function cleanupTempFiles(string ...$paths): void
+    private function cleanupGeneratedFile(string $path): void
     {
-        foreach (array_unique($paths) as $path) {
-            if (file_exists($path)) {
-                unlink($path);
-            }
-        }
+        File::delete($path);
     }
 }

@@ -4,12 +4,14 @@ namespace Tests\Unit;
 
 use App\Services\RosterSourceResolver;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class RosterSourceResolverTest extends TestCase
 {
-    private ?string $tesseractScriptPath = null;
+    /** @var list<string> */
+    private array $tesseractScriptPaths = [];
 
     public function test_it_cleans_up_generated_ocr_temp_files_when_ocr_fails(): void
     {
@@ -17,6 +19,7 @@ class RosterSourceResolverTest extends TestCase
 
         $before = $this->ocrTempFiles();
         $file = UploadedFile::fake()->image('roster.png', 300, 200);
+        $sourcePath = $file->getRealPath();
 
         try {
             app(RosterSourceResolver::class)->resolve($file, null);
@@ -24,14 +27,91 @@ class RosterSourceResolverTest extends TestCase
         } catch (ValidationException $exception) {
             $this->assertSame(
                 ['OCR failed. Try a sharper roster screenshot or paste the extracted text instead.'],
-                $exception->errors()['image'] ?? [],
+                $exception->errors()['file'] ?? [],
             );
         }
 
         $this->assertSame($before, $this->ocrTempFiles());
+        $this->assertFileExists($sourcePath);
+    }
+
+    public function test_it_uses_a_sha256_cache_key_and_reuses_cached_ocr_text(): void
+    {
+        config()->set('services.ocr.tesseract_path', $this->successfulTesseractScript());
+
+        $before = $this->ocrTempFiles();
+        $file = UploadedFile::fake()->image('roster.png', 300, 200);
+        $sourcePath = $file->getRealPath();
+        $cacheKey = 'roster-source-resolver:ocr-text:'.hash_file('sha256', $sourcePath);
+
+        $result = app(RosterSourceResolver::class)->resolve($file, null);
+
+        $this->assertSame("Trip Information\nDuty Summary", $result['raw_text']);
+        $this->assertSame("Trip Information\nDuty Summary", Cache::get($cacheKey));
+        $this->assertSame($before, $this->ocrTempFiles());
+        $this->assertFileExists($sourcePath);
+
+        config()->set('services.ocr.tesseract_path', $this->failingTesseractScript());
+
+        $cachedResult = app(RosterSourceResolver::class)->resolve($file, null);
+
+        $this->assertSame($result['raw_text'], $cachedResult['raw_text']);
+        $this->assertFileExists($sourcePath);
+    }
+
+    public function test_it_cleans_up_after_preprocessing_fallback_and_preserves_the_upload(): void
+    {
+        config()->set('services.ocr.tesseract_path', $this->successfulTesseractScript());
+
+        $before = $this->ocrTempFiles();
+        $file = UploadedFile::fake()->createWithContent('roster.png', 'not an image');
+        $sourcePath = $file->getRealPath();
+
+        $result = app(RosterSourceResolver::class)->resolve($file, null);
+
+        $this->assertSame("Trip Information\nDuty Summary", $result['raw_text']);
+        $this->assertSame($before, $this->ocrTempFiles());
+        $this->assertFileExists($sourcePath);
+    }
+
+    public function test_empty_ocr_output_uses_the_visible_file_error_and_cleans_up(): void
+    {
+        config()->set('services.ocr.tesseract_path', $this->emptyTesseractScript());
+
+        $before = $this->ocrTempFiles();
+        $file = UploadedFile::fake()->image('roster.png', 300, 200);
+        $sourcePath = $file->getRealPath();
+
+        try {
+            app(RosterSourceResolver::class)->resolve($file, null);
+            $this->fail('Expected empty OCR validation failure was not thrown.');
+        } catch (ValidationException $exception) {
+            $this->assertSame(
+                ['OCR did not find any text in that image. Try a clearer screenshot or paste the text manually.'],
+                $exception->errors()['file'] ?? [],
+            );
+        }
+
+        $this->assertSame($before, $this->ocrTempFiles());
+        $this->assertFileExists($sourcePath);
     }
 
     private function failingTesseractScript(): string
+    {
+        return $this->tesseractScript("#!/bin/sh\nexit 1\n");
+    }
+
+    private function successfulTesseractScript(): string
+    {
+        return $this->tesseractScript("#!/bin/sh\nprintf 'Trip Information\\nDuty Summary\\n'\n");
+    }
+
+    private function emptyTesseractScript(): string
+    {
+        return $this->tesseractScript("#!/bin/sh\nexit 0\n");
+    }
+
+    private function tesseractScript(string $contents): string
     {
         $scriptPath = tempnam(sys_get_temp_dir(), 'tesseract-fail-');
 
@@ -39,9 +119,9 @@ class RosterSourceResolverTest extends TestCase
             $this->fail('Unable to create temporary OCR test script.');
         }
 
-        file_put_contents($scriptPath, "#!/bin/sh\nexit 1\n");
+        file_put_contents($scriptPath, $contents);
         chmod($scriptPath, 0755);
-        $this->tesseractScriptPath = $scriptPath;
+        $this->tesseractScriptPaths[] = $scriptPath;
 
         return $scriptPath;
     }
@@ -51,7 +131,7 @@ class RosterSourceResolverTest extends TestCase
      */
     private function ocrTempFiles(): array
     {
-        $files = glob(storage_path('app/ocr_temp_*.jpg'));
+        $files = glob(storage_path('app/ocr-*'));
 
         if ($files === false) {
             return [];
@@ -64,8 +144,10 @@ class RosterSourceResolverTest extends TestCase
 
     protected function tearDown(): void
     {
-        if (is_string($this->tesseractScriptPath) && file_exists($this->tesseractScriptPath)) {
-            unlink($this->tesseractScriptPath);
+        foreach ($this->tesseractScriptPaths as $tesseractScriptPath) {
+            if (file_exists($tesseractScriptPath)) {
+                unlink($tesseractScriptPath);
+            }
         }
 
         parent::tearDown();
