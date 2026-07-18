@@ -4,8 +4,6 @@ namespace App\Services;
 
 use App\DTOs\AirportData;
 use App\Exceptions\FlightRouteNotFoundException;
-use Illuminate\Cache\ArrayStore;
-use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Log;
 use Smalot\PdfParser\Parser;
@@ -19,16 +17,9 @@ class FlightRouteExtractor
 
     public function __construct(
         private readonly Parser $parser,
-        ?AirportLookupClient $airportLookupClient = null,
-        ?Repository $cache = null,
-    ) {
-        $this->cache = $cache ?? new CacheRepository(new ArrayStore);
-        $this->airportLookupClient = $airportLookupClient;
-    }
-
-    private Repository $cache;
-
-    private ?AirportLookupClient $airportLookupClient;
+        private readonly AirportLookupClient $airportLookupClient,
+        private readonly Repository $cache,
+    ) {}
 
     /**
      * @throws FlightRouteNotFoundException
@@ -121,7 +112,7 @@ class FlightRouteExtractor
             return null;
         }
 
-        return ($this->airportLookupClient ??= new AirportLookupClient)->lookupByIcao($icao);
+        return $this->airportLookupClient->lookupByIcao($icao);
     }
 
     /**
