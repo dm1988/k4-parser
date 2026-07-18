@@ -16,6 +16,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\UploadedFile;
+use Illuminate\View\View;
 
 class ParserController extends Controller
 {
@@ -26,13 +27,17 @@ class ParserController extends Controller
         private readonly ScheduleParserService $scheduleParserService,
     ) {}
 
-    public function index()
+    public function index(): View
     {
         return view('parse', [
-            'viewModel' => ParserPageViewModel::fromResult(
-                $this->parserResultCache->latest(),
-                session()->getOldInput(),
-            ),
+            'viewModel' => $this->parserPageViewModel(),
+        ]);
+    }
+
+    public function dashboard(): View
+    {
+        return view('dashboard', [
+            'viewModel' => $this->parserPageViewModel(),
         ]);
     }
 
@@ -124,6 +129,14 @@ class ParserController extends Controller
         }
 
         return $sessionResult;
+    }
+
+    private function parserPageViewModel(): ParserPageViewModel
+    {
+        return ParserPageViewModel::fromResult(
+            $this->parserResultCache->latest(),
+            session()->getOldInput(),
+        );
     }
 
     private function handleParseAction(

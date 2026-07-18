@@ -1,7 +1,7 @@
 @php
 // Fall back to a blank state if the controller didn't inject one,
 // rather than scanning old session payloads manually.
-$viewModel ??= \App\View\Models\Parser\ParserPageViewModel::fromSession(null);
+$viewModel ??= \App\View\Models\Parser\ParserPageViewModel::fromResult(null);
 @endphp
 
 @if (! $viewModel->available)

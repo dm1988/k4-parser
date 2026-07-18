@@ -2,38 +2,12 @@
 
 ## 🎯 Goal
 ### 1. Failed tests
-Tests\Feature\AdminNavigationTest > non admin users can not see the admin navigat…
-  Expected response status code [200] but received 500.
-Failed asserting that 500 is identical to 200.
+[x] Fix the dashboard 500 caused by its stale `ParserPageViewModel::fromCurrentSession()` call.
+[x] Compose the dashboard parser view model through `ParserController` and `ParserResultCache`.
+[x] Add coverage proving the dashboard hydrates the latest parser result from cache.
+[ ] Resolve `AdminNavigationTest::test_inactive_or_unverified_admins_can_not_see_the_admin_navigation_link`, which currently expects 200 but receives a 302 redirect from the route's `verified` middleware.
 
-The following exception occurred during the last request:
-
-Error: Call to undefined method App\View\Models\Parser\ParserPageViewModel::fromCurrentSession() in /var/www/html/storage/framework/views/68e1cbe7cb02a05af7b5f0a462942f4b.php:20
-
------
-
-Call to undefined method App\View\Models\Parser\ParserPageViewModel::fromCurrentSession() (View: /var/www/html/resources/views/dashboard.blade.php)
-
-  at tests/Feature/AdminNavigationTest.php:35
-     31▕         $user = User::factory()->create();
-     32▕
-     33▕         $this->actingAs($user)
-     34▕             ->get('/dashboard')
-  ➜  35▕             ->assertOk()
-     36▕             ->assertDontSeeText('Admin Panel')
-     37▕             ->assertDontSee(route('filament.admin.pages.dashboard'), escape: false);
-     38▕     }
-     39▕
-
-  ────────────────────────────────────────────────────────────────────────────────────────────
-   FAILED  Tests\Feature\AdminNavigationTest > inactive or unverified admins can not see the…
-  Expected response status code [200] but received 500.
-Failed asserting that 500 is identical to 200.
-
-The following exception occurred during the last request:
-
-Error: Call to undefined method App\View\Models\Parser\ParserPageViewModel::fromCurrentSession() in /var/www/html/storage/framework/views/68e1cbe7cb02a05af7b5f0a462942f4b.php:20
-Stack trace:
+Verification: Laravel Pint passed. The focused dashboard, parser rendering, and authentication suite passed 22 of 23 tests; only the separately tracked verified-middleware assertion remains.
 ### 2. Fix event export download ID assignment for all DTO types
 
 [x] Keep download ID assignment in `app/Actions/BuildParserResult.php` rather than `ParserController`.
