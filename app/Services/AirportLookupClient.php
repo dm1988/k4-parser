@@ -3,8 +3,11 @@
 namespace App\Services;
 
 use App\DTOs\AirportData;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class AirportLookupClient
 {
@@ -12,7 +15,6 @@ class AirportLookupClient
 
     public function __construct()
     {
-        // Pull this from config/services.php or your .env file
         $this->baseUrl = config('services.airport_provider.url', 'http://localhost/api/v1');
     }
 
@@ -21,10 +23,8 @@ class AirportLookupClient
      */
     public function lookupByIata(string $iata): ?AirportData
     {
-        // Strip whitespace and force uppercase
         $cleanIata = strtoupper(trim($iata));
 
-        // Fast-fail if structural constraint is unmet
         if (strlen($cleanIata) !== 3 || ! ctype_alpha($cleanIata)) {
             return null;
         }
@@ -37,10 +37,8 @@ class AirportLookupClient
      */
     public function lookupByIcao(string $icao): ?AirportData
     {
-        // Strip whitespace and force uppercase
         $cleanIcao = strtoupper(trim($icao));
 
-        // Fast-fail if structural constraint is unmet
         if (strlen($cleanIcao) !== 4 || ! ctype_alpha($cleanIcao)) {
             return null;
         }
@@ -55,7 +53,15 @@ class AirportLookupClient
     {
         try {
             $response = Http::acceptJson()
+                ->connectTimeout(2)
                 ->timeout(5)
+                ->retry(
+                    [100, 250],
+                    when: static fn (Throwable $exception): bool => $exception instanceof ConnectionException
+                        || ($exception instanceof RequestException
+                            && in_array($exception->response->status(), [429, 500, 503], true)),
+                    throw: false,
+                )
                 ->get("{$this->baseUrl}/airports/lookup", $payload);
 
             if ($response->successful()) {
@@ -63,8 +69,8 @@ class AirportLookupClient
 
                 if (! is_array($data)) {
                     Log::warning('Airport lookup provider returned an unexpected response payload.', [
-                        'payload' => $payload,
-                        'body' => $response->body(),
+                        ...$this->lookupContext($payload),
+                        'status' => $response->status(),
                     ]);
 
                     return null;
@@ -77,23 +83,51 @@ class AirportLookupClient
                 return null;
             }
 
-            if ($response->status() === 503) {
-                Log::warning('Airport lookup provider is currently disabled.', ['payload' => $payload]);
+            if ($response->status() === 422) {
+                Log::warning('Airport lookup provider rejected a valid lookup request.', [
+                    ...$this->lookupContext($payload),
+                    'status' => $response->status(),
+                ]);
 
                 return null;
             }
 
-            // Fallback for other errors (validation, 500s, etc.)
-            Log::error('Airport lookup API failed.', [
+            if (in_array($response->status(), [429, 500, 503], true)) {
+                Log::warning('Airport lookup provider remained unavailable after retries.', [
+                    ...$this->lookupContext($payload),
+                    'status' => $response->status(),
+                ]);
+
+                return null;
+            }
+
+            Log::error('Airport lookup provider returned an unexpected error.', [
+                ...$this->lookupContext($payload),
                 'status' => $response->status(),
-                'body' => $response->body(),
             ]);
 
             return null;
-        } catch (\Exception $e) {
-            Log::error('Failed connecting to Airport lookup service.', ['exception' => $e->getMessage()]);
+        } catch (ConnectionException $exception) {
+            Log::warning('Airport lookup provider connection failed after retries.', [
+                ...$this->lookupContext($payload),
+                'exception' => $exception->getMessage(),
+            ]);
 
             return null;
         }
+    }
+
+    /**
+     * @param  array<string, string>  $payload
+     * @return array{lookup_type: string, lookup_code: string}
+     */
+    private function lookupContext(array $payload): array
+    {
+        $lookupType = array_key_first($payload) ?? 'unknown';
+
+        return [
+            'lookup_type' => $lookupType,
+            'lookup_code' => $payload[$lookupType] ?? '',
+        ];
     }
 }

@@ -37,32 +37,36 @@
 
 Verification: Laravel Pint passed. The DTO-focused suite passed 41 tests, and the separately corrected non-flight event schedule-format regression now passes with 6 assertions.
 
-### 2. Harden outbound airport lookup HTTP behavior
+### 3. Harden outbound airport lookup HTTP behavior
 
-- Update `app/Services/AirportLookupClient.php` to include:
+[x] Update `app/Services/AirportLookupClient.php` to include:
   - `connectTimeout()`
   - explicit `retry()` behavior with bounded backoff
   - consistent handling for transient upstream failures
-- Review whether 404, 422, 429, 500, and 503 responses should be handled differently.
-- Confirm logging includes enough context for debugging without leaking unnecessary payload data.
-- Add tests covering:
+[x] Review whether 404, 422, 429, 500, and 503 responses should be handled differently.
+[x] Confirm logging includes enough context for debugging without leaking unnecessary payload data.
+[x] Add tests covering:
   - successful lookups
   - timeout / connection failures
   - 404 not found responses
   - temporary upstream failures that should retry
 
-### 3. Fix `FlightRouteExtractor` dependency and caching behavior
+Verification: Laravel Pint passed. The focused airport lookup, extractor, flight release controller, and parser result component tests passed 34 tests with 129 assertions.
 
-- Remove the implicit fallback to `ArrayStore` in `app/Services/FlightRouteExtractor.php`.
-- Ensure the extractor always uses Laravel-managed dependencies from the container instead of constructing fallback implementations directly.
-- Stop instantiating `AirportLookupClient` with `new AirportLookupClient`; inject and resolve it through the container.
-- Confirm PDF text caching is real cross-request caching, not object-lifetime-only caching.
-- Verify the class remains easy to unit test after dependency cleanup.
-- Add tests proving:
+### 4. Fix `FlightRouteExtractor` dependency and caching behavior
+
+[x] Remove the implicit fallback to `ArrayStore` in `app/Services/FlightRouteExtractor.php`.
+[x] Ensure the extractor always uses Laravel-managed dependencies from the container instead of constructing fallback implementations directly.
+[x] Stop instantiating `AirportLookupClient` with `new AirportLookupClient`; inject and resolve it through the container.
+[x] Confirm PDF text caching is real cross-request caching, not object-lifetime-only caching.
+[x] Verify the class remains easy to unit test after dependency cleanup.
+[x] Add tests proving:
   - parsed PDF text is cached through the configured cache repository
   - airport lookup dependencies are injected rather than constructed internally
 
-### 4. Fix event export download ID assignment for all DTO types
+Verification: Laravel Pint passed. The focused `FlightRouteExtractorTest` and `FlightReleaseControllerTest` suite passed 22 tests with 88 assertions.
+
+### 5. Fix event export download ID assignment for all DTO types
 
 - Update `app/Http/Controllers/ParserController.php` so `attachDownloadIds()` assigns IDs to:
   - `Flight`
@@ -73,7 +77,7 @@ Verification: Laravel Pint passed. The DTO-focused suite passed 41 tests, and th
 - Review `app/View/Models/Parser/ParserResultViewModel.php` and related DTOs to ensure all render paths preserve `downloadId` consistently.
 - Add tests covering event export for non-`Flight` DTOs so this regression cannot reappear.
 
-### 5. Correct inconsistent `Aircraft` / `FlightEvent` relationship mapping
+### 6. Correct inconsistent `Aircraft` / `FlightEvent` relationship mapping
 
 - Reconcile the mismatch between:
   - `app/Models/FlightEvent.php` using `aircraft_id`
@@ -86,7 +90,7 @@ Verification: Laravel Pint passed. The DTO-focused suite passed 41 tests, and th
 - Review whether `tail_number` should remain denormalized on `flight_events` or be derived from the related aircraft when possible.
 - Add tests proving `$flightEvent->aircraft` and `$aircraft->flightEvents` are true inverses.
 
-### 6. Normalize Eloquent model conventions and typing
+### 7. Normalize Eloquent model conventions and typing
 
 - Clean up `app/Models/Aircraft.php`, `app/Models/Airline.php`, and `app/Models/FlightEvent.php` to match current Laravel conventions.
 - Add explicit return types for:
@@ -97,27 +101,27 @@ Verification: Laravel Pint passed. The DTO-focused suite passed 41 tests, and th
 - Normalize cast definitions and fillable/guarded strategy across models.
 - Remove formatting/style drift in these model files so they match the rest of the app.
 
-### 7. Remove inline JavaScript and view-level composition drift
+### 8. Remove inline JavaScript and view-level composition drift
 
 - Move the inline clipboard script out of `resources/views/flight-release/index.blade.php` into a proper frontend asset/module.
 - Remove the third-party inline script injection from `resources/views/layouts/navigation.blade.php` and integrate it in a safer, more maintainable way.
 - Review `resources/views/parse.blade.php` and `resources/views/dashboard.blade.php` to avoid building page state directly inside views when controllers/routes should own that responsibility.
 - Decide whether `/dashboard` and `/parse` should remain separate entry points or be consolidated around one composition path.
 
-### 8. Enable development guardrails for Eloquent performance issues
+### 9. Enable development guardrails for Eloquent performance issues
 
 - Add `Model::preventLazyLoading()` in non-production environments in `app/Providers/AppServiceProvider.php`.
 - Consider whether other local/dev guardrails should also be enabled for query visibility and accidental lazy loading detection.
 - Run the affected test set after enabling this to identify hidden relationship-loading problems.
 
-### 9. Improve OCR cache consistency and temporary file handling
+### 10. Improve OCR cache consistency and temporary file handling
 
 - Review `app/Services/RosterSourceResolver.php` caching and temp file management.
 - Replace `md5_file()` OCR cache key generation with the same stronger file identity strategy used elsewhere in the app unless there is a deliberate reason not to.
 - Confirm temp image cleanup is safe under all failure paths.
 - Review validation error keys for OCR/PDF failures to ensure they map cleanly back to the form fields the UI actually renders.
 
-### 10. Use route middleware for auth
+### 11. Use route middleware for auth
 Move Authorization to Route Middleware
 Your inline authorization blocks check explicit user capabilities and feature flags:
 
@@ -127,7 +131,7 @@ Putting authorization directly inside controller methods prevents standard route
 
 Fix: Wrap these rules into custom route middleware (e.g., EnsureFeatureIsEnabled, can:use-schedule-parser)
 
-### 11. Fix airport details popover layering and mobile overflow behavior
+### 12. Fix airport details popover layering and mobile overflow behavior
 
 - Fix the airport popover/card z-index issue on small screens.
 - Ensure large airport metadata content does not render under surrounding UI.
@@ -137,7 +141,7 @@ Fix: Wrap these rules into custom route middleware (e.g., EnsureFeatureIsEnabled
   - desktop widths
 - Confirm the popover remains accessible and readable when airport names or location strings are long.
 
-### 12. Review migrations and schema consistency for `flight_events`
+### 13. Review migrations and schema consistency for `flight_events`
 
 - Revisit `database/migrations/2026_06_22_002913_flight_event.php` for:
   - table naming consistency
@@ -147,12 +151,12 @@ Fix: Wrap these rules into custom route middleware (e.g., EnsureFeatureIsEnabled
 - Confirm the schema accurately reflects the intended relationship with `aircraft`.
 - Document any forward-fix migration needed rather than mutating an already-run migration if this has been used outside local development.
 
-### 13. Use spatie icalendar-generator package
+### 14. Use spatie icalendar-generator package
   - Install package with composer
   - Refactor export and affected services
   - Update tests
 
-### 14. Add targeted regression coverage for the issues already found
+### 15. Add targeted regression coverage for the issues already found
 
 - Add or update tests for:
   - parser request validation behavior
@@ -163,12 +167,12 @@ Fix: Wrap these rules into custom route middleware (e.g., EnsureFeatureIsEnabled
   - mobile/UI rendering edge cases for the flight release page where practical
 - Prefer small, focused tests tied directly to each bug or refactor target instead of broad end-to-end additions.
 
-### 15. Non-flight event schedule-format test
+### 16. Non-flight event schedule-format test
 
 [x] Update `ParseUploadTest` to assert the UTC schedule format rendered by non-flight event cards: `Jun 13 • 1400 Z - 1600 Z`.
 [x] Verify the targeted test passes with 6 assertions.
 
-### 16. Failed test
+### 17. Failed test
 
 Tests\Feature\AdminNavigationTest > inactive or unver…   
   Expected response status code [200] but received 302.
