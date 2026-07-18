@@ -7,11 +7,11 @@ use App\Enums\ParserEventType;
 use App\Mappers\FlightMapper;
 use Illuminate\Support\Carbon;
 
-class RosterParser
+class TripInformationParser
 {
     public function __construct(
         private readonly FlightMapper $flightMapper,
-        private readonly CrewParserService $crewParser,
+        private readonly CrewListParser $crewListParser,
         private readonly AirlineCodeLookup $airlineCodeLookup,
     ) {}
 
@@ -302,7 +302,7 @@ class RosterParser
 
         if ($route = $this->extractFlightRoute($body)) {
             $flightNumber = $this->extractFlightNumber($body);
-            $position = $this->crewParser->detectPosition($body);
+            $position = $this->crewListParser->detectPosition($body);
             $aircraft = $this->detectAircraft($body);
             $tailNumber = $this->detectTailNumber($body);
             $flightAwareUrl = $tailNumber
@@ -314,7 +314,7 @@ class RosterParser
             $isDeadhead = (bool) preg_match('/\bDH\b/i', $joinedBody);
             $commercialDeadhead = $this->resolveCommercialDeadhead($flightNumber, $isDeadhead);
             $flightNumber = $commercialDeadhead['flight_number'];
-            $crewSummary = $this->crewParser->parseWithSummary($body);
+            $crewSummary = $this->crewListParser->parseWithSummary($body);
             $localTimes = $this->extractFlightLocalTimes($body);
 
             return $this->calendarEvent(
@@ -360,7 +360,7 @@ class RosterParser
         }
 
         if (preg_match('/\bCrew list\b/i', $joinedBody)) {
-            $crewSummary = $this->crewParser->parseWithSummary($body);
+            $crewSummary = $this->crewListParser->parseWithSummary($body);
 
             return $this->calendarEvent(
                 'duty',
@@ -662,7 +662,7 @@ class RosterParser
         } elseif (preg_match('/\b\d{4,}\s*\|?\s*([A-Z]{2})\.?\s+[A-Z]{3}\b/', $fullText, $matches)) {
             $summary['position'] = strtoupper($matches[1]);
         } else {
-            $summary['position'] = $this->crewParser->detectPosition($lines);
+            $summary['position'] = $this->crewListParser->detectPosition($lines);
         }
 
         if (preg_match('/Homebase:\s*([A-Z]{3})/i', $fullText, $matches)) {

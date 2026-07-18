@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Enums\CrewPosition;
 
-class CrewParserService
+class CrewListParser
 {
     /**
      * @param  array<int, string>|string  $input
@@ -65,7 +65,7 @@ class CrewParserService
                 return $position->value;
             }
 
-            if (preg_match('/\b(' . CrewPosition::regexPattern() . ')\b/i', $line, $matches) === 1) {
+            if (preg_match('/\b('.CrewPosition::regexPattern().')\b/i', $line, $matches) === 1) {
                 return strtoupper($matches[1]);
             }
         }
@@ -178,7 +178,7 @@ class CrewParserService
             return CrewPosition::Deadhead->value;
         }
 
-        if (preg_match('/\b(' . CrewPosition::regexPattern() . ')\b/i', $value, $matches) === 1) {
+        if (preg_match('/\b('.CrewPosition::regexPattern().')\b/i', $value, $matches) === 1) {
             return strtoupper($matches[1]);
         }
 

@@ -2,14 +2,14 @@
 
 namespace Tests\Unit;
 
-use App\Services\CrewParserService;
+use App\Services\CrewListParser;
 use Tests\TestCase;
 
-class CrewParserServiceTest extends TestCase
+class CrewListParserTest extends TestCase
 {
     public function test_it_parses_noisy_crew_lines_into_structured_members(): void
     {
-        $crew = app(CrewParserService::class)->parse([
+        $crew = app(CrewListParser::class)->parse([
             'Name Crew Pos Base',
             'w Jesper Brandt Jensen 71022 (OP ete)',
             'w Julio Rodriguez Batista 71559 FO EYW',
@@ -45,7 +45,7 @@ class CrewParserServiceTest extends TestCase
 
     public function test_it_returns_crew_counts_with_parsed_members(): void
     {
-        $summary = app(CrewParserService::class)->parseWithSummary([
+        $summary = app(CrewListParser::class)->parseWithSummary([
             'w Jesper Brandt Jensen 71022 (OP ete)',
             'w Julio Rodriguez Batista 71559 FO EYW',
             'aXe Cameron Stovold 71835 DH LAX',
@@ -60,7 +60,7 @@ class CrewParserServiceTest extends TestCase
 
     public function test_it_parses_four_digit_employee_ids_and_lm_positions(): void
     {
-        $summary = app(CrewParserService::class)->parseWithSummary([
+        $summary = app(CrewListParser::class)->parseWithSummary([
             'Crew list',
             'Name Crew Pos Base',
             'aXe Scott Ferguson 70984 cP DHN',

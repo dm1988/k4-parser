@@ -3,24 +3,23 @@
 namespace App\Services;
 
 use App\DTOs\Flight;
+use App\Enums\ScheduleDocumentType;
 use App\Mappers\FlightMapper;
 
-class RosterDocumentParser
+class ScheduleFormatParser
 {
     public function __construct(
         private readonly FlightMapper $flightMapper,
-        private readonly RosterParser $tripInformationParser,
+        private readonly TripInformationParser $tripInformationParser,
         private readonly PublishedRosterParser $publishedRosterParser,
-    ) {
-    }
+    ) {}
 
     public function parse(string $text, ?string $documentType = null): array
     {
-        return match ($documentType) {
-            RosterSourceResolver::PDF_TYPE_PUBLISHED_ROSTER => $this->publishedRosterParser->parse($text),
-            RosterSourceResolver::PDF_TYPE_TRIP_INFORMATION,
+        return match (ScheduleDocumentType::tryFrom((string) $documentType)) {
+            ScheduleDocumentType::PublishedRoster => $this->publishedRosterParser->parse($text),
+            ScheduleDocumentType::TripInformation,
             null => $this->tripInformationParser->parse($text),
-            default => $this->tripInformationParser->parse($text),
         };
     }
 

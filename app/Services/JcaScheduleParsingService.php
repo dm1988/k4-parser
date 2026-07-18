@@ -6,18 +6,19 @@ use App\Actions\BuildParserResult;
 use App\DTOs\ParsedEventDTO;
 use App\DTOs\ParserResultData;
 use App\Enums\ParserEventType;
+use App\Enums\ScheduleDocumentType;
 use App\Exceptions\ParseSourceResolutionException;
 use Illuminate\Http\UploadedFile;
 use Throwable;
 
-class ScheduleParserService
+class JcaScheduleParsingService
 {
     public function __construct(
         private readonly BuildParserResult $buildParserResult,
         private readonly ParserResultCache $parserResultCache,
-        private readonly RosterDocumentParser $rosterDocumentParser,
-        private readonly RosterParser $rosterParser,
-        private readonly RosterSourceResolver $rosterSourceResolver,
+        private readonly ScheduleFormatParser $scheduleFormatParser,
+        private readonly TripInformationParser $tripInformationParser,
+        private readonly ScheduleInputResolver $scheduleInputResolver,
     ) {}
 
     /**
@@ -30,7 +31,7 @@ class ScheduleParserService
     {
         $parsed = [
             'trip' => [],
-            'calendar_events' => $this->rosterParser->extractFlightsDto($text),
+            'calendar_events' => $this->tripInformationParser->extractFlightsDto($text),
         ];
 
         $result = $this->buildParserResult->handle(
@@ -58,7 +59,7 @@ class ScheduleParserService
     {
         $parsed = [
             'trip' => [],
-            'calendar_events' => $this->rosterParser->extractHotels($text),
+            'calendar_events' => $this->tripInformationParser->extractHotels($text),
         ];
 
         $result = $this->buildParserResult->handle(
@@ -88,12 +89,12 @@ class ScheduleParserService
     public function parseRoster(?UploadedFile $file, ?string $text, array $eventTypes = []): array
     {
         try {
-            $source = $this->rosterSourceResolver->resolve($file, $text);
+            $source = $this->scheduleInputResolver->resolve($file, $text);
         } catch (Throwable $throwable) {
             throw ParseSourceResolutionException::fromThrowable($throwable, $file !== null);
         }
 
-        $parsed = $this->rosterDocumentParser->parse(
+        $parsed = $this->scheduleFormatParser->parse(
             $source['raw_text'],
             $source['document_type'] ?? null,
         );
@@ -150,10 +151,6 @@ class ScheduleParserService
             return 'screenshot';
         }
 
-        return match ($documentType) {
-            RosterSourceResolver::PDF_TYPE_TRIP_INFORMATION => 'trip_pdf',
-            RosterSourceResolver::PDF_TYPE_PUBLISHED_ROSTER => 'roster_pdf',
-            default => 'unknown',
-        };
+        return ScheduleDocumentType::tryFrom((string) $documentType)?->parserType() ?? 'unknown';
     }
 }

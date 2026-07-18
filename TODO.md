@@ -2,23 +2,6 @@
 
 ## 🎯 Goal
 
-### 1. ✅ Add targeted regression coverage for the issues already found
-
-- Add or update tests for:
-  - parser request validation behavior
-  - parser export behavior for all event DTO variants
-  - airport lookup retry/timeout handling
-  - flight route extractor cache behavior
-  - `Aircraft` / `FlightEvent` relationship integrity
-  - mobile/UI rendering edge cases for the flight release page where practical
-- Prefer small, focused tests tied directly to each bug or refactor target instead of broad end-to-end additions.
-
-Completed: added focused coverage for missing and unsupported roster inputs, direct `Flight` DTO calendar serialization, PDF-text cache invalidation when file contents change at the same path, and mobile-first flight release rendering with long airport metadata. Confirmed the existing suites already cover bounded airport lookup retries/timeouts, all calendar DTO variants, cross-instance route cache reuse, and `Aircraft` / `FlightEvent` inverse and `SET NULL` relationship integrity. The responsive regression exposed and fixed missing word wrapping on flight release airport names and locations.
-
-### 2. ✅ In Filament, allow admins to delete a user
-
-Completed: admins can delete other users from the user table or edit page after confirming a danger modal that identifies the account. Policy enforcement prevents admins from deleting themselves, while user creation, bulk deletion, restore, and force-delete actions remain disabled.
-
 ### 3. ✅ Improve verify email markdown
 - Use markdown in VerifyEmailWithOtp.php
 public function toMail(mixed $notifiable): MailMessage
@@ -42,7 +25,7 @@ public function toMail(mixed $notifiable): MailMessage
 }
 - Update tests
 
-### 4. Clarify JCA schedule parsing service names
+### 4. ✅ Clarify JCA schedule parsing service names
 
 - Rename services whose current names hide their role in the four supported input paths (parsed text, screenshot OCR, Trip Information PDF, and Published Roster PDF):
   - `RosterParser` to `TripInformationParser` because it parses Trip Information-formatted text, including pasted text and screenshot OCR output, rather than every roster format.

@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\DTOs\Flight;
 use App\Models\Airline;
 use App\Models\User;
-use App\Services\RosterDocumentParser;
+use App\Services\ScheduleFormatParser;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
@@ -401,7 +401,7 @@ TEXT;
 
     public function test_cache_boundary_dehydrates_dto_events_before_storage(): void
     {
-        $this->mock(RosterDocumentParser::class, function ($mock): void {
+        $this->mock(ScheduleFormatParser::class, function ($mock): void {
             $mock->shouldReceive('parse')
                 ->once()
                 ->andReturn([

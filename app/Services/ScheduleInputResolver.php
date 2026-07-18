@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ScheduleDocumentType;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Validation\ValidationException;
@@ -9,14 +10,10 @@ use Intervention\Image\Laravel\Facades\Image;
 use Symfony\Component\Process\Process;
 use Throwable;
 
-class RosterSourceResolver
+class ScheduleInputResolver
 {
-    public const PDF_TYPE_PUBLISHED_ROSTER = 'published_roster';
-
-    public const PDF_TYPE_TRIP_INFORMATION = 'trip_information';
-
     public function __construct(
-        private readonly PdfScheduleParser $pdfScheduleParser,
+        private readonly SchedulePdfExtractor $schedulePdfExtractor,
     ) {}
 
     public function resolve(?UploadedFile $file, ?string $text): array
@@ -44,7 +41,7 @@ class RosterSourceResolver
         }
 
         if ($mime === 'application/pdf') {
-            $pdfData = $this->pdfScheduleParser->parse($path);
+            $pdfData = $this->schedulePdfExtractor->extract($path);
             $rawText = trim($pdfData['text'] ?? '');
 
             if ($rawText === '') {
@@ -57,7 +54,7 @@ class RosterSourceResolver
 
             return [
                 'source' => 'pdf',
-                'document_type' => $documentType,
+                'document_type' => $documentType->value,
                 'file' => null,
                 'mime' => $mime,
                 'raw_text' => $rawText,
@@ -77,7 +74,7 @@ class RosterSourceResolver
         ];
     }
 
-    private function detectPdfType(string $rawText): string
+    private function detectPdfType(string $rawText): ScheduleDocumentType
     {
         $text = $this->normalizeTextForDetection($rawText);
 
@@ -86,7 +83,7 @@ class RosterSourceResolver
         * a fallback if the PDF extraction splits or misses the heading.
         */
         $scores = [
-            self::PDF_TYPE_PUBLISHED_ROSTER => $this->scoreMarkers($text, [
+            ScheduleDocumentType::PublishedRoster->value => $this->scoreMarkers($text, [
                 'published roster' => 10,
                 'planning period' => 3,
                 'report (utc)' => 2,
@@ -95,7 +92,7 @@ class RosterSourceResolver
                 'qualifications' => 1,
             ]),
 
-            self::PDF_TYPE_TRIP_INFORMATION => $this->scoreMarkers($text, [
+            ScheduleDocumentType::TripInformation->value => $this->scoreMarkers($text, [
                 'trip information' => 10,
                 'operates' => 3,
                 'duty summary' => 3,
@@ -125,7 +122,7 @@ class RosterSourceResolver
             ]);
         }
 
-        return $matches[0];
+        return ScheduleDocumentType::from($matches[0]);
     }
 
     /**
@@ -155,13 +152,6 @@ class RosterSourceResolver
     private function normalizePdfMeta(array $pdfData): ?array
     {
         $meta = [
-            'trip_id' => $pdfData['pdf_meta']['trip_id']
-                ?? $pdfData['trip_id']
-                ?? $pdfData['parsed']['trip']['trip_number']
-                ?? null,
-            'date' => $pdfData['pdf_meta']['date']
-                ?? $pdfData['date']
-                ?? null,
             'page_count' => $pdfData['pdf_meta']['page_count'] ?? null,
         ];
 

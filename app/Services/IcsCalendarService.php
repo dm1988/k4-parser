@@ -15,7 +15,7 @@ class IcsCalendarService
 {
     public function __construct(
         private readonly FlightMapper $flightMapper,
-        private readonly CrewParserService $crewParser,
+        private readonly CrewListParser $crewListParser,
     ) {}
 
     public function serialize(array $events, array $trip = []): string
@@ -175,7 +175,7 @@ class IcsCalendarService
     private function normalizeCrewMetadata(array $metadata): array
     {
         $crew = is_array($metadata['crew'] ?? null) ? $metadata['crew'] : [];
-        $summary = $this->crewParser->summarize($crew);
+        $summary = $this->crewListParser->summarize($crew);
 
         if ($crew === [] || $summary['crew_count'] === null) {
             $candidateLines = [];
@@ -187,7 +187,7 @@ class IcsCalendarService
             }
 
             if ($candidateLines !== []) {
-                $parsed = $this->crewParser->parseWithSummary($candidateLines);
+                $parsed = $this->crewListParser->parseWithSummary($candidateLines);
 
                 if ($crew === [] && $parsed['crew'] !== []) {
                     $crew = $parsed['crew'];

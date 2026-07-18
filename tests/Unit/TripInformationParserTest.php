@@ -3,11 +3,11 @@
 namespace Tests\Unit;
 
 use App\Models\Airline;
-use App\Services\RosterParser;
+use App\Services\TripInformationParser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class RosterParserServiceTest extends TestCase
+class TripInformationParserTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -27,7 +27,7 @@ Fri DH G4368 AUS-CVG 17:44 21:17 22:44 01:17 -
 12Jun Duty end 01:17
 TEXT;
 
-        $parsed = app(RosterParser::class)->parse($text);
+        $parsed = app(TripInformationParser::class)->parse($text);
         $event = $parsed['calendar_events'][0];
 
         $this->assertSame('deadhead', $event['type']);
@@ -51,7 +51,7 @@ Sat 206 CVG-NRT 09:35 23:25 09:35 23:25 13:50 77X
 13Jun Duty end 23:25
 TEXT;
 
-        $parsed = app(RosterParser::class)->parse($text);
+        $parsed = app(TripInformationParser::class)->parse($text);
         $event = $parsed['calendar_events'][0];
 
         $this->assertSame('flight', $event['type']);
@@ -74,7 +74,7 @@ Sun DH UA5445 LAX-AUS 15:09 18:29 15:09 18:29 -
 5Jul Duty end 18:29
 TEXT;
 
-        $parsed = app(RosterParser::class)->parse($text);
+        $parsed = app(TripInformationParser::class)->parse($text);
         $event = $parsed['calendar_events'][0];
 
         $this->assertSame('LAX - AUS (UA 5445)', $event['title']);
@@ -93,7 +93,7 @@ Homebase: AUS
 Block Time: 54:15
 TEXT;
 
-        $parsed = app(RosterParser::class)->parse($text);
+        $parsed = app(TripInformationParser::class)->parse($text);
         $trip = $parsed['trip'];
 
         $this->assertSame('13131', $trip['trip_number']);

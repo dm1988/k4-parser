@@ -8,9 +8,9 @@ use App\Exceptions\ParseSourceResolutionException;
 use App\Http\Requests\ParseFlightRequest;
 use App\Http\Requests\ParseHotelRequest;
 use App\Http\Requests\ParseRosterRequest;
+use App\Services\JcaScheduleParsingService;
 use App\Services\ParserCalendarExportService;
 use App\Services\ParserResultCache;
-use App\Services\ScheduleParserService;
 use App\View\Models\Parser\ParserPageViewModel;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,7 +24,7 @@ class ParserController extends Controller
         private readonly HandleParseExecution $handleParseExecution,
         private readonly ParserCalendarExportService $parserCalendarExportService,
         private readonly ParserResultCache $parserResultCache,
-        private readonly ScheduleParserService $scheduleParserService,
+        private readonly JcaScheduleParsingService $jcaScheduleParsingService,
     ) {}
 
     public function index(): View
@@ -53,7 +53,7 @@ class ParserController extends Controller
             sourceType: 'pasted_text',
             parserType: 'unknown',
             file: null,
-            operation: fn (): array => $this->scheduleParserService->parseFlight($text),
+            operation: fn (): array => $this->jcaScheduleParsingService->parseFlight($text),
         );
     }
 
@@ -66,7 +66,7 @@ class ParserController extends Controller
             sourceType: 'pasted_text',
             parserType: 'unknown',
             file: null,
-            operation: fn (): array => $this->scheduleParserService->parseHotel($text),
+            operation: fn (): array => $this->jcaScheduleParsingService->parseHotel($text),
         );
     }
 
@@ -83,7 +83,7 @@ class ParserController extends Controller
             sourceType: $sourceType,
             parserType: $sourceType === 'image' ? 'screenshot' : 'unknown',
             file: $file,
-            operation: fn (): array => $this->scheduleParserService->parseRoster(
+            operation: fn (): array => $this->jcaScheduleParsingService->parseRoster(
                 $file,
                 $data['text'] ?? null,
                 $data['event_types'] ?? [],

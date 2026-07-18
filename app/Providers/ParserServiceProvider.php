@@ -2,27 +2,27 @@
 
 namespace App\Providers;
 
-use App\Services\IcsCalendarService;
-use App\Services\PdfScheduleParser;
-use App\Services\PublishedRosterParser;
-use App\Services\CrewParserService;
-use App\Services\RosterDocumentParser;
-use App\Services\RosterParser;
-use App\Services\RosterSourceResolver;
 use App\Mappers\FlightMapper;
+use App\Services\CrewListParser;
+use App\Services\IcsCalendarService;
+use App\Services\PublishedRosterParser;
+use App\Services\ScheduleFormatParser;
+use App\Services\ScheduleInputResolver;
+use App\Services\SchedulePdfExtractor;
+use App\Services\TripInformationParser;
 use Illuminate\Support\ServiceProvider;
 
 class ParserServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton(PdfScheduleParser::class);
-        $this->app->singleton(CrewParserService::class);
-        $this->app->singleton(RosterParser::class);
+        $this->app->singleton(SchedulePdfExtractor::class);
+        $this->app->singleton(CrewListParser::class);
+        $this->app->singleton(TripInformationParser::class);
         $this->app->singleton(PublishedRosterParser::class);
-        $this->app->singleton(RosterDocumentParser::class);
+        $this->app->singleton(ScheduleFormatParser::class);
         $this->app->singleton(IcsCalendarService::class);
-        $this->app->singleton(RosterSourceResolver::class);
+        $this->app->singleton(ScheduleInputResolver::class);
         $this->app->singleton(FlightMapper::class);
     }
 }

@@ -2,10 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ScheduleDocumentType;
 use App\Models\ParseRequest;
 use App\Models\User;
-use App\Services\RosterDocumentParser;
-use App\Services\RosterSourceResolver;
+use App\Services\ScheduleFormatParser;
+use App\Services\ScheduleInputResolver;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Mockery\MockInterface;
@@ -113,13 +114,13 @@ class ParseUploadTest extends TestCase
             ]],
         ];
 
-        $this->mock(RosterSourceResolver::class, function (MockInterface $mock) use ($source): void {
+        $this->mock(ScheduleInputResolver::class, function (MockInterface $mock) use ($source): void {
             $mock->shouldReceive('resolve')
                 ->once()
                 ->andReturn($source);
         });
 
-        $this->mock(RosterDocumentParser::class, function (MockInterface $mock) use ($parsed): void {
+        $this->mock(ScheduleFormatParser::class, function (MockInterface $mock) use ($parsed): void {
             $mock->shouldReceive('parse')
                 ->once()
                 ->with('Duty event raw text', null)
@@ -143,7 +144,7 @@ class ParseUploadTest extends TestCase
     {
         Log::spy();
 
-        $this->mock(RosterSourceResolver::class, function (MockInterface $mock): void {
+        $this->mock(ScheduleInputResolver::class, function (MockInterface $mock): void {
             $mock->shouldReceive('resolve')
                 ->once()
                 ->andThrow(new RuntimeException('Parser unavailable'));
@@ -171,7 +172,7 @@ class ParseUploadTest extends TestCase
     {
         $source = [
             'source' => 'pdf',
-            'document_type' => RosterSourceResolver::PDF_TYPE_PUBLISHED_ROSTER,
+            'document_type' => ScheduleDocumentType::PublishedRoster->value,
             'file' => 'uploads/published-roster.pdf',
             'mime' => 'application/pdf',
             'raw' => 'Published Roster raw text',
@@ -184,16 +185,16 @@ class ParseUploadTest extends TestCase
             'calendar_events' => [],
         ];
 
-        $this->mock(RosterSourceResolver::class, function (MockInterface $mock) use ($source): void {
+        $this->mock(ScheduleInputResolver::class, function (MockInterface $mock) use ($source): void {
             $mock->shouldReceive('resolve')
                 ->once()
                 ->andReturn($source);
         });
 
-        $this->mock(RosterDocumentParser::class, function (MockInterface $mock) use ($parsed, $source): void {
+        $this->mock(ScheduleFormatParser::class, function (MockInterface $mock) use ($parsed, $source): void {
             $mock->shouldReceive('parse')
                 ->once()
-                ->with($source['raw_text'], RosterSourceResolver::PDF_TYPE_PUBLISHED_ROSTER)
+                ->with($source['raw_text'], ScheduleDocumentType::PublishedRoster->value)
                 ->andReturn($parsed);
         });
 
@@ -210,7 +211,7 @@ class ParseUploadTest extends TestCase
         $result = Cache::get($this->cacheKeyForSession($parseKey));
         $this->assertIsArray($result);
         $this->assertSame('pdf', $result['source']);
-        $this->assertSame(RosterSourceResolver::PDF_TYPE_PUBLISHED_ROSTER, $result['document_type']);
+        $this->assertSame(ScheduleDocumentType::PublishedRoster->value, $result['document_type']);
         $this->assertSame('17Jun2026', $result['meta']['date']);
     }
 
@@ -218,7 +219,7 @@ class ParseUploadTest extends TestCase
     {
         $source = [
             'source' => 'pdf',
-            'document_type' => RosterSourceResolver::PDF_TYPE_TRIP_INFORMATION,
+            'document_type' => ScheduleDocumentType::TripInformation->value,
             'file' => 'uploads/trip-information.pdf',
             'mime' => 'application/pdf',
             'raw' => 'Trip Information raw text',
@@ -231,16 +232,16 @@ class ParseUploadTest extends TestCase
             'calendar_events' => [],
         ];
 
-        $this->mock(RosterSourceResolver::class, function (MockInterface $mock) use ($source): void {
+        $this->mock(ScheduleInputResolver::class, function (MockInterface $mock) use ($source): void {
             $mock->shouldReceive('resolve')
                 ->once()
                 ->andReturn($source);
         });
 
-        $this->mock(RosterDocumentParser::class, function (MockInterface $mock) use ($parsed, $source): void {
+        $this->mock(ScheduleFormatParser::class, function (MockInterface $mock) use ($parsed, $source): void {
             $mock->shouldReceive('parse')
                 ->once()
-                ->with($source['raw_text'], RosterSourceResolver::PDF_TYPE_TRIP_INFORMATION)
+                ->with($source['raw_text'], ScheduleDocumentType::TripInformation->value)
                 ->andReturn($parsed);
         });
 
@@ -257,7 +258,7 @@ class ParseUploadTest extends TestCase
         $result = Cache::get($this->cacheKeyForSession($parseKey));
         $this->assertIsArray($result);
         $this->assertSame('pdf', $result['source']);
-        $this->assertSame(RosterSourceResolver::PDF_TYPE_TRIP_INFORMATION, $result['document_type']);
+        $this->assertSame(ScheduleDocumentType::TripInformation->value, $result['document_type']);
         $this->assertSame('13131', $result['meta']['trip_id']);
     }
 

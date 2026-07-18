@@ -2,16 +2,42 @@
 
 namespace Tests\Unit;
 
-use App\Services\RosterSourceResolver;
+use App\Enums\ScheduleDocumentType;
+use App\Services\ScheduleInputResolver;
+use App\Services\SchedulePdfExtractor;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
-class RosterSourceResolverTest extends TestCase
+class ScheduleInputResolverTest extends TestCase
 {
     /** @var list<string> */
     private array $tesseractScriptPaths = [];
+
+    public function test_it_uses_the_pdf_extractor_and_returns_only_generic_pdf_metadata(): void
+    {
+        $file = UploadedFile::fake()->create('schedule.pdf', 100, 'application/pdf');
+
+        $this->mock(SchedulePdfExtractor::class, function (MockInterface $mock) use ($file): void {
+            $mock->shouldReceive('extract')
+                ->once()
+                ->with($file->getRealPath())
+                ->andReturn([
+                    'file' => $file->getRealPath(),
+                    'text' => 'Trip Information Duty Summary Crew on trip',
+                    'pdf_meta' => ['page_count' => 2],
+                ]);
+        });
+
+        $source = app(ScheduleInputResolver::class)->resolve($file, null);
+
+        $this->assertSame('pdf', $source['source']);
+        $this->assertSame(ScheduleDocumentType::TripInformation->value, $source['document_type']);
+        $this->assertSame('Trip Information Duty Summary Crew on trip', $source['raw_text']);
+        $this->assertSame(['page_count' => 2], $source['meta']);
+    }
 
     public function test_it_cleans_up_generated_ocr_temp_files_when_ocr_fails(): void
     {
@@ -22,7 +48,7 @@ class RosterSourceResolverTest extends TestCase
         $sourcePath = $file->getRealPath();
 
         try {
-            app(RosterSourceResolver::class)->resolve($file, null);
+            app(ScheduleInputResolver::class)->resolve($file, null);
             $this->fail('Expected OCR failure was not thrown.');
         } catch (ValidationException $exception) {
             $this->assertSame(
@@ -44,7 +70,7 @@ class RosterSourceResolverTest extends TestCase
         $sourcePath = $file->getRealPath();
         $cacheKey = 'roster-source-resolver:ocr-text:'.hash_file('sha256', $sourcePath);
 
-        $result = app(RosterSourceResolver::class)->resolve($file, null);
+        $result = app(ScheduleInputResolver::class)->resolve($file, null);
 
         $this->assertSame("Trip Information\nDuty Summary", $result['raw_text']);
         $this->assertSame("Trip Information\nDuty Summary", Cache::get($cacheKey));
@@ -53,7 +79,7 @@ class RosterSourceResolverTest extends TestCase
 
         config()->set('services.ocr.tesseract_path', $this->failingTesseractScript());
 
-        $cachedResult = app(RosterSourceResolver::class)->resolve($file, null);
+        $cachedResult = app(ScheduleInputResolver::class)->resolve($file, null);
 
         $this->assertSame($result['raw_text'], $cachedResult['raw_text']);
         $this->assertFileExists($sourcePath);
@@ -67,7 +93,7 @@ class RosterSourceResolverTest extends TestCase
         $file = UploadedFile::fake()->createWithContent('roster.png', 'not an image');
         $sourcePath = $file->getRealPath();
 
-        $result = app(RosterSourceResolver::class)->resolve($file, null);
+        $result = app(ScheduleInputResolver::class)->resolve($file, null);
 
         $this->assertSame("Trip Information\nDuty Summary", $result['raw_text']);
         $this->assertSame($before, $this->ocrTempFiles());
@@ -83,7 +109,7 @@ class RosterSourceResolverTest extends TestCase
         $sourcePath = $file->getRealPath();
 
         try {
-            app(RosterSourceResolver::class)->resolve($file, null);
+            app(ScheduleInputResolver::class)->resolve($file, null);
             $this->fail('Expected empty OCR validation failure was not thrown.');
         } catch (ValidationException $exception) {
             $this->assertSame(
