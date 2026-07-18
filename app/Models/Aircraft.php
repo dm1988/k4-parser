@@ -74,8 +74,6 @@ class Aircraft extends Model
 
     protected function displayName(): Attribute
     {
-        return Attribute::get(fn (): string => filled($this->aircraft_name)
-            ? "{$this->aircraft_name} ({$this->tail_number})"
-            : $this->tail_number);
+        return Attribute::get(fn (): string => $this->tail_number);
     }
 }

@@ -92,8 +92,10 @@ class ParseRequestResourceTest extends TestCase
     public function test_parse_requests_are_sorted_by_creation_time_descending_by_default(): void
     {
         $this->actingAs($this->makeAdminUser());
-        $olderRequest = $this->createParseRequest(['created_at' => '2026-07-01 12:00:00']);
-        $newerRequest = $this->createParseRequest(['created_at' => '2026-07-02 12:00:00']);
+        $olderRequest = $this->createParseRequest();
+        $olderRequest->setCreatedAt('2026-07-01 12:00:00')->save();
+        $newerRequest = $this->createParseRequest();
+        $newerRequest->setCreatedAt('2026-07-02 12:00:00')->save();
 
         Livewire::test(ListParseRequests::class)
             ->assertCanSeeTableRecords([$newerRequest, $olderRequest], inOrder: true);
