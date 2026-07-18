@@ -71,22 +71,23 @@ class AdminNavigationTest extends TestCase
             ->assertDontSee(route('filament.admin.pages.dashboard'), escape: false);
     }
 
-    public function test_inactive_or_unverified_admins_can_not_see_the_admin_navigation_link(): void
+    public function test_inactive_verified_admins_can_not_see_the_admin_navigation_link(): void
     {
-        foreach ([
-            ['is_active' => false, 'email_verified_at' => now()],
-            ['is_active' => true, 'email_verified_at' => null],
-        ] as $attributes) {
-            $admin = User::factory()->create();
-            $admin->forceFill(array_merge([
-                'role' => 'admin',
-            ], $attributes))->save();
+        $admin = User::factory()->admin()->inactive()->create();
 
-            $this->actingAs($admin)
-                ->get('/dashboard')
-                ->assertOk()
-                ->assertDontSeeText('Admin Panel')
-                ->assertDontSee(route('filament.admin.pages.dashboard'), escape: false);
-        }
+        $this->actingAs($admin)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSeeText('Admin Panel')
+            ->assertDontSee(route('filament.admin.pages.dashboard'), escape: false);
+    }
+
+    public function test_unverified_admins_are_redirected_to_the_verification_notice(): void
+    {
+        $admin = User::factory()->admin()->unverified()->create();
+
+        $this->actingAs($admin)
+            ->get(route('dashboard'))
+            ->assertRedirect(route('verification.notice'));
     }
 }

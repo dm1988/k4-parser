@@ -1,13 +1,13 @@
 # Current Task:
 
 ## 🎯 Goal
-### 1. Failed tests
+### 1. Dashboard parser composition and admin navigation tests
 [x] Fix the dashboard 500 caused by its stale `ParserPageViewModel::fromCurrentSession()` call.
 [x] Compose the dashboard parser view model through `ParserController` and `ParserResultCache`.
 [x] Add coverage proving the dashboard hydrates the latest parser result from cache.
-[ ] Resolve `AdminNavigationTest::test_inactive_or_unverified_admins_can_not_see_the_admin_navigation_link`, which currently expects 200 but receives a 302 redirect from the route's `verified` middleware.
+[x] Test inactive verified admins and unverified admins separately according to the route's `verified` middleware contract.
 
-Verification: Laravel Pint passed. The focused dashboard, parser rendering, and authentication suite passed 22 of 23 tests; only the separately tracked verified-middleware assertion remains.
+Verification: Laravel Pint passed. `AdminNavigationTest` passed 5 tests with 14 assertions.
 ### 2. Fix event export download ID assignment for all DTO types
 
 [x] Keep download ID assignment in `app/Actions/BuildParserResult.php` rather than `ParserController`.
