@@ -2,53 +2,80 @@
 
 namespace App\Models;
 
+use Database\Factories\AircraftFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
+#[Fillable([
+    'tail_number',
+    'manufacturer',
+    'type',
+    'model',
+    'is_active',
+    'airline',
+])]
 class Aircraft extends Model
 {
+    /** @use HasFactory<AircraftFactory> */
     use HasFactory;
 
-    protected $fillable = [
-        'tail_number',
-        'manufacturer',
-        'type',
-        'model',
-        'is_active',
-        'airline',
-    ];
-    protected $casts = [
-        'is_active' => 'boolean',
-    ];
-    public function flightEvents()
+    /**
+     * @return HasMany<FlightEvent, $this>
+     */
+    public function flightEvents(): HasMany
     {
         return $this->hasMany(FlightEvent::class, 'tail_number', 'tail_number');
     }
-    public function scopeActive($query)
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
     {
-        return $query->where('is_active', true);
+        return [
+            'is_active' => 'boolean',
+        ];
     }
-    public function scopeByAirline($query, $airline)
+
+    #[Scope]
+    protected function active(Builder $query): void
     {
-        return $query->where('airline', $airline);
+        $query->where('is_active', true);
     }
-    public function scopeByType($query, $type)
+
+    #[Scope]
+    protected function byAirline(Builder $query, string $airline): void
     {
-        return $query->where('type', $type);
+        $query->where('airline', $airline);
     }
-    public function scopeByModel($query, $model)
+
+    #[Scope]
+    protected function byType(Builder $query, string $type): void
     {
-        return $query->where('model', $model);
+        $query->where('type', $type);
     }
-    public function scopeByTailNumber($query, $tailNumber)
+
+    #[Scope]
+    protected function byModel(Builder $query, string $model): void
     {
-        return $query->where('tail_number', $tailNumber);
+        $query->where('model', $model);
     }
-    public function getDisplayNameAttribute()
+
+    #[Scope]
+    protected function byTailNumber(Builder $query, string $tailNumber): void
     {
-        if ($this->aircraft_name) {
-            return $this->aircraft_name . " ({$this->tail_number})";
-        }
-        return $this->tail_number;
+        $query->where('tail_number', $tailNumber);
+    }
+
+    protected function displayName(): Attribute
+    {
+        return Attribute::get(fn (): string => filled($this->aircraft_name)
+            ? "{$this->aircraft_name} ({$this->tail_number})"
+            : $this->tail_number);
     }
 }

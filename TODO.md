@@ -2,7 +2,7 @@
 
 ## 🎯 Goal
 
-### 1. Refactor parser request handling and controller responsibilities
+### 1. [x] Refactor parser request handling and controller responsibilities
 
 [x] Replace inline validation in `app/Http/Controllers/ParserController.php` with dedicated Form Request classes for:
   - `parseFlight`
@@ -21,7 +21,7 @@
 ├── app/
 │   └── Exports/            <-- Your export classes are placed here
 
-### 2. Parser result DTO
+### 2. [x] Parser result DTO
 [x] Introduce a `ParserResultData` DTO so parser result assembly, caching, and view-model hydration use a typed outer result shape instead of loose arrays.
 [x] Refactor: BuildParserResult, ScheduleParserService, ParserResultCache, ParserController.
 [x] Refactor view models: ParserPageViewModel, ParserResultViewModel.
@@ -37,7 +37,7 @@
 
 Verification: Laravel Pint passed. The DTO-focused suite passed 41 tests, and the separately corrected non-flight event schedule-format regression now passes with 6 assertions.
 
-### 3. Harden outbound airport lookup HTTP behavior
+### 3. [x] Harden outbound airport lookup HTTP behavior
 
 [x] Update `app/Services/AirportLookupClient.php` to include:
   - `connectTimeout()`
@@ -53,7 +53,7 @@ Verification: Laravel Pint passed. The DTO-focused suite passed 41 tests, and th
 
 Verification: Laravel Pint passed. The focused airport lookup, extractor, flight release controller, and parser result component tests passed 34 tests with 129 assertions.
 
-### 4. Fix `FlightRouteExtractor` dependency and caching behavior
+### 4. [x] Fix `FlightRouteExtractor` dependency and caching behavior
 
 [x] Remove the implicit fallback to `ArrayStore` in `app/Services/FlightRouteExtractor.php`.
 [x] Ensure the extractor always uses Laravel-managed dependencies from the container instead of constructing fallback implementations directly.
@@ -92,14 +92,16 @@ Verification: Laravel Pint passed. The focused `FlightRouteExtractorTest` and `F
 
 ### 7. Normalize Eloquent model conventions and typing
 
-- Clean up `app/Models/Aircraft.php`, `app/Models/Airline.php`, and `app/Models/FlightEvent.php` to match current Laravel conventions.
-- Add explicit return types for:
+[x] Clean up `app/Models/Aircraft.php`, `app/Models/Airline.php`, and `app/Models/FlightEvent.php` to match current Laravel conventions.
+[x] Add explicit return types for:
   - relationships
   - scopes
   - accessors where appropriate
-- Replace untyped legacy properties/patterns with consistent modern equivalents where the codebase supports them.
-- Normalize cast definitions and fillable/guarded strategy across models.
-- Remove formatting/style drift in these model files so they match the rest of the app.
+[x] Replace untyped legacy properties/patterns with consistent modern equivalents where the codebase supports them.
+[x] Normalize cast definitions and fillable/guarded strategy across models.
+[x] Remove formatting/style drift in these model files so they match the rest of the app.
+
+Verification: Laravel Pint passed. The focused model, Filament resource, policy, seeder, and parser regression suite passed 51 tests with 384 assertions.
 
 ### 8. Remove inline JavaScript and view-level composition drift
 

@@ -1,30 +1,41 @@
 <?php
+
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
-// use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
+#[Fillable([
+    'name',
+    'iata_code',
+    'icao_code',
+    'callsign',
+    'country',
+    'active',
+])]
 class Airline extends Model
 {
-    protected $fillable = [
-        'name',
-        'iata_code',
-        'icao_code',
-        'callsign',
-        'country',
-        'active',
-    ];
-
-    protected $casts = [
-        'active' => 'boolean',
-    ];
-
-    public function scopeByCode(Builder $query, string $code): Builder
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
     {
-        $code = strtoupper(trim($code));
+        return [
+            'active' => 'boolean',
+        ];
+    }
 
-        return $query->where('iata_code', $code)
-            ->orWhere('icao_code', $code);
+    #[Scope]
+    protected function byCode(Builder $query, string $code): void
+    {
+        $normalizedCode = Str::upper(trim($code));
+
+        $query->where(function (Builder $query) use ($normalizedCode): void {
+            $query->where('iata_code', $normalizedCode)
+                ->orWhere('icao_code', $normalizedCode);
+        });
     }
 }
