@@ -219,7 +219,7 @@ class PublishedRosterParser
         }
 
         preg_match_all('/\d{1,3}:\d{2}/', $tail, $timeMatches);
-        $times = $timeMatches[0] ?? [];
+        $times = $timeMatches[0];
 
         if ($times === []) {
             return null;
@@ -258,7 +258,7 @@ class PublishedRosterParser
             $fragment['mode'] = 'end';
             $fragment['destination'] = $origin;
             $fragment['end_time'] = $times[0];
-            $fragment['layover_duration'] = $times[1] ?? null;
+            $fragment['layover_duration'] = $times[1];
 
             return $fragment;
         }
@@ -390,7 +390,7 @@ class PublishedRosterParser
         }
 
         preg_match_all('/\d{2}:\d{2}/', $matches[3], $timeMatches);
-        $times = $timeMatches[0] ?? [];
+        $times = $timeMatches[0];
 
         if (count($times) < 2) {
             return null;

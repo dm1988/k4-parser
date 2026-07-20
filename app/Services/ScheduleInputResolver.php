@@ -43,7 +43,7 @@ class ScheduleInputResolver
 
         if ($mime === 'application/pdf') {
             $pdfData = $this->schedulePdfExtractor->extract($path);
-            $rawText = trim($pdfData['text'] ?? '');
+            $rawText = trim($pdfData['text']);
 
             if ($rawText === '') {
                 throw ValidationException::withMessages([

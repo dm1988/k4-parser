@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property Carbon|null $start
  * @property Carbon|null $end
+ * @property Aircraft|null $aircraft
  */
 #[Fillable([
     'title',
@@ -120,6 +121,6 @@ class FlightEvent extends Model
 
     protected function displayTailNumber(): Attribute
     {
-        return Attribute::get(fn (): ?string => $this->aircraft?->tail_number ?? $this->tail_number);
+        return Attribute::get(fn (): ?string => $this->aircraft->tail_number ?? $this->tail_number);
     }
 }

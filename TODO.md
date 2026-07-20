@@ -2,7 +2,7 @@
 
 ## 🎯 Goal
 
-## 1. Resolve Larastan findings (20 errors remaining at level 5)
+## 1. Resolve Larastan findings (5 errors remaining at level 5)
 
 Run with `vendor/bin/sail bin phpstan analyse --no-progress`. Keep Larastan in `require-dev` and fix root causes rather than adding a baseline or blanket `ignoreErrors` entries.
 
@@ -14,9 +14,10 @@ Run with `vendor/bin/sail bin phpstan analyse --no-progress`. Keep Larastan in `
 
 ### Medium — misleading defensive logic and PHPDoc drift
 
-- [ ] Remove or correct redundant `??` offset fallbacks after validating the real match shapes in `app/Services/PdfScheduleParser.php:105`, `app/Services/PublishedRosterParser.php:221`, `:260`, `:390`, and `app/Services/RosterParser.php:244` (5 errors).
-- [ ] Reconcile relationship/value nullability before simplifying nullsafe access in `app/Models/FlightEvent.php:121`, `app/View/Models/FlightReleasePageViewModel.php:35`, `:40`, `:88`, `:93`, `:98`, and `app/View/Models/Parser/ParserPageViewModel.php:25`. Larastan currently considers each receiver non-null (7 errors).
-- [ ] Fix `app/View/Models/Parser/ParserResultViewModel.php`: remove or rename the stale `$filters` constructor PHPDoc at line 20, then reconcile the already-string value with the redundant `is_string()` branch at line 35 (2 errors).
+- [x] Remove redundant offset fallbacks after validating the required PDF extractor output and fixed-regex match shapes in `ScheduleInputResolver`, `PublishedRosterParser`, and `TripInformationParser` (5 errors resolved).
+- [x] Preserve genuine nullable behavior while replacing redundant nullsafe expressions in `FlightEvent`, `FlightReleasePageViewModel`, and `ParserPageViewModel` (7 errors resolved).
+- [x] Remove the stale `$filters` constructor PHPDoc and redundant string type check from `ParserResultViewModel` (2 errors resolved).
+- [x] Remove the redundant string check for the required `ParseSchedule` command file argument and cover its missing-file failure path (1 unclassified medium error resolved).
 
 ### Low — safe cleanup after contract fixes
 

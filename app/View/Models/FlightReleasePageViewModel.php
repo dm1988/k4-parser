@@ -32,12 +32,12 @@ readonly class FlightReleasePageViewModel
 
     public function departure(): string
     {
-        return $this->flightPlan?->departure ?? '';
+        return $this->flightPlan === null ? '' : $this->flightPlan->departure;
     }
 
     public function destination(): string
     {
-        return $this->flightPlan?->destination ?? '';
+        return $this->flightPlan === null ? '' : $this->flightPlan->destination;
     }
 
     public function alternate(): ?string
@@ -85,17 +85,17 @@ readonly class FlightReleasePageViewModel
 
     public function initialAltitude(): string
     {
-        return $this->flightPlan?->initialAltitude ?? '';
+        return $this->flightPlan === null ? '' : $this->flightPlan->initialAltitude;
     }
 
     public function duration(): string
     {
-        return $this->flightPlan?->duration ?? '';
+        return $this->flightPlan === null ? '' : $this->flightPlan->duration;
     }
 
     public function route(): string
     {
-        return $this->flightPlan?->route ?? '';
+        return $this->flightPlan === null ? '' : $this->flightPlan->route;
     }
 
     /**

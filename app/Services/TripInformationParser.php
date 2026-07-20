@@ -241,7 +241,7 @@ class TripInformationParser
         $year = $monthYears[strtolower($monthStr)] ?? $defaultYear;
 
         preg_match_all('/\d{2}:\d{2}/', $lineData, $timeMatchesAll);
-        $timeMatches = $timeMatchesAll[0] ?? [];
+        $timeMatches = $timeMatchesAll[0];
 
         if (count($timeMatches) < 2) {
             return null;

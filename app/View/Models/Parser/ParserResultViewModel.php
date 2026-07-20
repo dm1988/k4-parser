@@ -15,7 +15,6 @@ readonly class ParserResultViewModel
 {
     /**
      * @param  list<ParserEventViewModel|Flight|DutyEvent>  $events
-     * @param  list<string>  $filters
      */
     public function __construct(
         public ?string $errorMessage,
@@ -32,7 +31,7 @@ readonly class ParserResultViewModel
     {
         $filters = array_values(array_filter(
             $result->filters,
-            fn (mixed $value): bool => is_string($value) && $value !== '',
+            fn (string $value): bool => $value !== '',
         ));
         $parseKey = $result->parseKey;
         $eventViewModels = [];

@@ -12,6 +12,20 @@ use Tests\TestCase;
 class FlightReleasePageViewModelTest extends TestCase
 {
     #[Test]
+    public function it_returns_empty_display_values_without_a_flight_plan(): void
+    {
+        $viewModel = new FlightReleasePageViewModel(null);
+
+        $this->assertFalse($viewModel->hasFlightPlan());
+        $this->assertSame('', $viewModel->departure());
+        $this->assertSame('', $viewModel->destination());
+        $this->assertNull($viewModel->alternate());
+        $this->assertSame('', $viewModel->initialAltitude());
+        $this->assertSame('', $viewModel->duration());
+        $this->assertSame('', $viewModel->route());
+    }
+
+    #[Test]
     public function it_builds_airport_display_fields_from_dtos(): void
     {
         $viewModel = new FlightReleasePageViewModel(new FlightPlan(

@@ -18,7 +18,7 @@ class ParseSchedule extends Command
     {
         $file = $this->argument('file');
 
-        if (! is_string($file) || ! file_exists($file)) {
+        if (! file_exists($file)) {
             $this->error("File not found: {$file}");
 
             return self::FAILURE;

@@ -22,7 +22,7 @@ readonly class ParserPageViewModel
     public static function fromResult(?ParserResultData $result, array $oldInput = []): self
     {
         $selectedTypes = array_values(array_filter(
-            is_array($oldInput['event_types'] ?? null) ? $oldInput['event_types'] : ($result?->filters ?? []),
+            is_array($oldInput['event_types'] ?? null) ? $oldInput['event_types'] : ($result === null ? [] : $result->filters),
             fn (mixed $value): bool => is_string($value) && in_array($value, ParserEventType::filterValues(), true),
         ));
 

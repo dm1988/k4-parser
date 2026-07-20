@@ -202,6 +202,7 @@ class ParserPageViewModelTest extends TestCase
     {
         $viewModel = ParserPageViewModel::fromResult(null);
 
+        $this->assertSame([], $viewModel->selectedTypes);
         $this->assertSame(ParserEventType::filterValues(), array_column($viewModel->filterOptions, 'value'));
         $this->assertSame('Flights only', $viewModel->filterOptions[0]['label']);
         $this->assertSame('Scheduled flying segment.', $viewModel->filterOptions[0]['description']);
