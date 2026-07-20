@@ -6,7 +6,7 @@
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#C5A059]">Manifest</p>
-                    <h2 class="mt-1 text-lg font-bold text-[#1B365D]">Parsed Output</h2>
+                    <h2 class="mt-1 text-lg font-bold text-[#1B365D]">Extracted Schedule</h2>
                 </div>
 
                 @if ($model->exportUrl)

@@ -10,7 +10,9 @@ class PrivacyPolicyTest extends TestCase
     {
         $response = $this->get('/privacy-policy');
 
-        $response->assertStatus(200);
-        $response->assertSee('Privacy Policy');
+        $response->assertOk();
+        $response->assertSeeText('Privacy Policy');
+        $response->assertSeeText('extraction service');
+        $response->assertDontSeeText('parser service');
     }
 }

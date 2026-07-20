@@ -57,11 +57,11 @@ class FeatureRouteAuthorizationTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertSeeText('Schedule parser access is currently unavailable.');
+            ->assertSeeText('Schedule extractor access is currently unavailable.');
 
         $this->get(route('parse.index'))
             ->assertOk()
-            ->assertSeeText('Schedule parser access is currently unavailable.');
+            ->assertSeeText('Schedule extractor access is currently unavailable.');
     }
 
     public function test_flight_release_routes_enforce_feature_and_capability_before_validation(): void

@@ -4,7 +4,7 @@
             <div class="overflow-hidden rounded-lg bg-white shadow-sm">
                 <div class="border-b border-[#1B365D]/10 bg-[#1B365D] px-6 py-5 text-[#F8F9FA]">
                     <p class="text-sm font-semibold uppercase tracking-[0.16em] text-[#C5A059]">Flight deck</p>
-                    <h1 class="mt-2 text-3xl font-bold">Flight Release Route Extractor</h1>
+                    <h1 class="mt-2 text-3xl font-bold">Flight Plan Extractor</h1>
                     <p class="mt-3 max-w-2xl text-sm leading-6 text-[#F8F9FA]/80">
                         Upload a flight release PDF and extract the filed route block for quick copying.
                     </p>

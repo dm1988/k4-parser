@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>K4 Schedule Parser</title>
+    <title>JCA Schedule Extractor</title>
 
     <preconnect href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
@@ -14,7 +14,7 @@
 
     <header class="max-w-7xl w-full mx-auto px-6 py-6 flex justify-between items-center">
         <div class="text-xl font-bold tracking-wider text-indigo-400">
-            JCA SCHEDULE PARSER
+            JCA SCHEDULE EXTRACTOR
         </div>
         <div>
             @if (Route::has('login'))
@@ -44,7 +44,7 @@
                     Your schedule, <br><span class="text-indigo-400">on your terms.</span>
                 </h1>
                 <p class="text-lg text-slate-400 max-w-xl">
-                    Drop the clunky enterprise portals. Parse your JCA schedule instantly and access it beautifully from anywhere.
+                    Drop the clunky enterprise portals. Extract your JCA schedule instantly and access it beautifully from anywhere.
                 </p>
             </div>
 
@@ -117,7 +117,7 @@
                 <div class="space-y-3">
                     <h2 class="text-lg font-bold text-white">Why is account registration required?</h2>
                     <p class="text-sm text-slate-400 leading-relaxed">
-                        To securely parse and process your schedules, you must upload document files. Registration acts as a critical security measure to prevent unauthorized automated abuse of our file processing servers, keeping the ecosystem safe and efficient for everyone.
+                        To securely extract and process your schedules, you must upload document files. Registration acts as a critical security measure to prevent unauthorized automated abuse of our file processing servers, keeping the ecosystem safe and efficient for everyone.
                     </p>
                     <div class="p-3 bg-slate-950/80 rounded-lg border border-slate-800 text-xs text-slate-400 flex items-center gap-2">
                         <span class="font-bold text-amber-500 uppercase tracking-wide text-[10px] bg-amber-500/10 px-1.5 py-0.5 rounded">Security Recommendation</span>

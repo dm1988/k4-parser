@@ -19,7 +19,7 @@
             <button id="parseBtn" type="submit" data-parse-submit
                 x-bind:disabled="isSubmitting"
                 class="inline-flex items-center justify-center gap-2 rounded-md bg-[#C5A059] px-6 py-3 font-bold text-[#0B0E14] shadow-sm transition hover:bg-[#b6914b] disabled:cursor-not-allowed disabled:bg-[#1B365D]/55 disabled:text-[#F8F9FA]/80 disabled:shadow-none">
-                <span data-submit-label x-text="isSubmitting ? 'Parsing...' : 'Parse'">Parse</span>
+                <span data-submit-label x-text="isSubmitting ? 'Extracting...' : 'Extract'">Extract</span>
                 <span data-submit-spinner class="hidden text-base leading-none" x-bind:class="{ 'hidden': ! isSubmitting }"
                     aria-hidden="true">⏳</span>
             </button>
@@ -32,9 +32,9 @@
                     aria-hidden="true"></span>
                 <div class="space-y-1">
                     <p id="parserStatusTitle" class="text-sm font-semibold text-[#1B365D]" x-text="statusTitle">Ready to
-                        parse</p>
+                        extract</p>
                     <p id="parserStatusMessage" class="text-sm text-[#4A5568]" x-text="statusMessage">Upload a screenshot
-                        or PDF, then parse. Uploads usually finish in under 15 seconds.</p>
+                        or PDF, then extract. Uploads usually finish in under 15 seconds.</p>
                 </div>
             </div>
         </div>
@@ -99,7 +99,7 @@
         <p class="mt-3">
             <button class="cc-btn-cta disabled:cursor-not-allowed disabled:bg-[#1B365D]/55 disabled:text-[#F8F9FA]/80"
                 type="submit" data-parse-submit x-bind:disabled="isSubmitting">
-                <span data-submit-label x-text="isSubmitting ? 'Parsing...' : 'Parse'">Parse</span>
+                <span data-submit-label x-text="isSubmitting ? 'Extracting...' : 'Extract'">Extract</span>
                 <span data-submit-spinner class="hidden" x-bind:class="{ 'hidden': ! isSubmitting }"
                     aria-hidden="true"> ⏳</span>
             </button>

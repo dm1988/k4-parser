@@ -32,7 +32,7 @@
 
             <section class="space-y-3">
                 <h2 class="text-xl font-semibold text-white tracking-tight">1. Who we are</h2>
-                <p>Crew Compass is a service that helps users parse and organize schedule information from uploaded documents or pasted text. This privacy policy explains how we collect, use, store, and protect your information.</p>
+                <p>Crew Compass is a service that helps users extract and organize schedule information from uploaded documents or pasted text. This privacy policy explains how we collect, use, store, and protect your information.</p>
             </section>
 
             <section class="space-y-3 border-t border-slate-900 pt-10">
@@ -40,20 +40,20 @@
                 <p>When you register and use the service, we may collect:</p>
                 <ul class="list-disc space-y-3 pl-5 text-slate-400">
                     <li><span class="text-slate-300 font-medium">Account Details:</span> Your name and email address for account creation and authentication.</li>
-                    <li><span class="text-slate-300 font-medium">User Content:</span> Uploaded files, pasted text, and parsed schedule data submitted for processing.</li>
-                    <li><span class="text-slate-300 font-medium">Metadata:</span> Technical details such as file size, file hash, parse status, timestamps, and error information.</li>
+                    <li><span class="text-slate-300 font-medium">User Content:</span> Uploaded files, pasted text, and extracted schedule data submitted for processing.</li>
+                    <li><span class="text-slate-300 font-medium">Metadata:</span> Technical details such as file size, file hash, extraction status, timestamps, and error information.</li>
                     <li><span class="text-slate-300 font-medium">Usage Data:</span> Basic analytics needed to maintain security and service reliability.</li>
                 </ul>
             </section>
 
             <section class="space-y-3 border-t border-slate-900 pt-10">
                 <h2 class="text-xl font-semibold text-white tracking-tight">3. Why we use your information</h2>
-                <p>We use your information to provide the parser service, process uploaded schedules, generate calendar exports, maintain account security, improve reliability, and respond to support requests.</p>
+                <p>We use your information to provide the extraction service, process uploaded schedules, generate calendar exports, maintain account security, improve reliability, and respond to support requests.</p>
             </section>
 
             <section class="space-y-3 border-t border-slate-900 pt-10">
                 <h2 class="text-xl font-semibold text-white tracking-tight">4. Data retention</h2>
-                <p>We retain account information, parse records, and related processing metadata only as long as necessary to operate the service, comply with legal obligations, or resolve disputes. If you delete your account, we will remove account-related data where feasible and stop using it for service operations.</p>
+                <p>We retain account information, extraction records, and related processing metadata only as long as necessary to operate the service, comply with legal obligations, or resolve disputes. If you delete your account, we will remove account-related data where feasible and stop using it for service operations.</p>
             </section>
 
             <section class="space-y-3 border-t border-slate-900 pt-10">

@@ -7,7 +7,7 @@
                         <section class="mx-auto max-w-4xl px-5 py-6">
                             <section class="rounded-lg border border-amber-200 bg-amber-50 p-5 text-amber-900">
                                 <p class="text-sm font-semibold uppercase tracking-[0.16em]">Feature unavailable</p>
-                                <h2 class="mt-2 text-2xl font-bold">Schedule parser access is currently unavailable.</h2>
+                                <h2 class="mt-2 text-2xl font-bold">Schedule extractor access is currently unavailable.</h2>
                                 <p class="mt-3 text-sm leading-6">This feature is disabled or restricted for your account.</p>
                             </section>
                         </section>
@@ -21,9 +21,9 @@
                             <section>
                                 <div class="mb-5 rounded-lg bg-[#1B365D] p-5 text-[#F8F9FA] shadow-lg shadow-[#1B365D]/10">
                                     <p class="text-sm font-semibold uppercase tracking-[0.16em] text-[#C5A059]">Flight deck</p>
-                                    <h2 class="mt-2 text-3xl font-bold">JCA Schedule Parser</h2>
+                                    <h2 class="mt-2 text-3xl font-bold">JCA Schedule Extractor</h2>
                                     <p class="mt-3 max-w-2xl text-sm leading-6 text-[#F8F9FA]/80">
-                                        Upload a roster screenshot or trip PDF and the K4 parser will extract the text, classify the trip details, and return calendar-ready events.
+                                        Upload a roster screenshot or trip PDF. The JCA Extractor will instantly convert it into calendar-ready events.
                                     </p>
 
                                     <div class="mt-4 flex items-center gap-x-2 text-sm text-[#F8F9FA]/80">

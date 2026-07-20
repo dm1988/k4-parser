@@ -2,8 +2,8 @@ export default () => ({
     isSubmitting: false,
     statusVisible: false,
     statusState: 'idle',
-    statusTitle: 'Ready to parse',
-    statusMessage: 'Upload a screenshot or PDF, then parse. Uploads usually finish in under 15 seconds.',
+    statusTitle: 'Ready to extract',
+    statusMessage: 'Upload a screenshot or PDF, then extract. Uploads usually finish in under 15 seconds.',
     progressTimers: [],
 
     init() {
@@ -54,7 +54,7 @@ export default () => ({
         this.setStatus(
             'ready',
             'File ready to upload',
-            `${fileDetails} selected. Click Parse to upload and start extracting the schedule.`,
+            `${fileDetails} selected. Click Extract to upload and start extracting the schedule.`,
         );
     },
 
@@ -69,14 +69,14 @@ export default () => ({
         this.setStatus(
             'processing',
             'Uploading your file...',
-            'Your file is on the way. Parsing will start as soon as the upload finishes.',
+            'Your file is on the way. Extraction will start as soon as the upload finishes.',
         );
 
         this.progressTimers.push(window.setTimeout(() => {
             this.setStatus(
                 'processing',
                 'Reading and classifying the schedule...',
-                'The parser is extracting trip details and building your events now.',
+                'The extractor is reading trip details and building your events now.',
             );
         }, 2500));
 
@@ -92,7 +92,7 @@ export default () => ({
             this.setStatus(
                 'processing',
                 'Finalizing your results...',
-                'Almost done. We are packaging the parsed events and preparing the page refresh.',
+                'Almost done. We are packaging the extracted events and preparing the page refresh.',
             );
         }, 11000));
     },

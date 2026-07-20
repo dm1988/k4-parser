@@ -43,13 +43,16 @@ class ParseUploadTest extends TestCase
             ->assertOk()
             ->assertViewIs('dashboard')
             ->assertViewHas('viewModel')
-            ->assertSeeText('JCA Schedule Parser');
+            ->assertSeeText('JCA Schedule Extractor')
+            ->assertSeeText('Upload a roster screenshot or trip PDF. The JCA Extractor will instantly convert it into calendar-ready events.')
+            ->assertSeeText('Extract Schedule');
 
         $this->get(route('parse.index'))
             ->assertOk()
             ->assertViewIs('dashboard')
             ->assertViewHas('viewModel')
-            ->assertSeeText('JCA Schedule Parser');
+            ->assertSeeText('JCA Schedule Extractor')
+            ->assertSeeText('Extract Schedule');
     }
 
     public function test_parse_pasted_text_stores_parse_key_in_session_and_result_in_cache()
@@ -84,7 +87,7 @@ class ParseUploadTest extends TestCase
 
         $page = $this->get(route('parse.index'));
         $page->assertOk()
-            ->assertSee('Parsed Output')
+            ->assertSee('Extracted Schedule')
             ->assertSee('rounded-lg border border-[#1B365D]/15 bg-white shadow-sm', false)
             ->assertSee('border-b border-[#1B365D]/10 bg-[#F8FAFD] px-5 py-4', false)
             ->assertDontSee('rounded-[1.9rem]', false);

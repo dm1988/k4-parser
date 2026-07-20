@@ -58,7 +58,7 @@
         </div>
     @else
         <p class="text-sm font-medium text-[#4A5568]">
-            Individual crew names were not parsed for this flight.
+            Individual crew names were not extracted for this flight.
         </p>
     @endif
 </div>

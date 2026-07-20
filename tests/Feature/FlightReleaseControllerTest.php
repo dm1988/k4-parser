@@ -28,7 +28,8 @@ class FlightReleaseControllerTest extends TestCase
             ->get(route('flight-release.index'));
 
         $response->assertOk();
-        $response->assertSeeText('Flight Release Route Extractor');
+        $response->assertSeeText('Flight Plan Extractor');
+        $response->assertSeeText('Extract Flight Plan');
     }
 
     public function test_non_admin_users_can_not_view_the_flight_release_extractor_page(): void

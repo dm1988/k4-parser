@@ -14,6 +14,9 @@ class ExampleTest extends TestCase
     {
         $response = $this->get('/');
 
-        $response->assertStatus(200);
+        $response->assertOk();
+        $response->assertSeeText('JCA SCHEDULE EXTRACTOR');
+        $response->assertSeeText('Extract your JCA schedule instantly');
+        $response->assertDontSeeText('JCA SCHEDULE PARSER');
     }
 }

@@ -15,12 +15,12 @@
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                     @if (Auth::user()?->canUseScheduleParser())
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        {{ __('Parse Schedule') }}
+                        {{ __('Extract Schedule') }}
                     </x-nav-link>
                     @endif
                     @if (Auth::user()?->canUseFlightRelease())
                     <x-nav-link :href="route('flight-release.index')" :active="request()->routeIs('flight-release.*')">
-                        {{ __('Route Extractor') }}
+                        {{ __('Extract Flight Plan') }}
                     </x-nav-link>
                     @endif
                     @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
@@ -96,13 +96,13 @@
         <div class="pt-2 pb-3 space-y-1">
             @if (Auth::user()?->canUseScheduleParser())
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                {{ __('Parse Schedule') }}
+                {{ __('Extract Schedule') }}
             </x-responsive-nav-link>
             @endif
             @if (Auth::user()?->canUseFlightRelease())
             <x-responsive-nav-link :href="route('flight-release.index')"
                 :active="request()->routeIs('flight-release.*')">
-                {{ __('Route Extractor') }}
+                {{ __('Extract Flight Plan') }}
             </x-responsive-nav-link>
             @endif
             @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
