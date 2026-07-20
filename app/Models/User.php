@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Notifications\VerifyEmailWithOtp;
+use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;

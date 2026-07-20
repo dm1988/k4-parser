@@ -196,7 +196,8 @@ class PublishedRosterParser
      *     aircraft?: ?string,
      *     layover_duration?: ?string,
      *     deadhead: bool,
-     *     trip_id?: ?string
+     *     trip_id?: ?string,
+     *     airline_name: ?string
      * }|null
      */
     private function parseFlightFragment(array $entry): ?array
@@ -281,7 +282,8 @@ class PublishedRosterParser
      *     aircraft?: ?string,
      *     layover_duration?: ?string,
      *     deadhead: bool,
-     *     trip_id?: ?string
+     *     trip_id?: ?string,
+     *     airline_name: ?string
      * } $fragment
      * @param array{
      *     start_date: Carbon,
@@ -290,7 +292,8 @@ class PublishedRosterParser
      *     start_time: string,
      *     aircraft?: ?string,
      *     deadhead: bool,
-     *     trip_id?: ?string
+     *     trip_id?: ?string,
+     *     airline_name: ?string
      * }|null $pendingFlight
      * @return array{0: list<array<string, mixed>>, 1: array<string, mixed>|null, 2: list<string>}
      */

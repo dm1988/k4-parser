@@ -124,9 +124,7 @@ final class FlightDutyCalendarEventService
             return null;
         }
 
-        $parsed = CarbonImmutable::createFromFormat('!Y M j H:i', $reference->year.' '.trim($value), 'UTC');
-
-        return $parsed === false ? null : $parsed;
+        return CarbonImmutable::createFromFormat('!Y M j H:i', $reference->year.' '.trim($value), 'UTC');
     }
 
     private function minutesBetween(CarbonImmutable $start, CarbonImmutable $end): int

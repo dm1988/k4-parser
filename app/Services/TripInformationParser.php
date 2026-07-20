@@ -341,7 +341,7 @@ class TripInformationParser
                     'raw_lines' => $body,
                     'duty_raw_lines' => $dutyRawLines !== [] ? $dutyRawLines : null,
                     ...$localTimes,
-                ], fn ($value) => $value !== null && $value !== '')
+                ], fn (mixed $value): bool => $value !== null)
             );
         }
 
@@ -373,7 +373,7 @@ class TripInformationParser
                     'deadheading_crew_count' => $crewSummary['deadheading_crew_count'],
                     'crew' => $crewSummary['crew'] !== [] ? $crewSummary['crew'] : null,
                     'raw_lines' => $body,
-                ], fn ($value) => $value !== null && $value !== '')
+                ], fn (mixed $value): bool => $value !== null)
             );
         }
 

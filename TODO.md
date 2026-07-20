@@ -2,22 +2,15 @@
 
 ## 🎯 Goal
 
-## 1. Resolve Larastan findings (29 errors remaining at level 5)
+## 1. Resolve Larastan findings (20 errors remaining at level 5)
 
 Run with `vendor/bin/sail bin phpstan analyse --no-progress`. Keep Larastan in `require-dev` and fix root causes rather than adding a baseline or blanket `ignoreErrors` entries.
 
-### Critical — possible runtime failures or incorrect results
-
-- [x] Declare the nullable Carbon date properties used by email OTP verification and `FlightEvent` duration accessors while retaining Eloquent `datetime` casts and legitimate null guards (5 errors resolved).
-- [x] Make whole-minute truncation explicit in `DutyEventMapper`, `FlightMapper`, and `ParserEventViewModel` before using `intdiv()` and modulo operations (3 errors resolved).
-- [x] Update screenshot preprocessing to the Intervention Image Laravel v4 API (`decodePath()`, `grayscale()`, and `JpegEncoder`) and verify OCR receives the optimized image (1 reported error plus two masked runtime API failures resolved).
-- [x] Confirm the renamed `ScheduleFormatParser::extractFlightsDto()` already declares the valid `list<Flight>` return type (2 stale errors already resolved).
-
 ### High — parser data contracts and Eloquent metadata
 
-- [ ] Reconcile the Published Roster event array shapes with reads of `airline_name` in `app/Services/PublishedRosterParser.php:315`, `:331` (two variants), and `:359`. Either populate the key for every applicable variant or correct the declared shapes/consumer logic (4 errors).
-- [ ] Correct the `HasFactory` generic in `app/Models/User.php:20` to reference the real `Database\\Factories\\UserFactory`; the current type resolves under `App\\Models` and violates the factory template bound (2 errors).
-- [ ] Review parser branches whose declared types make their conditions impossible: `app/Services/CrewParserService.php:172`, `app/Services/FlightDutyCalendarEventService.php:129`, `app/Services/PdfScheduleParser.php:143`, and `app/Services/RosterParser.php:376`. Align the types with real input or remove dead branches, with focused regression coverage where behavior changes (4 errors).
+- [x] Add the required nullable `airline_name` key to Published Roster fragment and pending-flight array contracts, matching the values populated at runtime (4 errors resolved).
+- [x] Import `Database\\Factories\\UserFactory` so the `User` model's `HasFactory` generic resolves to the real factory and satisfies its template bound (2 errors resolved).
+- [x] Remove impossible fallbacks and comparisons in `CrewListParser`, `FlightDutyCalendarEventService`, and `TripInformationParser`; confirm the former `ScheduleFormatParser` warning was already resolved during the service refactor (3 active errors resolved, 1 stale error confirmed resolved).
 
 ### Medium — misleading defensive logic and PHPDoc drift
 
@@ -271,7 +264,12 @@ Services/
 │   └── ParserResultCache.php
 └── ScheduleInputResolver.php
 
-## 12 Use a descriptive footer disclaimer in Parse schedule tool: 
+## 12. Use a descriptive footer disclaimer in Parse schedule tool: 
 - To safely clarify your tool's relationship to the platform, add a small, subtle line of text at the very bottom of your application page layout:
 
 Disclaimer: This tool is an independent utility built for crew convenience and is not affiliated with, authorized, or endorsed by Jeppesen or Boeing.
+
+## 13. One line status message
+- In schedule extractor, shorten status codes
+- System online: Ready to process
+- 0.3 MB image selected, ready to upload

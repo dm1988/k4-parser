@@ -169,7 +169,7 @@ class CrewListParser
             return null;
         }
 
-        return end($matches[1]) ?: null;
+        return end($matches[1]);
     }
 
     private function extractRole(string $value, bool $deadheading): ?string
