@@ -119,7 +119,7 @@ TEXT;
         $this->assertSame('layover', $result['parsed']['calendar_events'][0]['type']);
 
         $page = $this->get(route('parse.index'));
-        $page->assertOk()->assertSee('Parsed Output');
+        $page->assertOk()->assertSee('Extracted Schedule');
     }
 
     public function test_flight_parser_stores_only_flight_events_in_cache(): void

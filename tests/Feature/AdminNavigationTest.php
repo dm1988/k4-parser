@@ -40,7 +40,7 @@ class AdminNavigationTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertSeeText('Parsed Output')
+            ->assertSeeText('Extracted Schedule')
             ->assertSeeText('Hotel Check-In');
     }
 

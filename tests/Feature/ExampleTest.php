@@ -15,7 +15,12 @@ class ExampleTest extends TestCase
         $response = $this->get('/');
 
         $response->assertOk();
-        $response->assertSeeText('JCA SCHEDULE EXTRACTOR');
+        $response->assertSeeText('Jeppesen Crew Access');
+        $response->assertSeeText('Schedule Extractor');
+        $response->assertSeeInOrder([
+            'Jeppesen Crew Access',
+            'Schedule Extractor',
+        ]);
         $response->assertSeeText('Extract your JCA schedule instantly');
         $response->assertDontSeeText('JCA SCHEDULE PARSER');
     }

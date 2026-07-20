@@ -1,6 +1,6 @@
 # Current Task:
 
-## 2. ✅ Change "parser" verbage to "extract"
+## 1. ✅ Change "parser" verbage to "extract"
 - Reason: Action oriented tool names. Focuses on what the user does.
 - Keep changes to front end for now
 - "Extract" tells the user exactly what the tool does for them (pulling out their data).
@@ -16,12 +16,12 @@
 ## 🎯 Goal
 
 
-## 4. Refactor to 2 views
+## 2. Refactor to 2 views
 - First view is for uploading
 - 2nd is for results
 - Have a primary button "Extract another roster". Leads to first view
 
-## 5. Spell out Jeppesen Crew Access
+## 3. ✅ Spell out Jeppesen Crew Access
 - Should use JCA acryonm only after spelling out Jeppesen Crew Access
 - Reference:
 <header className="mb-10 text-center">
@@ -36,31 +36,31 @@
   </p>
 </header>
 
-## 6. Streamline the Upload Card Structure
+## 4. Streamline the Upload Card Structure
 - The file upload input and the "Parse" button feel somewhat detached because they are aligned horizontally with wide gaps.
 
 - Fix: Consider stacking the input elements or tightening the container width. 
 
 - Alternatively, transform the upload zone into a larger, centered drag-and-drop target box with an icon, placing a full-width or cleanly aligned "Parse" button directly beneath it.
 
-## 7. Refine Card Hierarchy and Margins
+## 5. Refine Card Hierarchy and Margins
  - The main blue header card ("Flight Deck") and the white upload card are stacked close together with identical widths, creating a rigid block appearance.
 
  - Fix: Nest the file upload and filters section inside a single, unified container card, where the dark blue header serves as the hero header of that card. This removes the double-card stacking look and groups the context ("what this tool does") directly with the action ("upload your file").
 
 - Spacing: Increase the vertical spacing (gap or margin-bottom) between the hero header card and the upload card if you keep them separate.
 
-## 8. Improve Grid/Flex Alignment
+## 6. Improve Grid/Flex Alignment
 - Filters Section: The "Filters" label and the "Show options" dropdown toggle are pushed to the extreme edges of the container. If a user expands "Show options," the checkboxes will likely appear far away from the initial visual anchor. Aligning these elements or placing the filter options directly in a collapsible accordion that spans a more readable, centered width would feel more cohesive.
 
 - Alignment: Ensure the text inside the "Choose File" button box vertically aligns perfectly with the text baseline of the "Parse" button.
 
-## 9. Navbar Typography
+## 7. Navbar Typography
 - The navbar items ("Parse Schedule", "Route Extractor", etc.) are quite close to the top edge of the viewport. Adding a bit more top and bottom padding to the navbar container will give the text room to breathe and look cleaner.
 
-## 10. Install laravel debug bar
+## 8. Install laravel debug bar
 
-## 11. Organize services
+## 9. Organize services
 - Create directory framework
 mkdir -p Services/{Roster/Parsers,FlightPlan/Parsers,Calendar,Infrastructure}
 
@@ -127,17 +127,17 @@ app/Services/
     ├── PipelineLogger.php              # (Was ParseRequestLogger)
     └── EngineResultCache.php           # (Was ParserResultCache)
 
-## 12. Use a descriptive footer disclaimer in Parse schedule tool: 
+## 10. Use a descriptive footer disclaimer in Parse schedule tool:
 - To safely clarify your tool's relationship to the platform, add a small, subtle line of text at the very bottom of your application page layout:
 
 Disclaimer: This tool is an independent utility built for crew convenience and is not affiliated with, authorized, or endorsed by Jeppesen or Boeing.
 
-## 13. One line status message
+## 11. One line status message
 - In schedule extractor, shorten status codes
 - System online: Ready to process
 - 0.3 MB image selected, ready to upload
 
-## 14. Resolve Larastan findings (5 errors remaining at level 5)
+## 12. Resolve Larastan findings (5 errors remaining at level 5)
 
 Run with `vendor/bin/sail bin phpstan analyse --no-progress`. Keep Larastan in `require-dev` and fix root causes rather than adding a baseline or blanket `ignoreErrors` entries.
 

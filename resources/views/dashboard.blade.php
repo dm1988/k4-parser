@@ -20,11 +20,15 @@
                         >
                             <section>
                                 <div class="mb-5 rounded-lg bg-[#1B365D] p-5 text-[#F8F9FA] shadow-lg shadow-[#1B365D]/10">
-                                    <p class="text-sm font-semibold uppercase tracking-[0.16em] text-[#C5A059]">Flight deck</p>
-                                    <h2 class="mt-2 text-3xl font-bold">JCA Schedule Extractor</h2>
-                                    <p class="mt-3 max-w-2xl text-sm leading-6 text-[#F8F9FA]/80">
-                                        Upload a roster screenshot or trip PDF. The JCA Extractor will instantly convert it into calendar-ready events.
-                                    </p>
+                                    <header>
+                                        <span class="block text-xs font-bold uppercase tracking-widest text-[#C5A059]">
+                                            Jeppesen Crew Access
+                                        </span>
+                                        <h1 class="mt-2 text-4xl font-black tracking-tight md:text-5xl">Schedule Extractor</h1>
+                                        <p class="mt-4 max-w-md text-base leading-relaxed text-[#F8F9FA]/80">
+                                            Upload a roster screenshot or trip PDF to instantly convert your schedule into calendar-ready events.
+                                        </p>
+                                    </header>
 
                                     <div class="mt-4 flex items-center gap-x-2 text-sm text-[#F8F9FA]/80">
                                         <span class="text-[#F8F9FA]/60">Not sure where to start?</span>

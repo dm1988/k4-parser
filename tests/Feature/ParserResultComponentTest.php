@@ -38,7 +38,7 @@ class ParserResultComponentTest extends TestCase
             ])),
         ]);
 
-        $this->assertStringContainsString('Parsed Output', $html);
+        $this->assertStringContainsString('Extracted Schedule', $html);
         $this->assertStringContainsString('Download all (.ics)', $html);
         $this->assertStringNotContainsString('Download the parsed events as a calendar file.', $html);
     }

@@ -43,15 +43,21 @@ class ParseUploadTest extends TestCase
             ->assertOk()
             ->assertViewIs('dashboard')
             ->assertViewHas('viewModel')
-            ->assertSeeText('JCA Schedule Extractor')
-            ->assertSeeText('Upload a roster screenshot or trip PDF. The JCA Extractor will instantly convert it into calendar-ready events.')
+            ->assertSeeText('Jeppesen Crew Access')
+            ->assertSeeText('Schedule Extractor')
+            ->assertSeeText('Upload a roster screenshot or trip PDF to instantly convert your schedule into calendar-ready events.')
+            ->assertSeeInOrder([
+                'Jeppesen Crew Access',
+                'Schedule Extractor',
+            ])
             ->assertSeeText('Extract Schedule');
 
         $this->get(route('parse.index'))
             ->assertOk()
             ->assertViewIs('dashboard')
             ->assertViewHas('viewModel')
-            ->assertSeeText('JCA Schedule Extractor')
+            ->assertSeeText('Jeppesen Crew Access')
+            ->assertSeeText('Schedule Extractor')
             ->assertSeeText('Extract Schedule');
     }
 

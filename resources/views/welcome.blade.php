@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>JCA Schedule Extractor</title>
+    <title>Jeppesen Crew Access Schedule Extractor</title>
 
     <preconnect href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
@@ -12,9 +12,14 @@
 </head>
 <body class="antialiased font-sans h-full flex flex-col justify-between">
 
-    <header class="max-w-7xl w-full mx-auto px-6 py-6 flex justify-between items-center">
-        <div class="text-xl font-bold tracking-wider text-indigo-400">
-            JCA SCHEDULE EXTRACTOR
+    <header class="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-8">
+        <div class="space-y-0.5">
+            <div class="text-xs font-bold uppercase tracking-widest text-indigo-400">
+                Jeppesen Crew Access
+            </div>
+            <h1 class="text-xl font-extrabold tracking-tight text-white sm:text-2xl">
+                Schedule Extractor
+            </h1>
         </div>
         <div>
             @if (Route::has('login'))
