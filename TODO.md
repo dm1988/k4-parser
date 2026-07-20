@@ -1,4 +1,6 @@
 # Current Task:
+## Change title - don't spell out JCA
+
 
 ## 1. ✅ Change "parser" verbage to "extract"
 - Reason: Action oriented tool names. Focuses on what the user does.
