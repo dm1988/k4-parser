@@ -11,7 +11,9 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 
+/** @property Carbon|null $email_verification_otp_expires_at */
 #[Fillable(['name', 'email', 'email_verified_at', 'password', 'remember_token', 'role', 'is_active', 'last_admin_login_at', 'stripe_id', 'pm_type', 'pm_last_four', 'trial_ends_at'])]
 #[Hidden(['password', 'remember_token', 'email_verification_otp_hash'])]
 class User extends Authenticatable implements FilamentUser, MustVerifyEmail
@@ -21,11 +23,6 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 
     use Notifiable;
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [

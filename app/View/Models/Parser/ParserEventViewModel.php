@@ -32,7 +32,7 @@ readonly class ParserEventViewModel
         $start = CarbonImmutable::parse($event['start']);
         $end = CarbonImmutable::parse($event['end']);
         $sameDay = $start->isSameDay($end);
-        $durationMinutes = $start->diffInMinutes($end);
+        $durationMinutes = (int) $start->diffInMinutes($end);
         $hours = intdiv($durationMinutes, 60);
         $minutes = $durationMinutes % 60;
         $eventType = ParserEventType::fromEvent($event);

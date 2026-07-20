@@ -3,8 +3,8 @@
 namespace App\Mappers;
 
 use App\DTOs\Flight;
-use App\Enums\ParserEventType;
 use App\Enums\MetadataKey;
+use App\Enums\ParserEventType;
 use Carbon\CarbonImmutable;
 
 final class FlightMapper
@@ -121,7 +121,7 @@ final class FlightMapper
         $start = CarbonImmutable::parse($startValue);
         $end = CarbonImmutable::parse($endValue);
         $sameDay = $start->isSameDay($end);
-        $durationMinutes = $start->diffInMinutes($end);
+        $durationMinutes = (int) $start->diffInMinutes($end);
         $hours = intdiv($durationMinutes, 60);
         $minutes = $durationMinutes % 60;
 
@@ -160,7 +160,6 @@ final class FlightMapper
     }
 
     /**
-     * @param mixed $values
      * @return list<string>
      */
     private function stringList(mixed $values): array

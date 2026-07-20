@@ -6,6 +6,7 @@ use App\Enums\ScheduleDocumentType;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Validation\ValidationException;
+use Intervention\Image\Encoders\JpegEncoder;
 use Intervention\Image\Laravel\Facades\Image;
 use Symfony\Component\Process\Process;
 use Throwable;
@@ -220,12 +221,12 @@ class ScheduleInputResolver
     private function prepareImageForOcr(string $sourcePath, string $optimizedPath): string
     {
         try {
-            $image = Image::read($sourcePath);
+            $image = Image::decodePath($sourcePath);
             $originalWidth = $image->width();
             $originalHeight = $image->height();
 
             if ($originalWidth < 1000 || $originalHeight < 800) {
-                $image->greyscale();
+                $image->grayscale();
 
                 if ($originalWidth < 400) {
                     $image->resize($originalWidth * 2, $originalHeight * 2);
@@ -234,7 +235,7 @@ class ScheduleInputResolver
                 $image->contrast(15);
             }
 
-            $image->toJpeg(quality: 85)->save($optimizedPath);
+            $image->encode(new JpegEncoder(quality: 85))->save($optimizedPath);
 
             return $optimizedPath;
         } catch (Throwable) {

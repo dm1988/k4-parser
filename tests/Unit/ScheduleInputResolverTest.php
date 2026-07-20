@@ -85,6 +85,21 @@ class ScheduleInputResolverTest extends TestCase
         $this->assertFileExists($sourcePath);
     }
 
+    public function test_it_passes_a_preprocessed_image_to_ocr(): void
+    {
+        config()->set('services.ocr.tesseract_path', $this->optimizedImageTesseractScript());
+
+        $before = $this->ocrTempFiles();
+        $file = UploadedFile::fake()->image('roster.png', 300, 200);
+        $sourcePath = $file->getRealPath();
+
+        $result = app(ScheduleInputResolver::class)->resolve($file, null);
+
+        $this->assertSame("Trip Information\nDuty Summary", $result['raw_text']);
+        $this->assertSame($before, $this->ocrTempFiles());
+        $this->assertFileExists($sourcePath);
+    }
+
     public function test_it_cleans_up_after_preprocessing_fallback_and_preserves_the_upload(): void
     {
         config()->set('services.ocr.tesseract_path', $this->successfulTesseractScript());
@@ -130,6 +145,17 @@ class ScheduleInputResolverTest extends TestCase
     private function successfulTesseractScript(): string
     {
         return $this->tesseractScript("#!/bin/sh\nprintf 'Trip Information\\nDuty Summary\\n'\n");
+    }
+
+    private function optimizedImageTesseractScript(): string
+    {
+        return $this->tesseractScript(<<<'SH'
+#!/bin/sh
+case "$1" in
+    */ocr-*) printf 'Trip Information\nDuty Summary\n' ;;
+    *) exit 1 ;;
+esac
+SH);
     }
 
     private function emptyTesseractScript(): string

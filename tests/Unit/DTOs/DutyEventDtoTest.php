@@ -62,4 +62,17 @@ class DutyEventDtoTest extends TestCase
         $this->assertSame('R2', $dto->activityCode);
         $this->assertSame(3, $dto->operatingCrewCount);
     }
+
+    public function test_it_truncates_partial_minutes_when_building_duration_labels(): void
+    {
+        $dto = app(DutyEventMapper::class)->fromCalendarEvent([
+            'title' => 'Duty CVG',
+            'type' => 'duty',
+            'start' => '2026-06-13T07:35:00+00:00',
+            'end' => '2026-06-13T08:35:59+00:00',
+        ]);
+
+        $this->assertNotNull($dto);
+        $this->assertSame('1h 0m', $dto->durationLabel);
+    }
 }

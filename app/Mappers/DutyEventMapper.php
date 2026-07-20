@@ -64,7 +64,7 @@ final class DutyEventMapper
         $utcStart = $start->setTimezone('UTC');
         $utcEnd = $end->setTimezone('UTC');
         $sameDay = $start->isSameDay($end);
-        $durationMinutes = $start->diffInMinutes($end);
+        $durationMinutes = (int) $start->diffInMinutes($end);
         $hours = intdiv($durationMinutes, 60);
         $minutes = $durationMinutes % 60;
 

@@ -69,6 +69,19 @@ class FlightDtoTest extends TestCase
         $this->assertNull($dto);
     }
 
+    public function test_it_truncates_partial_minutes_when_building_duration_labels(): void
+    {
+        $dto = app(FlightMapper::class)->fromCalendarEvent([
+            'title' => 'CKS 240 ICN-HKG',
+            'type' => 'flight',
+            'start' => '2026-06-15T23:45:00+00:00',
+            'end' => '2026-06-16T00:45:59+00:00',
+        ]);
+
+        $this->assertNotNull($dto);
+        $this->assertSame('1h 0m', $dto->durationLabel);
+    }
+
     public function test_it_builds_a_flight_dto_from_a_deadhead_event(): void
     {
         $dto = app(FlightMapper::class)->fromCalendarEvent([
