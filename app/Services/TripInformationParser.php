@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\DTOs\Flight;
+use App\Enums\CrewPosition;
 use App\Enums\ParserEventType;
 use App\Mappers\FlightMapper;
 use Illuminate\Support\Carbon;
@@ -302,7 +303,7 @@ class TripInformationParser
 
         if ($route = $this->extractFlightRoute($body)) {
             $flightNumber = $this->extractFlightNumber($body);
-            $position = $this->crewListParser->detectPosition($body);
+            $position = $this->extractFlightPosition($body);
             $aircraft = $this->detectAircraft($body);
             $tailNumber = $this->detectTailNumber($body);
             $flightAwareUrl = $tailNumber
@@ -311,7 +312,7 @@ class TripInformationParser
             $blockTime = $this->extractBlockTime($body);
             $dutyStation = $this->extractDutyStationFromLines($body);
             $dutyRawLines = $this->extractDutyRawLines($body);
-            $isDeadhead = (bool) preg_match('/\bDH\b/i', $joinedBody);
+            $isDeadhead = $position === CrewPosition::Deadhead->value;
             $commercialDeadhead = $this->resolveCommercialDeadhead($flightNumber, $isDeadhead);
             $flightNumber = $commercialDeadhead['flight_number'];
             $crewSummary = $this->crewListParser->parseWithSummary($body);
@@ -702,6 +703,34 @@ class TripInformationParser
                     'origin' => $matches[1],
                     'destination' => $matches[2],
                 ];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  list<string>  $lines
+     */
+    private function extractFlightPosition(array $lines): ?string
+    {
+        foreach ($lines as $index => $line) {
+            if (preg_match(
+                '/\b[A-Z]{3}\s*-\s*[A-Z]{3}\s*\|\s*('.CrewPosition::regexPattern().')\b/i',
+                $line,
+                $matches,
+            ) === 1) {
+                return strtoupper($matches[1]);
+            }
+
+            if (preg_match('/\b[A-Z]{3}\s*-\s*[A-Z]{3}\b/', $line) !== 1) {
+                continue;
+            }
+
+            $position = CrewPosition::tryFrom(strtoupper(trim($lines[$index + 1] ?? '')));
+
+            if ($position !== null) {
+                return $position->value;
             }
         }
 

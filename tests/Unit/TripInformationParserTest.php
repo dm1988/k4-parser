@@ -103,4 +103,52 @@ TEXT;
         $this->assertSame('13Jun2026', $trip['roster_range']);
         $this->assertSame([], $parsed['calendar_events']);
     }
+
+    public function test_a_deadheading_crew_member_does_not_mark_an_operating_assignment_as_deadhead(): void
+    {
+        $text = <<<'TEXT'
+Jul 23 15:35 - Jul 23 18:05
+@ K4 255 Pos AC Block Nn
+JFK - CVG | AFO 77X 2:30h
+Tail id N794CK Leg LT
+Jul 23 15:35 - Jul 23 18:05
+Duty LT Jul 23 10:10 - Jul 23 18:35 Customer DHL 777 NET
+Catering Ordered
+Crew list
+Name Crew Pos Base
+x Adam Spencer 70853 CP TYS
+x Cameron Stovold 71835 FO LAX
+Ww Anthony Sabanski 73511 DH JAX
+Ww Tiyal Bell 4325 OB CLD
+* David Gonzalez 72860 AFO NUS
+TEXT;
+
+        $parsed = app(TripInformationParser::class)->parse($text);
+        $event = $parsed['calendar_events'][0];
+
+        $this->assertSame('flight', $event['type']);
+        $this->assertSame('AFO', $event['metadata']['position']);
+        $this->assertFalse($event['metadata']['deadhead']);
+        $this->assertSame(5, $event['metadata']['crew_count']);
+        $this->assertSame(4, $event['metadata']['operating_crew_count']);
+        $this->assertSame(1, $event['metadata']['deadheading_crew_count']);
+        $this->assertSame('Ww Anthony Sabanski', $event['metadata']['crew'][2]['name']);
+        $this->assertTrue($event['metadata']['crew'][2]['deadheading']);
+    }
+
+    public function test_a_deadhead_assignment_is_classified_from_its_flight_position(): void
+    {
+        $text = <<<'TEXT'
+Jul 23 15:35 - Jul 23 18:05
+K4 255
+JFK - CVG | DH 77X 2:30h
+TEXT;
+
+        $parsed = app(TripInformationParser::class)->parse($text);
+        $event = $parsed['calendar_events'][0];
+
+        $this->assertSame('deadhead', $event['type']);
+        $this->assertSame('DH', $event['metadata']['position']);
+        $this->assertTrue($event['metadata']['deadhead']);
+    }
 }
