@@ -85,6 +85,7 @@ class ScheduleExtractor extends Component
             is_array($validated['eventTypes'] ?? null) ? $validated['eventTypes'] : [],
             static fn (mixed $eventType): bool => is_string($eventType),
         ));
+        $this->eventTypes = $eventTypes;
         $sourceType = $this->resolveSourceType($file);
 
         try {

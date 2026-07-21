@@ -8,28 +8,10 @@ Replace the current request → controller → redirect parser workflow with a s
 Use Livewire for server state, validation, parsing, and rendering. Use Alpine only for small browser-side interactions within each view.
 
 # Current Task - phase 2 fixes:
-
-## Public $view can be tampered with
-
-- [x] Locked the server-owned `view` property against client-side updates.
-- [x] Added regression coverage for rejected client mutation while retaining server-side action transitions.
-
-Unlike $parseKey, this property is not locked:
-
-public string $view = self::VIEW_UPLOAD;
-
-A client could set it to any string. That is not a severe security issue, but it can create invalid UI state.
-
-Add a method for transitions and validate before render, or lock it if Alpine/client updates are unnecessary:
-
-#[Locked]
-public string $view = self::VIEW_UPLOAD;
-
-Livewire actions can still change a locked property server-side.
-
-That fits your architecture because Livewire—not the browser—owns the active page state.
-
 ## eventTypes is not normalized after validation
+
+- [x] Assigned the validated, filtered, and reindexed event types back to Livewire's public state.
+- [x] Added coverage proving sparse input indexes are normalized before results render and cache filters are stored.
 
 You derive a local normalized array:
 

@@ -143,17 +143,18 @@ class ScheduleExtractorTest extends TestCase
         Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
             ->set('text', 'Roster text')
-            ->set('eventTypes', ['duty'])
+            ->set('eventTypes', [2 => 'duty', 7 => 'flight'])
             ->call('parseRoster')
             ->assertHasNoErrors()
             ->assertNoRedirect()
             ->assertSet('view', 'results')
+            ->assertSet('eventTypes', ['duty', 'flight'])
             ->assertSee('Pasted text duty')
             ->assertSee('Download all (.ics)');
 
         $latest = app(ParserResultCache::class)->latest();
         $this->assertNotNull($latest);
-        $this->assertSame(['duty'], $latest->filters);
+        $this->assertSame(['duty', 'flight'], $latest->filters);
     }
 
     public function test_it_parses_a_pdf_temporary_upload_with_a_local_real_path(): void
