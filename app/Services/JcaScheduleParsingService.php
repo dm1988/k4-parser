@@ -118,7 +118,9 @@ class JcaScheduleParsingService
             meta: is_array($source['meta'] ?? null) ? $source['meta'] : [],
         );
 
-        $this->parserResultCache->put($result);
+        if (($result->parsed['calendar_events'] ?? []) !== []) {
+            $this->parserResultCache->put($result);
+        }
 
         return [
             'parsed' => $parsed,

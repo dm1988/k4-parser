@@ -35,7 +35,7 @@ class ParserLifecycleBaselineTest extends TestCase
                 'meta' => ['page_count' => 2],
             ],
         );
-        $this->mockParsedResult(ScheduleDocumentType::PublishedRoster->value, []);
+        $this->mockParsedResult(ScheduleDocumentType::PublishedRoster->value, [$this->calendarEvent()]);
 
         $response = $this->actingAs(User::factory()->create())->post(route('parse.roster'), [
             'file' => $file,
@@ -69,7 +69,7 @@ class ParserLifecycleBaselineTest extends TestCase
                 'meta' => null,
             ],
         );
-        $this->mockParsedResult(null, []);
+        $this->mockParsedResult(null, [$this->calendarEvent()]);
 
         $response = $this->actingAs(User::factory()->create())->post(route('parse.roster'), [
             'file' => $file,
@@ -151,7 +151,7 @@ class ParserLifecycleBaselineTest extends TestCase
         $this->assertSame('failed', ParseRequest::query()->latest('id')->firstOrFail()->status);
     }
 
-    public function test_successful_empty_parse_replaces_the_latest_result_and_renders_the_empty_state(): void
+    public function test_successful_empty_parse_preserves_the_latest_successful_result(): void
     {
         $user = User::factory()->create();
         $previousResult = $this->cacheResult('01JPREVIOUSPARSEKEY1234', 'Previous result');
@@ -175,12 +175,12 @@ class ParserLifecycleBaselineTest extends TestCase
 
         $latest = app(ParserResultCache::class)->latest();
         $this->assertNotNull($latest);
-        $this->assertNotSame($previousResult->parseKey, $latest->parseKey);
-        $this->assertSame([], $latest->parsed['calendar_events']);
+        $this->assertSame($previousResult->parseKey, $latest->parseKey);
 
         $this->get(route('parse.index'))
             ->assertOk()
-            ->assertSeeText('No calendar events matched the current filters.');
+            ->assertSeeText('Previous result')
+            ->assertDontSeeText('No calendar events matched the current filters.');
     }
 
     public function test_parser_exports_return_not_found_for_unknown_parse_and_event_keys(): void
@@ -266,5 +266,17 @@ class ParserLifecycleBaselineTest extends TestCase
         app(ParserResultCache::class)->put($result);
 
         return $result;
+    }
+
+    /** @return array<string, mixed> */
+    private function calendarEvent(): array
+    {
+        return [
+            'title' => 'Duty',
+            'type' => 'duty',
+            'start' => '2026-06-13T14:00:00+00:00',
+            'end' => '2026-06-13T16:00:00+00:00',
+            'metadata' => [],
+        ];
     }
 }

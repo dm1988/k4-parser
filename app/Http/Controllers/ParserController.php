@@ -11,7 +11,6 @@ use App\Http\Requests\ParseRosterRequest;
 use App\Services\JcaScheduleParsingService;
 use App\Services\ParserCalendarExportService;
 use App\Services\ParserResultCache;
-use App\View\Models\Parser\ParserPageViewModel;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -39,9 +38,7 @@ class ParserController extends Controller
 
     private function parserPage(): View
     {
-        return view('dashboard', [
-            'viewModel' => $this->parserPageViewModel(),
-        ]);
+        return view('dashboard');
     }
 
     public function parseFlight(ParseFlightRequest $request): RedirectResponse
@@ -126,14 +123,6 @@ class ParserController extends Controller
         }
 
         return $sessionResult;
-    }
-
-    private function parserPageViewModel(): ParserPageViewModel
-    {
-        return ParserPageViewModel::fromResult(
-            $this->parserResultCache->latest(),
-            session()->getOldInput(),
-        );
     }
 
     private function handleParseAction(

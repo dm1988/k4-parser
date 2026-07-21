@@ -180,20 +180,36 @@ Before changing behavior, add or confirm feature coverage for:
 
 ---
 
-# Phase 2: Add Livewire Roster Parsing
+# Phase 2: Add Livewire Roster Extracting
 
 Migrate only the main roster parser in this phase.
 
 Do not migrate flight or hotel parsing yet.
 
+## Status: Complete
+
+Completed on 2026-07-21.
+
+* Added the class-based `App\Livewire\ScheduleExtractor` component with local temporary upload support.
+* Moved visible roster validation, parsing, loading state, error rendering, cache restoration, and upload/results transitions into Livewire.
+* Kept public component state limited to form values, view state, and a locked parse key; result view models are rebuilt from `ParserResultCache` during rendering.
+* Added explicit authentication, verification, feature, and gate enforcement to component actions.
+* Preserved the roster controller POST route as a rollback path and left flight, hotel, and calendar export routes unchanged.
+* Kept calendar downloads as normal controller-backed GET links.
+* Added “Extract another roster” without clearing the latest successful cached result or selected filters.
+* Empty parses now stay on upload with a visible error and do not replace the latest successful result.
+* Removed the obsolete Alpine parser submit-state module after replacing it with Livewire upload/action loading state.
+* Verified Pint, the frontend production build, 75 parser regression tests with 521 assertions, and the full suite with 258 tests and 1,462 assertions.
+* Larastan reports only the five pre-existing findings already tracked under “Resolve Larastan findings”; no new Phase 2 finding was introduced.
+
 ## Component
 
 Create one Livewire component for the parser page.
 
-Use project naming conventions. A suitable name would be:
+Planned future reword from Parser to Extractor. Use:
 
 ```text
-App\Livewire\ScheduleParser
+App\Livewire\ScheduleExtractor
 ```
 
 The page should render the Livewire component from the existing dashboard route.
