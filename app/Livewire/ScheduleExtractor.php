@@ -123,6 +123,16 @@ class ScheduleExtractor extends Component
         $this->resetValidation();
     }
 
+    public function updatedFile(): void
+    {
+        $this->resetValidation('file');
+    }
+
+    public function updatedText(): void
+    {
+        $this->resetValidation('text');
+    }
+
     public function extractAnotherRoster(): void
     {
         $this->authorizedUser();
