@@ -254,7 +254,14 @@ class ScheduleExtractorTest extends TestCase
         Livewire::actingAs(User::factory()->admin()->create())
             ->test(ScheduleExtractor::class)
             ->call('parseRoster')
-            ->assertNotFound();
+            ->assertForbidden();
+
+        Config::set('features.schedule_parser', ['for_all_users' => true]);
+
+        Livewire::actingAs(User::factory()->admin()->create())
+            ->test(ScheduleExtractor::class)
+            ->call('parseRoster')
+            ->assertForbidden();
 
         Config::set('features.schedule_parser.enabled', true);
         Config::set('features.schedule_parser.for_all_users', false);

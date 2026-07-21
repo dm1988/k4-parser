@@ -69,7 +69,7 @@ class ScheduleExtractor extends Component
 
     public function parseRoster(): void
     {
-        $user = $this->authorizeParserAction();
+        $user = $this->authorizedUser();
 
         $validated = $this->validate($this->rules(), $this->messages());
         $file = ($validated['file'] ?? null) instanceof UploadedFile
@@ -125,7 +125,7 @@ class ScheduleExtractor extends Component
 
     public function extractAnotherRoster(): void
     {
-        $this->authorizeParserAction();
+        $this->authorizedUser();
 
         $this->view = self::VIEW_UPLOAD;
         $this->resetRosterForm();
@@ -183,16 +183,11 @@ class ScheduleExtractor extends Component
         $this->resetValidation();
     }
 
-    private function authorizeParserAction(): User
+    private function authorizedUser(): User
     {
-        if (! config('features.schedule_parser.enabled', true)) {
-            abort(404);
-        }
-
         $user = auth()->user();
 
         abort_unless($user instanceof User, 401);
-        abort_unless($user->hasVerifiedEmail(), 403);
 
         Gate::authorize('use-schedule-parser');
 

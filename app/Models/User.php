@@ -77,9 +77,13 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 
     public function canUseScheduleParser(): bool
     {
+        if (! $this->hasVerifiedEmail()) {
+            return false;
+        }
+
         return $this->canUseConfiguredFeature(
-            enabled: (bool) config('features.schedule_parser.enabled', true),
-            forAllUsers: (bool) config('features.schedule_parser.for_all_users', true),
+            enabled: (bool) config('features.schedule_parser.enabled', false),
+            forAllUsers: (bool) config('features.schedule_parser.for_all_users', false),
         );
     }
 
