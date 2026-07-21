@@ -2,10 +2,9 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\ParserEventType;
+use App\Validation\ParserValidationRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class ParseRosterRequest extends FormRequest
 {
@@ -16,12 +15,7 @@ class ParseRosterRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,bmp,tif,tiff,webp', 'max:12288', 'required_without:text'],
-            'text' => ['nullable', 'string', 'required_without:file'],
-            'event_types' => ['nullable', 'array'],
-            'event_types.*' => [Rule::in(ParserEventType::filterValues())],
-        ];
+        return ParserValidationRules::rosterRules();
     }
 
     /**
@@ -29,10 +23,6 @@ class ParseRosterRequest extends FormRequest
      */
     public function messages(): array
     {
-        return [
-            'file.required_without' => 'Please provide either roster text or an uploaded file.',
-            'text.required_without' => 'Please provide either roster text or an uploaded file.',
-            'event_types.*.in' => 'The selected event type is invalid.',
-        ];
+        return ParserValidationRules::rosterMessages();
     }
 }

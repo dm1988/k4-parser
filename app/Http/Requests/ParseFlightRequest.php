@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Validation\ParserValidationRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -14,9 +15,7 @@ class ParseFlightRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'text' => ['required', 'string'],
-        ];
+        return ParserValidationRules::textRules();
     }
 
     /**
@@ -24,8 +23,6 @@ class ParseFlightRequest extends FormRequest
      */
     public function messages(): array
     {
-        return [
-            'text.required' => 'Please provide some text to parse.',
-        ];
+        return ParserValidationRules::textMessages();
     }
 }

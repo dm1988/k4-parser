@@ -92,6 +92,16 @@ This prevents both substantial views from remaining rendered in the DOM and keep
 
 Do not change the existing request lifecycle during this phase.
 
+## Status: Complete
+
+Completed on 2026-07-21.
+
+* Confirmed the existing `components/parser/form.blade.php` and `components/parser/result.blade.php` files already provide the required upload/results separation; no markup move was necessary.
+* Added `ParserValidationRules` as the shared, HTTP-independent validation definition used by all three existing Form Requests.
+* Added HTTP upload, lifecycle retention, empty-result, export failure, authentication, verification, tab behavior, and cross-user parse-key characterization coverage.
+* Preserved all controller actions, routes, redirects, old-input behavior, cache behavior, export links, and Blade markup.
+* Verified with Pint and the parser-filtered test suite: 75 tests passed with 521 assertions.
+
 ## Tasks
 
 1. Use the completed audit inventory instead of repeating discovery.
