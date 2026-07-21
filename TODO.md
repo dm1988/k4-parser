@@ -18,10 +18,12 @@
 ## 🎯 Goal
 
 
-## 2. Refactor to 2 views
+## 2. Schedule Parser:Refactor to 2 views
 - First view is for uploading
-- 2nd is for results
+- 2nd is for displaying extracted results
 - Have a primary button "Extract another roster". Leads to first view
+- Use livewire and AlpineJS to create a single page
+- Prefer Alpine JS x-show=" syntax over blade conditionals
 
 ## 3. ✅ Spell out Jeppesen Crew Access
 - Should use JCA acryonm only after spelling out Jeppesen Crew Access
@@ -62,71 +64,76 @@
 
 ## 8. Install laravel debug bar
 
+## Prep for rename
+- Rename ParserEventType Enum to ScheduleEventType.php
+- Add 2 folders in Enum: Schedule and 
+
 ## 9. Organize services
 - Create directory framework
-mkdir -p Services/{Roster/Parsers,FlightPlan/Parsers,Calendar,Infrastructure}
-
+  cd app/Services
+  mkdir -p Services/{Schedule/ Extractor,FlightPlan/ Extractor,Calendar,Infrastructure}
 - Move files:
-    - Roster Domain
-    git mv Parsers/JcaScheduleParsingService.php Roster/JcaRosterProcessor.php
-    git mv ScheduleInputResolver.php Roster/ScheduleInputResolver.php
-    git mv Extractors/SchedulePdfExtractor.php Roster/PdfTextExtractor.php
-    git mv Parsers/CrewListParser.php Roster/Parsers/CrewListParser.php
-    git mv Parsers/PublishedRosterParser.php Roster/Parsers/PublishedRosterParser.php
-    git mv Parsers/ScheduleFormatParser.php Roster/Parsers/ScheduleFormatParser.php
-    git mv Parsers/TripInformationParser.php Roster/Parsers/TripInformationParser.php
+  - Schedule Domain
+  git mv Parsers/JcaScheduleParsingService.php Schedule/JcaScheduleProcessor.php
+  git mv ScheduleInputResolver.php Schedule/ScheduleInputResolver.php
+  git mv Extractors/SchedulePdfExtractor.php Schedule/PdfTextExtractor.php
+  git mv Parsers/CrewListParser.php Schedule/ Extractor/CrewListParser.php
+  git mv Parsers/PublishedRosterParser.php Schedule/Extractor/PublishedRosterParser.php
+  git mv Parsers/ScheduleFormatParser.php Schedule/Extractor/ScheduleFormatParser.php
+  git mv Parsers/TripInformationParser.php Schedule/Extractor/TripInformationParser.php
 
-    - FlightPlan Domain
-    git mv Extractors/FlightRouteExtractor.php FlightPlan/Parsers/FlightRouteParser.php
-    - Note: Create your FlightReleaseProcessor.php entry point here if it's new
+  - FlightPlan Domain
+  git mv Extractors/FlightRouteExtractor.php FlightPlan/Extractor/FlightRouteExtractor.php
+  - Note: Create your FlightReleaseProcessor.php entry point here if it's new
 
-    - Calendar Domain
-    git mv Calendar/IcsCalendarService.php Calendar/IcsGenerator.php
-    git mv Calendar/FlightDutyCalendarEventService.php Calendar/RosterCalendarMapper.php
-    git mv Calendar/ParserCalendarExportService.php Calendar/ExportPayloadService.php
+  - Calendar Domain
+  git mv Calendar/IcsCalendarService.php Calendar/IcsGenerator.php
+  git mv Calendar/FlightDutyCalendarEventService.php Calendar/FlightDutyEvent.php
+  git mv Calendar/ParserCalendarExportService.php Calendar/ExportPayload.php
 
-    - Clients (Keep folder, fix name)
-    git mv Clients/AirlineCodeLookup.php Clients/AirlineCodeLookupClient.php
+  - Clients (Keep folder, fix name)
+  git mv Clients/AirlineCodeLookup.php Clients/AirlineCodeLookupClient.php
 
-    - Infrastructure
-    git mv Infrastructure/ParseRequestLogger.php Infrastructure/PipelineLogger.php
-    git mv Infrastructure/ParserResultCache.php Infrastructure/EngineResultCache.php
+  - Infrastructure
+  git mv Infrastructure/ParseRequestLogger.php Infrastructure/ScheduleRequestLogger.php
+  git mv Infrastructure/ParserResultCache.php Infrastructure/EngineResultCache.php
 
 - Clean up legacy directories
-    - rmdir Parsers Extractors
+  - find Parsers Extractors -type f
+  - rmdir Parsers Extractors
 - Update namespaces and references
-- Fix Service Provider bindings and Controllers:Step 
+- Fix service-provider bindings and controllers
 - Run a global search in your IDE for App\Services\. Update any locations where these classes were typed, imported (use), or bound in your AppServiceProvider.php.
 - Flush cache
 - Test
 
 app/Services/
-├── Roster/
-│   ├── JcaRosterProcessor.php      # (Was JcaScheduleParsingService) Coordinates
+├── Schedule/
+│   ├── JcaScheduleProcessor.php      # (Was JcaScheduleParsingService) Coordinates
 │   ├── ScheduleInputResolver.php   # Deals directly with raw inputs/requests
-│   ├── PdfTextExtractor.php        # (Was SchedulePdfExtractor) Low-level PDF tool
-│   └── Parsers/                    # Internal text sub-parsers used by the engine
+│   └── Extractor/                    # Internal text sub-parsers used by the engine
 │       ├── CrewListParser.php
+│       ├── PdfTextExtractor.php   # (Was SchedulePdfExtractor) Low-level PDF tool
 │       ├── PublishedRosterParser.php
 │       ├── ScheduleFormatParser.php
 │       └── TripInformationParser.php
 │
 ├── FlightPlan/
 │   ├── FlightReleaseProcessor.php      # Main entry point for the route engine
-│   └── Parsers/
-│       └── FlightRouteParser.php       # (Was FlightRouteExtractor) text parser
+│   └──  Extractor/
+│       └── FlightRouteExtractor.php       # text parser
 │
 ├── Calendar/
 │   ├── IcsGenerator.php  # (Was IcsCalendarService) Handles raw .ics payload syntax
-│   ├── RosterCalendarMapper.php        # (Was FlightDutyCalendarEventService) Maps roster lines to standard objects
-│   └── ExportPayloadService.php        # (Was ParserCalendarExportService) Wraps data ready for client delivery
+│   ├── FlightDutyEvent.php   # Was FlightDutyCalendarEventService
+│   └── ExportPayload.php        # (Was ParserCalendarExportService) Wraps data ready for client delivery
 │
 ├── Clients/
 │   ├── AirportLookupClient.php
 │   └── AirlineCodeLookupClient.php     # Fixed name consistency (Added "Client")
 │
 └── Infrastructure/
-    ├── PipelineLogger.php              # (Was ParseRequestLogger)
+    ├── ScheduleRequestLogger.php              # (Was ParseRequestLogger)
     └── EngineResultCache.php           # (Was ParserResultCache)
 
 ## 10. Use a descriptive footer disclaimer in Parse schedule tool:
