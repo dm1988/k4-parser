@@ -13,6 +13,26 @@ Use Livewire for server state, validation, parsing, and rendering. Use Alpine on
 
 Implement this refactor incrementally. Each phase must leave the parser functional and testable.
 
+Audit reference:
+
+```text
+.ai/refactors/livewire-schedule-parser-audit.md
+```
+
+The audit is complete. Treat its confirmed findings as the baseline for this plan. Resolve its blockers before changing cache ownership, upload storage, flight/hotel consumers, or zero-event replacement behavior.
+
+## Confirmed baseline
+
+* Laravel 13.15 and Livewire 4.3 are installed.
+* The repository has no application-authored Livewire or Volt component; use a class-based component under `App\Livewire` and PHPUnit `Livewire::test(...)` conventions.
+* Both `/dashboard` and `/parse` currently restore the latest cached parser result and render the same `dashboard` view.
+* Validation failures and `ParseSourceResolutionException` leave the previous successful cached result intact.
+* A successful parse with zero events currently replaces the latest result and renders the empty-result state.
+* `TemporaryUploadedFile` extends `Illuminate\Http\UploadedFile`, but the parser requires a real local path. Local temporary uploads are compatible; S3/non-local temporary uploads are not compatible without an explicit adapter or service change.
+* Flight and hotel POST endpoints exist and are tested, but no flight or hotel form exists in the rendered parser Blade views.
+* Parser results are session-latest, but exports can fall back to a global parse-key cache entry. Parse keys currently behave as bearer identifiers and are not checked against user ownership.
+* Two tabs in one browser session share `latest_parse_key`; existing export links remain parse-scoped because they include `parse_key`.
+
 ---
 
 # Implementation Rules
@@ -74,15 +94,16 @@ Do not change the existing request lifecycle during this phase.
 
 ## Tasks
 
-1. Inspect `dashboard.blade.php`.
-2. Document every value it reads from `ParserPageViewModel`.
-3. Split the existing markup into separate partials or Blade components:
+1. Use the completed audit inventory instead of repeating discovery.
+2. Add the missing baseline and characterization tests listed below.
+3. Extract parser validation rules and messages into an HTTP-independent shared provider while keeping all three Form Requests as HTTP adapters.
+4. Split the existing markup into separate partials or Blade components:
 
    * Upload form
    * Results display
    * Shared parser messages, when applicable
-4. Continue rendering both partials through the existing controller-provided view model.
-5. Preserve all current form actions, routes, validation output, and export links.
+5. Continue rendering both partials through the existing controller-provided view model.
+6. Preserve all current form actions, routes, validation output, old-input behavior, cache restoration, and export links.
 
 Suggested structure:
 
@@ -90,11 +111,12 @@ Suggested structure:
 resources/views/
 ├── dashboard.blade.php
 └── components/parser/
-    ├── upload-form.blade.php
-    └── results.blade.php
+    ├── form.blade.php
+    ├── result.blade.php
+    └── status-messages.blade.php
 ```
 
-Adapt the location to existing project conventions.
+The existing `components/parser/form.blade.php` and `components/parser/result.blade.php` are already coherent boundaries. Do not rename or split the nested event/flight card components merely to satisfy this phase. Extract shared status markup only when the change is mechanical and behavior-neutral.
 
 ## View-model inventory
 
@@ -119,17 +141,23 @@ Do not redesign `ParserPageViewModel` in this phase unless splitting the view ex
 
 Before changing behavior, add or confirm feature coverage for:
 
-* PDF roster submission
-* Image roster submission
+* Actual supported PDF upload through the roster HTTP endpoint
+* Actual supported image upload through the roster HTTP endpoint
 * Pasted roster submission
 * Invalid or empty submission
-* Parse-source resolution failure
+* Parse-source resolution failure, old-input restoration, and prior-result retention
+* Non-source parser exception and prior-result retention
 * Successful result rendering
+* Successful zero-event result replacement and empty-state rendering
 * Full-calendar export
 * Individual-event export
 * Flight-duty export
 * Flight parse submission
 * Hotel parse submission
+* Missing/expired parse keys and unknown event IDs returning 404
+* Authentication and email verification for parser POST and export routes
+* Two-tab latest-result behavior
+* Two-session/user global parse-key access as a security characterization test
 
 ## Phase 1 completion criteria
 
@@ -137,6 +165,7 @@ Before changing behavior, add or confirm feature coverage for:
 * Upload and results markup are separated.
 * Existing POST parsing routes remain active.
 * Existing controller methods remain active.
+* The three Form Requests and the future Livewire component can consume one shared validation definition without the component depending on an HTTP Form Request.
 * Existing tests pass.
 
 ---
@@ -168,16 +197,12 @@ public string $view = 'upload';
 
 public $file = null;
 
-public string $text = [];
+public string $text = '';
 
 /** @var array<int, string> */
 public array $eventTypes = [];
-```
 
-Correct the `text` property to a string during implementation:
-
-```php
-public string $text = '';
+public ?string $parseKey = null;
 ```
 
 Supported view values:
@@ -191,28 +216,23 @@ Prefer constants or an enum only when that matches existing project conventions.
 
 ## Parsed-result state
 
-Before storing `ParserPageViewModel` as a public Livewire property, inspect whether it is safely serializable.
-
 Do not place arbitrary service objects, response objects, collections with unsupported values, or non-Wireable DTOs in public Livewire state.
 
-Use one of these approaches:
+Rebuild the display data from `ParserResultCache` during rendering. Store only simple arrays and scalar identifiers in Livewire state.
 
-1. Rebuild the view model from `ParserResultCache` during rendering.
-2. Store only simple arrays and scalar identifiers in Livewire state.
-3. Make the DTO explicitly Livewire-compatible if the project already follows that pattern.
+The audit confirmed that `ParserResultViewModel::$events` is a heterogeneous list of DTOs/view models, export URLs are route-derived, airport information is service-enriched, and raw JSON may be large. Do not expose `ParserPageViewModel`, `ParserResultViewModel`, event DTOs, mapper objects, service objects, or raw JSON as mutable public Livewire state.
 
-Prefer rebuilding the display data from the cache unless there is a clear performance reason not to.
+Store only simple form values, transient status, the active view, and a locked/current parse-key scalar. Resolve `ParserResultData` through `ParserResultCache` and rebuild render-only view models on the server.
 
 ## Initialization behavior
 
 On component mount:
 
 * Read the latest cached result.
-* Default to the upload view unless the existing page intentionally restores the latest results.
-* Preserve existing old-input behavior only where still relevant.
+* Open the results view when the current session has a restorable latest cached result, matching current page behavior.
+* Otherwise open the upload view.
+* Initialize selected event types from the cached result filters when no Livewire form state exists, matching the current view-model fallback.
 * Do not clear a previous successful result merely by visiting or refreshing the page.
-
-Codex must inspect current behavior before choosing whether an existing cached result initially opens the results view.
 
 ## Roster parse action
 
@@ -244,6 +264,8 @@ The Livewire action must:
 8. Convert `ParseSourceResolutionException` errors into Livewire validation errors.
 9. Keep `$view` set to `upload` when validation or parsing fails.
 10. Change `$view` to `results` only after parsing and cache persistence succeed.
+11. Keep the previous successful parse key/result available when a later validation or parsing attempt fails.
+12. Preserve the current behavior that a completed zero-event parse is a successful replacement unless that product decision is explicitly changed before implementation.
 
 Do not duplicate parsing, logging, execution tracking, or cache-storage logic inside the Livewire component.
 
@@ -254,6 +276,12 @@ Start with validation rules equivalent to `ParseRosterRequest`.
 Prefer sharing validation rules between the Form Request and Livewire rather than maintaining two independent rule sets.
 
 A shared rules object, validator class, or static rules method may be introduced when it improves clarity. Do not make the Livewire component instantiate or depend directly on an HTTP Form Request.
+
+Preferred Phase 1 location:
+
+```text
+app/Validation/ParserValidationRules.php
+```
 
 Preserve:
 
@@ -277,6 +305,10 @@ Confirm that:
 * Upload limits match PHP, web-server, Laravel, and Livewire configuration.
 
 Do not permanently store the same file twice.
+
+Before implementation, confirm the production value of the Livewire temporary upload disk. The repository default is local and compatible. If production uses S3 or another non-local disk, stop and revise the plan: `ScheduleInputResolver` and `ParseRequestLogger` require `getRealPath()` to identify an actual local file.
+
+Do not change the existing upload-related service contracts as part of the basic Livewire migration.
 
 ## Results rendering
 
@@ -308,10 +340,10 @@ Its Livewire action should:
 
 For event-type selections, preserve the existing defaults. Codex should inspect current behavior and choose one of these explicitly:
 
-* Restore default event-type selections
-* Preserve the user’s most recent selections
+* Preserve the latest successful result's filters when returning to upload, matching the current page fallback.
+* Use an empty array only when there is no prior result/filter state.
 
-Do not silently reset event types to an empty array unless that is the existing default.
+Do not silently reset event types to an empty array when a cached result has filters.
 
 Returning to the upload view must not delete the previous cached result. The cache should be replaced only after a later parse succeeds.
 
@@ -350,13 +382,15 @@ Add Livewire tests for:
 * Remaining on upload after failure
 * Switching to results after success
 * Rendering expected parsed data
-* Rendering warnings
+* Rendering source, event summary, empty state, flights, and hotels
 * Rendering export URLs
 * “Extract another roster” returning to upload
 * Form state resetting correctly
 * Previous cached result surviving form reset
 * Failed second parse not destroying the previous successful result
 * Authorization and feature middleware behavior
+* Component action authorization, including direct Livewire action calls
+* Local `TemporaryUploadedFile` compatibility
 
 ## Phase 2 completion criteria
 
@@ -370,54 +404,155 @@ Add Livewire tests for:
 
 ---
 
-# Phase 3: Migrate Flight and Hotel Parsing
+# Phase 3: Investigate Flight and Hotel Parsing Consumers
 
 Only begin after Phase 2 is stable.
 
-## Tasks
+The purpose of this phase is to determine whether `parseFlight()` and `parseHotel()` should be migrated to Livewire, preserved as controller endpoints, or removed as obsolete functionality.
 
-Move these controller actions into the Livewire component:
+Do not assume they belong in the Schedule Parser Livewire component.
+
+## Investigation Tasks
+
+Before modifying either endpoint:
+
+1. Search the repository for all references to:
+
+   * The flight and hotel route names
+   * Their route URLs
+   * `ParserController::parseFlight()`
+   * `ParserController::parseHotel()`
+   * HTTP requests targeting either endpoint
+
+2. Determine whether each endpoint is used by:
+
+   * Blade views
+   * JavaScript
+   * Alpine
+   * Livewire
+   * Apple Shortcuts
+   * External or programmatic clients
+   * Automated tests only
+   * No active consumer
+
+3. Review the related Form Requests and tests to determine:
+
+   * Expected request format
+   * Authentication and authorization requirements
+   * Validation behavior
+   * Response behavior
+   * Whether the endpoints are intended as internal UI actions or external interfaces
+
+4. Document the confirmed consumer and intended purpose of each endpoint before changing it.
+
+## Decision Rules
+
+Apply the following rules independently to `parseFlight()` and `parseHotel()`.
+
+### Migrate to Livewire
+
+Move the action into the `ScheduleParser` Livewire component only when:
+
+* There is an existing user-facing form or workflow on the parser page, or
+* A new parser-page workflow is explicitly required by the product scope.
+
+The Livewire action must preserve the behavior currently provided by its corresponding Form Request and controller action.
+
+### Preserve as a controller endpoint
+
+Keep the existing POST route and controller action when:
+
+* It supports Apple Shortcuts
+* It supports an external or programmatic client
+* It is intentionally used as an HTTP endpoint
+* Its consumer should not depend on the browser-based Livewire interface
+
+Do not replace a programmatic endpoint with a Livewire-only action.
+
+### Remove as obsolete
+
+Remove the route, controller action, Form Request, and related code only when:
+
+* Repository searches find no active consumer
+* The endpoint is not a documented or supported external interface
+* Tests are the only remaining references
+* Removal is confirmed to be intentional
+
+Do not infer that an endpoint is obsolete merely because no Blade form currently uses it.
+
+## Conditional Livewire Migration
+
+When an endpoint is confirmed to belong in the parser-page UI, migrate it using a dedicated Livewire action:
 
 ```php
-parseFlight()
-parseHotel()
+public function parseFlight(): void
 ```
 
-Each Livewire action must preserve the behavior currently provided by its corresponding Form Request and controller action.
+or:
 
-Refactor shared execution logic only after all three Livewire actions are visible and duplication is clear.
+```php
+public function parseHotel(): void
+```
+
+Each action must:
+
+* Use the existing application services
+* Preserve current validation rules and messages
+* Preserve user attribution
+* Preserve parser execution tracking
+* Handle `ParseSourceResolutionException`
+* Keep the upload view active after failure
+* Switch to the results view only after success
+* Preserve the latest successful cached result when parsing fails
+
+## Shared Execution Logic
+
+Refactor shared component logic only after the roster, flight, and hotel workflows that actually belong in Livewire have been implemented.
 
 A private method may centralize:
 
 * Calling `HandleParseExecution`
 * Handling `ParseSourceResolutionException`
-* Refreshing cached result state
-* Switching to the results view
+* Refreshing result state from `ParserResultCache`
+* Switching to the results view after success
 
-Do not create an overly generic parser abstraction that obscures the differences between roster, flight, and hotel inputs.
+Do not create a generic parser abstraction that obscures differences in:
 
-## Phase 3 completion criteria
+* Input format
+* Validation
+* Source type
+* Parser type
+* Required parameters
+* Consumer behavior
 
-* Roster, flight, and hotel parsing work through Livewire.
-* None of the three workflows performs a full-page redirect.
-* All three workflows use existing application services.
-* All three workflows have equivalent or improved test coverage.
+## Phase 3 Completion Criteria
+
+* The active consumer of each flight and hotel endpoint is documented.
+* Each endpoint has an explicit decision: migrate, preserve, or remove.
+* External and programmatic consumers remain supported.
+* No endpoint is moved into Livewire without an actual browser UI workflow.
+* Any migrated workflow avoids a full-page redirect.
+* Any preserved endpoint retains its existing request and response contract.
+* Any removed endpoint is confirmed unused and obsolete.
+* Existing application services remain the source of parsing and execution logic.
+* Tests are updated to match the selected outcome for each endpoint.
+
 
 ---
 
 # Phase 4: Remove Obsolete Controller Actions and Routes
 
-Only begin after all Livewire parsing tests pass.
+Only begin after all applicable Livewire parsing tests pass and Phase 3 records an explicit decision for the roster, flight, and hotel endpoints independently.
 
 ## Remove controller actions
 
-Remove:
+Remove the roster controller action only after the Livewire roster flow has passed its rollback period and no supported programmatic consumer requires it:
 
 ```php
 ParserController::parseRoster()
-ParserController::parseFlight()
-ParserController::parseHotel()
 ```
+
+Remove `ParserController::parseFlight()` or `ParserController::parseHotel()` only when Phase 3 explicitly classifies that endpoint as obsolete or confirms an equivalent Livewire migration with no external/programmatic consumer. Preserve controller endpoints selected for continued HTTP support.
 
 Remove private controller helpers only when no remaining controller action uses them, including:
 
@@ -429,13 +564,13 @@ Do not remove helpers still required by export actions or page rendering.
 
 ## Remove POST routes
 
-Remove:
+Remove only the POST routes corresponding to controller actions approved for removal:
 
 ```php
 Route::post('/parse/roster', ...);
-Route::post('/parse/flight', ...);
-Route::post('/parse/hotel', ...);
 ```
+
+The flight and hotel POST routes are conditional on the Phase 3 consumer decision. Do not remove them merely because there is no Blade form.
 
 ## Keep export routes
 
@@ -444,7 +579,7 @@ Keep calendar exports as standard GET controller routes:
 ```text
 GET /parse/export
 GET /parse/export/event/{eventId}
-GET /parse/export/flight-duty/{eventId}
+GET /parse/export/event/{eventId}/duty
 ```
 
 Use the project’s actual route path and route name for the flight-duty export.
@@ -518,10 +653,22 @@ Use the following behavior:
 * Do not replace it when validation fails.
 * Do not replace it when parsing throws an exception.
 * Replace it only after a new parse completes successfully.
-* Continue scoping cache access according to the current user/session rules.
-* Preserve existing authorization and cross-user isolation.
+* Treat a completed zero-event parse as successful under current behavior unless product requirements explicitly change this before implementation.
+* Preserve the session-scoped latest-result behavior during the UI migration.
+* Do not claim or assume cross-user isolation: the current global `parsed_results:{parseKey}` fallback has no user ownership check.
+* Keep cache ownership remediation separate from the request-lifecycle refactor unless explicitly approved.
 
-Add a test for two browser sessions or users when the cache implementation could allow result leakage.
+Add a two-session/user characterization test before implementation. Decide whether parse keys are intentional bearer identifiers or whether exports must be session/user-owned. If ownership changes are approved, revise the cache DTO/key/export plan and tests before Phase 2.
+
+# Pre-implementation decisions
+
+Do not begin Phase 2 until these decisions are recorded:
+
+- [x] Confirm the production Livewire temporary upload disk is local - it is local
+- [x] Decide whether global parse-key export access must enforce session/user ownership.
+- [x] Confirm that successful zero-event parses continue replacing the latest successful result. - it should not
+- [x] Decide whether pasted-roster text should be restored as a visible control in Phase 2. - It should not
+- [x] Identify any external/programmatic consumers of flight and hotel POST endpoints before adding, migrating, or removing their UI/actions. - No external consumers. Can be removed
 
 ---
 
