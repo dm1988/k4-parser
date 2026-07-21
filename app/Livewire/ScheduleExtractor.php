@@ -144,22 +144,13 @@ class ScheduleExtractor extends Component
     /** @return array<string, mixed> */
     protected function rules(): array
     {
-        $rules = ParserValidationRules::rosterRules();
-        $rules['eventTypes'] = $rules['event_types'];
-        $rules['eventTypes.*'] = $rules['event_types.*'];
-        unset($rules['event_types'], $rules['event_types.*']);
-
-        return $rules;
+        return ParserValidationRules::rosterRules(eventTypesField: 'eventTypes');
     }
 
     /** @return array<string, string> */
     protected function messages(): array
     {
-        $messages = ParserValidationRules::rosterMessages();
-        $messages['eventTypes.*.in'] = $messages['event_types.*.in'];
-        unset($messages['event_types.*.in']);
-
-        return $messages;
+        return ParserValidationRules::rosterMessages(eventTypesField: 'eventTypes');
     }
 
     private function currentResult(): ?ParserResultData

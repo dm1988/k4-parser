@@ -8,68 +8,11 @@ Replace the current request → controller → redirect parser workflow with a s
 Use Livewire for server state, validation, parsing, and rendering. Use Alpine only for small browser-side interactions within each view.
 
 # Current Task - phase 2 fixes:
-## mixed $file is permissive
-
-- [x] Replaced the permissive `mixed` property with `?TemporaryUploadedFile`.
-- [x] Confirmed Livewire 4.3.3 hydrates Laravel test uploads into `TemporaryUploadedFile` through the existing PDF and image upload tests.
-
-This is normal in many Livewire components:
-
-public mixed $file = null;
-
-But it gives static analysis very little help.
-
-Depending on your Livewire version, you may be able to use:
-
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-
-public ?TemporaryUploadedFile $file = null;
-
-If typed upload properties cause hydration issues in your installed version, keep mixed, but add a property annotation:
-
-/** @var UploadedFile|null */
-public mixed $file = null;
-
-More accurately:
-
-/** @var \Livewire\Features\SupportFileUploads\TemporaryUploadedFile|null */
-public mixed $file = null;
-
-
-## getMimeType() may return null
-
-- [x] Added an explicit MIME-to-source resolver for PDF, JPEG, PNG, and WebP uploads.
-- [x] Unknown or null MIME values now fail explicitly instead of entering the screenshot parser path.
-
-This expression:
-
-$file->getMimeType() === 'application/pdf'
-
-will classify any unknown MIME type as an image:
-
-: 'image'
-
-Validation should prevent unsupported files, but it is safer to avoid relying on that assumption.
-
-Consider a helper:
-
-private function resolveSourceType(?UploadedFile $file): string
-{
-    if ($file === null) {
-        return 'pasted_text';
-    }
-
-    return match ($file->getMimeType()) {
-        'application/pdf' => 'pdf',
-        'image/jpeg',
-        'image/png',
-        'image/webp' => 'image',
-        default => throw new \LogicException('Validated upload has an unsupported MIME type.'),
-    };
-}
-
-This prevents an unexpected MIME value from entering the screenshot parser path.
 ## Validation rule mapping works, but is brittle
+
+- [x] Made `ParserValidationRules::rosterRules()` accept the event-types field name.
+- [x] Applied the same field-name parameter to `rosterMessages()` so rules and custom messages cannot diverge.
+- [x] Removed Livewire's manual snake-case-to-camel-case rule and message remapping.
 
 This:
 

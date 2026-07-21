@@ -9,23 +9,23 @@ use Illuminate\Validation\Rule;
 final class ParserValidationRules
 {
     /** @return array<string, ValidationRule|array<mixed>|string> */
-    public static function rosterRules(): array
+    public static function rosterRules(string $eventTypesField = 'event_types'): array
     {
         return [
             'file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,bmp,tif,tiff,webp', 'max:12288', 'required_without:text'],
             'text' => ['nullable', 'string', 'required_without:file'],
-            'event_types' => ['nullable', 'array'],
-            'event_types.*' => [Rule::in(ParserEventType::filterValues())],
+            $eventTypesField => ['nullable', 'array'],
+            $eventTypesField.'.*' => [Rule::in(ParserEventType::filterValues())],
         ];
     }
 
     /** @return array<string, string> */
-    public static function rosterMessages(): array
+    public static function rosterMessages(string $eventTypesField = 'event_types'): array
     {
         return [
             'file.required_without' => 'Please provide either roster text or an uploaded file.',
             'text.required_without' => 'Please provide either roster text or an uploaded file.',
-            'event_types.*.in' => 'The selected event type is invalid.',
+            $eventTypesField.'.*.in' => 'The selected event type is invalid.',
         ];
     }
 
