@@ -8,28 +8,13 @@ Replace the current request → controller → redirect parser workflow with a s
 Use Livewire for server state, validation, parsing, and rendering. Use Alpine only for small browser-side interactions within each view.
 
 # Current Task - phase 2 fixes:
-## eventTypes is not normalized after validation
 
-- [x] Assigned the validated, filtered, and reindexed event types back to Livewire's public state.
-- [x] Added coverage proving sparse input indexes are normalized before results render and cache filters are stored.
-
-You derive a local normalized array:
-
-$eventTypes = array_values(array_filter(...));
-
-but you do not assign it back:
-
-$this->eventTypes = $eventTypes;
-
-This means the component’s public state may preserve non-normalized indexes, while the parser gets normalized data.
-
-After validation:
-
-$this->eventTypes = $eventTypes;
-
-That keeps rendering and parsing aligned.
+Status: Complete
 
 ## Consider clearing the upload validation error when a file changes
+
+- [x] Added `updatedFile()` and `updatedText()` hooks that clear errors for the field the user changed.
+- [x] Added Livewire coverage for clearing existing source validation errors.
 
 A failed upload may leave an error until the next submission. Livewire can clear field errors in update hooks:
 
@@ -46,6 +31,9 @@ public function updatedText(): void
 Optional, but it improves the form experience.
 
 ## structural improvements
+
+- [x] Extracted `resolveValidatedFile()` so validated upload normalization is explicit.
+- [x] Confirmed `resolveSourceType()` and `addParseErrors()` already provide the other proposed boundaries.
 
 I would extract three small helpers:
 

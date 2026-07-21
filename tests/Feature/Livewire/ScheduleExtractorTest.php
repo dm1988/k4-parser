@@ -115,6 +115,21 @@ class ScheduleExtractorTest extends TestCase
             ->assertSet('view', 'upload');
     }
 
+    public function test_source_validation_errors_clear_when_the_corresponding_input_changes(): void
+    {
+        $component = Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->call('parseRoster')
+            ->assertHasErrors(['file', 'text'])
+            ->set('text', 'Roster text')
+            ->assertHasNoErrors('text')
+            ->assertHasErrors('file');
+
+        $component
+            ->set('file', UploadedFile::fake()->create('roster.pdf', 120, 'application/pdf'))
+            ->assertHasNoErrors('file');
+    }
+
     public function test_source_type_resolution_rejects_a_validated_upload_with_an_unknown_mime_type(): void
     {
         $file = new class(__FILE__, 'roster.pdf', 'application/pdf', null, true) extends UploadedFile

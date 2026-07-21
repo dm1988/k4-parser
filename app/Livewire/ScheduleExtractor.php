@@ -75,9 +75,7 @@ class ScheduleExtractor extends Component
         $user = $this->authorizedUser();
 
         $validated = $this->validate($this->rules(), $this->messages());
-        $file = ($validated['file'] ?? null) instanceof UploadedFile
-            ? $validated['file']
-            : null;
+        $file = $this->resolveValidatedFile($validated);
         $text = is_string($validated['text'] ?? null) && filled($validated['text'])
             ? $validated['text']
             : null;
@@ -182,6 +180,14 @@ class ScheduleExtractor extends Component
     {
         $this->reset(['file', 'text']);
         $this->resetValidation();
+    }
+
+    /** @param array<string, mixed> $validated */
+    private function resolveValidatedFile(array $validated): ?UploadedFile
+    {
+        $file = $validated['file'] ?? null;
+
+        return $file instanceof UploadedFile ? $file : null;
     }
 
     private function resolveSourceType(?UploadedFile $file): string
