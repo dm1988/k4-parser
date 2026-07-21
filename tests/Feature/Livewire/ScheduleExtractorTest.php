@@ -183,6 +183,8 @@ class ScheduleExtractorTest extends TestCase
 
         Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
+            ->call('parseRoster')
+            ->assertHasErrors(['file', 'text'])
             ->set('text', 'Temporary text')
             ->call('extractAnotherRoster')
             ->assertSet('view', 'upload')

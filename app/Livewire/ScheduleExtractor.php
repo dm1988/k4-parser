@@ -128,9 +128,7 @@ class ScheduleExtractor extends Component
         $this->authorizeParserAction();
 
         $this->view = self::VIEW_UPLOAD;
-        $this->file = null;
-        $this->text = '';
-        $this->resetValidation();
+        $this->resetRosterForm();
     }
 
     public function render(): View
@@ -177,6 +175,12 @@ class ScheduleExtractor extends Component
         }
 
         return $this->parserResultCache->latest();
+    }
+
+    private function resetRosterForm(): void
+    {
+        $this->reset(['file', 'text']);
+        $this->resetValidation();
     }
 
     private function authorizeParserAction(): User
