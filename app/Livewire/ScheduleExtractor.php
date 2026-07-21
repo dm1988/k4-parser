@@ -169,7 +169,11 @@ class ScheduleExtractor extends Component
     private function currentResult(): ?ParserResultData
     {
         if ($this->parseKey !== null) {
-            return $this->parserResultCache->get($this->parseKey);
+            $result = $this->parserResultCache->get($this->parseKey);
+
+            if ($result !== null) {
+                return $result;
+            }
         }
 
         return $this->parserResultCache->latest();

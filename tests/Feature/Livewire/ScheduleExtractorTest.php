@@ -10,6 +10,7 @@ use App\Services\ScheduleFormatParser;
 use App\Services\ScheduleInputResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\Livewire;
@@ -43,6 +44,31 @@ class ScheduleExtractorTest extends TestCase
             ->assertSee('Extracted Schedule')
             ->assertSee('Cached duty')
             ->assertSee('Extract another roster');
+    }
+
+    public function test_it_falls_back_to_the_latest_result_when_the_component_parse_key_is_stale(): void
+    {
+        $staleResult = $this->cacheResult('01JSTALEPARSEKEYABC123', 'Stale duty');
+        $component = Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->assertSet('parseKey', $staleResult->parseKey)
+            ->assertSee('Stale duty');
+
+        $namespace = session('parsed_results_namespace');
+        $this->assertIsString($namespace);
+
+        Cache::forget("sessions:{$namespace}:parsed_results:{$staleResult->parseKey}");
+        Cache::forget("parsed_results:{$staleResult->parseKey}");
+
+        $latestResult = $this->cacheResult('01JLATESTPARSEKEYABC12', 'Latest duty');
+
+        $component
+            ->refresh()
+            ->assertSet('parseKey', $staleResult->parseKey)
+            ->assertSee('Latest duty')
+            ->assertDontSee('Stale duty');
+
+        $this->assertSame($latestResult->parseKey, app(ParserResultCache::class)->latest()?->parseKey);
     }
 
     public function test_it_uses_the_shared_roster_validation_rules_and_messages(): void

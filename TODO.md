@@ -199,7 +199,7 @@ Completed on 2026-07-21.
 * Added “Extract another roster” without clearing the latest successful cached result or selected filters.
 * Empty parses now stay on upload with a visible error and do not replace the latest successful result.
 * Removed the obsolete Alpine parser submit-state module after replacing it with Livewire upload/action loading state.
-* Verified Pint, the frontend production build, 75 parser regression tests with 521 assertions, and the full suite with 258 tests and 1,462 assertions.
+* Verified Pint, the frontend production build, 75 parser regression tests with 521 assertions, and the full suite with 258 tests and 1,463 assertions.
 * Larastan reports only the five pre-existing findings already tracked under “Resolve Larastan findings”; no new Phase 2 finding was introduced.
 
 ## Component
