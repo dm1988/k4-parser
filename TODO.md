@@ -1,576 +1,234 @@
-# Goal
+# Schedule Extractor Roadmap
 
-Replace the current request → controller → redirect parser workflow with a single Livewire-powered page that transitions between:
+## Goal
 
-1. An upload/input view
-2. A parsed-results view
+Provide one Livewire-powered schedule extractor that transitions between upload and results views without a full-page reload.
 
-Use Livewire for server state, validation, parsing, and rendering. Use Alpine only for small browser-side interactions within each view.
+Livewire owns form state, validation, parsing, errors, loading state, parsed-result state, and view transitions. Alpine is limited to small browser-only interactions such as accordions, dropdowns, copy feedback, and transitions.
 
-# Current Task - improve rendering speed
+## Current Priority: Remove Airport Lookups from Rendering
 
-## Status: Complete
+### Problem
 
-Completed on 2026-07-21.
+`ParserResultViewModel::fromData()` currently performs synchronous airport-provider requests while building flight cards. A roster with seven flights can trigger up to fourteen sequential origin/destination lookups. With the existing five-second request timeout, this explains the observed behavior:
 
-* Upload renders no longer construct `ParserPageViewModel`; the result view model and cached result are resolved only while the results view is active.
-* The upload form now reads `file`, `text`, and `eventTypes` from Livewire state and receives only the lightweight filter option enum list it needs for display.
-* Feature availability is passed independently from the result view model so unavailable-state rendering remains unchanged.
-* Added stable `wire:key` values to the upload and parse-key-specific results sections to make large-tree replacement explicit during Livewire morphing.
-* Added Livewire coverage proving the upload render receives a null view model, filter options remain visible, and both major sections render their stable keys.
-* Verified Pint and all 17 `ScheduleExtractorTest` tests with 128 assertions.
-* The full suite has 258 of 259 tests passing with 1,477 assertions; the only failure remains the pre-existing `UserModelTest::it_resolves_feature_access_from_config_and_role` verified-email expectation.
-* Larastan reports the same five pre-existing findings and no finding in a file changed for this task.
+- Initial dashboard document: approximately 1.2 minutes.
+- Livewire results update: approximately 10 seconds in one trace.
+- Application log: confirmed SSL timeout calling the airport provider.
 
-Better: do not build a page view model for upload
+The upload-view rendering optimization is complete, but results rendering still depends on optional network data.
 
-The upload section probably does not need the whole ParserPageViewModel.
+### Required outcome
 
-Pass only what it needs:
+- View models, Livewire `render()`, and Blade rendering perform no HTTP requests.
+- Airport codes are normalized and deduplicated once per parse.
+- Only unique, uncached codes reach `AirportLookupClient`.
+- Successful and missing results are cached distinctly.
+- Resolved airport metadata is attached before the parser result is cached.
+- Provider failures never fail parsing or hide calendar exports.
+- Missing details fall back to the airport code and an unavailable-details state.
 
-public function render(): View
-{
-    return view('livewire.schedule-extractor', [
-        'viewModel' => $this->view === self::VIEW_RESULTS
-            ? ParserPageViewModel::fromResult($this->currentResult(), [])
-            : null,
-    ]);
-}
+### Proposed design
 
-Then the Blade view can use the Livewire properties directly:
+Keep responsibilities separate:
 
-@if ($view === 'upload')
-    <x-parser.upload-form />
-@else
-    <x-parser.results :view-model="$viewModel" />
-@endif
+- `AirportLookupClient`: existing provider HTTP behavior.
+- `AirportCodeCache`: positive and negative cache entries.
+- `AirportResolver`: normalization, deduplication, cache-first resolution, and orchestration.
 
-Inside the upload form:
+Use versioned keys such as `airport:v1:iata:AUS`. Start with a long TTL for successful records and a shorter TTL for missing/unavailable records. Do not represent both “uncached” and “known missing” as plain `null`.
 
-<textarea wire:model="text"></textarea>
-<input type="file" wire:model="file">
-<input
-    type="checkbox"
-    wire:model="eventTypes"
-    value="flight"
->
+Preferred lifecycle:
 
-The upload form does not need $viewModel->text or $viewModel->selectedTypes, because those values already exist as Livewire state.
+1. Resolve and parse the schedule source.
+2. Collect unique airport codes from parsed events.
+3. Resolve codes through the cache-first resolver.
+4. Attach resolved metadata to the parsed result.
+5. Store the completed result in `ParserResultCache`.
+6. Build network-free view models from stored data.
 
-Add stable keys around the two major sections
+### Tests
 
-This can make the intended replacement clearer to Livewire:
+- Resolver normalizes and deduplicates codes.
+- Invalid codes are ignored.
+- Cached results do not call the client.
+- Successful and missing responses are cached correctly.
+- One failed lookup does not stop other resolutions.
+- Repeated event codes cause one client lookup per unique uncached code.
+- Cached parser results contain the airport data required by the UI.
+- Strict mocks prove no airport calls occur during view-model creation, initial results rendering, refresh, upload rendering, or “Extract another roster.”
 
-@if ($view === 'upload')
-    <div wire:key="schedule-extractor-upload">
-        <x-parser.upload-form />
-    </div>
-@else
-    <div wire:key="schedule-extractor-results-{{ $parseKey }}">
-        <x-parser.results :view-model="$viewModel" />
-    </div>
-@endif
+### Completion criteria
 
-This will not fix backend slowness, but it can reduce confusing DOM reconciliation when replacing a large results tree.
+- Network-free rendering is enforced by tests.
+- Rendering timing no longer scales with flight count or provider latency.
+- Parsing remains successful when airport enrichment is unavailable.
+- Focused tests, full tests, Pint, and Larastan have been run.
 
-# Followup task: Make reset minimal
-public function extractAnotherRoster(): void
-{
-    $this->authorizedUser();
+Do not change provider, queues, timeout/retry policy, card design, or export architecture during the initial refactor. Measure enrichment after removing it from rendering, then decide whether the existing `connectTimeout(2)`, `timeout(5)`, and retry policy also need adjustment.
 
-    $this->reset(['file', 'text']);
-    $this->resetValidation();
+## Next Phase: Remove the Roster HTTP Rollback Path
 
-    // Preserve eventTypes and the cached successful result.
-    $this->view = self::VIEW_UPLOAD;
-}
+The Livewire roster workflow is stable, but the old controller POST remains as a rollback path.
 
-## Confirmed baseline
+Before removal, confirm no supported external or programmatic consumer uses `POST /parse/roster`.
 
-* Laravel 13.15 and Livewire 4.3 are installed.
-* The repository has no application-authored Livewire or Volt component; use a class-based component under `App\Livewire` and PHPUnit `Livewire::test(...)` conventions.
-* Both `/dashboard` and `/parse` currently restore the latest cached parser result and render the same `dashboard` view.
-* Validation failures and `ParseSourceResolutionException` leave the previous successful cached result intact.
-* A successful parse with zero events currently replaces the latest result and renders the empty-result state.
-* `TemporaryUploadedFile` extends `Illuminate\Http\UploadedFile`, but the parser requires a real local path. Local temporary uploads are compatible; S3/non-local temporary uploads are not compatible without an explicit adapter or service change.
-* Flight and hotel POST endpoints exist and are tested, but no flight or hotel form exists in the rendered parser Blade views.
-* Parser results are session-latest, but exports can fall back to a global parse-key cache entry. Parse keys currently behave as bearer identifiers and are not checked against user ownership.
-* Two tabs in one browser session share `latest_parse_key`; existing export links remain parse-scoped because they include `parse_key`.
+Then:
 
----
+- Remove `ParserController::parseRoster()`.
+- Remove the `parse.roster` route.
+- Remove `ParseRosterRequest` if it is no longer referenced.
+- Remove `handleParseAction()` and its imports if no controller action uses it.
+- Remove transitional old-input and parser-specific session-error handling from `ScheduleExtractor::mount()`.
+- Preserve all calendar export controller actions and GET routes.
+- Update route, authentication, authorization, lifecycle, and Livewire tests.
 
-# Implementation Rules
+The following export routes remain controller-backed:
 
-## Livewire responsibilities
+- `GET /parse/export`
+- `GET /parse/export/event/{eventId}`
+- `GET /parse/export/event/{eventId}/duty`
 
-Livewire owns:
+## Completed Work
 
-* Active page view
-* Uploaded file
-* Pasted text
-* Selected event types
-* Form validation
-* Parse actions
-* Parse errors
-* Parsed-result state
-* Loading state
-* Switching between upload and results views
+### Phase 1: Blade preparation — complete
 
-## Alpine responsibilities
+Completed 2026-07-21.
 
-Alpine may be used for:
+- Confirmed the parser form and result Blade components were already coherent boundaries.
+- Added shared, HTTP-independent `ParserValidationRules`.
+- Added upload, lifecycle, empty-result, export, authentication, verification, tab, and parse-key characterization coverage.
+- Preserved the original request/controller/redirect behavior during this phase.
+- Verification at completion: 75 tests, 521 assertions.
 
-* Accordions
-* Dropdowns
-* Copy-to-clipboard feedback
-* Small transitions
-* Temporary presentational state
+### Phase 2: Livewire roster extractor — complete
 
-Alpine must not own:
+Completed 2026-07-21.
 
-* The active upload/results page state
-* Parsed data
-* Form submission
-* Server validation
-* Whether a successful parse exists
+- Added class-based `App\Livewire\ScheduleExtractor`.
+- Moved visible roster state, validation, parsing, errors, loading, cache restoration, and upload/results transitions to Livewire.
+- Kept public state limited to form values, view state, and a locked parse key.
+- Added explicit authentication, verification, feature, and gate enforcement.
+- Preserved calendar downloads as controller-backed GET responses.
+- Added “Extract another roster” while retaining selected filters and the latest successful cached result.
+- Empty parses stay on upload and do not replace the latest successful result.
+- Removed the obsolete Alpine parser-submit module.
+- Verification at completion: full suite passed with 258 tests and 1,463 assertions; no new Larastan findings.
 
-## Rendering rule
+### Phase 3: Remove flight and hotel POST endpoints — complete
 
-Use Livewire/Blade conditional rendering for the two substantial page sections:
+Completed 2026-07-21.
 
-```blade
-@if ($view === 'upload')
-    <x-parser.upload-form />
-@elseif ($view === 'results')
-    <x-parser.results :view-model="$viewModel" />
-@endif
-```
+- Removed `parseFlight()` and `parseHotel()` from `ParserController`.
+- Removed `parse.flight` and `parse.hotel` routes.
+- Removed `ParseFlightRequest` and `ParseHotelRequest`.
+- Removed endpoint-only tests and retained feature-middleware coverage on roster parsing.
+- Kept shared parsing, cache, execution, and export services.
+- Kept `handleParseAction()` because roster rollback still uses it.
+- Focused verification: 41 tests, 328 assertions.
 
-Do not use `x-show` to switch the entire upload and results sections.
+### Rendering and reset cleanup — complete
 
-This prevents both substantial views from remaining rendered in the DOM and keeps the server as the source of truth.
+Completed 2026-07-21.
 
----
+- Upload mode no longer constructs `ParserPageViewModel` or resolves a cached result.
+- The upload form reads its values from Livewire state and receives only lightweight filter options.
+- Added stable keys for upload and parse-specific results sections.
+- `extractAnotherRoster()` resets only file, text, and validation state; it preserves selected event types, the parse key, and the cached successful result.
+- Focused verification: 17 Livewire tests, 128 assertions.
 
-# Phase 1: Prepare the Existing Blade Page
+## Behavioral Invariants
 
-Do not change the existing request lifecycle during this phase.
+### Rendering
 
-## Status: Complete
+- Use Blade conditional rendering for the substantial upload and results sections.
+- Do not use `x-show` to keep both page states in the DOM.
+- Livewire is the source of truth for whether upload or results is active.
+- Rendering must not perform external HTTP requests.
 
-Completed on 2026-07-21.
+### Cache and failure behavior
 
-* Confirmed the existing `components/parser/form.blade.php` and `components/parser/result.blade.php` files already provide the required upload/results separation; no markup move was necessary.
-* Added `ParserValidationRules` as the shared, HTTP-independent validation definition used by all three existing Form Requests.
-* Added HTTP upload, lifecycle retention, empty-result, export failure, authentication, verification, tab behavior, and cross-user parse-key characterization coverage.
-* Preserved all controller actions, routes, redirects, old-input behavior, cache behavior, export links, and Blade markup.
-* Verified with Pint and the parser-filtered test suite: 75 tests passed with 521 assertions.
+- Keep the latest successful parsed result.
+- Do not clear it when starting another extraction.
+- Do not replace it after validation failure, parser failure, or a zero-event parse.
+- Replace it only after a successful parse containing events.
+- Preserve parse-key-specific export URLs.
 
+### Uploads
 
-# Phase 2: Add Livewire Roster Extracting
+- Local Livewire temporary uploads are supported.
+- The parser requires a real local path.
+- S3/non-local Livewire temporary uploads require an explicit adapter or service change.
 
-Migrate only the main roster parser in this phase.
+### Exports
 
-Do not migrate flight or hotel parsing yet.
+- Calendar exports remain normal controller-backed GET downloads.
+- Export services may return HTTP responses; parsing and rendering services should not.
 
-## Status: Complete
+### Authorization
 
-Completed on 2026-07-21.
+- Preserve authentication, verified-email, feature-flag, and gate checks.
+- Do not broaden parser or duty-export access during lifecycle refactors.
 
-* Added the class-based `App\Livewire\ScheduleExtractor` component with local temporary upload support.
-* Moved visible roster validation, parsing, loading state, error rendering, cache restoration, and upload/results transitions into Livewire.
-* Kept public component state limited to form values, view state, and a locked parse key; result view models are rebuilt from `ParserResultCache` during rendering.
-* Added explicit authentication, verification, feature, and gate enforcement to component actions.
-* Preserved the roster controller POST route as a rollback path and left flight, hotel, and calendar export routes unchanged.
-* Kept calendar downloads as normal controller-backed GET links.
-* Added “Extract another roster” without clearing the latest successful cached result or selected filters.
-* Empty parses now stay on upload with a visible error and do not replace the latest successful result.
-* Removed the obsolete Alpine parser submit-state module after replacing it with Livewire upload/action loading state.
-* Verified Pint, the frontend production build, 75 parser regression tests with 521 assertions, and the full suite with 258 tests and 1,463 assertions.
-* Larastan reports only the five pre-existing findings already tracked under “Resolve Larastan findings”; no new Phase 2 finding was introduced.
+## Known Issues and Technical Debt
 
----
+### Test contract mismatch
 
-# Phase 3: Remove Obsolete Flight and Hotel Parsing Endpoints
+The full suite currently has one unrelated failure:
 
-Only begin after Phase 2 is stable.
+`UserModelTest::it_resolves_feature_access_from_config_and_role`
 
-## Status: Implemented; pre-existing verification failures remain
+The test expects an unverified user to access the schedule parser, while `User::canUseScheduleParser()` requires verified email. Resolve the intended contract, then update the incorrect side. Recent full run: 258 of 259 tests passed with 1,477 assertions.
 
-Implemented on 2026-07-21.
+### Larastan
 
-* Removed `ParserController::parseFlight()` and `ParserController::parseHotel()` together with their unused Form Request imports.
-* Removed the `parse.flight` and `parse.hotel` POST routes; the route list now contains only the roster POST endpoint and the unchanged calendar export GET endpoints.
-* Removed `ParseFlightRequest` and `ParseHotelRequest` after confirming no references remain.
-* Removed endpoint-only flight and hotel parser and validation tests, and kept feature-middleware coverage on the remaining roster endpoint.
-* Kept `handleParseAction()` because the roster rollback endpoint still depends on it.
-* Kept `HandleParseExecution`, `ParserResultCache`, `JcaScheduleParsingService`, and `ParserCalendarExportService`; roster parsing and calendar exports still depend on these shared services.
-* Verified Pint and 41 focused roster, Livewire, export, validation, and authorization tests with 328 assertions.
-* The full suite has 258 of 259 tests passing with 1,473 assertions. The unrelated `UserModelTest::it_resolves_feature_access_from_config_and_role` fails because it expects an unverified user to access the schedule parser while `User::canUseScheduleParser()` requires verified email.
-* Larastan reports the same five pre-existing findings recorded after Phase 2 and no finding in a Phase 3 file.
+Five pre-existing level-5 findings remain:
 
-The flight and hotel POST endpoints have been reviewed and confirmed to have no external or programmatic consumers. They are not used by Blade, JavaScript, Alpine, Livewire, Apple Shortcuts, or supported external clients.
+- Remove redundant `array_values()` calls in `ParsedEventDTO`, `DutyEventMapper`, `FlightMapper`, and `TripInformationParser`.
+- Remove `TripInformationParser::firstMatchingLine()` if repository-wide usage confirms it is dead.
 
-Because no active UI workflow or external integration depends on them, they should be removed rather than migrated into the `ScheduleParser` Livewire component.
-
-## Tasks
-
-Remove the following controller actions:
-
-```php
-ParserController::parseFlight()
-ParserController::parseHotel()
-```
-
-Remove their corresponding POST routes:
-
-```php
-Route::post('/parse/flight', [ParserController::class, 'parseFlight'])
-    ->name('parse.flight');
-
-Route::post('/parse/hotel', [ParserController::class, 'parseHotel'])
-    ->name('parse.hotel');
-```
-
-Remove the corresponding Form Request classes when they are no longer referenced:
-
-```php
-ParseFlightRequest
-ParseHotelRequest
-```
-
-Remove tests that only verify the obsolete endpoints.
-
-Before deleting shared code, confirm that it is not used by roster parsing, exports, or other parser workflows.
-
-Review whether these removals make any controller helpers unused, including:
-
-```php
-handleParseAction()
-```
-
-Do not remove `handleParseAction()` during this phase if `parseRoster()` still depends on it. Its final removal should occur only after roster parsing has fully moved to Livewire.
-
-Remove unused imports, route-name references, documentation, and dead code associated with the deleted endpoints.
-
-Do not add replacement Livewire actions or new flight and hotel forms.
-
-## Phase 3 Completion Criteria
-
-* `parseFlight()` and `parseHotel()` are removed from `ParserController`.
-* The `parse.flight` and `parse.hotel` POST routes are removed.
-* `ParseFlightRequest` and `ParseHotelRequest` are removed when no longer referenced.
-* Endpoint-specific tests are removed or updated.
-* No Livewire replacement actions are introduced.
-* Roster parsing continues to work through Livewire.
-* Calendar export routes and actions remain unchanged.
-* Shared parser services remain intact unless confirmed unused.
-* The route list contains no obsolete flight or hotel parsing endpoints.
-* The full test suite passes.
-* Formatting and configured static-analysis checks pass.
-
----
-
-# Phase 4: Remove Obsolete Controller Actions and Routes
-
-Only begin after all applicable Livewire parsing tests pass and Phase 3 records an explicit decision for the roster, flight, and hotel endpoints independently.
-
-## Remove controller actions
-
-Remove the roster controller action only after the Livewire roster flow has passed its rollback period and no supported programmatic consumer requires it:
-
-```php
-ParserController::parseRoster()
-```
-
-Remove `ParserController::parseFlight()` or `ParserController::parseHotel()` only when Phase 3 explicitly classifies that endpoint as obsolete or confirms an equivalent Livewire migration with no external/programmatic consumer. Preserve controller endpoints selected for continued HTTP support.
-
-Remove private controller helpers only when no remaining controller action uses them, including:
-
-```php
-handleParseAction()
-```
-
-Do not remove helpers still required by export actions or page rendering.
-
-## Remove POST routes
-
-Remove only the POST routes corresponding to controller actions approved for removal:
-
-```php
-Route::post('/parse/roster', ...);
-```
-
-The flight and hotel POST routes are conditional on the Phase 3 consumer decision. Do not remove them merely because there is no Blade form.
-
-## Keep export routes
-
-Keep calendar exports as standard GET controller routes:
+Do not add a baseline or blanket ignores. Run:
 
 ```text
-GET /parse/export
-GET /parse/export/event/{eventId}
-GET /parse/export/event/{eventId}/duty
+vendor/bin/sail php vendor/bin/phpstan analyse --no-progress
 ```
 
-Use the project’s actual route path and route name for the flight-duty export.
+### Parse-key ownership
 
-The controller remains responsible for:
+Session-latest results can fall back to global `parsed_results:{parseKey}` cache entries. Parse keys currently behave as bearer identifiers and are not checked against user ownership. Decide explicitly whether this is intentional before changing cache ownership or export authorization.
 
-* Full-calendar export
-* Individual-event export
-* Flight-duty event export
-* Resolving cached events for download
-* Returning downloadable HTTP responses
+### Duplicate Alpine warning
 
-## ScheduleExtractor.php: mount() depends on session errors
+Investigate the current browser warning that multiple Alpine instances are running. Confirm whether Alpine is bundled by both the application and Livewire before changing frontend initialization.
 
-This logic:
+## Product and UI Backlog
 
-$this->view = $result !== null && ! session()->has('errors')
-    ? self::VIEW_RESULTS
-    : self::VIEW_UPLOAD;
+- Improve the upload target and button alignment.
+- Refine hero/upload card hierarchy and spacing.
+- Improve filter accordion alignment.
+- Add more navbar vertical padding.
+- Shorten upload status copy.
+- Add the independent-tool disclaimer for Jeppesen/Boeing affiliation.
+- Continue spelling out “Jeppesen Crew Access” before using “JCA.”
+- Consider Laravel Debugbar only with explicit dependency approval and development-only configuration.
 
-This makes sense during the transitional phase while the old controller POST route still redirects back. But after the controller workflow is removed, Livewire validation errors do not require remounting the component.
+## Deferred Architecture Ideas
 
-That means this is transitional compatibility code and should be marked for Phase 4 cleanup.
+These are proposals, not approved work:
 
-Also, session()->has('errors') can reflect unrelated page validation errors. It would be better to inspect whether the error bag belongs to this parser form, if possible.
+- Rename parser-centric types only as part of a separately scoped refactor.
+- Organize services by Schedule, Flight Plan, Calendar, Clients, and Infrastructure domains.
+- Avoid broad file moves while lifecycle and rendering performance work is active.
+- Any reorganization must preserve behavior, update namespaces atomically, and be covered by focused and full tests.
 
-## Final cleanup
+## Definition of Done for Parser Migration
 
-After route removal:
-
-* Remove unused imports.
-* Remove unused Form Requests only if no other code uses them.
-* Remove obsolete old-input handling.
-* Remove obsolete session-flash handling.
-* Update route tests.
-* Update architecture or feature documentation.
-* Run formatting and static analysis.
-* Run the full test suite.
-
----
-
-# Service Review
-
-Before moving actions, inspect:
-
-```text
-HandleParseExecution
-ParserResultCache
-JcaScheduleParsingService
-ParserCalendarExportService
-```
-
-Confirm that core service behavior does not rely on:
-
-* `redirect()`
-* `back()`
-* Controller instances
-* Route names
-* Direct `Request` access
-* Session flash messages
-* View rendering
-* HTTP responses, except inside the export service
-* Form Request instances
-
-Review uploaded-file assumptions, especially whether methods require:
-
-```php
-Illuminate\Http\UploadedFile
-```
-
-or can also accept Livewire temporary uploaded files.
-
-Do not change service contracts speculatively. Make the smallest compatibility change required and cover it with tests.
-
-`ParserCalendarExportService` may legitimately return HTTP responses because exports remain controller-driven.
-
----
-
-# Cache Rules
-
-Use the following behavior:
-
-* Keep the latest successful parsed result in the cache.
-* Do not clear it when “Extract another roster” is selected.
-* Do not replace it when validation fails.
-* Do not replace it when parsing throws an exception.
-* Replace it only after a new parse completes successfully.
-* Treat a completed zero-event parse as successful under current behavior unless product requirements explicitly change this before implementation.
-* Preserve the session-scoped latest-result behavior during the UI migration.
-* Do not claim or assume cross-user isolation: the current global `parsed_results:{parseKey}` fallback has no user ownership check.
-* Keep cache ownership remediation separate from the request-lifecycle refactor unless explicitly approved.
-
-Add a two-session/user characterization test before implementation. Decide whether parse keys are intentional bearer identifiers or whether exports must be session/user-owned. If ownership changes are approved, revise the cache DTO/key/export plan and tests before Phase 2.
-
----
-
-# Non-Goals
-
-This task does not include:
-
-* Migrating the application to React or Inertia
-* Redesigning the parser UI
-* Rewriting parsing algorithms
-* Replacing the cache implementation
-* Changing calendar file formats
-* Changing authorization policy
-* Moving export downloads into Livewire
-* Introducing a client-side global store
-* Converting all Blade interactions to Alpine
-* Refactoring unrelated dashboard functionality
-
----
-
-# Final Acceptance Criteria
-
-* The parser page contains an upload state and a results state.
-* Livewire conditionally renders the substantial upload and results sections.
-* Parsing does not cause a full-page reload.
-* Successful parsing automatically renders the results view.
-* Validation and parsing failures leave the user on the upload view.
-* Existing validation messages and constraints remain intact.
-* “Extract another roster” returns to a clean upload form.
-* The latest successful cached result remains available until another parse succeeds.
-* Failed subsequent parses do not destroy the previous successful result.
-* Full-calendar and event export URLs continue to work.
-* Calendar exports remain standard GET controller responses.
-* Parsing, tracking, cache, and export services remain the source of business logic.
-* Alpine is limited to small browser-only interactions.
-* Authorization and feature-gate behavior remain unchanged.
-* Obsolete POST routes are removed only after equivalent Livewire tests pass.
-* The full test suite, formatter, and configured static-analysis tools pass.
-
-
-
-## 3. ✅ Spell out Jeppesen Crew Access
-- Should use JCA acryonm only after spelling out Jeppesen Crew Access
-- Reference:
-<header className="mb-10 text-center">
-  <span className="text-xs font-bold tracking-widest uppercase text-[#C5A059] block mb-2">
-    Jeppesen Crew Access
-  </span>
-  <h1 className="text-4xl md:text-5xl font-black tracking-tight text-[#1B365D] mb-4">
-    Schedule Extractor
-  </h1>
-  <p className="text-base text-[#4A5568] max-w-md mx-auto leading-relaxed">
-    Upload a roster screenshot or trip PDF to instantly convert your schedule into calendar-ready events.
-  </p>
-</header>
-
-## 4. Streamline the Upload Card Structure
-- The file upload input and the "Parse" button feel somewhat detached because they are aligned horizontally with wide gaps.
-
-- Fix: Transform the upload zone into a larger, centered drag-and-drop target box with an icon, placing a full-width or cleanly aligned "Parse" button directly beneath it.
-
-## 5. Refine Card Hierarchy and Margins
- - The main blue header card ("Flight Deck") and the white upload card are stacked close together with identical widths, creating a rigid block appearance.
-
- - Fix: Nest the file upload and filters section inside a single, unified container card, where the dark blue header serves as the hero header of that card. This removes the double-card stacking look and groups the context ("what this tool does") directly with the action ("upload your file").
-
-- Spacing: Increase the vertical spacing (gap or margin-bottom) between the hero header card and the upload card if you keep them separate.
-
-## 6. Improve Grid/Flex Alignment
-- Filters Section: The "Filters" label and the "Show options" dropdown toggle are pushed to the extreme edges of the container. If a user expands "Show options," the checkboxes will likely appear far away from the initial visual anchor. Aligning these elements or placing the filter options directly in a collapsible accordion that spans a more readable, centered width would feel more cohesive.
-
-- Alignment: Ensure the text inside the "Choose File" button box vertically aligns perfectly with the text baseline of the "Parse" button.
-
-## 7. Navbar Typography
-- The navbar items ("Parse Schedule", "Route Extractor", etc.) are quite close to the top edge of the viewport. Adding a bit more top and bottom padding to the navbar container will give the text room to breathe and look cleaner.
-
-## 8. Install laravel debug bar
-
-## Prep for rename
-- Rename ParserEventType Enum to ScheduleEventType.php
-- Add 2 folders in Enum: Schedule and 
-
-## 9. Organize services
-- Create directory framework
-  cd app/Services
-  mkdir -p Services/{Schedule/ Extractor,FlightPlan/ Extractor,Calendar,Infrastructure}
-- Move files:
-  - Schedule Domain
-  git mv Parsers/JcaScheduleParsingService.php Schedule/JcaScheduleProcessor.php
-  git mv ScheduleInputResolver.php Schedule/ScheduleInputResolver.php
-  git mv Extractors/SchedulePdfExtractor.php Schedule/PdfTextExtractor.php
-  git mv Parsers/CrewListParser.php Schedule/ Extractor/CrewListParser.php
-  git mv Parsers/PublishedRosterParser.php Schedule/Extractor/PublishedRosterParser.php
-  git mv Parsers/ScheduleFormatParser.php Schedule/Extractor/ScheduleFormatParser.php
-  git mv Parsers/TripInformationParser.php Schedule/Extractor/TripInformationParser.php
-
-  - FlightPlan Domain
-  git mv Extractors/FlightRouteExtractor.php FlightPlan/Extractor/FlightRouteExtractor.php
-  - Note: Create your FlightReleaseProcessor.php entry point here if it's new
-
-  - Calendar Domain
-  git mv Calendar/IcsCalendarService.php Calendar/IcsGenerator.php
-  git mv Calendar/FlightDutyCalendarEventService.php Calendar/FlightDutyEvent.php
-  git mv Calendar/ParserCalendarExportService.php Calendar/ExportPayload.php
-
-  - Clients (Keep folder, fix name)
-  git mv Clients/AirlineCodeLookup.php Clients/AirlineCodeLookupClient.php
-
-  - Infrastructure
-  git mv Infrastructure/ParseRequestLogger.php Infrastructure/ScheduleRequestLogger.php
-  git mv Infrastructure/ParserResultCache.php Infrastructure/EngineResultCache.php
-
-- Clean up legacy directories
-  - find Parsers Extractors -type f
-  - rmdir Parsers Extractors
-- Update namespaces and references
-- Fix service-provider bindings and controllers
-- Run a global search in your IDE for App\Services\. Update any locations where these classes were typed, imported (use), or bound in your AppServiceProvider.php.
-- Flush cache
-- Test
-
-app/Services/
-├── Schedule/
-│   ├── JcaScheduleProcessor.php      # (Was JcaScheduleParsingService) Coordinates
-│   ├── ScheduleInputResolver.php   # Deals directly with raw inputs/requests
-│   └── Extractor/                    # Internal text sub-parsers used by the engine
-│       ├── CrewListParser.php
-│       ├── PdfTextExtractor.php   # (Was SchedulePdfExtractor) Low-level PDF tool
-│       ├── PublishedRosterParser.php
-│       ├── ScheduleFormatParser.php
-│       └── TripInformationParser.php
-│
-├── FlightPlan/
-│   ├── FlightReleaseProcessor.php      # Main entry point for the route engine
-│   └──  Extractor/
-│       └── FlightRouteExtractor.php       # text parser
-│
-├── Calendar/
-│   ├── IcsGenerator.php  # (Was IcsCalendarService) Handles raw .ics payload syntax
-│   ├── FlightDutyEvent.php   # Was FlightDutyCalendarEventService
-│   └── ExportPayload.php        # (Was ParserCalendarExportService) Wraps data ready for client delivery
-│
-├── Clients/
-│   ├── AirportLookupClient.php
-│   └── AirlineCodeLookupClient.php     # Fixed name consistency (Added "Client")
-│
-└── Infrastructure/
-    ├── ScheduleRequestLogger.php              # (Was ParseRequestLogger)
-    └── EngineResultCache.php           # (Was ParserResultCache)
-
-## 10. Use a descriptive footer disclaimer in Parse schedule tool:
-- To safely clarify your tool's relationship to the platform, add a small, subtle line of text at the very bottom of your application page layout:
-
-Disclaimer: This tool is an independent utility built for crew convenience and is not affiliated with, authorized, or endorsed by Jeppesen or Boeing.
-
-## 11. One line status message
-- In schedule extractor, shorten status codes
-- System online: Ready to process
-- 0.3 MB image selected, ready to upload
-
-## 12. Resolve Larastan findings (5 errors remaining at level 5)
-
-Run with `vendor/bin/sail bin phpstan analyse --no-progress`. Keep Larastan in `require-dev` and fix root causes rather than adding a baseline or blanket `ignoreErrors` entries.
-
-### Low — safe cleanup after contract fixes
-
-- [ ] Remove redundant `array_values()` calls on values already typed as lists in `app/DTOs/ParsedEventDTO.php:165`, `app/Mappers/DutyEventMapper.php:124`, `app/Mappers/FlightMapper.php:182`, and `app/Services/RosterParser.php:622` (4 errors).
-- [ ] Remove `app/Services/RosterParser.php:751::firstMatchingLine()` if repository-wide usage confirms it is dead code (1 error).
-
-After each cluster, run the focused PHPUnit tests and Larastan again. Finish with `vendor/bin/sail bin pint --dirty --format agent`, `vendor/bin/sail bin phpstan analyse --no-progress`, and the relevant parser/auth/view-model test files.
+- Upload and results are substantial, conditionally rendered Livewire states.
+- Parsing does not cause a full-page reload.
+- Failures remain on upload without destroying the previous successful result.
+- “Extract another roster” resets only transient form state.
+- Rendering is network-free.
+- Calendar exports continue to work through controller GET routes.
+- Obsolete parsing POST routes and controller helpers are removed after consumer confirmation.
+- Authorization and feature-gate behavior remain unchanged.
+- Focused tests, full tests, Pint, frontend build when relevant, and Larastan have been run.
