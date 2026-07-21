@@ -1,5 +1,5 @@
 <div class="mx-auto max-w-6xl px-5 py-6">
-    @if (! $viewModel->available)
+    @if (! $available)
         <section class="mx-auto max-w-4xl">
             <section class="rounded-lg border border-amber-200 bg-amber-50 p-5 text-amber-900">
                 <p class="text-sm font-semibold uppercase tracking-[0.16em]">Feature unavailable</p>
@@ -8,7 +8,7 @@
             </section>
         </section>
     @elseif ($view === 'upload')
-        <section class="mx-auto max-w-3xl">
+        <section wire:key="schedule-extractor-upload" class="mx-auto max-w-3xl">
             <div class="mb-5 rounded-lg bg-[#1B365D] p-5 text-[#F8F9FA] shadow-lg shadow-[#1B365D]/10">
                 <header>
                     <span class="block text-xs font-bold uppercase tracking-widest text-[#C5A059]">
@@ -36,10 +36,10 @@
                 </div>
             </div>
 
-            <x-parser.form :model="$viewModel" :file="$file" />
+            <x-parser.form :event-types="$eventTypes" :file="$file" :filter-options="$filterOptions" />
         </section>
-    @elseif ($viewModel->hasResult())
-        <section class="mx-auto max-w-4xl space-y-5">
+    @elseif ($view === 'results' && $viewModel?->hasResult())
+        <section wire:key="schedule-extractor-results-{{ $parseKey }}" class="mx-auto max-w-4xl space-y-5">
             <div class="flex justify-end">
                 <button
                     type="button"

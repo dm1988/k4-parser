@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Actions\HandleParseExecution;
 use App\DTOs\ParserResultData;
+use App\Enums\ParserEventType;
 use App\Exceptions\ParseSourceResolutionException;
 use App\Models\User;
 use App\Services\JcaScheduleParsingService;
@@ -141,13 +142,12 @@ class ScheduleExtractor extends Component
 
     public function render(): View
     {
-        $result = $this->currentResult();
-
         return view('livewire.schedule-extractor', [
-            'viewModel' => ParserPageViewModel::fromResult($result, [
-                'text' => $this->text,
-                'event_types' => $this->eventTypes,
-            ]),
+            'available' => auth()->user()?->canUseScheduleParser() ?? false,
+            'filterOptions' => ParserEventType::filterable(),
+            'viewModel' => $this->view === self::VIEW_RESULTS
+                ? ParserPageViewModel::fromResult($this->currentResult())
+                : null,
         ]);
     }
 

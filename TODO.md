@@ -7,7 +7,83 @@ Replace the current request → controller → redirect parser workflow with a s
 
 Use Livewire for server state, validation, parsing, and rendering. Use Alpine only for small browser-side interactions within each view.
 
-# Current Task - init Phase 3
+# Current Task - improve rendering speed
+
+## Status: Complete
+
+Completed on 2026-07-21.
+
+* Upload renders no longer construct `ParserPageViewModel`; the result view model and cached result are resolved only while the results view is active.
+* The upload form now reads `file`, `text`, and `eventTypes` from Livewire state and receives only the lightweight filter option enum list it needs for display.
+* Feature availability is passed independently from the result view model so unavailable-state rendering remains unchanged.
+* Added stable `wire:key` values to the upload and parse-key-specific results sections to make large-tree replacement explicit during Livewire morphing.
+* Added Livewire coverage proving the upload render receives a null view model, filter options remain visible, and both major sections render their stable keys.
+* Verified Pint and all 17 `ScheduleExtractorTest` tests with 128 assertions.
+* The full suite has 258 of 259 tests passing with 1,477 assertions; the only failure remains the pre-existing `UserModelTest::it_resolves_feature_access_from_config_and_role` verified-email expectation.
+* Larastan reports the same five pre-existing findings and no finding in a file changed for this task.
+
+Better: do not build a page view model for upload
+
+The upload section probably does not need the whole ParserPageViewModel.
+
+Pass only what it needs:
+
+public function render(): View
+{
+    return view('livewire.schedule-extractor', [
+        'viewModel' => $this->view === self::VIEW_RESULTS
+            ? ParserPageViewModel::fromResult($this->currentResult(), [])
+            : null,
+    ]);
+}
+
+Then the Blade view can use the Livewire properties directly:
+
+@if ($view === 'upload')
+    <x-parser.upload-form />
+@else
+    <x-parser.results :view-model="$viewModel" />
+@endif
+
+Inside the upload form:
+
+<textarea wire:model="text"></textarea>
+<input type="file" wire:model="file">
+<input
+    type="checkbox"
+    wire:model="eventTypes"
+    value="flight"
+>
+
+The upload form does not need $viewModel->text or $viewModel->selectedTypes, because those values already exist as Livewire state.
+
+Add stable keys around the two major sections
+
+This can make the intended replacement clearer to Livewire:
+
+@if ($view === 'upload')
+    <div wire:key="schedule-extractor-upload">
+        <x-parser.upload-form />
+    </div>
+@else
+    <div wire:key="schedule-extractor-results-{{ $parseKey }}">
+        <x-parser.results :view-model="$viewModel" />
+    </div>
+@endif
+
+This will not fix backend slowness, but it can reduce confusing DOM reconciliation when replacing a large results tree.
+
+# Followup task: Make reset minimal
+public function extractAnotherRoster(): void
+{
+    $this->authorizedUser();
+
+    $this->reset(['file', 'text']);
+    $this->resetValidation();
+
+    // Preserve eventTypes and the cached successful result.
+    $this->view = self::VIEW_UPLOAD;
+}
 
 ## Confirmed baseline
 
@@ -118,6 +194,20 @@ Completed on 2026-07-21.
 # Phase 3: Remove Obsolete Flight and Hotel Parsing Endpoints
 
 Only begin after Phase 2 is stable.
+
+## Status: Implemented; pre-existing verification failures remain
+
+Implemented on 2026-07-21.
+
+* Removed `ParserController::parseFlight()` and `ParserController::parseHotel()` together with their unused Form Request imports.
+* Removed the `parse.flight` and `parse.hotel` POST routes; the route list now contains only the roster POST endpoint and the unchanged calendar export GET endpoints.
+* Removed `ParseFlightRequest` and `ParseHotelRequest` after confirming no references remain.
+* Removed endpoint-only flight and hotel parser and validation tests, and kept feature-middleware coverage on the remaining roster endpoint.
+* Kept `handleParseAction()` because the roster rollback endpoint still depends on it.
+* Kept `HandleParseExecution`, `ParserResultCache`, `JcaScheduleParsingService`, and `ParserCalendarExportService`; roster parsing and calendar exports still depend on these shared services.
+* Verified Pint and 41 focused roster, Livewire, export, validation, and authorization tests with 328 assertions.
+* The full suite has 258 of 259 tests passing with 1,473 assertions. The unrelated `UserModelTest::it_resolves_feature_access_from_config_and_role` fails because it expects an unverified user to access the schedule parser while `User::canUseScheduleParser()` requires verified email.
+* Larastan reports the same five pre-existing findings recorded after Phase 2 and no finding in a Phase 3 file.
 
 The flight and hotel POST endpoints have been reviewed and confirmed to have no external or programmatic consumers. They are not used by Blade, JavaScript, Alpine, Livewire, Apple Shortcuts, or supported external clients.
 

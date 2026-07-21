@@ -29,13 +29,17 @@ class ScheduleExtractorTest extends TestCase
 
     public function test_it_starts_on_the_upload_view_without_a_cached_result(): void
     {
-        Livewire::actingAs(User::factory()->create())
+        $component = Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
             ->assertSet('view', 'upload')
             ->assertSet('parseKey', null)
+            ->assertSeeHtml('wire:key="schedule-extractor-upload"')
             ->assertSee('Schedule Extractor')
             ->assertSee('Ready to extract')
+            ->assertSee('Flights only')
             ->assertDontSee('Extracted Schedule');
+
+        $this->assertNull($component->instance()->render()->getData()['viewModel']);
     }
 
     public function test_the_view_state_cannot_be_changed_by_the_client(): void
@@ -56,6 +60,7 @@ class ScheduleExtractorTest extends TestCase
             ->test(ScheduleExtractor::class)
             ->assertSet('view', 'results')
             ->assertSet('parseKey', $result->parseKey)
+            ->assertSeeHtml('wire:key="schedule-extractor-results-'.$result->parseKey.'"')
             ->assertSee('Extracted Schedule')
             ->assertSee('Cached duty')
             ->assertSee('Extract another roster');

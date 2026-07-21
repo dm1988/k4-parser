@@ -1,4 +1,4 @@
-@props(['model', 'file' => null])
+@props(['eventTypes', 'file' => null, 'filterOptions'])
 
 <form wire:submit="parseRoster" class="cc-card" id="parserForm">
 
@@ -47,7 +47,7 @@
     </div>
 
     @php
-        $hasFilterSelections = $model->selectedTypes !== [];
+        $hasFilterSelections = $eventTypes !== [];
         $hasFilterErrors = $errors->has('eventTypes') || $errors->has('eventTypes.*');
     @endphp
 
@@ -65,15 +65,15 @@
 
         <div class="mt-4">
             <div class="grid gap-3 sm:grid-cols-2">
-                @foreach ($model->filterOptions as $option)
+                @foreach ($filterOptions as $option)
                 <label
                     class="flex items-center gap-3 rounded-md border border-[#1B365D]/15 bg-[#F8F9FA] px-4 py-3 text-sm font-medium text-[#0B0E14]">
-                    <input type="checkbox" name="event_types[]" value="{{ $option['value'] }}"
+                    <input type="checkbox" name="event_types[]" value="{{ $option->value }}"
                         wire:model="eventTypes"
                         class="h-4 w-4 accent-[#C5A059]">
                     <span>
-                        <span class="block">{{ $option['label'] }}</span>
-                        <span class="block text-xs font-normal text-[#4A5568]">{{ $option['description'] }}</span>
+                        <span class="block">{{ $option->filterLabel() }}</span>
+                        <span class="block text-xs font-normal text-[#4A5568]">{{ $option->description() }}</span>
                     </span>
                 </label>
                 @endforeach
@@ -99,7 +99,8 @@
         <summary class="cursor-pointer font-semibold text-[#1B365D]">Paste extracted text instead</summary>
         <textarea name="text"
             class="mt-3 h-40 w-full rounded-md border border-[#4A5568]/30 bg-[#F8F9FA] p-3 text-sm text-[#0B0E14] outline-none focus:border-[#C5A059]"
-            placeholder="Paste OCR text if you already have it...">{{ $model->text }}</textarea>
+            wire:model="text"
+            placeholder="Paste OCR text if you already have it..."></textarea>
         @error('text')
         <p class="mt-2 text-sm font-medium text-red-700">{{ $message }}</p>
         @enderror
