@@ -5,8 +5,6 @@ namespace App\Http\Controllers;
 use App\Actions\HandleParseExecution;
 use App\DTOs\ParserResultData;
 use App\Exceptions\ParseSourceResolutionException;
-use App\Http\Requests\ParseFlightRequest;
-use App\Http\Requests\ParseHotelRequest;
 use App\Http\Requests\ParseRosterRequest;
 use App\Services\JcaScheduleParsingService;
 use App\Services\ParserCalendarExportService;
@@ -39,32 +37,6 @@ class ParserController extends Controller
     private function parserPage(): View
     {
         return view('dashboard');
-    }
-
-    public function parseFlight(ParseFlightRequest $request): RedirectResponse
-    {
-        $text = $request->validated()['text'];
-
-        return $this->handleParseAction(
-            userId: $request->user()?->id,
-            sourceType: 'pasted_text',
-            parserType: 'unknown',
-            file: null,
-            operation: fn (): array => $this->jcaScheduleParsingService->parseFlight($text),
-        );
-    }
-
-    public function parseHotel(ParseHotelRequest $request): RedirectResponse
-    {
-        $text = $request->validated()['text'];
-
-        return $this->handleParseAction(
-            userId: $request->user()?->id,
-            sourceType: 'pasted_text',
-            parserType: 'unknown',
-            file: null,
-            operation: fn (): array => $this->jcaScheduleParsingService->parseHotel($text),
-        );
     }
 
     public function parseRoster(ParseRosterRequest $request): RedirectResponse

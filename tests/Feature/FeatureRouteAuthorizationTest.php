@@ -17,7 +17,7 @@ class FeatureRouteAuthorizationTest extends TestCase
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)
-            ->post(route('parse.flight'))
+            ->post(route('parse.roster'))
             ->assertNotFound();
 
         $this->get(route('parse.export'))
