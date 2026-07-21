@@ -1,151 +1,195 @@
-# Current Task:
-## Change title - don't spell out JCA
+# Integration TODO
 
+## Objective
 
-## 1. ✅ Change "parser" verbage to "extract"
-- Reason: Action oriented tool names. Focuses on what the user does.
-- Keep changes to front end for now
-- "Extract" tells the user exactly what the tool does for them (pulling out their data).
+Reconcile the schedule-extractor work into `main` with the fewest Codex passes and without repeating work already completed on either branch.
 
-- Reword tool description: Upload a roster screenshot or trip PDF. The JCA Extractor will instantly convert it into calendar-ready events.
+## Branch Status
 
-- Navigation bar: Extract Schedule
+### `main`
 
-- It keeps the navigation clean and intentional.
-{{ __('Extract Schedule') }}
-{{ __('Extract Flight Plan') }}
-- Review titles within each tool
-## 🎯 Goal
+Current integration base.
 
+Already contains the former `parser-enrich-airport-info` work, including airport metadata, flight-card presentation, and `AirportLookupClient`. The branch `parser-enrich-airport-info` is an ancestor of `main` and has no commits that need merging.
 
-## 2. Refactor to 2 views
-- First view is for uploading
-- 2nd is for results
-- Have a primary button "Extract another roster". Leads to first view
+Do not merge, cherry-pick, or reimplement `parser-enrich-airport-info`.
 
-## 3. ✅ Spell out Jeppesen Crew Access
-- Should use JCA acryonm only after spelling out Jeppesen Crew Access
-- Reference:
-<header className="mb-10 text-center">
-  <span className="text-xs font-bold tracking-widest uppercase text-[#C5A059] block mb-2">
-    Jeppesen Crew Access
-  </span>
-  <h1 className="text-4xl md:text-5xl font-black tracking-tight text-[#1B365D] mb-4">
-    Schedule Extractor
-  </h1>
-  <p className="text-base text-[#4A5568] max-w-md mx-auto leading-relaxed">
-    Upload a roster screenshot or trip PDF to instantly convert your schedule into calendar-ready events.
-  </p>
-</header>
+### `refactor/livewire-schedule-parser`
 
-## 4. Streamline the Upload Card Structure
-- The file upload input and the "Parse" button feel somewhat detached because they are aligned horizontally with wide gaps.
+The only feature branch still ahead of `main`.
 
-- Fix: Consider stacking the input elements or tightening the container width. 
+It contains:
 
-- Alternatively, transform the upload zone into a larger, centered drag-and-drop target box with an icon, placing a full-width or cleanly aligned "Parse" button directly beneath it.
+- Shared parser validation rules.
+- The class-based `ScheduleExtractor` Livewire component.
+- Livewire upload, validation, parsing, loading, error, and upload/results state.
+- Authentication, verified-email, feature, and gate enforcement for Livewire actions.
+- Cache/lifecycle characterization tests.
+- Removal of obsolete flight and hotel POST endpoints.
+- Upload-render optimization and stable Livewire keys.
+- Minimal “Extract another roster” reset behavior.
 
-## 5. Refine Card Hierarchy and Margins
- - The main blue header card ("Flight Deck") and the white upload card are stacked close together with identical widths, creating a rigid block appearance.
+## Codex Usage Rules
 
- - Fix: Nest the file upload and filters section inside a single, unified container card, where the dark blue header serves as the hero header of that card. This removes the double-card stacking look and groups the context ("what this tool does") directly with the action ("upload your file").
+Follow these rules for every remaining task:
 
-- Spacing: Increase the vertical spacing (gap or margin-bottom) between the hero header card and the upload card if you keep them separate.
+1. Do not repeat the completed parser audit.
+2. Check the branch diff and existing tests before writing code.
+3. Treat the “Already Complete” section below as authoritative.
+4. Work on one numbered task at a time.
+5. Run only focused tests while implementing a task.
+6. Run Pint only when PHP files change.
+7. Run the full suite and Larastan once at the final integration checkpoint, not after every small edit.
+8. Do not reorganize services, rename domains, install packages, or redesign UI unless that item is explicitly activated.
+9. Preserve unrelated working-tree changes.
+10. Update this file with outcomes instead of adding another plan or duplicate checklist.
 
-## 6. Improve Grid/Flex Alignment
-- Filters Section: The "Filters" label and the "Show options" dropdown toggle are pushed to the extreme edges of the container. If a user expands "Show options," the checkboxes will likely appear far away from the initial visual anchor. Aligning these elements or placing the filter options directly in a collapsible accordion that spans a more readable, centered width would feel more cohesive.
+## Task 1: Merge the Livewire Branch
 
-- Alignment: Ensure the text inside the "Choose File" button box vertically aligns perfectly with the text baseline of the "Parse" button.
+Merge `refactor/livewire-schedule-parser` into `main` as one integration task.
 
-## 7. Navbar Typography
-- The navbar items ("Parse Schedule", "Route Extractor", etc.) are quite close to the top edge of the viewport. Adding a bit more top and bottom padding to the navbar container will give the text room to breathe and look cleaner.
+### Merge guidance
 
-## 8. Install laravel debug bar
+- Keep this reconciled `TODO.md`; do not restore the feature branch’s older roadmap.
+- Preserve the airport enrichment and flight-card behavior already on `main`.
+- Preserve the current branding/title behavior on `main`.
+- Resolve code conflicts by combining main’s airport/UI behavior with the branch’s Livewire lifecycle.
+- Do not add flight or hotel Livewire actions; those endpoints were intentionally removed.
+- Keep calendar exports as controller-backed GET routes.
 
-## 9. Organize services
-- Create directory framework
-mkdir -p Services/{Roster/Parsers,FlightPlan/Parsers,Calendar,Infrastructure}
+### Focused verification
 
-- Move files:
-    - Roster Domain
-    git mv Parsers/JcaScheduleParsingService.php Roster/JcaRosterProcessor.php
-    git mv ScheduleInputResolver.php Roster/ScheduleInputResolver.php
-    git mv Extractors/SchedulePdfExtractor.php Roster/PdfTextExtractor.php
-    git mv Parsers/CrewListParser.php Roster/Parsers/CrewListParser.php
-    git mv Parsers/PublishedRosterParser.php Roster/Parsers/PublishedRosterParser.php
-    git mv Parsers/ScheduleFormatParser.php Roster/Parsers/ScheduleFormatParser.php
-    git mv Parsers/TripInformationParser.php Roster/Parsers/TripInformationParser.php
+Run these once after conflict resolution:
 
-    - FlightPlan Domain
-    git mv Extractors/FlightRouteExtractor.php FlightPlan/Parsers/FlightRouteParser.php
-    - Note: Create your FlightReleaseProcessor.php entry point here if it's new
+- `tests/Feature/Livewire/ScheduleExtractorTest.php`
+- `tests/Feature/ParserLifecycleBaselineTest.php`
+- `tests/Feature/ParserCacheIsolationTest.php`
+- Parser upload and request-validation tests.
+- Feature-route authorization tests.
+- Full-calendar, event, and duty-export tests.
+- `vendor/bin/sail artisan route:list --path=parse --except-vendor`
 
-    - Calendar Domain
-    git mv Calendar/IcsCalendarService.php Calendar/IcsGenerator.php
-    git mv Calendar/FlightDutyCalendarEventService.php Calendar/RosterCalendarMapper.php
-    git mv Calendar/ParserCalendarExportService.php Calendar/ExportPayloadService.php
+Expected route state:
 
-    - Clients (Keep folder, fix name)
-    git mv Clients/AirlineCodeLookup.php Clients/AirlineCodeLookupClient.php
+- Keep `POST /parse/roster` temporarily as the rollback path.
+- Remove flight and hotel parsing POST routes.
+- Keep all three calendar export GET routes.
 
-    - Infrastructure
-    git mv Infrastructure/ParseRequestLogger.php Infrastructure/PipelineLogger.php
-    git mv Infrastructure/ParserResultCache.php Infrastructure/EngineResultCache.php
+### Done when
 
-- Clean up legacy directories
-    - rmdir Parsers Extractors
-- Update namespaces and references
-- Fix Service Provider bindings and Controllers:Step 
-- Run a global search in your IDE for App\Services\. Update any locations where these classes were typed, imported (use), or bound in your AppServiceProvider.php.
-- Flush cache
-- Test
+- The Livewire upload/results workflow works on `main`.
+- Main’s airport metadata UI still renders.
+- No obsolete flight/hotel parsing endpoints exist.
+- Focused tests and Pint pass.
 
-app/Services/
-├── Roster/
-│   ├── JcaRosterProcessor.php      # (Was JcaScheduleParsingService) Coordinates
-│   ├── ScheduleInputResolver.php   # Deals directly with raw inputs/requests
-│   ├── PdfTextExtractor.php        # (Was SchedulePdfExtractor) Low-level PDF tool
-│   └── Parsers/                    # Internal text sub-parsers used by the engine
-│       ├── CrewListParser.php
-│       ├── PublishedRosterParser.php
-│       ├── ScheduleFormatParser.php
-│       └── TripInformationParser.php
-│
-├── FlightPlan/
-│   ├── FlightReleaseProcessor.php      # Main entry point for the route engine
-│   └── Parsers/
-│       └── FlightRouteParser.php       # (Was FlightRouteExtractor) text parser
-│
-├── Calendar/
-│   ├── IcsGenerator.php  # (Was IcsCalendarService) Handles raw .ics payload syntax
-│   ├── RosterCalendarMapper.php        # (Was FlightDutyCalendarEventService) Maps roster lines to standard objects
-│   └── ExportPayloadService.php        # (Was ParserCalendarExportService) Wraps data ready for client delivery
-│
-├── Clients/
-│   ├── AirportLookupClient.php
-│   └── AirlineCodeLookupClient.php     # Fixed name consistency (Added "Client")
-│
-└── Infrastructure/
-    ├── PipelineLogger.php              # (Was ParseRequestLogger)
-    └── EngineResultCache.php           # (Was ParserResultCache)
+## Task 2: Remove Airport HTTP Calls from Rendering
 
-## 10. Use a descriptive footer disclaimer in Parse schedule tool:
-- To safely clarify your tool's relationship to the platform, add a small, subtle line of text at the very bottom of your application page layout:
+Start only after Task 1 is merged and stable.
 
-Disclaimer: This tool is an independent utility built for crew convenience and is not affiliated with, authorized, or endorsed by Jeppesen or Boeing.
+This is not a second airport-enrichment feature. Main already has airport enrichment. This task only moves optional provider calls out of the request rendering path.
 
-## 11. One line status message
-- In schedule extractor, shorten status codes
-- System online: Ready to process
-- 0.3 MB image selected, ready to upload
+### Confirmed problem
 
-## 12. Resolve Larastan findings (5 errors remaining at level 5)
+`ParserResultViewModel::fromData()` performs synchronous origin/destination lookups. Seven flights can produce fourteen sequential requests. This explains the observed approximately 1.2-minute dashboard response and 10-second Livewire update.
 
-Run with `vendor/bin/sail bin phpstan analyse --no-progress`. Keep Larastan in `require-dev` and fix root causes rather than adding a baseline or blanket `ignoreErrors` entries.
+### Required change
 
-### Low — safe cleanup after contract fixes
+- Make result/page view models, Livewire `render()`, and Blade network-free.
+- Normalize and deduplicate airport codes once per successful parse.
+- Resolve only unique uncached codes through the existing `AirportLookupClient`.
+- Cache successful and missing results distinctly.
+- Attach airport metadata before writing the completed parser result to `ParserResultCache`.
+- Preserve a safe code-only fallback when provider data is unavailable.
 
-- [ ] Remove redundant `array_values()` calls on values already typed as lists in `app/DTOs/ParsedEventDTO.php:165`, `app/Mappers/DutyEventMapper.php:124`, `app/Mappers/FlightMapper.php:182`, and `app/Services/RosterParser.php:622` (4 errors).
-- [ ] Remove `app/Services/RosterParser.php:751::firstMatchingLine()` if repository-wide usage confirms it is dead code (1 error).
+Suggested separation:
 
-After each cluster, run the focused PHPUnit tests and Larastan again. Finish with `vendor/bin/sail bin pint --dirty --format agent`, `vendor/bin/sail bin phpstan analyse --no-progress`, and the relevant parser/auth/view-model test files.
+- `AirportLookupClient`: existing provider HTTP client; do not duplicate it.
+- `AirportCodeCache`: positive and negative cache entries.
+- `AirportResolver`: normalization, deduplication, and cache-first orchestration.
+
+### Focused tests
+
+- Duplicate codes cause one lookup per unique uncached code.
+- Cached positive and negative results do not call the client.
+- Provider failure does not fail roster parsing.
+- Cached parser results contain the metadata needed by flight cards.
+- Strict mocks prove view-model construction, initial render, refresh, upload render, and reset make no airport calls.
+
+Do not change the provider, UI design, queues, or timeout/retry policy in this task. Measure again after rendering is network-free.
+
+## Task 3: Remove the Roster HTTP Rollback Path
+
+Start after the Livewire flow has passed its rollback period and supported consumers have been checked.
+
+- Confirm no supported client uses `POST /parse/roster`.
+- Remove `ParserController::parseRoster()` and the `parse.roster` route.
+- Remove `ParseRosterRequest` if unused.
+- Remove `handleParseAction()` and related imports if unused.
+- Remove transitional old-input and parser-specific session-error handling from `ScheduleExtractor::mount()`.
+- Preserve calendar export controller actions and routes.
+- Update route, lifecycle, authentication, and authorization tests.
+
+## Task 4: Final Integration Verification
+
+Run once after Tasks 1–3 that are selected for this integration are complete:
+
+1. Relevant focused tests.
+2. `vendor/bin/sail bin pint --dirty --format agent`.
+3. `vendor/bin/sail php vendor/bin/phpstan analyse --no-progress`.
+4. `vendor/bin/sail artisan test --compact`.
+5. Frontend production build if Blade, JavaScript, or Tailwind output changed.
+
+Known issue to resolve or explicitly record:
+
+- The Livewire branch previously produced one `UserModelTest` failure because the test expected an unverified user to access the parser while `User::canUseScheduleParser()` required verified email. Decide the intended contract once and update only the incorrect side.
+
+Do not create a Larastan baseline or blanket ignores. Fix only findings present after the merged code is analyzed; do not separately fix the same finding on both branches.
+
+## Already Complete — Do Not Repeat
+
+### On `main`
+
+- Airport lookup client and airport metadata presentation.
+- Airport detail/popover regression work.
+- Parser/extractor branding and current title wording.
+- Existing calendar export behavior.
+- Previously completed critical, high, and medium Larastan fixes.
+- Existing authentication and verified-route middleware.
+
+### On `refactor/livewire-schedule-parser`
+
+- Parser workflow audit and baseline inventory.
+- Shared `ParserValidationRules`.
+- Livewire roster extraction and local temporary uploads.
+- Locked server-owned view and parse-key state.
+- Validation normalization and error-field mapping.
+- Source-resolution and stale-parse-key handling.
+- Minimal form reset that preserves filters and cached success.
+- Upload-only rendering without a page result view model.
+- Removal of flight/hotel controller actions, routes, requests, and endpoint-only tests.
+- Focused Livewire, lifecycle, isolation, upload, authorization, and export coverage.
+
+## Behavioral Invariants
+
+- Livewire owns upload/results state, validation, parsing, loading, and errors.
+- Alpine is limited to small browser-only interactions.
+- Upload and results are conditionally rendered; do not keep both in the DOM with `x-show`.
+- Failed validation, parser errors, and zero-event parses do not replace the latest successful result.
+- “Extract another roster” clears only file, text, and validation state; it preserves filters and cached success.
+- Local temporary uploads are supported; non-local temporary storage requires an explicit adapter.
+- Calendar exports remain ordinary controller GET responses.
+- Authentication, verified-email, feature-flag, and gate behavior must remain intact.
+- Rendering must perform no external HTTP requests after Task 2.
+
+## Deferred Backlog
+
+Do not combine these with branch reconciliation:
+
+- Parse-key ownership and cross-user export authorization decision.
+- Duplicate Alpine-instance warning investigation.
+- Upload-card, filter, navbar, status-copy, and disclaimer polish.
+- Laravel Debugbar installation; dependency changes require approval.
+- Parser-to-schedule naming cleanup.
+- Broad service/domain directory reorganization.
+
+Activate deferred work as separate tasks only after integration and performance work are complete.
