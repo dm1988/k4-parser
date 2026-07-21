@@ -27,6 +27,7 @@ class ScheduleExtractor extends Component
 
     private const VIEW_RESULTS = 'results';
 
+    #[Locked]
     public string $view = self::VIEW_UPLOAD;
 
     public ?TemporaryUploadedFile $file = null;

@@ -8,63 +8,11 @@ Replace the current request → controller → redirect parser workflow with a s
 Use Livewire for server state, validation, parsing, and rendering. Use Alpine only for small browser-side interactions within each view.
 
 # Current Task - phase 2 fixes:
-## Validation rule mapping works, but is brittle
-
-- [x] Made `ParserValidationRules::rosterRules()` accept the event-types field name.
-- [x] Applied the same field-name parameter to `rosterMessages()` so rules and custom messages cannot diverge.
-- [x] Removed Livewire's manual snake-case-to-camel-case rule and message remapping.
-
-This:
-
-$rules['eventTypes'] = $rules['event_types'];
-$rules['eventTypes.*'] = $rules['event_types.*'];
-unset($rules['event_types'], $rules['event_types.*']);
-
-is acceptable, but it assumes those keys always exist. A future change to ParserValidationRules could produce undefined-index errors.
-
-Safer:
-
-$rules = ParserValidationRules::rosterRules();
-
-return [
-    ...$rules,
-    'eventTypes' => $rules['event_types'] ?? [],
-    'eventTypes.*' => $rules['event_types.*'] ?? [],
-];
-
-You would still need to remove the snake-case keys.
-
-A cleaner design is for the validation provider to accept the field name:
-
-ParserValidationRules::rosterRules(eventTypesField: 'eventTypes');
-
-Or expose common fragments:
-
-ParserValidationRules::eventTypeRules();
-
-Do not overengineer it if this is the only Livewire consumer, though.
-
-The same brittleness exists here:
-
-$messages['eventTypes.*.in'] = $messages['event_types.*.in'];
-
-Use a guard or verify it with tests.
-
-## mount() depends on session errors
-
-This logic:
-
-$this->view = $result !== null && ! session()->has('errors')
-    ? self::VIEW_RESULTS
-    : self::VIEW_UPLOAD;
-
-This makes sense during the transitional phase while the old controller POST route still redirects back. But after the controller workflow is removed, Livewire validation errors do not require remounting the component.
-
-That means this is transitional compatibility code and should be marked for Phase 4 cleanup.
-
-Also, session()->has('errors') can reflect unrelated page validation errors. It would be better to inspect whether the error bag belongs to this parser form, if possible.
 
 ## Public $view can be tampered with
+
+- [x] Locked the server-owned `view` property against client-side updates.
+- [x] Added regression coverage for rejected client mutation while retaining server-side action transitions.
 
 Unlike $parseKey, this property is not locked:
 
@@ -663,6 +611,20 @@ The controller remains responsible for:
 * Flight-duty event export
 * Resolving cached events for download
 * Returning downloadable HTTP responses
+
+## ScheduleExtractor.php: mount() depends on session errors
+
+This logic:
+
+$this->view = $result !== null && ! session()->has('errors')
+    ? self::VIEW_RESULTS
+    : self::VIEW_UPLOAD;
+
+This makes sense during the transitional phase while the old controller POST route still redirects back. But after the controller workflow is removed, Livewire validation errors do not require remounting the component.
+
+That means this is transitional compatibility code and should be marked for Phase 4 cleanup.
+
+Also, session()->has('errors') can reflect unrelated page validation errors. It would be better to inspect whether the error bag belongs to this parser form, if possible.
 
 ## Final cleanup
 

@@ -15,6 +15,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use LogicException;
 use Mockery\MockInterface;
@@ -35,6 +36,16 @@ class ScheduleExtractorTest extends TestCase
             ->assertSee('Schedule Extractor')
             ->assertSee('Ready to extract')
             ->assertDontSee('Extracted Schedule');
+    }
+
+    public function test_the_view_state_cannot_be_changed_by_the_client(): void
+    {
+        $this->expectException(CannotUpdateLockedPropertyException::class);
+        $this->expectExceptionMessage('Cannot update locked property: [view]');
+
+        Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->set('view', 'tampered');
     }
 
     public function test_it_restores_the_latest_cached_result_on_mount(): void
