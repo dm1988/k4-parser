@@ -116,7 +116,7 @@ class ScheduleExtractor extends Component
         }
 
         $this->parseKey = $result->parseKey;
-        $this->file = null;
+        $this->reset('file');
         $this->view = self::VIEW_RESULTS;
         $this->resetValidation();
     }
