@@ -10,6 +10,9 @@ Use Livewire for server state, validation, parsing, and rendering. Use Alpine on
 # Current Task - phase 2 fixes:
 ## mixed $file is permissive
 
+- [x] Replaced the permissive `mixed` property with `?TemporaryUploadedFile`.
+- [x] Confirmed Livewire 4.3.3 hydrates Laravel test uploads into `TemporaryUploadedFile` through the existing PDF and image upload tests.
+
 This is normal in many Livewire components:
 
 public mixed $file = null;

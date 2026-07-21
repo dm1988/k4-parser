@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 class ScheduleExtractor extends Component
@@ -27,7 +28,7 @@ class ScheduleExtractor extends Component
 
     public string $view = self::VIEW_UPLOAD;
 
-    public mixed $file = null;
+    public ?TemporaryUploadedFile $file = null;
 
     public string $text = '';
 
