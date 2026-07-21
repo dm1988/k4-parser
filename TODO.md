@@ -404,139 +404,69 @@ Add Livewire tests for:
 
 ---
 
-# Phase 3: Investigate Flight and Hotel Parsing Consumers
+# Phase 3: Remove Obsolete Flight and Hotel Parsing Endpoints
 
 Only begin after Phase 2 is stable.
 
-The purpose of this phase is to determine whether `parseFlight()` and `parseHotel()` should be migrated to Livewire, preserved as controller endpoints, or removed as obsolete functionality.
+The flight and hotel POST endpoints have been reviewed and confirmed to have no external or programmatic consumers. They are not used by Blade, JavaScript, Alpine, Livewire, Apple Shortcuts, or supported external clients.
 
-Do not assume they belong in the Schedule Parser Livewire component.
+Because no active UI workflow or external integration depends on them, they should be removed rather than migrated into the `ScheduleParser` Livewire component.
 
-## Investigation Tasks
+## Tasks
 
-Before modifying either endpoint:
-
-1. Search the repository for all references to:
-
-   * The flight and hotel route names
-   * Their route URLs
-   * `ParserController::parseFlight()`
-   * `ParserController::parseHotel()`
-   * HTTP requests targeting either endpoint
-
-2. Determine whether each endpoint is used by:
-
-   * Blade views
-   * JavaScript
-   * Alpine
-   * Livewire
-   * Apple Shortcuts
-   * External or programmatic clients
-   * Automated tests only
-   * No active consumer
-
-3. Review the related Form Requests and tests to determine:
-
-   * Expected request format
-   * Authentication and authorization requirements
-   * Validation behavior
-   * Response behavior
-   * Whether the endpoints are intended as internal UI actions or external interfaces
-
-4. Document the confirmed consumer and intended purpose of each endpoint before changing it.
-
-## Decision Rules
-
-Apply the following rules independently to `parseFlight()` and `parseHotel()`.
-
-### Migrate to Livewire
-
-Move the action into the `ScheduleParser` Livewire component only when:
-
-* There is an existing user-facing form or workflow on the parser page, or
-* A new parser-page workflow is explicitly required by the product scope.
-
-The Livewire action must preserve the behavior currently provided by its corresponding Form Request and controller action.
-
-### Preserve as a controller endpoint
-
-Keep the existing POST route and controller action when:
-
-* It supports Apple Shortcuts
-* It supports an external or programmatic client
-* It is intentionally used as an HTTP endpoint
-* Its consumer should not depend on the browser-based Livewire interface
-
-Do not replace a programmatic endpoint with a Livewire-only action.
-
-### Remove as obsolete
-
-Remove the route, controller action, Form Request, and related code only when:
-
-* Repository searches find no active consumer
-* The endpoint is not a documented or supported external interface
-* Tests are the only remaining references
-* Removal is confirmed to be intentional
-
-Do not infer that an endpoint is obsolete merely because no Blade form currently uses it.
-
-## Conditional Livewire Migration
-
-When an endpoint is confirmed to belong in the parser-page UI, migrate it using a dedicated Livewire action:
+Remove the following controller actions:
 
 ```php
-public function parseFlight(): void
+ParserController::parseFlight()
+ParserController::parseHotel()
 ```
 
-or:
+Remove their corresponding POST routes:
 
 ```php
-public function parseHotel(): void
+Route::post('/parse/flight', [ParserController::class, 'parseFlight'])
+    ->name('parse.flight');
+
+Route::post('/parse/hotel', [ParserController::class, 'parseHotel'])
+    ->name('parse.hotel');
 ```
 
-Each action must:
+Remove the corresponding Form Request classes when they are no longer referenced:
 
-* Use the existing application services
-* Preserve current validation rules and messages
-* Preserve user attribution
-* Preserve parser execution tracking
-* Handle `ParseSourceResolutionException`
-* Keep the upload view active after failure
-* Switch to the results view only after success
-* Preserve the latest successful cached result when parsing fails
+```php
+ParseFlightRequest
+ParseHotelRequest
+```
 
-## Shared Execution Logic
+Remove tests that only verify the obsolete endpoints.
 
-Refactor shared component logic only after the roster, flight, and hotel workflows that actually belong in Livewire have been implemented.
+Before deleting shared code, confirm that it is not used by roster parsing, exports, or other parser workflows.
 
-A private method may centralize:
+Review whether these removals make any controller helpers unused, including:
 
-* Calling `HandleParseExecution`
-* Handling `ParseSourceResolutionException`
-* Refreshing result state from `ParserResultCache`
-* Switching to the results view after success
+```php
+handleParseAction()
+```
 
-Do not create a generic parser abstraction that obscures differences in:
+Do not remove `handleParseAction()` during this phase if `parseRoster()` still depends on it. Its final removal should occur only after roster parsing has fully moved to Livewire.
 
-* Input format
-* Validation
-* Source type
-* Parser type
-* Required parameters
-* Consumer behavior
+Remove unused imports, route-name references, documentation, and dead code associated with the deleted endpoints.
+
+Do not add replacement Livewire actions or new flight and hotel forms.
 
 ## Phase 3 Completion Criteria
 
-* The active consumer of each flight and hotel endpoint is documented.
-* Each endpoint has an explicit decision: migrate, preserve, or remove.
-* External and programmatic consumers remain supported.
-* No endpoint is moved into Livewire without an actual browser UI workflow.
-* Any migrated workflow avoids a full-page redirect.
-* Any preserved endpoint retains its existing request and response contract.
-* Any removed endpoint is confirmed unused and obsolete.
-* Existing application services remain the source of parsing and execution logic.
-* Tests are updated to match the selected outcome for each endpoint.
-
+* `parseFlight()` and `parseHotel()` are removed from `ParserController`.
+* The `parse.flight` and `parse.hotel` POST routes are removed.
+* `ParseFlightRequest` and `ParseHotelRequest` are removed when no longer referenced.
+* Endpoint-specific tests are removed or updated.
+* No Livewire replacement actions are introduced.
+* Roster parsing continues to work through Livewire.
+* Calendar export routes and actions remain unchanged.
+* Shared parser services remain intact unless confirmed unused.
+* The route list contains no obsolete flight or hotel parsing endpoints.
+* The full test suite passes.
+* Formatting and configured static-analysis checks pass.
 
 ---
 
