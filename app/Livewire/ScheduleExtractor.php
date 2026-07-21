@@ -99,9 +99,7 @@ class ScheduleExtractor extends Component
                 ),
             );
         } catch (ParseSourceResolutionException $exception) {
-            foreach ($exception->errors() as $key => $message) {
-                $this->addError($key, $message);
-            }
+            $this->addParseErrors($exception);
 
             $this->view = self::VIEW_UPLOAD;
 
@@ -181,6 +179,30 @@ class ScheduleExtractor extends Component
     {
         $this->reset(['file', 'text']);
         $this->resetValidation();
+    }
+
+    private function addParseErrors(ParseSourceResolutionException $exception): void
+    {
+        foreach ($exception->errors() as $key => $messages) {
+            $livewireKey = $this->livewireErrorKey($key);
+
+            foreach ((array) $messages as $message) {
+                $this->addError($livewireKey, (string) $message);
+            }
+        }
+    }
+
+    private function livewireErrorKey(string $key): string
+    {
+        if ($key === 'event_types') {
+            return 'eventTypes';
+        }
+
+        if (str_starts_with($key, 'event_types.')) {
+            return 'eventTypes.'.substr($key, strlen('event_types.'));
+        }
+
+        return $key;
     }
 
     private function authorizedUser(): User

@@ -7,7 +7,174 @@ Replace the current request → controller → redirect parser workflow with a s
 
 Use Livewire for server state, validation, parsing, and rendering. Use Alpine only for small browser-side interactions within each view.
 
-# Current Task
+# Current Task - phase 2 fixes:
+## mixed $file is permissive
+
+This is normal in many Livewire components:
+
+public mixed $file = null;
+
+But it gives static analysis very little help.
+
+Depending on your Livewire version, you may be able to use:
+
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+
+public ?TemporaryUploadedFile $file = null;
+
+If typed upload properties cause hydration issues in your installed version, keep mixed, but add a property annotation:
+
+/** @var UploadedFile|null */
+public mixed $file = null;
+
+More accurately:
+
+/** @var \Livewire\Features\SupportFileUploads\TemporaryUploadedFile|null */
+public mixed $file = null;
+
+
+## getMimeType() may return null
+
+This expression:
+
+$file->getMimeType() === 'application/pdf'
+
+will classify any unknown MIME type as an image:
+
+: 'image'
+
+Validation should prevent unsupported files, but it is safer to avoid relying on that assumption.
+
+Consider a helper:
+
+private function resolveSourceType(?UploadedFile $file): string
+{
+    if ($file === null) {
+        return 'pasted_text';
+    }
+
+    return match ($file->getMimeType()) {
+        'application/pdf' => 'pdf',
+        'image/jpeg',
+        'image/png',
+        'image/webp' => 'image',
+        default => throw new \LogicException('Validated upload has an unsupported MIME type.'),
+    };
+}
+
+This prevents an unexpected MIME value from entering the screenshot parser path.
+## Validation rule mapping works, but is brittle
+
+This:
+
+$rules['eventTypes'] = $rules['event_types'];
+$rules['eventTypes.*'] = $rules['event_types.*'];
+unset($rules['event_types'], $rules['event_types.*']);
+
+is acceptable, but it assumes those keys always exist. A future change to ParserValidationRules could produce undefined-index errors.
+
+Safer:
+
+$rules = ParserValidationRules::rosterRules();
+
+return [
+    ...$rules,
+    'eventTypes' => $rules['event_types'] ?? [],
+    'eventTypes.*' => $rules['event_types.*'] ?? [],
+];
+
+You would still need to remove the snake-case keys.
+
+A cleaner design is for the validation provider to accept the field name:
+
+ParserValidationRules::rosterRules(eventTypesField: 'eventTypes');
+
+Or expose common fragments:
+
+ParserValidationRules::eventTypeRules();
+
+Do not overengineer it if this is the only Livewire consumer, though.
+
+The same brittleness exists here:
+
+$messages['eventTypes.*.in'] = $messages['event_types.*.in'];
+
+Use a guard or verify it with tests.
+
+## mount() depends on session errors
+
+This logic:
+
+$this->view = $result !== null && ! session()->has('errors')
+    ? self::VIEW_RESULTS
+    : self::VIEW_UPLOAD;
+
+This makes sense during the transitional phase while the old controller POST route still redirects back. But after the controller workflow is removed, Livewire validation errors do not require remounting the component.
+
+That means this is transitional compatibility code and should be marked for Phase 4 cleanup.
+
+Also, session()->has('errors') can reflect unrelated page validation errors. It would be better to inspect whether the error bag belongs to this parser form, if possible.
+
+## Public $view can be tampered with
+
+Unlike $parseKey, this property is not locked:
+
+public string $view = self::VIEW_UPLOAD;
+
+A client could set it to any string. That is not a severe security issue, but it can create invalid UI state.
+
+Add a method for transitions and validate before render, or lock it if Alpine/client updates are unnecessary:
+
+#[Locked]
+public string $view = self::VIEW_UPLOAD;
+
+Livewire actions can still change a locked property server-side.
+
+That fits your architecture because Livewire—not the browser—owns the active page state.
+
+## eventTypes is not normalized after validation
+
+You derive a local normalized array:
+
+$eventTypes = array_values(array_filter(...));
+
+but you do not assign it back:
+
+$this->eventTypes = $eventTypes;
+
+This means the component’s public state may preserve non-normalized indexes, while the parser gets normalized data.
+
+After validation:
+
+$this->eventTypes = $eventTypes;
+
+That keeps rendering and parsing aligned.
+
+## Consider clearing the upload validation error when a file changes
+
+A failed upload may leave an error until the next submission. Livewire can clear field errors in update hooks:
+
+public function updatedFile(): void
+{
+    $this->resetValidation('file');
+}
+
+public function updatedText(): void
+{
+    $this->resetValidation('text');
+}
+
+Optional, but it improves the form experience.
+
+## structural improvements
+
+I would extract three small helpers:
+
+private function resolveValidatedFile(array $validated): ?UploadedFile
+private function resolveSourceType(?UploadedFile $file): string
+private function addParserErrors(ParseSourceResolutionException $exception): void
+
+Then parseRoster() becomes easier to audit and test.
 
 ## 2. Refactor Schedule Parser into a Single-Page Livewire Component
 

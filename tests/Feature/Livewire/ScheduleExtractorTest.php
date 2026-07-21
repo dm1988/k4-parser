@@ -3,8 +3,10 @@
 namespace Tests\Feature\Livewire;
 
 use App\DTOs\ParserResultData;
+use App\Exceptions\ParseSourceResolutionException;
 use App\Livewire\ScheduleExtractor;
 use App\Models\User;
+use App\Services\JcaScheduleParsingService;
 use App\Services\ParserResultCache;
 use App\Services\ScheduleFormatParser;
 use App\Services\ScheduleInputResolver;
@@ -175,6 +177,34 @@ class ScheduleExtractorTest extends TestCase
         $latest = app(ParserResultCache::class)->latest();
         $this->assertNotNull($latest);
         $this->assertSame($previous->parseKey, $latest->parseKey);
+    }
+
+    public function test_source_resolution_errors_support_multiple_messages_and_livewire_field_names(): void
+    {
+        $this->mock(JcaScheduleParsingService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('parseRoster')
+                ->once()
+                ->andThrow(new ParseSourceResolutionException('Source resolution failed.', [
+                    'file' => [
+                        'The PDF could not be read.',
+                        'The PDF appears damaged.',
+                    ],
+                    'event_types.0' => ['The selected event type is unavailable.'],
+                ]));
+        });
+
+        $component = Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->set('text', 'Roster text')
+            ->call('parseRoster')
+            ->assertSet('view', 'upload')
+            ->assertHasErrors(['file', 'eventTypes.0'])
+            ->assertSee('The selected event type is unavailable.');
+
+        $this->assertSame([
+            'The PDF could not be read.',
+            'The PDF appears damaged.',
+        ], $component->instance()->getErrorBag()->get('file'));
     }
 
     public function test_extract_another_roster_resets_form_state_without_clearing_cache_or_filters(): void
