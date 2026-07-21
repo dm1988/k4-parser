@@ -38,6 +38,9 @@ public mixed $file = null;
 
 ## getMimeType() may return null
 
+- [x] Added an explicit MIME-to-source resolver for PDF, JPEG, PNG, and WebP uploads.
+- [x] Unknown or null MIME values now fail explicitly instead of entering the screenshot parser path.
+
 This expression:
 
 $file->getMimeType() === 'application/pdf'

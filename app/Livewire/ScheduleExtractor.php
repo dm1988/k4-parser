@@ -17,6 +17,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
+use LogicException;
 
 class ScheduleExtractor extends Component
 {
@@ -83,9 +84,7 @@ class ScheduleExtractor extends Component
             is_array($validated['eventTypes'] ?? null) ? $validated['eventTypes'] : [],
             static fn (mixed $eventType): bool => is_string($eventType),
         ));
-        $sourceType = $file === null
-            ? 'pasted_text'
-            : ($file->getMimeType() === 'application/pdf' ? 'pdf' : 'image');
+        $sourceType = $this->resolveSourceType($file);
 
         try {
             $payload = $this->handleParseExecution->handle(
@@ -180,6 +179,21 @@ class ScheduleExtractor extends Component
     {
         $this->reset(['file', 'text']);
         $this->resetValidation();
+    }
+
+    private function resolveSourceType(?UploadedFile $file): string
+    {
+        if ($file === null) {
+            return 'pasted_text';
+        }
+
+        return match ($file->getMimeType()) {
+            'application/pdf' => 'pdf',
+            'image/jpeg',
+            'image/png',
+            'image/webp' => 'image',
+            default => throw new LogicException('Validated upload has an unsupported MIME type.'),
+        };
     }
 
     private function addParseErrors(ParseSourceResolutionException $exception): void

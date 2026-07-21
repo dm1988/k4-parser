@@ -16,7 +16,9 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\Livewire;
+use LogicException;
 use Mockery\MockInterface;
+use ReflectionMethod;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -100,6 +102,26 @@ class ScheduleExtractorTest extends TestCase
             ->call('parseRoster')
             ->assertHasErrors(['file' => 'mimes'])
             ->assertSet('view', 'upload');
+    }
+
+    public function test_source_type_resolution_rejects_a_validated_upload_with_an_unknown_mime_type(): void
+    {
+        $file = new class(__FILE__, 'roster.pdf', 'application/pdf', null, true) extends UploadedFile
+        {
+            public function getMimeType(): ?string
+            {
+                return null;
+            }
+        };
+        $component = Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->instance();
+        $method = new ReflectionMethod($component, 'resolveSourceType');
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Validated upload has an unsupported MIME type.');
+
+        $method->invoke($component, $file);
     }
 
     public function test_it_parses_pasted_roster_text_without_a_redirect(): void
