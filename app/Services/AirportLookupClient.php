@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\DTOs\AirportData;
+use App\Exceptions\AirportResolutionException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
@@ -29,7 +30,7 @@ class AirportLookupClient
             return null;
         }
 
-        return $this->performLookup(['iata' => $cleanIata]);
+        return $this->performLookup(['iata' => $cleanIata], false);
     }
 
     /**
@@ -43,13 +44,35 @@ class AirportLookupClient
             return null;
         }
 
-        return $this->performLookup(['icao' => $cleanIcao]);
+        return $this->performLookup(['icao' => $cleanIcao], false);
+    }
+
+    public function lookupByIataOrFail(string $iata): ?AirportData
+    {
+        $cleanIata = strtoupper(trim($iata));
+
+        if (strlen($cleanIata) !== 3 || ! ctype_alpha($cleanIata)) {
+            return null;
+        }
+
+        return $this->performLookup(['iata' => $cleanIata], true);
+    }
+
+    public function lookupByIcaoOrFail(string $icao): ?AirportData
+    {
+        $cleanIcao = strtoupper(trim($icao));
+
+        if (strlen($cleanIcao) !== 4 || ! ctype_alpha($cleanIcao)) {
+            return null;
+        }
+
+        return $this->performLookup(['icao' => $cleanIcao], true);
     }
 
     /**
      * Sends the actual GET request and handles the response.
      */
-    protected function performLookup(array $payload): ?AirportData
+    protected function performLookup(array $payload, bool $throwOnUnavailable): ?AirportData
     {
         try {
             $response = Http::acceptJson()
@@ -73,7 +96,7 @@ class AirportLookupClient
                         'status' => $response->status(),
                     ]);
 
-                    return null;
+                    return $this->unavailableResult($throwOnUnavailable);
                 }
 
                 return AirportData::fromApi($data);
@@ -89,7 +112,7 @@ class AirportLookupClient
                     'status' => $response->status(),
                 ]);
 
-                return null;
+                return $this->unavailableResult($throwOnUnavailable);
             }
 
             if (in_array($response->status(), [429, 500, 503], true)) {
@@ -98,7 +121,7 @@ class AirportLookupClient
                     'status' => $response->status(),
                 ]);
 
-                return null;
+                return $this->unavailableResult($throwOnUnavailable);
             }
 
             Log::error('Airport lookup provider returned an unexpected error.', [
@@ -106,15 +129,24 @@ class AirportLookupClient
                 'status' => $response->status(),
             ]);
 
-            return null;
+            return $this->unavailableResult($throwOnUnavailable);
         } catch (ConnectionException $exception) {
             Log::warning('Airport lookup provider connection failed after retries.', [
                 ...$this->lookupContext($payload),
                 'exception' => $exception->getMessage(),
             ]);
 
-            return null;
+            return $this->unavailableResult($throwOnUnavailable, $exception);
         }
+    }
+
+    private function unavailableResult(bool $throwOnUnavailable, ?Throwable $previous = null): null
+    {
+        if ($throwOnUnavailable) {
+            throw AirportResolutionException::providerUnavailable($previous);
+        }
+
+        return null;
     }
 
     /**

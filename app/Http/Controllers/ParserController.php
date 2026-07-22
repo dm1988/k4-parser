@@ -43,6 +43,8 @@ class ParserController extends Controller
     {
         $data = $request->validated();
         $file = $request->file('file');
+        // Use ScheduleDocumentType enum?
+        // Consider refactor - relies on validation to fall back to image type
         $sourceType = $file === null
             ? 'pasted_text'
             : ($file->getMimeType() === 'application/pdf' ? 'pdf' : 'image');

@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\DTOs\AirportData;
 use App\DTOs\Flight;
 use App\DTOs\ParserResultData;
 use App\Models\User;
@@ -69,30 +68,10 @@ class ParserResultComponentTest extends TestCase
         $this->assertStringContainsString('Raw JSON', $html);
     }
 
-    public function test_it_enriches_flight_events_with_airport_details_from_iata_lookups(): void
+    public function test_it_renders_pre_enriched_flight_events_without_airport_lookups(): void
     {
         $airportLookupClient = $this->createMock(AirportLookupClient::class);
-        $airportLookupClient->expects($this->exactly(2))
-            ->method('lookupByIata')
-            ->willReturnCallback(static fn (string $iata): ?AirportData => match ($iata) {
-                'ICN' => new AirportData(
-                    icao: 'RKSI',
-                    iata: 'ICN',
-                    name: 'Incheon International Airport',
-                    city: 'Seoul',
-                    state: null,
-                    country: 'South Korea',
-                ),
-                'HKG' => new AirportData(
-                    icao: 'VHHH',
-                    iata: 'HKG',
-                    name: 'Hong Kong International Airport',
-                    city: 'Hong Kong',
-                    state: null,
-                    country: 'Hong Kong',
-                ),
-                default => null,
-            });
+        $airportLookupClient->expects($this->never())->method('lookupByIata');
 
         $this->app->instance(AirportLookupClient::class, $airportLookupClient);
 
@@ -118,6 +97,18 @@ class ParserResultComponentTest extends TestCase
                         'flightNumber' => 'CKS 240',
                         'origin' => 'ICN',
                         'destination' => 'HKG',
+                        'metadata' => [
+                            'origin_airport_status' => 'found',
+                            'origin_icao' => 'RKSI',
+                            'origin_name' => 'Incheon International Airport',
+                            'origin_city' => 'Seoul',
+                            'origin_country' => 'South Korea',
+                            'destination_airport_status' => 'found',
+                            'destination_icao' => 'VHHH',
+                            'destination_name' => 'Hong Kong International Airport',
+                            'destination_city' => 'Hong Kong',
+                            'destination_country' => 'Hong Kong',
+                        ],
                     ]),
                 ],
             ],

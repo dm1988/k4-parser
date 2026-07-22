@@ -6,7 +6,9 @@ Provide one Livewire-powered schedule extractor that transitions between upload 
 
 Livewire owns form state, validation, parsing, errors, loading state, parsed-result state, and view transitions. Alpine is limited to small browser-only interactions such as accordions, dropdowns, copy feedback, and transitions.
 
-## Current Priority: Remove Airport Lookups from Rendering
+## Remove Airport Lookups from Rendering — complete
+
+Completed 2026-07-22.
 
 ### Problem
 
@@ -35,6 +37,9 @@ Keep responsibilities separate:
 - `AirportLookupClient`: existing provider HTTP behavior.
 - `AirportCodeCache`: positive and negative cache entries.
 - `AirportResolver`: normalization, deduplication, cache-first resolution, and orchestration.
+- `AirportResolutionStatus`: explicit found, missing, and unavailable states.
+- `AirportResolution`: serializable resolution DTO.
+- `AirportResolutionException`: invalid resolution-state errors.
 
 Use versioned keys such as `airport:v1:iata:AUS`. Start with a long TTL for successful records and a shorter TTL for missing/unavailable records. Do not represent both “uncached” and “known missing” as plain `null`.
 
@@ -42,7 +47,7 @@ Preferred lifecycle:
 
 1. Resolve and parse the schedule source.
 2. Collect unique airport codes from parsed events.
-3. Resolve codes through the cache-first resolver.
+3. Resolve codes through the cache-first `AirportResolver->resolveMany($codes)`.
 4. Attach resolved metadata to the parsed result.
 5. Store the completed result in `ParserResultCache`.
 6. Build network-free view models from stored data.
@@ -67,7 +72,17 @@ Preferred lifecycle:
 
 Do not change provider, queues, timeout/retry policy, card design, or export architecture during the initial refactor. Measure enrichment after removing it from rendering, then decide whether the existing `connectTimeout(2)`, `timeout(5)`, and retry policy also need adjustment.
 
-## Next Phase: Remove the Roster HTTP Rollback Path
+Implementation notes:
+
+- Airport enrichment now runs once in `JcaScheduleParsingService`, after filtering and before `ParserResultCache::put()`.
+- `AirportResolver` normalizes and deduplicates codes, checks versioned positive/negative cache entries, and isolates provider failures.
+- `ParserResultViewModel`, Livewire rendering, and Blade consume cached metadata without resolving `AirportLookupClient`.
+- Missing and unavailable details render the airport code with an unavailable-details state; calendar export data remains intact.
+- Focused verification: 34 tests and 217 assertions passed.
+- Full verification: 260 of 261 tests passed with 1,491 assertions. The sole failure is the pre-existing `UserModelTest::it_resolves_feature_access_from_config_and_role` contract mismatch documented below.
+- Pint passed. Larastan reports only the five pre-existing findings documented below; this work adds no findings.
+
+## Current Priority: Remove the Roster HTTP Rollback Path
 
 The Livewire roster workflow is stable, but the old controller POST remains as a rollback path.
 

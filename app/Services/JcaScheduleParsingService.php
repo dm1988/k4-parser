@@ -19,6 +19,7 @@ class JcaScheduleParsingService
         private readonly ScheduleFormatParser $scheduleFormatParser,
         private readonly TripInformationParser $tripInformationParser,
         private readonly ScheduleInputResolver $scheduleInputResolver,
+        private readonly AirportEnrichmentService $airportEnrichmentService,
     ) {}
 
     /**
@@ -107,6 +108,8 @@ class JcaScheduleParsingService
             ));
         }
 
+        $filteredParsed = $this->airportEnrichmentService->enrich($filteredParsed);
+
         $result = $this->buildParserResult->handle(
             type: 'roster',
             source: $source['source'],
@@ -149,6 +152,7 @@ class JcaScheduleParsingService
 
     private function parserType(string $source, ?string $documentType): string
     {
+        // Place logic in enum
         if ($source === 'image') {
             return 'screenshot';
         }

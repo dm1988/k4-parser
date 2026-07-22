@@ -2,14 +2,12 @@
 
 namespace App\View\Models\Parser;
 
-use App\DTOs\AirportData;
 use App\DTOs\DutyEvent;
 use App\DTOs\Flight;
 use App\DTOs\ParserResultData;
 use App\Enums\MetadataKey;
 use App\Mappers\DutyEventMapper;
 use App\Mappers\FlightMapper;
-use App\Services\AirportLookupClient;
 
 readonly class ParserResultViewModel
 {
@@ -35,7 +33,6 @@ readonly class ParserResultViewModel
         ));
         $parseKey = $result->parseKey;
         $eventViewModels = [];
-        $airportLookupClient = app(AirportLookupClient::class);
 
         foreach (($result->parsed['calendar_events'] ?? []) as $event) {
             if ($parseKey === null) {
@@ -43,7 +40,6 @@ readonly class ParserResultViewModel
             }
 
             if ($event instanceof Flight) {
-                $event = self::enrichFlightAirports($event, $airportLookupClient);
                 $downloadId = (string) ($event->downloadId ?? '');
                 $eventViewModels[] = $downloadId === ''
                     ? $event
@@ -68,7 +64,6 @@ readonly class ParserResultViewModel
             $flight = app(FlightMapper::class)->fromCalendarEvent($event, $event[MetadataKey::DownloadId->value] ?? null);
 
             if ($flight !== null) {
-                $flight = self::enrichFlightAirports($flight, $airportLookupClient);
                 $downloadId = (string) ($event[MetadataKey::DownloadId->value] ?? '');
                 $eventViewModels[] = $downloadId === ''
                     ? $flight
@@ -108,73 +103,5 @@ readonly class ParserResultViewModel
     public function hasError(): bool
     {
         return $this->errorMessage !== null;
-    }
-
-    private static function enrichFlightAirports(Flight $flight, AirportLookupClient $airportLookupClient): Flight
-    {
-        $metadata = $flight->metadata;
-
-        $metadata = self::mergeAirportMetadata(
-            $metadata,
-            'origin',
-            self::lookupAirportByIata($airportLookupClient, $flight->origin),
-        );
-
-        $metadata = self::mergeAirportMetadata(
-            $metadata,
-            'destination',
-            self::lookupAirportByIata($airportLookupClient, $flight->destination),
-        );
-
-        if ($metadata === $flight->metadata) {
-            return $flight;
-        }
-
-        return $flight->withMetadata($metadata);
-    }
-
-    private static function lookupAirportByIata(AirportLookupClient $airportLookupClient, ?string $iata): ?AirportData
-    {
-        if (! is_string($iata) || trim($iata) === '') {
-            return null;
-        }
-
-        return $airportLookupClient->lookupByIata($iata);
-    }
-
-    /**
-     * @param  array<string, mixed>  $metadata
-     * @return array<string, mixed>
-     */
-    private static function mergeAirportMetadata(array $metadata, string $prefix, ?AirportData $airport): array
-    {
-        if ($airport === null) {
-            return $metadata;
-        }
-
-        return [
-            ...self::airportMetadata($prefix, $airport),
-            ...$metadata,
-        ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private static function airportMetadata(string $prefix, AirportData $airport): array
-    {
-        $metadata = [
-            "{$prefix}_iata" => $airport->iata,
-            "{$prefix}_icao" => $airport->icao,
-            "{$prefix}_name" => $airport->name,
-            "{$prefix}_city" => $airport->city,
-            "{$prefix}_country" => $airport->country,
-        ];
-
-        if ($airport->state !== null) {
-            $metadata["{$prefix}_state"] = $airport->state;
-        }
-
-        return $metadata;
     }
 }
