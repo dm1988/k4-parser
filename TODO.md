@@ -16,20 +16,23 @@ The production contract was correct: parser routes require verified email, and L
 
 Verification: focused model tests passed with 2 tests and 9 assertions; the full suite passed with 262 tests and 1,485 assertions.
 
-## Current focus: Larastan
+## Larastan — complete
 
-Five pre-existing level-5 findings remain:
+Completed 2026-07-22.
 
-- Remove redundant `array_values()` calls in `ParsedEventDTO`, `DutyEventMapper`, `FlightMapper`, and `TripInformationParser`.
-- Remove `TripInformationParser::firstMatchingLine()` if repository-wide usage confirms it is dead.
+Resolved all five pre-existing level-5 findings:
 
-Do not add a baseline or blanket ignores. Run:
+- Removed redundant `array_values()` calls from `ParsedEventDTO`, `DutyEventMapper`, `FlightMapper`, and `TripInformationParser` after confirming their inputs were already lists.
+- Removed `TripInformationParser::firstMatchingLine()` after repository-wide usage confirmed it was dead private code.
 
-```text
-vendor/bin/sail php vendor/bin/phpstan analyse --no-progress
-```
+Verification:
 
-## Parse-key ownership
+- Focused parser tests passed with 6 tests and 37 assertions.
+- Larastan passed with zero errors and no baseline or suppressions.
+- Pint passed.
+- The full suite passed with 262 tests and 1,485 assertions.
+
+## Current focus: Parse-key ownership
 
 Session-latest results can fall back to global `parsed_results:{parseKey}` cache entries. Parse keys currently behave as bearer identifiers and are not checked against user ownership. User ownership should be determined and held with parse key.
 

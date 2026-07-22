@@ -620,7 +620,7 @@ class TripInformationParser
     {
         foreach ($lines as $index => $line) {
             if (preg_match('/\b(?:Duty LT|Flight Info|Crew list)\b/i', $line) === 1) {
-                return array_values(array_slice($lines, $index));
+                return array_slice($lines, $index);
             }
         }
 
@@ -775,17 +775,6 @@ class TripInformationParser
     private function isDateRange(string $line): bool
     {
         return (bool) preg_match('/^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}\s+-\s+[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}$/', $line);
-    }
-
-    private function firstMatchingLine(array $lines, string $pattern): ?string
-    {
-        foreach ($lines as $line) {
-            if (preg_match($pattern, $line)) {
-                return $line;
-            }
-        }
-
-        return null;
     }
 
     private function detectAircraft(array $lines): ?string
