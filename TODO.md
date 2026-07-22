@@ -1,17 +1,3 @@
-# Goal
-
-Complete refactor branch, move pending work and fixes to main
-
-# Known Issues and Technical Debt
-
-## Current focus: Parse-key ownership
-
-Session-latest results can fall back to global `parsed_results:{parseKey}` cache entries. Parse keys currently behave as bearer identifiers and are not checked against user ownership. User ownership should be determined and checked
-
-## Duplicate Alpine warning
-
-Investigate the current browser warning that multiple Alpine instances are running. Confirm whether Alpine is bundled by both the application and Livewire before changing frontend initialization.
-
 # Product and UI Backlog
 
 - Improve the upload target and button alignment.
