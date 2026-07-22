@@ -18,17 +18,32 @@ class ParserResultCache
         $normalizedResult = $this->normalizeForCache($result);
 
         Cache::put($this->sessionCacheKey($parseKey), $normalizedResult, now()->addMinutes($ttlMinutes));
-        Cache::put($this->parseKeyCacheKey($parseKey), $normalizedResult, now()->addMinutes($ttlMinutes));
+        Cache::put($this->parseKeyCacheKey($parseKey), [
+            'owner_id' => auth()->id(),
+            'result' => $normalizedResult,
+        ], now()->addMinutes($ttlMinutes));
 
         session(['latest_parse_key' => $parseKey]);
     }
 
     public function get(string $parseKey): ?ParserResultData
     {
-        $result = Cache::get($this->sessionCacheKey($parseKey))
-            ?? Cache::get($this->parseKeyCacheKey($parseKey));
+        $sessionResult = Cache::get($this->sessionCacheKey($parseKey));
 
-        return is_array($result) ? ParserResultData::fromArray($result) : null;
+        if (is_array($sessionResult)) {
+            return ParserResultData::fromArray($sessionResult);
+        }
+
+        $cached = Cache::get($this->parseKeyCacheKey($parseKey));
+
+        if (! is_array($cached)
+            || ! array_key_exists('owner_id', $cached)
+            || $cached['owner_id'] !== auth()->id()
+            || ! is_array($cached['result'] ?? null)) {
+            return null;
+        }
+
+        return ParserResultData::fromArray($cached['result']);
     }
 
     public function resolveForRequest(Request $request): ?ParserResultData

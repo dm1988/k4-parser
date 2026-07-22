@@ -116,36 +116,40 @@ class ExportFlightDutyCalendarEventTest extends TestCase
     {
         $parseKey = '01JTESTPARSEKEYABC123';
         $eventId = '01JTESTEVENTKEYABC123';
+        $user = User::factory()->create([
+            'role' => 'admin',
+        ]);
 
         Cache::put("parsed_results:{$parseKey}", [
-            'type' => 'roster',
-            'source' => 'text',
-            'filters' => [],
-            'parse_key' => $parseKey,
-            'parsed' => [
-                'trip' => ['trip_number' => '13131'],
-                'calendar_events' => [[
-                    'title' => 'CKS 271 ICN-ANC',
-                    'type' => 'flight',
-                    'start' => '2026-06-26T23:45:00+00:00',
-                    'end' => '2026-06-27T08:00:00+00:00',
-                    'download_id' => $eventId,
-                    'flightNumber' => 'CKS 271',
-                    'origin' => 'ICN',
-                    'destination' => 'ANC',
-                    'legLocalStart' => 'Jun 26 19:45',
-                    'legLocalEnd' => 'Jun 27 05:00',
-                    'dutyLocalStart' => 'Jun 26 17:45',
-                    'dutyLocalEnd' => 'Jun 27 10:40',
-                    'metadata' => [],
-                ]],
+            'owner_id' => $user->id,
+            'result' => [
+                'type' => 'roster',
+                'source' => 'text',
+                'filters' => [],
+                'parse_key' => $parseKey,
+                'parsed' => [
+                    'trip' => ['trip_number' => '13131'],
+                    'calendar_events' => [[
+                        'title' => 'CKS 271 ICN-ANC',
+                        'type' => 'flight',
+                        'start' => '2026-06-26T23:45:00+00:00',
+                        'end' => '2026-06-27T08:00:00+00:00',
+                        'download_id' => $eventId,
+                        'flightNumber' => 'CKS 271',
+                        'origin' => 'ICN',
+                        'destination' => 'ANC',
+                        'legLocalStart' => 'Jun 26 19:45',
+                        'legLocalEnd' => 'Jun 27 05:00',
+                        'dutyLocalStart' => 'Jun 26 17:45',
+                        'dutyLocalEnd' => 'Jun 27 10:40',
+                        'metadata' => [],
+                    ]],
+                ],
             ],
         ]);
 
         $response = $this
-            ->actingAs(User::factory()->make([
-                'role' => 'admin',
-            ]))
+            ->actingAs($user)
             ->get(route('parse.export.event.duty', ['eventId' => $eventId, 'parse_key' => $parseKey]));
 
         $response

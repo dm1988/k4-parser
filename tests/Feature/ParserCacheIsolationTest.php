@@ -41,7 +41,7 @@ class ParserCacheIsolationTest extends TestCase
             ->assertSee('SUMMARY:First tab event');
     }
 
-    public function test_disclosed_parse_key_is_currently_accessible_by_another_authorized_user(): void
+    public function test_disclosed_parse_key_is_not_accessible_by_another_authorized_user(): void
     {
         $firstUser = User::factory()->create();
         $secondUser = User::factory()->create();
@@ -58,8 +58,27 @@ class ParserCacheIsolationTest extends TestCase
                 'eventId' => '01JSHAREDEVENTKEYABC12',
                 'parse_key' => $result->parseKey,
             ]))
+            ->assertNotFound();
+    }
+
+    public function test_parse_key_remains_accessible_to_its_owner_after_the_session_changes(): void
+    {
+        $user = User::factory()->create();
+        $result = $this->parserResult('01JOWNERPARSEKEYABC123', 'Owned event', '01JOWNEREVENTKEYABC123');
+
+        $this->actingAs($user);
+        app(ParserResultCache::class)->put($result);
+
+        session()->invalidate();
+        session()->start();
+
+        $this->actingAs($user)
+            ->get(route('parse.export.event', [
+                'eventId' => '01JOWNEREVENTKEYABC123',
+                'parse_key' => $result->parseKey,
+            ]))
             ->assertOk()
-            ->assertSee('SUMMARY:Bearer key event');
+            ->assertSee('SUMMARY:Owned event');
     }
 
     private function parserResult(string $parseKey, string $title, string $eventId): ParserResultData

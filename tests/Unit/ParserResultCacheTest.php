@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\DTOs\DutyEvent;
 use App\DTOs\ParserResultData;
+use App\Models\User;
 use App\Services\ParserResultCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -53,10 +54,19 @@ class ParserResultCacheTest extends TestCase
     public function test_it_prefers_request_parse_key_before_session_lookup(): void
     {
         $service = app(ParserResultCache::class);
+        $user = User::factory()->make(['id' => 123]);
+
+        $this->actingAs($user);
 
         session(['latest_parse_key' => '01JSESSIONPARSEKEYABC12']);
-        Cache::put('parsed_results:01JREQUESTPARSEKEYABC12', ['parse_key' => 'request'], now()->addMinute());
-        Cache::put('parsed_results:01JSESSIONPARSEKEYABC12', ['parse_key' => 'session'], now()->addMinute());
+        Cache::put('parsed_results:01JREQUESTPARSEKEYABC12', [
+            'owner_id' => $user->id,
+            'result' => ['parse_key' => 'request'],
+        ], now()->addMinute());
+        Cache::put('parsed_results:01JSESSIONPARSEKEYABC12', [
+            'owner_id' => $user->id,
+            'result' => ['parse_key' => 'session'],
+        ], now()->addMinute());
 
         $request = Request::create('/parse/export', 'GET', [
             'parse_key' => '01JREQUESTPARSEKEYABC12',
@@ -66,5 +76,15 @@ class ParserResultCacheTest extends TestCase
 
         $this->assertInstanceOf(ParserResultData::class, $result);
         $this->assertSame('request', $result->parseKey);
+    }
+
+    public function test_it_rejects_ownerless_legacy_global_cache_entries(): void
+    {
+        $this->actingAs(User::factory()->make(['id' => 123]));
+        Cache::put('parsed_results:01JLEGACYPARSEKEYABC123', [
+            'parse_key' => '01JLEGACYPARSEKEYABC123',
+        ], now()->addMinute());
+
+        $this->assertNull(app(ParserResultCache::class)->get('01JLEGACYPARSEKEYABC123'));
     }
 }
