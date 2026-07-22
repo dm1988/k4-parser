@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\DTOs\ParserResultData;
 use App\Enums\ScheduleDocumentType;
+use App\Livewire\ScheduleExtractor;
 use App\Models\ParseRequest;
 use App\Models\User;
 use App\Services\ParserResultCache;
@@ -12,6 +13,7 @@ use App\Services\ScheduleInputResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
+use Livewire\Livewire;
 use Mockery\MockInterface;
 use RuntimeException;
 use Tests\TestCase;
@@ -37,12 +39,12 @@ class ParserLifecycleBaselineTest extends TestCase
         );
         $this->mockParsedResult(ScheduleDocumentType::PublishedRoster->value, [$this->calendarEvent()]);
 
-        $response = $this->actingAs(User::factory()->create())->post(route('parse.roster'), [
-            'file' => $file,
-        ]);
-
-        $response->assertRedirect();
-        $response->assertSessionHasNoErrors();
+        Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->set('file', $file)
+            ->call('parseRoster')
+            ->assertHasNoErrors()
+            ->assertSet('view', 'results');
 
         $parseRequest = ParseRequest::query()->latest('id')->firstOrFail();
         $this->assertSame('pdf', $parseRequest->source_type);
@@ -71,12 +73,12 @@ class ParserLifecycleBaselineTest extends TestCase
         );
         $this->mockParsedResult(null, [$this->calendarEvent()]);
 
-        $response = $this->actingAs(User::factory()->create())->post(route('parse.roster'), [
-            'file' => $file,
-        ]);
-
-        $response->assertRedirect();
-        $response->assertSessionHasNoErrors();
+        Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->set('file', $file)
+            ->call('parseRoster')
+            ->assertHasNoErrors()
+            ->assertSet('view', 'results');
 
         $parseRequest = ParseRequest::query()->latest('id')->firstOrFail();
         $this->assertSame('image', $parseRequest->source_type);
@@ -98,19 +100,16 @@ class ParserLifecycleBaselineTest extends TestCase
                 ->andThrow(new RuntimeException('Parser unavailable'));
         });
 
-        $response = $this->actingAs($user)
-            ->from(route('parse.index'))
-            ->post(route('parse.roster'), [
-                'text' => 'private roster contents',
-                'event_types' => ['flight'],
-            ]);
-
-        $response->assertRedirect(route('parse.index'));
-        $response->assertSessionHasErrors([
-            'file' => 'Roster text resolution failed: Parser unavailable',
-        ]);
-        $response->assertSessionHasInput('text', 'private roster contents');
-        $response->assertSessionHasInput('event_types', ['flight']);
+        Livewire::actingAs($user)
+            ->test(ScheduleExtractor::class)
+            ->set('text', 'private roster contents')
+            ->set('eventTypes', ['flight'])
+            ->call('parseRoster')
+            ->assertHasErrors(['file'])
+            ->assertSee('Roster text resolution failed: Parser unavailable')
+            ->assertSet('text', 'private roster contents')
+            ->assertSet('eventTypes', ['flight'])
+            ->assertSet('view', 'upload');
 
         $latest = app(ParserResultCache::class)->latest();
         $this->assertNotNull($latest);
@@ -141,9 +140,16 @@ class ParserLifecycleBaselineTest extends TestCase
                 ->andThrow(new RuntimeException('Unexpected parser failure'));
         });
 
-        $this->actingAs($user)
-            ->post(route('parse.roster'), ['text' => 'Roster text'])
-            ->assertServerError();
+        try {
+            Livewire::actingAs($user)
+                ->test(ScheduleExtractor::class)
+                ->set('text', 'Roster text')
+                ->call('parseRoster');
+
+            $this->fail('Expected the parser exception to be rethrown.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Unexpected parser failure', $exception->getMessage());
+        }
 
         $latest = app(ParserResultCache::class)->latest();
         $this->assertNotNull($latest);
@@ -169,9 +175,12 @@ class ParserLifecycleBaselineTest extends TestCase
         );
         $this->mockParsedResult(null, []);
 
-        $this->actingAs($user)
-            ->post(route('parse.roster'), ['text' => 'Roster text with no events'])
-            ->assertRedirect();
+        Livewire::actingAs($user)
+            ->test(ScheduleExtractor::class)
+            ->set('text', 'Roster text with no events')
+            ->call('parseRoster')
+            ->assertHasErrors(['file'])
+            ->assertSet('view', 'upload');
 
         $latest = app(ParserResultCache::class)->latest();
         $this->assertNotNull($latest);
@@ -199,15 +208,12 @@ class ParserLifecycleBaselineTest extends TestCase
         ]))->assertNotFound();
     }
 
-    public function test_parser_post_and_export_routes_require_authentication_and_verification(): void
+    public function test_parser_export_routes_require_authentication_and_verification(): void
     {
-        $this->post(route('parse.roster'))->assertRedirect(route('login'));
         $this->get(route('parse.export'))->assertRedirect(route('login'));
 
         $this->actingAs(User::factory()->unverified()->create())
-            ->post(route('parse.roster'))
-            ->assertRedirect(route('verification.notice'));
-        $this->get(route('parse.export'))
+            ->get(route('parse.export'))
             ->assertRedirect(route('verification.notice'));
     }
 

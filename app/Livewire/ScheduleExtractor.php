@@ -60,15 +60,11 @@ class ScheduleExtractor extends Component
     public function mount(): void
     {
         $result = $this->parserResultCache->latest();
-        $oldInput = session()->getOldInput();
-        $viewModel = ParserPageViewModel::fromResult($result, $oldInput);
+        $viewModel = ParserPageViewModel::fromResult($result);
 
-        $this->text = $viewModel->text;
         $this->eventTypes = $viewModel->selectedTypes;
         $this->parseKey = $result?->parseKey;
-        $this->view = $result !== null && ! session()->has('errors')
-            ? self::VIEW_RESULTS
-            : self::VIEW_UPLOAD;
+        $this->view = $result === null ? self::VIEW_UPLOAD : self::VIEW_RESULTS;
     }
 
     public function parseRoster(): void

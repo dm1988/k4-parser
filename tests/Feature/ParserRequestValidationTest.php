@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\ScheduleExtractor;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class ParserRequestValidationTest extends TestCase
@@ -15,28 +17,32 @@ class ParserRequestValidationTest extends TestCase
         $this->actingAs(User::factory()->make());
     }
 
-    public function test_parse_roster_request_rejects_invalid_event_type_filters(): void
+    public function test_removed_roster_post_route_is_not_available(): void
     {
-        $response = $this->from(route('parse.index'))->post(route('parse.roster'), [
-            'event_types' => ['not-a-real-type'],
-        ]);
-
-        $response->assertSessionHasErrors(['event_types.0' => 'The selected event type is invalid.']);
+        $this->post('/parse/roster')->assertNotFound();
     }
 
-    public function test_parse_roster_request_requires_text_or_a_supported_upload(): void
+    public function test_livewire_rejects_invalid_event_type_filters(): void
     {
-        $missingSource = $this->from(route('parse.index'))->post(route('parse.roster'));
+        Livewire::test(ScheduleExtractor::class)
+            ->set('text', 'Roster text')
+            ->set('eventTypes', ['not-a-real-type'])
+            ->call('parseRoster')
+            ->assertHasErrors(['eventTypes.0' => 'in']);
+    }
 
-        $missingSource->assertSessionHasErrors([
-            'file' => 'Please provide either roster text or an uploaded file.',
-            'text' => 'Please provide either roster text or an uploaded file.',
-        ]);
+    public function test_livewire_requires_text_or_a_supported_upload(): void
+    {
+        Livewire::test(ScheduleExtractor::class)
+            ->call('parseRoster')
+            ->assertHasErrors([
+                'file' => 'required_without',
+                'text' => 'required_without',
+            ]);
 
-        $unsupportedUpload = $this->from(route('parse.index'))->post(route('parse.roster'), [
-            'file' => UploadedFile::fake()->create('roster.csv', 10, 'text/csv'),
-        ]);
-
-        $unsupportedUpload->assertSessionHasErrors(['file']);
+        Livewire::test(ScheduleExtractor::class)
+            ->set('file', UploadedFile::fake()->create('roster.csv', 10, 'text/csv'))
+            ->call('parseRoster')
+            ->assertHasErrors(['file' => 'mimes']);
     }
 }

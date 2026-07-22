@@ -3,12 +3,14 @@
 namespace Tests\Feature;
 
 use App\Enums\ScheduleDocumentType;
+use App\Livewire\ScheduleExtractor;
 use App\Models\ParseRequest;
 use App\Models\User;
 use App\Services\ScheduleFormatParser;
 use App\Services\ScheduleInputResolver;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Livewire\Livewire;
 use Mockery\MockInterface;
 use RuntimeException;
 use Tests\TestCase;
@@ -77,12 +79,12 @@ class ParseUploadTest extends TestCase
 
         $user = User::factory()->make();
 
-        $response = $this->actingAs($user)->post('/parse/roster', [
-            'text' => $text,
-        ]);
-
-        $response->assertRedirect();
-        $response->assertSessionMissing('result');
+        Livewire::actingAs($user)
+            ->test(ScheduleExtractor::class)
+            ->set('text', $text)
+            ->call('parseRoster')
+            ->assertHasNoErrors()
+            ->assertSet('view', 'results');
 
         $this->assertTrue(session()->has('latest_parse_key'));
 
@@ -146,11 +148,11 @@ class ParseUploadTest extends TestCase
                 ->andReturn($parsed);
         });
 
-        $response = $this->actingAs(User::factory()->make())->post(route('parse.roster'), [
-            'text' => 'ignored because resolver is mocked',
-        ]);
-
-        $response->assertRedirect();
+        Livewire::actingAs(User::factory()->make())
+            ->test(ScheduleExtractor::class)
+            ->set('text', 'ignored because resolver is mocked')
+            ->call('parseRoster')
+            ->assertHasNoErrors();
 
         $page = $this->get(route('parse.index'));
 
@@ -169,11 +171,11 @@ class ParseUploadTest extends TestCase
                 ->andThrow(new RuntimeException('Parser unavailable'));
         });
 
-        $response = $this->actingAs(User::factory()->make())->post(route('parse.roster'), [
-            'text' => 'private roster contents',
-        ]);
-
-        $response->assertRedirect();
+        Livewire::actingAs(User::factory()->make())
+            ->test(ScheduleExtractor::class)
+            ->set('text', 'private roster contents')
+            ->call('parseRoster')
+            ->assertHasErrors(['file']);
 
         $parseRequest = ParseRequest::query()->latest('id')->firstOrFail();
         $this->assertSame('failed', $parseRequest->status);
@@ -217,12 +219,11 @@ class ParseUploadTest extends TestCase
                 ->andReturn($parsed);
         });
 
-        $response = $this->actingAs(User::factory()->make())->post(route('parse.roster'), [
-            'text' => 'ignored because resolver is mocked',
-        ]);
-
-        $response->assertRedirect();
-        $response->assertSessionMissing('result');
+        Livewire::actingAs(User::factory()->make())
+            ->test(ScheduleExtractor::class)
+            ->set('text', 'ignored because resolver is mocked')
+            ->call('parseRoster')
+            ->assertHasNoErrors();
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -264,12 +265,11 @@ class ParseUploadTest extends TestCase
                 ->andReturn($parsed);
         });
 
-        $response = $this->actingAs(User::factory()->make())->post(route('parse.roster'), [
-            'text' => 'ignored because resolver is mocked',
-        ]);
-
-        $response->assertRedirect();
-        $response->assertSessionMissing('result');
+        Livewire::actingAs(User::factory()->make())
+            ->test(ScheduleExtractor::class)
+            ->set('text', 'ignored because resolver is mocked')
+            ->call('parseRoster')
+            ->assertHasNoErrors();
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
