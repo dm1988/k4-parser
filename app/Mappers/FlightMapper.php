@@ -178,7 +178,7 @@ final class FlightMapper
             }
         }
 
-        return array_values($normalized);
+        return $normalized;
     }
 
     private function normalizeTailNumber(?string $tailNumber): ?string

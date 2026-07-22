@@ -3,6 +3,7 @@
 namespace App\View\Models\Parser;
 
 use App\DTOs\Flight;
+use App\Enums\AirportResolutionStatus;
 use App\Enums\ParserEventType;
 use Carbon\CarbonImmutable;
 
@@ -272,6 +273,39 @@ readonly class FlightCardViewModel
     {
         return $this->metadataString('destination_country')
             ?? $this->metadataString('destination_country_code');
+    }
+
+    public function originAirportStatus(): ?AirportResolutionStatus
+    {
+        return $this->airportStatus('origin_airport_status');
+    }
+
+    public function destinationAirportStatus(): ?AirportResolutionStatus
+    {
+        return $this->airportStatus('destination_airport_status');
+    }
+
+    public function originAirportDetailsUnavailable(): bool
+    {
+        return $this->originAirportStatus() !== null
+            && $this->originAirportStatus() !== AirportResolutionStatus::Found;
+    }
+
+    public function destinationAirportDetailsUnavailable(): bool
+    {
+        return $this->destinationAirportStatus() !== null
+            && $this->destinationAirportStatus() !== AirportResolutionStatus::Found;
+    }
+
+    private function airportStatus(string $key): ?AirportResolutionStatus
+    {
+        $value = $this->metadataString($key);
+
+        if ($value === null) {
+            return null;
+        }
+
+        return AirportResolutionStatus::tryFrom($value);
     }
 
     // Aircraft Details

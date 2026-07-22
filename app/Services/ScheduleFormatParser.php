@@ -19,6 +19,7 @@ class ScheduleFormatParser
         return match (ScheduleDocumentType::tryFrom((string) $documentType)) {
             ScheduleDocumentType::PublishedRoster => $this->publishedRosterParser->parse($text),
             ScheduleDocumentType::TripInformation,
+            ScheduleDocumentType::Image,
             null => $this->tripInformationParser->parse($text),
         };
     }

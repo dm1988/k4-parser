@@ -15,17 +15,13 @@ use Tests\TestCase;
 class ParserPageViewModelTest extends TestCase
 {
     #[Test]
-    public function it_uses_old_input_to_build_form_state(): void
+    public function it_builds_selected_types_without_legacy_old_input(): void
     {
         $viewModel = ParserPageViewModel::fromResult(ParserResultData::fromArray([
             'filters' => ['flight'],
-        ]), [
-            'event_types' => ['flight'],
-            'text' => 'Pasted roster text',
-        ]);
+        ]));
 
         $this->assertSame(['flight'], $viewModel->selectedTypes);
-        $this->assertSame('Pasted roster text', $viewModel->text);
     }
 
     #[Test]

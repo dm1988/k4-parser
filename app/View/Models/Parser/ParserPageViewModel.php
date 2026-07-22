@@ -15,15 +15,14 @@ readonly class ParserPageViewModel
         public ?ParserResultViewModel $result,
         public array $selectedTypes,
         public array $filterOptions,
-        public string $text,
         public bool $available,
     ) {}
 
-    public static function fromResult(?ParserResultData $result, array $oldInput = []): self
+    public static function fromResult(?ParserResultData $result): self
     {
         $selectedTypes = array_values(array_filter(
-            is_array($oldInput['event_types'] ?? null) ? $oldInput['event_types'] : ($result === null ? [] : $result->filters),
-            fn (mixed $value): bool => is_string($value) && in_array($value, ParserEventType::filterValues(), true),
+            $result === null ? [] : $result->filters,
+            fn (string $value): bool => in_array($value, ParserEventType::filterValues(), true),
         ));
 
         return new self(
@@ -37,7 +36,6 @@ readonly class ParserPageViewModel
                 ],
                 ParserEventType::filterable(),
             ),
-            text: is_string($oldInput['text'] ?? null) ? $oldInput['text'] : '',
             available: auth()->user()?->canUseScheduleParser() ?? false,
         );
     }

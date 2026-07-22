@@ -8,7 +8,7 @@ use Throwable;
 class ParseSourceResolutionException extends RuntimeException
 {
     /**
-     * @param  array<string, string>  $errors
+     * @param  array<string, string|list<string>>  $errors
      */
     public function __construct(
         string $message,
@@ -19,7 +19,7 @@ class ParseSourceResolutionException extends RuntimeException
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, string|list<string>>
      */
     public function errors(): array
     {

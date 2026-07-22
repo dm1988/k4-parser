@@ -17,10 +17,7 @@ class FeatureRouteAuthorizationTest extends TestCase
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)
-            ->post(route('parse.flight'))
-            ->assertNotFound();
-
-        $this->get(route('parse.export'))
+            ->get(route('parse.export'))
             ->assertNotFound();
 
         $this->get(route('parse.export.event.duty', ['eventId' => 'event123']))
@@ -33,10 +30,7 @@ class FeatureRouteAuthorizationTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)
-            ->post(route('parse.roster'))
-            ->assertForbidden();
-
-        $this->get(route('parse.export'))
+            ->get(route('parse.export'))
             ->assertForbidden();
     }
 

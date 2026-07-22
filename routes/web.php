@@ -23,13 +23,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/parse', [ParserController::class, 'index'])->name('parse.index');
 
     Route::middleware(['feature:schedule_parser', 'can:use-schedule-parser'])->group(function () {
-        Route::post('/parse/roster', [ParserController::class, 'parseRoster'])->name('parse.roster');
         Route::get('/parse/export', [ParserController::class, 'exportCalendar'])->name('parse.export');
         Route::get('/parse/export/event/{eventId}', [ParserController::class, 'exportCalendarEvent'])
             ->name('parse.export.event')
             ->whereAlphaNumeric('eventId');
-        Route::post('/parse/flight', [ParserController::class, 'parseFlight'])->name('parse.flight');
-        Route::post('/parse/hotel', [ParserController::class, 'parseHotel'])->name('parse.hotel');
     });
 
     Route::get('/parse/export/event/{eventId}/duty', [ParserController::class, 'exportFlightDutyCalendarEvent'])

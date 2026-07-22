@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\ScheduleExtractor;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class ParserRequestValidationTest extends TestCase
@@ -15,42 +17,32 @@ class ParserRequestValidationTest extends TestCase
         $this->actingAs(User::factory()->make());
     }
 
-    public function test_parse_flight_request_returns_a_clear_text_validation_message(): void
+    public function test_removed_roster_post_route_is_not_available(): void
     {
-        $response = $this->from(route('parse.index'))->post(route('parse.flight'), []);
-
-        $response->assertSessionHasErrors(['text' => 'Please provide some text to parse.']);
+        $this->post('/parse/roster')->assertNotFound();
     }
 
-    public function test_parse_hotel_request_returns_a_clear_text_validation_message(): void
+    public function test_livewire_rejects_invalid_event_type_filters(): void
     {
-        $response = $this->from(route('parse.index'))->post(route('parse.hotel'), []);
-
-        $response->assertSessionHasErrors(['text' => 'Please provide some text to parse.']);
+        Livewire::test(ScheduleExtractor::class)
+            ->set('text', 'Roster text')
+            ->set('eventTypes', ['not-a-real-type'])
+            ->call('parseRoster')
+            ->assertHasErrors(['eventTypes.0' => 'in']);
     }
 
-    public function test_parse_roster_request_rejects_invalid_event_type_filters(): void
+    public function test_livewire_requires_text_or_a_supported_upload(): void
     {
-        $response = $this->from(route('parse.index'))->post(route('parse.roster'), [
-            'event_types' => ['not-a-real-type'],
-        ]);
+        Livewire::test(ScheduleExtractor::class)
+            ->call('parseRoster')
+            ->assertHasErrors([
+                'file' => 'required_without',
+                'text' => 'required_without',
+            ]);
 
-        $response->assertSessionHasErrors(['event_types.0' => 'The selected event type is invalid.']);
-    }
-
-    public function test_parse_roster_request_requires_text_or_a_supported_upload(): void
-    {
-        $missingSource = $this->from(route('parse.index'))->post(route('parse.roster'));
-
-        $missingSource->assertSessionHasErrors([
-            'file' => 'Please provide either roster text or an uploaded file.',
-            'text' => 'Please provide either roster text or an uploaded file.',
-        ]);
-
-        $unsupportedUpload = $this->from(route('parse.index'))->post(route('parse.roster'), [
-            'file' => UploadedFile::fake()->create('roster.csv', 10, 'text/csv'),
-        ]);
-
-        $unsupportedUpload->assertSessionHasErrors(['file']);
+        Livewire::test(ScheduleExtractor::class)
+            ->set('file', UploadedFile::fake()->create('roster.csv', 10, 'text/csv'))
+            ->call('parseRoster')
+            ->assertHasErrors(['file' => 'mimes']);
     }
 }

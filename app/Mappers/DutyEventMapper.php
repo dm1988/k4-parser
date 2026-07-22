@@ -121,6 +121,6 @@ final class DutyEventMapper
             }
         }
 
-        return array_values($normalized);
+        return $normalized;
     }
 }

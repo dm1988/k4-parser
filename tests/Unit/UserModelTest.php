@@ -31,7 +31,7 @@ class UserModelTest extends TestCase
     }
 
     #[Test]
-    public function it_resolves_feature_access_from_config_and_role(): void
+    public function it_resolves_feature_access_from_config_role_and_email_verification(): void
     {
         Config::set('features.flight_release.enabled', true);
         Config::set('features.flight_release.for_all_users', false);
@@ -41,15 +41,21 @@ class UserModelTest extends TestCase
 
         $admin = new User([
             'role' => 'admin',
+            'email_verified_at' => now(),
         ]);
         $user = new User([
             'role' => 'user',
+            'email_verified_at' => now(),
         ]);
+        $unverifiedAdmin = new User(['role' => 'admin']);
+        $unverifiedUser = new User(['role' => 'user']);
 
         $this->assertTrue($admin->canUseFlightRelease());
         $this->assertFalse($user->canUseFlightRelease());
         $this->assertTrue($admin->canUseScheduleParser());
         $this->assertTrue($user->canUseScheduleParser());
+        $this->assertFalse($unverifiedAdmin->canUseScheduleParser());
+        $this->assertFalse($unverifiedUser->canUseScheduleParser());
         $this->assertTrue($admin->canExportScheduleParserDuty());
         $this->assertFalse($user->canExportScheduleParserDuty());
     }

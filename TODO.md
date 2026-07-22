@@ -82,41 +82,6 @@ Expected route state:
 - No obsolete flight/hotel parsing endpoints exist.
 - Focused tests and Pint pass.
 
-## Task 2: Remove Airport HTTP Calls from Rendering
-
-Start only after Task 1 is merged and stable.
-
-This is not a second airport-enrichment feature. Main already has airport enrichment. This task only moves optional provider calls out of the request rendering path.
-
-### Confirmed problem
-
-`ParserResultViewModel::fromData()` performs synchronous origin/destination lookups. Seven flights can produce fourteen sequential requests. This explains the observed approximately 1.2-minute dashboard response and 10-second Livewire update.
-
-### Required change
-
-- Make result/page view models, Livewire `render()`, and Blade network-free.
-- Normalize and deduplicate airport codes once per successful parse.
-- Resolve only unique uncached codes through the existing `AirportLookupClient`.
-- Cache successful and missing results distinctly.
-- Attach airport metadata before writing the completed parser result to `ParserResultCache`.
-- Preserve a safe code-only fallback when provider data is unavailable.
-
-Suggested separation:
-
-- `AirportLookupClient`: existing provider HTTP client; do not duplicate it.
-- `AirportCodeCache`: positive and negative cache entries.
-- `AirportResolver`: normalization, deduplication, and cache-first orchestration.
-
-### Focused tests
-
-- Duplicate codes cause one lookup per unique uncached code.
-- Cached positive and negative results do not call the client.
-- Provider failure does not fail roster parsing.
-- Cached parser results contain the metadata needed by flight cards.
-- Strict mocks prove view-model construction, initial render, refresh, upload render, and reset make no airport calls.
-
-Do not change the provider, UI design, queues, or timeout/retry policy in this task. Measure again after rendering is network-free.
-
 ## Task 3: Remove the Roster HTTP Rollback Path
 
 Start after the Livewire flow has passed its rollback period and supported consumers have been checked.
@@ -133,17 +98,9 @@ Start after the Livewire flow has passed its rollback period and supported consu
 
 Run once after Tasks 1–3 that are selected for this integration are complete:
 
-1. Relevant focused tests.
-2. `vendor/bin/sail bin pint --dirty --format agent`.
-3. `vendor/bin/sail php vendor/bin/phpstan analyse --no-progress`.
-4. `vendor/bin/sail artisan test --compact`.
 5. Frontend production build if Blade, JavaScript, or Tailwind output changed.
 
 Known issue to resolve or explicitly record:
-
-- The Livewire branch previously produced one `UserModelTest` failure because the test expected an unverified user to access the parser while `User::canUseScheduleParser()` required verified email. Decide the intended contract once and update only the incorrect side.
-
-Do not create a Larastan baseline or blanket ignores. Fix only findings present after the merged code is analyzed; do not separately fix the same finding on both branches.
 
 ## Already Complete — Do Not Repeat
 
@@ -181,15 +138,41 @@ Do not create a Larastan baseline or blanket ignores. Fix only findings present 
 - Authentication, verified-email, feature-flag, and gate behavior must remain intact.
 - Rendering must perform no external HTTP requests after Task 2.
 
-## Deferred Backlog
+# Deferred Product, UI, and Architecture Backlog
 
-Do not combine these with branch reconciliation:
+Do not combine these items with branch reconciliation. Activate them as separate tasks only after integration and performance work are complete.
 
-- Parse-key ownership and cross-user export authorization decision.
-- Duplicate Alpine-instance warning investigation.
-- Upload-card, filter, navbar, status-copy, and disclaimer polish.
-- Laravel Debugbar installation; dependency changes require approval.
-- Parser-to-schedule naming cleanup.
-- Broad service/domain directory reorganization.
+### Product and UI Polish
 
-Activate deferred work as separate tasks only after integration and performance work are complete.
+* Improve the upload target and button alignment.
+* Refine the hero and upload-card hierarchy, spacing, and visual balance.
+* Improve filter accordion alignment.
+* Add more vertical padding to the navbar.
+* Shorten upload status copy.
+* Add a disclaimer clarifying that the tool is independent and is not affiliated with Jeppesen or Boeing.
+* Continue spelling out “Jeppesen Crew Access” before introducing the “JCA” abbreviation.
+
+### Investigation and Authorization
+
+* Investigate the duplicate Alpine-instance warning.
+* Decide parse-key ownership rules and cross-user export authorization behavior.
+
+### Naming and Architecture
+
+* Clean up parser-to-schedule naming.
+* Plan the broader service and domain directory reorganization.
+
+### Development Tooling
+
+* Consider installing Laravel Debugbar only with explicit approval for dependency changes.
+* Configure Debugbar for development environments only.
+
+
+# Deferred Architecture Ideas
+
+These are proposals, not approved work:
+
+- Rename parser-centric types only as part of a separately scoped refactor.
+- Organize services by Schedule, Flight Plan, Calendar, Clients, and Infrastructure domains.
+- Avoid broad file moves while lifecycle and rendering performance work is active.
+- Any reorganization must preserve behavior, update namespaces atomically, and be covered by focused and full tests.

@@ -162,6 +162,6 @@ abstract readonly class ParsedEventDTO implements ArrayAccess, JsonSerializable
             }
         }
 
-        return array_values($normalized);
+        return $normalized;
     }
 }

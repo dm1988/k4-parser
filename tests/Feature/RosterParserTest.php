@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\DTOs\Flight;
 use App\Models\Airline;
 use App\Models\User;
+use App\Services\JcaScheduleParsingService;
 use App\Services\ScheduleFormatParser;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -59,10 +60,7 @@ Block
 13:50h
 TEXT;
 
-        $response = $this->post(route('parse.roster'), ['text' => $text]);
-
-        $response->assertRedirect();
-        $response->assertSessionMissing('result');
+        $this->parseRoster($text);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -90,74 +88,6 @@ TEXT;
         $this->assertSame('2026-06-13T09:35:00+00:00', $parsed['calendar_events'][3]['start']);
     }
 
-    public function test_hotel_parser_returns_only_layover_events(): void
-    {
-        $text = <<<'TEXT'
-June 2026
-Details
-Jun 13 01:17 - Jun 13 07:35
-CVG - Holiday Inn Express & Suites Florence - Cincinnati Airport - Vandercar Way
-6:18h
-Jun 13 07:35 - Jun 13 09:35
-CVG
-2:00
-TEXT;
-
-        $response = $this->post(route('parse.hotel'), ['text' => $text]);
-
-        $response->assertRedirect();
-        $response->assertSessionMissing('result');
-
-        $parseKey = session('latest_parse_key');
-        $this->assertIsString($parseKey);
-
-        $result = Cache::get($this->cacheKeyForSession($parseKey));
-        $this->assertIsArray($result);
-        $this->assertSame('hotel', $result['type']);
-        $this->assertSame('text', $result['source']);
-        $this->assertCount(1, $result['parsed']['calendar_events']);
-        $this->assertSame('layover', $result['parsed']['calendar_events'][0]['type']);
-
-        $page = $this->get(route('parse.index'));
-        $page->assertOk()->assertSee('Extracted Schedule');
-    }
-
-    public function test_flight_parser_stores_only_flight_events_in_cache(): void
-    {
-        $text = <<<'TEXT'
-June 2026
-Details
-Jun 12 22:44 - Jun 13 01:17
-G4 368
-Pos
-AUS - CVG
-DH
-Jun 13 01:17 - Jun 13 07:35
-CVG - Holiday Inn Express & Suites Florence - Cincinnati Airport - Vandercar Way
-6:18h
-Jun 13 07:35 - Jun 13 09:35
-CVG
-2:00
-TEXT;
-
-        $response = $this->post(route('parse.flight'), ['text' => $text]);
-
-        $response->assertRedirect();
-        $response->assertSessionMissing('result');
-
-        $parseKey = session('latest_parse_key');
-        $this->assertIsString($parseKey);
-
-        $result = Cache::get($this->cacheKeyForSession($parseKey));
-        $this->assertIsArray($result);
-        $this->assertSame('flight', $result['type']);
-        $this->assertSame('text', $result['source']);
-        $this->assertCount(1, $result['parsed']['calendar_events']);
-        $this->assertSame('deadhead', $result['parsed']['calendar_events'][0]['type']);
-        $this->assertSame('G4 368', $result['parsed']['calendar_events'][0]['flightNumber']);
-        $this->assertIsString($result['parsed']['calendar_events'][0]['download_id'] ?? null);
-    }
-
     public function test_roster_parser_can_filter_calendar_events(): void
     {
         $text = <<<'TEXT'
@@ -176,13 +106,7 @@ CVG
 2:00
 TEXT;
 
-        $response = $this->post(route('parse.roster'), [
-            'text' => $text,
-            'event_types' => ['flight'],
-        ]);
-
-        $response->assertRedirect();
-        $response->assertSessionMissing('result');
+        $this->parseRoster($text, ['flight']);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -228,10 +152,7 @@ ry NRT - Hyatt Regency Tokyo Bay Vv
 68:35h
 TEXT;
 
-        $response = $this->post(route('parse.roster'), ['text' => $text]);
-
-        $response->assertRedirect();
-        $response->assertSessionMissing('result');
+        $this->parseRoster($text);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -275,10 +196,7 @@ DEW ICN CVG NRT Flight Info
 18 19 20 21 22 23 24 Scheduled Time:
 TEXT;
 
-        $response = $this->post(route('parse.roster'), ['text' => $text]);
-
-        $response->assertRedirect();
-        $response->assertSessionMissing('result');
+        $this->parseRoster($text);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -318,10 +236,7 @@ aXe Cameron Stovold 36879 DH LAX
 * David Gonzalez 34534 INZe) AUS
 TEXT;
 
-        $response = $this->post(route('parse.roster'), ['text' => $text]);
-
-        $response->assertRedirect();
-        $response->assertSessionMissing('result');
+        $this->parseRoster($text);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -376,10 +291,7 @@ aXe Cameron Stovold 71835 DH LAX
 * David Gonzalez 72860 INZe) NUS
 TEXT;
 
-        $response = $this->post(route('parse.roster'), ['text' => $text]);
-
-        $response->assertRedirect();
-        $response->assertSessionMissing('result');
+        $this->parseRoster($text);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -432,9 +344,7 @@ TEXT;
                 ]);
         });
 
-        $response = $this->post(route('parse.roster'), ['text' => 'stub']);
-
-        $response->assertRedirect();
+        $this->parseRoster('stub');
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -462,7 +372,7 @@ TEXT;
         6:18h
         TEXT;
 
-        $this->post(route('parse.roster'), ['text' => $text]);
+        $this->parseRoster($text);
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
         $result = Cache::get($this->cacheKeyForSession($parseKey));
@@ -490,7 +400,7 @@ TEXT;
         DH
         TEXT;
 
-        $this->post(route('parse.roster'), ['text' => $text]);
+        $this->parseRoster($text);
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
         $result = Cache::get($this->cacheKeyForSession($parseKey));
@@ -530,7 +440,7 @@ TEXT;
         John Smith 67890 DH AUS
         TEXT;
 
-        $this->post(route('parse.roster'), ['text' => $text]);
+        $this->parseRoster($text);
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
         $result = Cache::get($this->cacheKeyForSession($parseKey));
@@ -564,10 +474,7 @@ TEXT;
         6:18h
         TEXT;
 
-        $this->post(route('parse.roster'), [
-            'text' => $text,
-            'event_types' => ['flight'],
-        ]);
+        $this->parseRoster($text, ['flight']);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -611,13 +518,13 @@ TEXT;
         13:50h
         TEXT;
 
-        $this->post(route('parse.roster'), ['text' => $firstText]);
+        $this->parseRoster($firstText);
         $firstParseKey = session('latest_parse_key');
         $this->assertIsString($firstParseKey);
         $firstResult = Cache::get($this->cacheKeyForSession($firstParseKey));
         $firstEventId = $firstResult['parsed']['calendar_events'][0]['download_id'];
 
-        $this->post(route('parse.roster'), ['text' => $secondText]);
+        $this->parseRoster($secondText);
         $secondParseKey = session('latest_parse_key');
         $this->assertIsString($secondParseKey);
         $secondResult = Cache::get($this->cacheKeyForSession($secondParseKey));
@@ -655,7 +562,7 @@ TEXT;
         DH
         TEXT;
 
-        $this->post(route('parse.roster'), ['text' => $text]);
+        $this->parseRoster($text);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -678,6 +585,12 @@ TEXT;
     private function cacheKeyForSession(string $parseKey): string
     {
         return 'sessions:'.$this->sessionCacheNamespace().":parsed_results:{$parseKey}";
+    }
+
+    /** @param  list<string>  $eventTypes */
+    private function parseRoster(string $text, array $eventTypes = []): void
+    {
+        app(JcaScheduleParsingService::class)->parseRoster(null, $text, $eventTypes);
     }
 
     private function sessionCacheNamespace(): string

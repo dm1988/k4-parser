@@ -3,12 +3,14 @@
 namespace Tests\Feature;
 
 use App\Enums\ScheduleDocumentType;
+use App\Livewire\ScheduleExtractor;
 use App\Models\ParseRequest;
 use App\Models\User;
 use App\Services\ScheduleFormatParser;
 use App\Services\ScheduleInputResolver;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Livewire\Livewire;
 use Mockery\MockInterface;
 use RuntimeException;
 use Tests\TestCase;
@@ -22,14 +24,14 @@ class ParseUploadTest extends TestCase
 
         $page->assertOk();
         $page->assertSee('id="parserStatus"', false);
-        $page->assertSee('class="mt-4 rounded-lg border border-[#1B365D]/10 px-4 py-3"', false);
-        $page->assertSee('x-bind:class="statusPanelClasses"', false);
-        $page->assertSee('x-bind:data-state="statusState"', false);
+        $page->assertSee('wire:submit="parseRoster"', false);
+        $page->assertSee('wire:model="file"', false);
+        $page->assertSee('wire:loading.attr="disabled"', false);
         $page->assertSee('data-parse-submit', false);
         $page->assertSee('disabled:bg-[#1B365D]/55', false);
-        $page->assertSee('x-data="parserForm()"', false);
+        $page->assertDontSee('x-data="parserForm()"', false);
         $page->assertDontSee("const parserForm = document.getElementById('parserForm');", false);
-        $page->assertSee('mx-auto grid max-w-6xl grid-cols-1 gap-6 px-5 py-6', false);
+        $page->assertSee('wire:name="schedule-extractor"', false);
         $this->assertSame(1, substr_count($content, '<main'));
         $this->assertSame(substr_count($content, '<main'), substr_count($content, '</main>'));
     }
@@ -42,7 +44,7 @@ class ParseUploadTest extends TestCase
             ->get(route('dashboard'))
             ->assertOk()
             ->assertViewIs('dashboard')
-            ->assertViewHas('viewModel')
+            ->assertSee('wire:name="schedule-extractor"', false)
             ->assertSeeText('Jeppesen Crew Access')
             ->assertSeeText('Schedule Extractor')
             ->assertSeeText('Upload a roster screenshot or trip PDF to instantly convert your schedule into calendar-ready events.')
@@ -55,7 +57,7 @@ class ParseUploadTest extends TestCase
         $this->get(route('parse.index'))
             ->assertOk()
             ->assertViewIs('dashboard')
-            ->assertViewHas('viewModel')
+            ->assertSee('wire:name="schedule-extractor"', false)
             ->assertSeeText('Jeppesen Crew Access')
             ->assertSeeText('Schedule Extractor')
             ->assertSeeText('Extract Schedule');
@@ -65,14 +67,24 @@ class ParseUploadTest extends TestCase
     {
         $text = "Trip Information\nDate: 13Jun2026\nTrip ID: 13131\nCrew on trip - (5)\nCP 4620 Michael Blackburn";
 
+        $this->mock(ScheduleFormatParser::class, function (MockInterface $mock) use ($text): void {
+            $mock->shouldReceive('parse')
+                ->once()
+                ->with($text, null)
+                ->andReturn([
+                    'trip' => ['trip_number' => '13131'],
+                    'calendar_events' => [$this->calendarEvent()],
+                ]);
+        });
+
         $user = User::factory()->make();
 
-        $response = $this->actingAs($user)->post('/parse/roster', [
-            'text' => $text,
-        ]);
-
-        $response->assertRedirect();
-        $response->assertSessionMissing('result');
+        Livewire::actingAs($user)
+            ->test(ScheduleExtractor::class)
+            ->set('text', $text)
+            ->call('parseRoster')
+            ->assertHasNoErrors()
+            ->assertSet('view', 'results');
 
         $this->assertTrue(session()->has('latest_parse_key'));
 
@@ -136,11 +148,11 @@ class ParseUploadTest extends TestCase
                 ->andReturn($parsed);
         });
 
-        $response = $this->actingAs(User::factory()->make())->post(route('parse.roster'), [
-            'text' => 'ignored because resolver is mocked',
-        ]);
-
-        $response->assertRedirect();
+        Livewire::actingAs(User::factory()->make())
+            ->test(ScheduleExtractor::class)
+            ->set('text', 'ignored because resolver is mocked')
+            ->call('parseRoster')
+            ->assertHasNoErrors();
 
         $page = $this->get(route('parse.index'));
 
@@ -159,11 +171,11 @@ class ParseUploadTest extends TestCase
                 ->andThrow(new RuntimeException('Parser unavailable'));
         });
 
-        $response = $this->actingAs(User::factory()->make())->post(route('parse.roster'), [
-            'text' => 'private roster contents',
-        ]);
-
-        $response->assertRedirect();
+        Livewire::actingAs(User::factory()->make())
+            ->test(ScheduleExtractor::class)
+            ->set('text', 'private roster contents')
+            ->call('parseRoster')
+            ->assertHasErrors(['file']);
 
         $parseRequest = ParseRequest::query()->latest('id')->firstOrFail();
         $this->assertSame('failed', $parseRequest->status);
@@ -191,7 +203,7 @@ class ParseUploadTest extends TestCase
 
         $parsed = [
             'trip' => ['trip_number' => '13131'],
-            'calendar_events' => [],
+            'calendar_events' => [$this->calendarEvent()],
         ];
 
         $this->mock(ScheduleInputResolver::class, function (MockInterface $mock) use ($source): void {
@@ -207,12 +219,11 @@ class ParseUploadTest extends TestCase
                 ->andReturn($parsed);
         });
 
-        $response = $this->actingAs(User::factory()->make())->post(route('parse.roster'), [
-            'text' => 'ignored because resolver is mocked',
-        ]);
-
-        $response->assertRedirect();
-        $response->assertSessionMissing('result');
+        Livewire::actingAs(User::factory()->make())
+            ->test(ScheduleExtractor::class)
+            ->set('text', 'ignored because resolver is mocked')
+            ->call('parseRoster')
+            ->assertHasNoErrors();
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -238,7 +249,7 @@ class ParseUploadTest extends TestCase
 
         $parsed = [
             'trip' => ['trip_number' => '13131'],
-            'calendar_events' => [],
+            'calendar_events' => [$this->calendarEvent()],
         ];
 
         $this->mock(ScheduleInputResolver::class, function (MockInterface $mock) use ($source): void {
@@ -254,12 +265,11 @@ class ParseUploadTest extends TestCase
                 ->andReturn($parsed);
         });
 
-        $response = $this->actingAs(User::factory()->make())->post(route('parse.roster'), [
-            'text' => 'ignored because resolver is mocked',
-        ]);
-
-        $response->assertRedirect();
-        $response->assertSessionMissing('result');
+        Livewire::actingAs(User::factory()->make())
+            ->test(ScheduleExtractor::class)
+            ->set('text', 'ignored because resolver is mocked')
+            ->call('parseRoster')
+            ->assertHasNoErrors();
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -274,6 +284,18 @@ class ParseUploadTest extends TestCase
     private function cacheKeyForSession(string $parseKey): string
     {
         return 'sessions:'.$this->sessionCacheNamespace().":parsed_results:{$parseKey}";
+    }
+
+    /** @return array<string, mixed> */
+    private function calendarEvent(): array
+    {
+        return [
+            'title' => 'Duty',
+            'type' => 'duty',
+            'start' => '2026-06-13T14:00:00+00:00',
+            'end' => '2026-06-13T16:00:00+00:00',
+            'metadata' => [],
+        ];
     }
 
     private function sessionCacheNamespace(): string
