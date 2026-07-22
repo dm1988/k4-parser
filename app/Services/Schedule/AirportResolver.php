@@ -1,8 +1,10 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Schedule;
 
 use App\DTOs\AirportResolution;
+use App\Services\Clients\AirportLookupClient;
+use App\Services\Infrastructure\AirportCodeCache;
 use Throwable;
 
 final class AirportResolver

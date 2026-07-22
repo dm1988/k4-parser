@@ -1,11 +1,12 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Schedule\Extractor;
 
 use App\DTOs\Flight;
 use App\Enums\CrewPosition;
 use App\Enums\ParserEventType;
 use App\Mappers\FlightMapper;
+use App\Services\Clients\AirlineCodeLookupClient;
 use Illuminate\Support\Carbon;
 
 class TripInformationParser
@@ -13,7 +14,7 @@ class TripInformationParser
     public function __construct(
         private readonly FlightMapper $flightMapper,
         private readonly CrewListParser $crewListParser,
-        private readonly AirlineCodeLookup $airlineCodeLookup,
+        private readonly AirlineCodeLookupClient $airlineCodeLookupClient,
     ) {}
 
     public function parse(string $text): array
@@ -547,7 +548,7 @@ class TripInformationParser
             ];
         }
 
-        $airlineName = $this->airlineCodeLookup->airlineNameForIataCode($matches[1]);
+        $airlineName = $this->airlineCodeLookupClient->airlineNameForIataCode($matches[1]);
 
         if (! is_string($airlineName) || trim($airlineName) === '') {
             return [

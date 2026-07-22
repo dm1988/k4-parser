@@ -6,10 +6,10 @@ use App\DTOs\ParserResultData;
 use App\Exceptions\ParseSourceResolutionException;
 use App\Livewire\ScheduleExtractor;
 use App\Models\User;
-use App\Services\JcaScheduleParsingService;
-use App\Services\ParserResultCache;
-use App\Services\ScheduleFormatParser;
-use App\Services\ScheduleInputResolver;
+use App\Services\Infrastructure\EngineResultCache;
+use App\Services\Schedule\Extractor\ScheduleFormatParser;
+use App\Services\Schedule\JcaScheduleProcessor;
+use App\Services\Schedule\ScheduleInputResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
@@ -88,7 +88,7 @@ class ScheduleExtractorTest extends TestCase
             ->assertSee('Latest duty')
             ->assertDontSee('Stale duty');
 
-        $this->assertSame($latestResult->parseKey, app(ParserResultCache::class)->latest()?->parseKey);
+        $this->assertSame($latestResult->parseKey, app(EngineResultCache::class)->latest()?->parseKey);
     }
 
     public function test_it_uses_the_shared_roster_validation_rules_and_messages(): void
@@ -172,7 +172,7 @@ class ScheduleExtractorTest extends TestCase
             ->assertSee('Pasted text duty')
             ->assertSee('Download all (.ics)');
 
-        $latest = app(ParserResultCache::class)->latest();
+        $latest = app(EngineResultCache::class)->latest();
         $this->assertNotNull($latest);
         $this->assertSame(['duty', 'flight'], $latest->filters);
     }
@@ -228,14 +228,14 @@ class ScheduleExtractorTest extends TestCase
             ->assertHasErrors(['file'])
             ->assertSee('Roster text resolution failed: Parser unavailable');
 
-        $latest = app(ParserResultCache::class)->latest();
+        $latest = app(EngineResultCache::class)->latest();
         $this->assertNotNull($latest);
         $this->assertSame($previous->parseKey, $latest->parseKey);
     }
 
     public function test_source_resolution_errors_support_multiple_messages_and_livewire_field_names(): void
     {
-        $this->mock(JcaScheduleParsingService::class, function (MockInterface $mock): void {
+        $this->mock(JcaScheduleProcessor::class, function (MockInterface $mock): void {
             $mock->shouldReceive('parseRoster')
                 ->once()
                 ->andThrow(new ParseSourceResolutionException('Source resolution failed.', [
@@ -278,7 +278,7 @@ class ScheduleExtractorTest extends TestCase
             ->assertSet('parseKey', $previous->parseKey)
             ->assertHasNoErrors();
 
-        $latest = app(ParserResultCache::class)->latest();
+        $latest = app(EngineResultCache::class)->latest();
         $this->assertNotNull($latest);
         $this->assertSame($previous->parseKey, $latest->parseKey);
     }
@@ -300,7 +300,7 @@ class ScheduleExtractorTest extends TestCase
             ->assertSee('No calendar events were found in that schedule.')
             ->assertDontSee('Extracted Schedule');
 
-        $latest = app(ParserResultCache::class)->latest();
+        $latest = app(EngineResultCache::class)->latest();
         $this->assertNotNull($latest);
         $this->assertSame($previous->parseKey, $latest->parseKey);
     }
@@ -319,7 +319,7 @@ class ScheduleExtractorTest extends TestCase
             ->assertHasErrors(['file'])
             ->assertSee('No calendar events were found in that schedule.');
 
-        $this->assertNull(app(ParserResultCache::class)->latest());
+        $this->assertNull(app(EngineResultCache::class)->latest());
     }
 
     public function test_component_actions_enforce_authentication_verification_feature_and_gate_access(): void
@@ -424,7 +424,7 @@ class ScheduleExtractorTest extends TestCase
             ],
         ]);
 
-        app(ParserResultCache::class)->put($result);
+        app(EngineResultCache::class)->put($result);
 
         return $result;
     }

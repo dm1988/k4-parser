@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Actions\BuildParserResult;
 use App\DTOs\DutyEvent;
 use App\Models\User;
-use App\Services\ParserResultCache;
+use App\Services\Infrastructure\EngineResultCache;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
@@ -31,7 +31,7 @@ class ExportFlightDutyCalendarEventTest extends TestCase
                 ],
             ],
         );
-        app(ParserResultCache::class)->put($result);
+        app(EngineResultCache::class)->put($result);
 
         /** @var DutyEvent $event */
         $event = $result->parsed['calendar_events'][0];

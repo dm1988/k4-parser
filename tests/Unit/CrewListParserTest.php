@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Services\CrewListParser;
+use App\Services\Schedule\Extractor\CrewListParser;
 use Tests\TestCase;
 
 class CrewListParserTest extends TestCase

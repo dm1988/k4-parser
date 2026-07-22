@@ -3,10 +3,9 @@
 namespace Tests\Unit;
 
 use App\Enums\ScheduleDocumentType;
-use App\Services\PublishedRosterParser;
-use App\Services\ScheduleFormatParser;
-use App\Services\ScheduleInputResolver;
-use App\Services\TripInformationParser;
+use App\Services\Schedule\Extractor\PublishedRosterParser;
+use App\Services\Schedule\Extractor\ScheduleFormatParser;
+use App\Services\Schedule\Extractor\TripInformationParser;
 use Mockery\MockInterface;
 use Tests\TestCase;
 

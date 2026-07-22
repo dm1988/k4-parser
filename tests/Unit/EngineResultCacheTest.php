@@ -5,16 +5,16 @@ namespace Tests\Unit;
 use App\DTOs\DutyEvent;
 use App\DTOs\ParserResultData;
 use App\Models\User;
-use App\Services\ParserResultCache;
+use App\Services\Infrastructure\EngineResultCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
-class ParserResultCacheTest extends TestCase
+class EngineResultCacheTest extends TestCase
 {
     public function test_it_stores_normalized_results_in_both_cache_namespaces(): void
     {
-        $service = app(ParserResultCache::class);
+        $service = app(EngineResultCache::class);
         $result = ParserResultData::fromArray([
             'type' => 'flight',
             'source' => 'text',
@@ -53,7 +53,7 @@ class ParserResultCacheTest extends TestCase
 
     public function test_it_prefers_request_parse_key_before_session_lookup(): void
     {
-        $service = app(ParserResultCache::class);
+        $service = app(EngineResultCache::class);
         $user = User::factory()->make(['id' => 123]);
 
         $this->actingAs($user);
@@ -85,6 +85,6 @@ class ParserResultCacheTest extends TestCase
             'parse_key' => '01JLEGACYPARSEKEYABC123',
         ], now()->addMinute());
 
-        $this->assertNull(app(ParserResultCache::class)->get('01JLEGACYPARSEKEYABC123'));
+        $this->assertNull(app(EngineResultCache::class)->get('01JLEGACYPARSEKEYABC123'));
     }
 }

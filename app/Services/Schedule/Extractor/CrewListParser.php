@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Schedule\Extractor;
 
 use App\Enums\CrewPosition;
 

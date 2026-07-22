@@ -1,17 +1,18 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Calendar;
 
 use App\DTOs\Flight;
 use App\DTOs\ParsedEventDTO;
 use App\Enums\MetadataKey;
 use App\Mappers\FlightMapper;
+use App\Services\Schedule\Extractor\CrewListParser;
 use Illuminate\Support\Carbon;
 use Spatie\IcalendarGenerator\Components\Calendar;
 use Spatie\IcalendarGenerator\Components\Event;
 use Spatie\IcalendarGenerator\Properties\TextProperty;
 
-class IcsCalendarService
+class IcsGenerator
 {
     public function __construct(
         private readonly FlightMapper $flightMapper,

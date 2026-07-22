@@ -4,8 +4,8 @@ namespace Tests\Unit;
 
 use App\DTOs\AirportData;
 use App\DTOs\Flight;
-use App\Services\AirportEnrichmentService;
-use App\Services\AirportLookupClient;
+use App\Services\Clients\AirportLookupClient;
+use App\Services\Schedule\AirportEnrichmentService;
 use Tests\TestCase;
 
 class AirportEnrichmentServiceTest extends TestCase

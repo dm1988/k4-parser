@@ -6,7 +6,7 @@ use App\DTOs\DutyEvent;
 use App\DTOs\Flight;
 use App\DTOs\ParserResultData;
 use App\Enums\ParserEventType;
-use App\Services\ParserResultCache;
+use App\Services\Infrastructure\EngineResultCache;
 use App\View\Models\Parser\ParserPageViewModel;
 use Illuminate\Support\Facades\Cache;
 use PHPUnit\Framework\Attributes\Test;
@@ -169,7 +169,7 @@ class ParserPageViewModelTest extends TestCase
             ],
         ]);
 
-        $viewModel = ParserPageViewModel::fromResult(app(ParserResultCache::class)->latest());
+        $viewModel = ParserPageViewModel::fromResult(app(EngineResultCache::class)->latest());
 
         $this->assertTrue($viewModel->hasResult());
         $this->assertNotNull($viewModel->result);

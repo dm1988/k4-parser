@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Clients;
 
 use App\DTOs\AirportData;
 use App\Exceptions\AirportResolutionException;

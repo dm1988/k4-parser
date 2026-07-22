@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Http\Requests\StoreFlightReleaseRequest;
-use App\Services\FlightRouteExtractor;
+use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use App\View\Models\FlightReleasePageViewModel;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;

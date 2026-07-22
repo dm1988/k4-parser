@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\DTOs\ParserResultData;
 use App\Models\User;
-use App\Services\ParserResultCache;
+use App\Services\Infrastructure\EngineResultCache;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -16,7 +16,7 @@ class ParserCacheIsolationTest extends TestCase
     {
         $this->actingAs(User::factory()->create());
 
-        $cache = app(ParserResultCache::class);
+        $cache = app(EngineResultCache::class);
         $first = $this->parserResult('01JFIRSTPARSEKEYABC123', 'First tab event', '01JFIRSTEVENTKEYABC123');
         $second = $this->parserResult('01JSECONDPARSEKEYABC12', 'Second tab event', '01JSECONDEVENTKEYABC12');
 
@@ -48,7 +48,7 @@ class ParserCacheIsolationTest extends TestCase
         $result = $this->parserResult('01JSHAREDPARSEKEYABC12', 'Bearer key event', '01JSHAREDEVENTKEYABC12');
 
         $this->actingAs($firstUser);
-        app(ParserResultCache::class)->put($result);
+        app(EngineResultCache::class)->put($result);
 
         session()->invalidate();
         session()->start();
@@ -67,7 +67,7 @@ class ParserCacheIsolationTest extends TestCase
         $result = $this->parserResult('01JOWNERPARSEKEYABC123', 'Owned event', '01JOWNEREVENTKEYABC123');
 
         $this->actingAs($user);
-        app(ParserResultCache::class)->put($result);
+        app(EngineResultCache::class)->put($result);
 
         session()->invalidate();
         session()->start();

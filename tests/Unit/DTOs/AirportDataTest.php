@@ -3,7 +3,7 @@
 namespace Tests\Unit\DTOs;
 
 use App\DTOs\AirportData;
-use App\Services\AirportLookupClient;
+use App\Services\Clients\AirportLookupClient;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 

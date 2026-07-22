@@ -2,14 +2,14 @@
 
 namespace Tests\Unit;
 
-use App\Services\FlightDutyCalendarEventService;
+use App\Services\Calendar\FlightDutyEvent;
 use Tests\TestCase;
 
-class FlightDutyCalendarEventServiceTest extends TestCase
+class FlightDutyEventTest extends TestCase
 {
     public function test_it_builds_a_duty_calendar_event_from_flight_and_local_duty_offsets(): void
     {
-        $event = app(FlightDutyCalendarEventService::class)->buildFromFlight([
+        $event = app(FlightDutyEvent::class)->buildFromFlight([
             'title' => 'CKS 271 ICN-ANC',
             'type' => 'flight',
             'start' => '2026-06-26T23:45:00+00:00',
@@ -40,7 +40,7 @@ class FlightDutyCalendarEventServiceTest extends TestCase
 
     public function test_it_returns_null_when_local_duty_times_are_missing(): void
     {
-        $event = app(FlightDutyCalendarEventService::class)->buildFromFlight([
+        $event = app(FlightDutyEvent::class)->buildFromFlight([
             'title' => 'CKS 271 ICN-ANC',
             'type' => 'flight',
             'start' => '2026-06-26T23:45:00+00:00',
@@ -56,7 +56,7 @@ class FlightDutyCalendarEventServiceTest extends TestCase
 
     public function test_it_builds_from_a_cached_flight_dto_array_with_top_level_local_times(): void
     {
-        $event = app(FlightDutyCalendarEventService::class)->buildFromFlight([
+        $event = app(FlightDutyEvent::class)->buildFromFlight([
             'title' => 'CKS 271 ICN-ANC',
             'type' => 'flight',
             'start' => '2026-06-26T23:45:00+00:00',
@@ -81,7 +81,7 @@ class FlightDutyCalendarEventServiceTest extends TestCase
 
     public function test_it_rolls_an_ocr_duty_local_end_forward_when_it_precedes_the_flight_local_end(): void
     {
-        $event = app(FlightDutyCalendarEventService::class)->buildFromFlight([
+        $event = app(FlightDutyEvent::class)->buildFromFlight([
             'title' => 'CKS 240 ICN-HKG',
             'type' => 'flight',
             'start' => '2026-06-15T23:45:00+00:00',

@@ -7,8 +7,8 @@ use App\DTOs\ParserResultData;
 use App\Enums\ParserEventType;
 use App\Exceptions\ParseSourceResolutionException;
 use App\Models\User;
-use App\Services\JcaScheduleParsingService;
-use App\Services\ParserResultCache;
+use App\Services\Infrastructure\EngineResultCache;
+use App\Services\Schedule\JcaScheduleProcessor;
 use App\Validation\ParserValidationRules;
 use App\View\Models\Parser\ParserPageViewModel;
 use Illuminate\Http\UploadedFile;
@@ -43,23 +43,23 @@ class ScheduleExtractor extends Component
 
     protected HandleParseExecution $handleParseExecution;
 
-    protected JcaScheduleParsingService $jcaScheduleParsingService;
+    protected JcaScheduleProcessor $jcaScheduleProcessor;
 
-    protected ParserResultCache $parserResultCache;
+    protected EngineResultCache $engineResultCache;
 
     public function boot(
         HandleParseExecution $handleParseExecution,
-        JcaScheduleParsingService $jcaScheduleParsingService,
-        ParserResultCache $parserResultCache,
+        JcaScheduleProcessor $jcaScheduleProcessor,
+        EngineResultCache $engineResultCache,
     ): void {
         $this->handleParseExecution = $handleParseExecution;
-        $this->jcaScheduleParsingService = $jcaScheduleParsingService;
-        $this->parserResultCache = $parserResultCache;
+        $this->jcaScheduleProcessor = $jcaScheduleProcessor;
+        $this->engineResultCache = $engineResultCache;
     }
 
     public function mount(): void
     {
-        $result = $this->parserResultCache->latest();
+        $result = $this->engineResultCache->latest();
         $viewModel = ParserPageViewModel::fromResult($result);
 
         $this->eventTypes = $viewModel->selectedTypes;
@@ -89,7 +89,7 @@ class ScheduleExtractor extends Component
                 sourceType: $sourceType,
                 parserType: $sourceType === 'image' ? 'screenshot' : 'unknown',
                 file: $file,
-                operation: fn (): array => $this->jcaScheduleParsingService->parseRoster(
+                operation: fn (): array => $this->jcaScheduleProcessor->parseRoster(
                     $file,
                     $text,
                     $eventTypes,
@@ -162,14 +162,14 @@ class ScheduleExtractor extends Component
     private function currentResult(): ?ParserResultData
     {
         if ($this->parseKey !== null) {
-            $result = $this->parserResultCache->get($this->parseKey);
+            $result = $this->engineResultCache->get($this->parseKey);
 
             if ($result !== null) {
                 return $result;
             }
         }
 
-        return $this->parserResultCache->latest();
+        return $this->engineResultCache->latest();
     }
 
     private function resetRosterForm(): void

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Infrastructure;
 
 use App\DTOs\ParsedEventDTO;
 use App\DTOs\ParserResultData;
@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use LogicException;
 
-class ParserResultCache
+class EngineResultCache
 {
     public function put(ParserResultData $result): void
     {

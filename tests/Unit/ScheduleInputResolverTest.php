@@ -3,8 +3,8 @@
 namespace Tests\Unit;
 
 use App\Enums\ScheduleDocumentType;
-use App\Services\ScheduleInputResolver;
-use App\Services\SchedulePdfExtractor;
+use App\Services\Schedule\Extractor\PdfTextExtractor;
+use App\Services\Schedule\ScheduleInputResolver;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
@@ -20,7 +20,7 @@ class ScheduleInputResolverTest extends TestCase
     {
         $file = UploadedFile::fake()->create('schedule.pdf', 100, 'application/pdf');
 
-        $this->mock(SchedulePdfExtractor::class, function (MockInterface $mock) use ($file): void {
+        $this->mock(PdfTextExtractor::class, function (MockInterface $mock) use ($file): void {
             $mock->shouldReceive('extract')
                 ->once()
                 ->with($file->getRealPath())

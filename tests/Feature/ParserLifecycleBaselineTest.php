@@ -7,9 +7,9 @@ use App\Enums\ScheduleDocumentType;
 use App\Livewire\ScheduleExtractor;
 use App\Models\ParseRequest;
 use App\Models\User;
-use App\Services\ParserResultCache;
-use App\Services\ScheduleFormatParser;
-use App\Services\ScheduleInputResolver;
+use App\Services\Infrastructure\EngineResultCache;
+use App\Services\Schedule\Extractor\ScheduleFormatParser;
+use App\Services\Schedule\ScheduleInputResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -53,7 +53,7 @@ class ParserLifecycleBaselineTest extends TestCase
         $this->assertSame(2, $parseRequest->page_count);
         $this->assertNotNull($parseRequest->file_hash);
         $this->assertSame($file->getSize(), $parseRequest->file_size_bytes);
-        $this->assertNotNull(app(ParserResultCache::class)->latest());
+        $this->assertNotNull(app(EngineResultCache::class)->latest());
     }
 
     public function test_supported_image_upload_reaches_the_existing_parser_flow(): void
@@ -86,7 +86,7 @@ class ParserLifecycleBaselineTest extends TestCase
         $this->assertSame('success', $parseRequest->status);
         $this->assertNotNull($parseRequest->file_hash);
         $this->assertSame($file->getSize(), $parseRequest->file_size_bytes);
-        $this->assertNotNull(app(ParserResultCache::class)->latest());
+        $this->assertNotNull(app(EngineResultCache::class)->latest());
     }
 
     public function test_source_resolution_failure_restores_input_and_preserves_the_latest_successful_result(): void
@@ -111,7 +111,7 @@ class ParserLifecycleBaselineTest extends TestCase
             ->assertSet('eventTypes', ['flight'])
             ->assertSet('view', 'upload');
 
-        $latest = app(ParserResultCache::class)->latest();
+        $latest = app(EngineResultCache::class)->latest();
         $this->assertNotNull($latest);
         $this->assertSame($previousResult->parseKey, $latest->parseKey);
     }
@@ -151,7 +151,7 @@ class ParserLifecycleBaselineTest extends TestCase
             $this->assertSame('Unexpected parser failure', $exception->getMessage());
         }
 
-        $latest = app(ParserResultCache::class)->latest();
+        $latest = app(EngineResultCache::class)->latest();
         $this->assertNotNull($latest);
         $this->assertSame($previousResult->parseKey, $latest->parseKey);
         $this->assertSame('failed', ParseRequest::query()->latest('id')->firstOrFail()->status);
@@ -182,7 +182,7 @@ class ParserLifecycleBaselineTest extends TestCase
             ->assertHasErrors(['file'])
             ->assertSet('view', 'upload');
 
-        $latest = app(ParserResultCache::class)->latest();
+        $latest = app(EngineResultCache::class)->latest();
         $this->assertNotNull($latest);
         $this->assertSame($previousResult->parseKey, $latest->parseKey);
 
@@ -269,7 +269,7 @@ class ParserLifecycleBaselineTest extends TestCase
             ],
         ]);
 
-        app(ParserResultCache::class)->put($result);
+        app(EngineResultCache::class)->put($result);
 
         return $result;
     }

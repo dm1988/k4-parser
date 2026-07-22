@@ -3,8 +3,8 @@
 namespace Tests\Unit;
 
 use App\DTOs\AirportData;
-use App\Services\AirportLookupClient;
-use App\Services\AirportResolver;
+use App\Services\Clients\AirportLookupClient;
+use App\Services\Schedule\AirportResolver;
 use RuntimeException;
 use Tests\TestCase;
 

@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\FlightPlan\Extractor;
 
 use App\DTOs\AirportData;
 use App\Exceptions\FlightRouteNotFoundException;
+use App\Services\Clients\AirportLookupClient;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Log;
 use Smalot\PdfParser\Parser;

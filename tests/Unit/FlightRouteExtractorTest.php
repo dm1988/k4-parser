@@ -4,8 +4,8 @@ namespace Tests\Unit;
 
 use App\DTOs\AirportData;
 use App\Exceptions\FlightRouteNotFoundException;
-use App\Services\AirportLookupClient;
-use App\Services\FlightRouteExtractor;
+use App\Services\Clients\AirportLookupClient;
+use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Cache\Repository;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Calendar;
 
 use App\DTOs\ParsedEventDTO;
 use App\DTOs\ParserResultData;
@@ -9,11 +9,11 @@ use App\Enums\ParserEventType;
 use App\Exports\ExportFlightDutyCalendarEvent;
 use Illuminate\Http\Response;
 
-class ParserCalendarExportService
+class ExportPayload
 {
     public function __construct(
         private readonly ExportFlightDutyCalendarEvent $exportFlightDutyCalendarEvent,
-        private readonly IcsCalendarService $icsCalendarService,
+        private readonly IcsGenerator $icsGenerator,
     ) {}
 
     /**
@@ -38,7 +38,7 @@ class ParserCalendarExportService
         $filename = $this->calendarFilename($trip);
 
         return $this->calendarResponse(
-            $this->icsCalendarService->serialize($events, $trip),
+            $this->icsGenerator->serialize($events, $trip),
             $filename,
         );
     }
@@ -50,7 +50,7 @@ class ParserCalendarExportService
         $filename = $this->eventFilename($trip, $eventId);
 
         return $this->calendarResponse(
-            $this->icsCalendarService->serialize([$event], $trip),
+            $this->icsGenerator->serialize([$event], $trip),
             $filename,
         );
     }

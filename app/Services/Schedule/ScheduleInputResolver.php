@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Schedule;
 
 use App\Enums\ScheduleDocumentType;
+use App\Services\Schedule\Extractor\PdfTextExtractor;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Validation\ValidationException;
@@ -14,7 +15,7 @@ use Throwable;
 class ScheduleInputResolver
 {
     public function __construct(
-        private readonly SchedulePdfExtractor $schedulePdfExtractor,
+        private readonly PdfTextExtractor $pdfTextExtractor,
     ) {}
 
     public function resolve(?UploadedFile $file, ?string $text): array
@@ -42,7 +43,7 @@ class ScheduleInputResolver
         }
 
         if ($mime === 'application/pdf') {
-            $pdfData = $this->schedulePdfExtractor->extract($path);
+            $pdfData = $this->pdfTextExtractor->extract($path);
             $rawText = trim($pdfData['text']);
 
             if ($rawText === '') {

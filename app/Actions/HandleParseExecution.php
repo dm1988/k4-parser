@@ -4,14 +4,14 @@ namespace App\Actions;
 
 use App\DTOs\ParserResultData;
 use App\Exceptions\ParseSourceResolutionException;
-use App\Services\ParseRequestLogger;
+use App\Services\Infrastructure\ScheduleRequestLogger;
 use Illuminate\Http\UploadedFile;
 use Throwable;
 
 class HandleParseExecution
 {
     public function __construct(
-        private readonly ParseRequestLogger $parseRequestLogger,
+        private readonly ScheduleRequestLogger $scheduleRequestLogger,
     ) {}
 
     /**
@@ -36,12 +36,12 @@ class HandleParseExecution
         callable $operation,
     ): array {
         $startedAt = hrtime(true);
-        $parseRequest = $this->parseRequestLogger->start($userId, $sourceType, $parserType, $file);
+        $parseRequest = $this->scheduleRequestLogger->start($userId, $sourceType, $parserType, $file);
 
         try {
             $payload = $operation();
 
-            $this->parseRequestLogger->success(
+            $this->scheduleRequestLogger->success(
                 $parseRequest,
                 $startedAt,
                 $payload['parsed'],
@@ -55,7 +55,7 @@ class HandleParseExecution
                 ? $throwable->getPrevious()
                 : $throwable;
 
-            $this->parseRequestLogger->error($parseRequest, $startedAt, $loggedThrowable);
+            $this->scheduleRequestLogger->error($parseRequest, $startedAt, $loggedThrowable);
 
             throw $throwable;
         }

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Calendar;
 
 use App\DTOs\Flight;
 use App\Enums\MetadataKey;
@@ -9,7 +9,7 @@ use App\Mappers\FlightMapper;
 use Carbon\CarbonImmutable;
 use Throwable;
 
-final class FlightDutyCalendarEventService
+final class FlightDutyEvent
 {
     public function __construct(
         private readonly FlightMapper $flightMapper,

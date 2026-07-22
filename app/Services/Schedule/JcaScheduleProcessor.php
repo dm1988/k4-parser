@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Schedule;
 
 use App\Actions\BuildParserResult;
 use App\DTOs\ParsedEventDTO;
@@ -8,14 +8,17 @@ use App\DTOs\ParserResultData;
 use App\Enums\ParserEventType;
 use App\Enums\ScheduleDocumentType;
 use App\Exceptions\ParseSourceResolutionException;
+use App\Services\Infrastructure\EngineResultCache;
+use App\Services\Schedule\Extractor\ScheduleFormatParser;
+use App\Services\Schedule\Extractor\TripInformationParser;
 use Illuminate\Http\UploadedFile;
 use Throwable;
 
-class JcaScheduleParsingService
+class JcaScheduleProcessor
 {
     public function __construct(
         private readonly BuildParserResult $buildParserResult,
-        private readonly ParserResultCache $parserResultCache,
+        private readonly EngineResultCache $engineResultCache,
         private readonly ScheduleFormatParser $scheduleFormatParser,
         private readonly TripInformationParser $tripInformationParser,
         private readonly ScheduleInputResolver $scheduleInputResolver,
@@ -42,7 +45,7 @@ class JcaScheduleParsingService
             parsed: $parsed,
         );
 
-        $this->parserResultCache->put($result);
+        $this->engineResultCache->put($result);
 
         return [
             'parsed' => $parsed,
@@ -70,7 +73,7 @@ class JcaScheduleParsingService
             parsed: $parsed,
         );
 
-        $this->parserResultCache->put($result);
+        $this->engineResultCache->put($result);
 
         return [
             'parsed' => $parsed,
@@ -122,7 +125,7 @@ class JcaScheduleParsingService
         );
 
         if (($result->parsed['calendar_events'] ?? []) !== []) {
-            $this->parserResultCache->put($result);
+            $this->engineResultCache->put($result);
         }
 
         return [

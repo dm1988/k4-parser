@@ -4,10 +4,10 @@ namespace Tests\Unit;
 
 use App\DTOs\DutyEvent;
 use App\DTOs\Flight;
-use App\Services\IcsCalendarService;
+use App\Services\Calendar\IcsGenerator;
 use Tests\TestCase;
 
-class IcsCalendarServiceTest extends TestCase
+class IcsGeneratorTest extends TestCase
 {
     public function test_it_preserves_calendar_and_event_export_contracts(): void
     {
@@ -18,7 +18,7 @@ class IcsCalendarServiceTest extends TestCase
         $title = 'CKS 240, ICN; HKG\\Cargo';
         $flightAwareUrl = 'https://flightaware.com/live/flight/CKS240';
 
-        $ics = app(IcsCalendarService::class)->serialize([
+        $ics = app(IcsGenerator::class)->serialize([
             new \stdClass,
             [
                 'title' => $title,
@@ -62,7 +62,7 @@ class IcsCalendarServiceTest extends TestCase
 
     public function test_it_serializes_non_flight_event_dtos(): void
     {
-        $ics = app(IcsCalendarService::class)->serialize([
+        $ics = app(IcsGenerator::class)->serialize([
             DutyEvent::fromArray([
                 'title' => 'Hotel Check-In',
                 'type' => 'duty',
@@ -81,7 +81,7 @@ class IcsCalendarServiceTest extends TestCase
 
     public function test_it_serializes_flight_dtos(): void
     {
-        $ics = app(IcsCalendarService::class)->serialize([
+        $ics = app(IcsGenerator::class)->serialize([
             Flight::fromArray([
                 'title' => 'CKS 206 CVG-NRT',
                 'type' => 'flight',
@@ -105,7 +105,7 @@ class IcsCalendarServiceTest extends TestCase
     {
         $airportName = str_repeat('São Paulo–Guarulhos ✈ ', 12);
 
-        $ics = app(IcsCalendarService::class)->serialize([[
+        $ics = app(IcsGenerator::class)->serialize([[
             'title' => 'CKS 240 ICN-HKG',
             'type' => 'flight',
             'start' => '2026-06-15T23:45:00+00:00',
@@ -125,7 +125,7 @@ class IcsCalendarServiceTest extends TestCase
 
     public function test_it_formats_crew_details_from_raw_lines_when_structured_crew_metadata_is_missing(): void
     {
-        $ics = app(IcsCalendarService::class)->serialize([
+        $ics = app(IcsGenerator::class)->serialize([
             [
                 'title' => 'CKS 240 ICN-HKG',
                 'type' => 'flight',

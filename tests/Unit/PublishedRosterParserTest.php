@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Services\PublishedRosterParser;
+use App\Services\Schedule\Extractor\PublishedRosterParser;
 use Tests\TestCase;
 
 class PublishedRosterParserTest extends TestCase

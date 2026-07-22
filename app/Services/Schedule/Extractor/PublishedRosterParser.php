@@ -1,14 +1,15 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Schedule\Extractor;
 
 use App\Enums\MetadataKey;
+use App\Services\Clients\AirlineCodeLookupClient;
 use Illuminate\Support\Carbon;
 
 class PublishedRosterParser
 {
     public function __construct(
-        private readonly AirlineCodeLookup $airlineCodeLookup,
+        private readonly AirlineCodeLookupClient $airlineCodeLookupClient,
     ) {}
 
     public function parse(string $text): array
@@ -465,7 +466,7 @@ class PublishedRosterParser
             ];
         }
 
-        $airlineName = $this->airlineCodeLookup->airlineNameForIataCode($matches[1]);
+        $airlineName = $this->airlineCodeLookupClient->airlineNameForIataCode($matches[1]);
 
         if ($airlineName === null) {
             return [

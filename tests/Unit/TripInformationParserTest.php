@@ -3,7 +3,7 @@
 namespace Tests\Unit;
 
 use App\Models\Airline;
-use App\Services\TripInformationParser;
+use App\Services\Schedule\Extractor\TripInformationParser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

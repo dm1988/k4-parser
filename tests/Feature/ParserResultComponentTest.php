@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\DTOs\Flight;
 use App\DTOs\ParserResultData;
 use App\Models\User;
-use App\Services\AirportLookupClient;
+use App\Services\Clients\AirportLookupClient;
 use App\View\Models\Parser\ParserResultViewModel;
 use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;

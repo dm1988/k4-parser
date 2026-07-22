@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Clients;
 
 use App\Models\Airline;
 use Illuminate\Database\QueryException;
 
-class AirlineCodeLookup
+class AirlineCodeLookupClient
 {
     /**
      * @var array<string, string>|null

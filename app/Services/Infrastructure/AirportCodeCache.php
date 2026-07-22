@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Infrastructure;
 
 use App\DTOs\AirportResolution;
 use App\Enums\AirportResolutionStatus;

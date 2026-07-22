@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Services\AirportLookupClient;
+use App\Services\Clients\AirportLookupClient;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;

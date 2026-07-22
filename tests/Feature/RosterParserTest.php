@@ -5,8 +5,8 @@ namespace Tests\Feature;
 use App\DTOs\Flight;
 use App\Models\Airline;
 use App\Models\User;
-use App\Services\JcaScheduleParsingService;
-use App\Services\ScheduleFormatParser;
+use App\Services\Schedule\Extractor\ScheduleFormatParser;
+use App\Services\Schedule\JcaScheduleProcessor;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
@@ -590,7 +590,7 @@ TEXT;
     /** @param  list<string>  $eventTypes */
     private function parseRoster(string $text, array $eventTypes = []): void
     {
-        app(JcaScheduleParsingService::class)->parseRoster(null, $text, $eventTypes);
+        app(JcaScheduleProcessor::class)->parseRoster(null, $text, $eventTypes);
     }
 
     private function sessionCacheNamespace(): string

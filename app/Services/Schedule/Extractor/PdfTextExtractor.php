@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Schedule\Extractor;
 
 use Smalot\PdfParser\Parser;
 
-class SchedulePdfExtractor
+class PdfTextExtractor
 {
     private readonly Parser $parser;
 

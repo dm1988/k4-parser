@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Infrastructure;
 
 use App\DTOs\ParsedEventDTO;
 use App\Enums\ParserEventType;
@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
-class ParseRequestLogger
+class ScheduleRequestLogger
 {
     public function start(
         ?int $userId,

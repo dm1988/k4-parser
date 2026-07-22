@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\DTOs\AirportData;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Models\User;
-use App\Services\FlightRouteExtractor;
+use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;

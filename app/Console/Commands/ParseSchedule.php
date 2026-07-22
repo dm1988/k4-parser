@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Enums\ScheduleDocumentType;
-use App\Services\ScheduleFormatParser;
-use App\Services\SchedulePdfExtractor;
+use App\Services\Schedule\Extractor\PdfTextExtractor;
+use App\Services\Schedule\Extractor\ScheduleFormatParser;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -14,7 +14,7 @@ class ParseSchedule extends Command
 
     protected $description = 'Parse a Trip Information PDF and output JSON';
 
-    public function handle(SchedulePdfExtractor $extractor, ScheduleFormatParser $parser): int
+    public function handle(PdfTextExtractor $extractor, ScheduleFormatParser $parser): int
     {
         $file = $this->argument('file');
 
