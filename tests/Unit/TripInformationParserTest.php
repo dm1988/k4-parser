@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Enums\ParserEventType;
 use App\Models\Airline;
 use App\Services\Schedule\Extractor\TripInformationParser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -98,6 +99,44 @@ TEXT;
         $this->assertSame('ANC - CVG (253)', $lastEvent['title']);
         $this->assertSame('2026-08-03T03:10:00+00:00', $lastEvent['start']);
         $this->assertSame('2026-08-03T13:25:00+00:00', $lastEvent['end']);
+    }
+
+    public function test_it_classifies_trip_information_rest_and_one_in_seven_activities(): void
+    {
+        $text = <<<'TEXT'
+Trip Information
+Date:12Jul2026 Trip ID:15463
+DayFlightDeparture-ArrivalStart(LT)End(LT)StartEndBlockA/C Cnx
+Duty start 09:00
+Mon 1IN7HKG-HKG17:0017:0009:0009:00 -
+20Jul Duty end 09:00
+Duty start 14:30
+Wed 1IN7YHM-YHM10:3010:3014:3014:30 -
+22Jul Duty end 14:30
+Duty start 11:00
+Fri R2 CVG-CVG07:0015:0011:0019:00 -
+24Jul Duty end 19:00
+Duty start 03:30
+Sat R2 CVG-CVG23:3007:3003:3011:30 -
+25Jul Duty end 11:30
+Duty start 10:00
+Sun PL-1IN7BRU-BRU12:0012:0010:0010:00 -
+26Jul Duty end 10:00
+Duty Summary
+TEXT;
+
+        $events = app(TripInformationParser::class)->parse($text)['calendar_events'];
+        $eventsByDate = collect($events)->keyBy(
+            static fn (array $event): string => substr($event['start'], 0, 10),
+        );
+
+        $this->assertSame(ParserEventType::OneInSeven->value, $eventsByDate['2026-07-20']['type']);
+        $this->assertSame(ParserEventType::OneInSeven->value, $eventsByDate['2026-07-22']['type']);
+        $this->assertSame(ParserEventType::Duty->value, $eventsByDate['2026-07-24']['type']);
+        $this->assertSame(ParserEventType::Duty->value, $eventsByDate['2026-07-25']['type']);
+        $this->assertSame(ParserEventType::OneInSeven->value, $eventsByDate['2026-07-26']['type']);
+        $this->assertSame('R2', $eventsByDate['2026-07-25']['metadata']['activity_code']);
+        $this->assertSame('1IN7', $eventsByDate['2026-07-26']['metadata']['activity_code']);
     }
 
     public function test_it_falls_back_to_the_bundled_airline_data_when_the_database_has_no_matching_airline(): void

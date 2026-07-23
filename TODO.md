@@ -1,8 +1,4 @@
-## Current focus: Bug: does not read multiple pages of a trip information pdf
-- Only first page is extracted
-- 
-
-## Codex Usage Rules
+# Codex Usage Rules
 
 Follow these rules for every remaining task:
 4. Work on one numbered task at a time.

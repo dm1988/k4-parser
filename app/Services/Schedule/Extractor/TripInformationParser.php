@@ -282,16 +282,31 @@ class TripInformationParser
         $isDeadhead = str_contains(strtoupper($lineData), ' DH ');
         $commercialDeadhead = $this->resolveCommercialDeadhead($flightNumber, $isDeadhead);
         $flightNumber = $commercialDeadhead['flight_number'];
-        $type = $isDeadhead ? ParserEventType::Deadhead->value : ParserEventType::Flight->value;
+        $type = $this->activityEventType($flightNumber, $isDeadhead)->value;
         $title = "{$origin} - {$destination} ({$flightNumber})";
 
         return $this->calendarEvent($type, $title, $start, $end, [
             'flight_number' => $flightNumber,
+            'activity_code' => $flightNumber,
+            'station' => $origin,
             'origin' => $origin,
             'destination' => $destination,
             'deadhead' => $isDeadhead,
             'airline_name' => $commercialDeadhead['airline_name'],
         ]);
+    }
+
+    private function activityEventType(string $activityCode, bool $isDeadhead): ParserEventType
+    {
+        if ($isDeadhead) {
+            return ParserEventType::Deadhead;
+        }
+
+        return match (strtoupper($activityCode)) {
+            '1IN7' => ParserEventType::OneInSeven,
+            'R2' => ParserEventType::Duty,
+            default => ParserEventType::Flight,
+        };
     }
 
     private function parseDateRangeDetailBlock(array $block, array $monthYears, int $defaultYear): ?array
