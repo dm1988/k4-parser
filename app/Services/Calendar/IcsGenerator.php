@@ -43,8 +43,6 @@ class IcsGenerator
 
             $event['metadata'][MetadataKey::UtcStart->value] = $start->format('m-d H:i').' Z';
             $event['metadata'][MetadataKey::UtcEnd->value] = $end->format('m-d H:i').' Z';
-            $event['metadata'][MetadataKey::LocalStart->value] = $start->format('m-d H:i').' ';
-            $event['metadata'][MetadataKey::LocalEnd->value] = $end->format('m-d H:i').' ';
 
             $flightAwareUrl = $event['metadata'][MetadataKey::FlightawareUrl->value] ?? null;
             $description = $this->formatDescription($event);
@@ -107,6 +105,8 @@ class IcsGenerator
                 MetadataKey::DeadheadingCrewCount->value,
                 MetadataKey::Origin->value,
                 MetadataKey::Destination->value,
+                MetadataKey::LocalStart->value,
+                MetadataKey::LocalEnd->value,
             ], true)) {
                 continue;
             }

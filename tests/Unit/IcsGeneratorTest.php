@@ -29,6 +29,8 @@ class IcsGeneratorTest extends TestCase
                     'origin' => 'ICN',
                     'destination' => 'HKG',
                     'flightaware_url' => $flightAwareUrl,
+                    'local_start' => '06-16 08:45',
+                    'local_end' => '06-16 11:45',
                     'notes' => "Gate A, then B; bring paperwork\\passport\nSecond line",
                 ],
             ],
@@ -56,6 +58,8 @@ class IcsGeneratorTest extends TestCase
         $this->assertStringContainsString('SUMMARY:CKS 240\\, ICN\\; HKG\\\\Cargo', $unfoldedIcs);
         $this->assertStringContainsString('URL:'.$flightAwareUrl, $unfoldedIcs);
         $this->assertStringContainsString('Gate A\\, then B\\; bring paperwork\\\\passport\\nSecond line', $unfoldedIcs);
+        $this->assertStringNotContainsString('Local start:', $unfoldedIcs);
+        $this->assertStringNotContainsString('Local end:', $unfoldedIcs);
         $this->assertStringNotContainsString('BEGIN:VTIMEZONE', $unfoldedIcs);
         $this->assertStringEndsWith("END:VCALENDAR\r\n", $ics);
     }
