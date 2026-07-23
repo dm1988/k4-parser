@@ -133,23 +133,24 @@
         </div>
     </section>
 
-<footer class="border-t border-slate-800/40 py-6 text-center text-xs text-slate-600">
-    &copy; {{ date('Y') }} Crew Compass. All rights reserved.
-    This independent tool is not affiliated with or endorsed by Jeppesen, Boeing, or other corporate entity.
-    |
-    <a
-        href="mailto:crewcompasscc@gmail.com"
-        class="underline hover:text-slate-800"
-    >
-        Feedback &amp; Bugs
-    </a>
-    |
-    <a
-        href="{{ route('privacy.policy') }}"
-        class="underline hover:text-slate-800"
-    >
-        Privacy Policy
-    </a>
+<footer class="space-y-1 border-t border-slate-800/40 py-6 text-center text-xs text-slate-600">
+    <p>&copy; {{ date('Y') }} Crew Compass. All rights reserved.</p>
+    <p>This independent tool is not affiliated with or endorsed by Jeppesen, Boeing, or other corporate entity.</p>
+    <p>
+        <a
+            href="mailto:crewcompasscc@gmail.com"
+            class="underline hover:text-slate-800"
+        >
+            Feedback &amp; Bugs
+        </a>
+        <span aria-hidden="true">|</span>
+        <a
+            href="{{ route('privacy.policy') }}"
+            class="underline hover:text-slate-800"
+        >
+            Privacy Policy
+        </a>
+    </p>
 </footer>
 
 </body>
