@@ -24,7 +24,6 @@
 
 ## Prep for rename
 - Rename ParserEventType Enum to ScheduleEventType.php
-- Add 2 folders in Enum: Schedule and 
 
 ## 9. Organize services - Complete 7/22/2026
  ### Only begin after livewire-schedule-parser branch is merged

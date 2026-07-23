@@ -22,16 +22,7 @@ class TripInformationParser
         $lines = $this->normaliseLines($text);
         $defaultYear = $this->detectRosterYear($lines);
         $monthYears = $this->detectMonthYears($lines, $defaultYear);
-
-        $detailStart = $this->firstLineMatchingPattern($lines, '/\b(?:Details|Day\s*Flight\s*Departure)\b/i');
-        $detailEnd = $this->firstLineMatchingPattern($lines, '/Duty Summary/i');
-
-        if ($detailStart !== false) {
-            $sliceLength = ($detailEnd !== false) ? ($detailEnd - $detailStart - 1) : null;
-            $detailLines = array_slice($lines, $detailStart + 1, $sliceLength);
-        } else {
-            $detailLines = $lines;
-        }
+        $detailLines = $this->detailSectionLines($lines);
 
         $events = [];
 
@@ -153,15 +144,32 @@ class TripInformationParser
         return $monthYears ?: ['Jan' => $defaultYear];
     }
 
-    private function firstLineMatchingPattern(array $lines, string $pattern): int|false
+    private function detailSectionLines(array $lines): array
     {
-        foreach ($lines as $index => $line) {
-            if (preg_match($pattern, $line)) {
-                return $index;
+        $detailLines = [];
+        $isCollecting = false;
+        $foundDetailHeader = false;
+
+        foreach ($lines as $line) {
+            if (preg_match('/\b(?:Details|Day\s*Flight\s*Departure)\b/i', $line) === 1) {
+                $isCollecting = true;
+                $foundDetailHeader = true;
+
+                continue;
+            }
+
+            if ($isCollecting && preg_match('/Duty Summary/i', $line) === 1) {
+                $isCollecting = false;
+
+                continue;
+            }
+
+            if ($isCollecting) {
+                $detailLines[] = $line;
             }
         }
 
-        return false;
+        return $foundDetailHeader ? $detailLines : $lines;
     }
 
     private function detailBlocks(array $lines): array

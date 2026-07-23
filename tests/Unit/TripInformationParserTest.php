@@ -64,6 +64,42 @@ TEXT;
         $this->assertSame('2026-06-13T23:25:00+00:00', $event['end']);
     }
 
+    public function test_it_parses_detail_sections_across_multiple_pdf_pages(): void
+    {
+        $text = <<<'TEXT'
+Trip Information
+Date:12Jul2026 Trip ID:15463
+DayFlightDeparture-ArrivalStart(LT)End(LT)StartEndBlockA/C Cnx
+Duty start 15:20
+Sun 273 ANC-CVG09:4520:0517:4500:0506:2077X
+12Jul Duty end 00:35
+Duty Summary
+Trip Information
+Date:12Jul2026 Trip ID:15463
+DayFlightDeparture-ArrivalStart(LT)End(LT)StartEndBlockA/C Cnx
+Duty start 20:40
+Tue 253 HKG-YHM06:4709:5122:4713:5115:0477X
+21Jul Duty end 14:21
+Duty Summary
+Trip Information
+Date:12Jul2026 Trip ID:15463
+DayFlightDeparture-ArrivalStart(LT)End(LT)StartEndBlockA/C Cnx
+Duty start 09:10
+Mon DH 253ANC-CVG03:1013:2511:1017:25 - 77X
+03Aug Duty end 17:55
+Duty Summary
+TEXT;
+
+        $events = app(TripInformationParser::class)->parse($text)['calendar_events'];
+        $lastEvent = $events[array_key_last($events)];
+
+        $this->assertCount(3, $events);
+        $this->assertSame('deadhead', $lastEvent['type']);
+        $this->assertSame('ANC - CVG (253)', $lastEvent['title']);
+        $this->assertSame('2026-08-03T03:10:00+00:00', $lastEvent['start']);
+        $this->assertSame('2026-08-03T13:25:00+00:00', $lastEvent['end']);
+    }
+
     public function test_it_falls_back_to_the_bundled_airline_data_when_the_database_has_no_matching_airline(): void
     {
         $text = <<<'TEXT'

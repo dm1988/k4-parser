@@ -1,6 +1,6 @@
-## Branch Status
-
-### `main`
+## Current focus: Bug: does not read multiple pages of a trip information pdf
+- Only first page is extracted
+- 
 
 ## Codex Usage Rules
 
@@ -12,17 +12,6 @@ Follow these rules for every remaining task:
 8. Do not reorganize services, rename domains, install packages, or redesign UI unless that item is explicitly activated.
 9. Preserve unrelated working-tree changes.
 10. Update this file with outcomes instead of adding another plan or duplicate checklist.
-
-### On `main`
-
-- Airport lookup client and airport metadata presentation.
-- Airport detail/popover regression work.
-- Parser/extractor branding and current title wording.
-- Existing calendar export behavior.
-
-# Deferred Product, UI, and Architecture Backlog
-
-Do not combine these items with branch reconciliation. Activate them as separate tasks only after integration and performance work are complete.
 
 ### Product and UI Polish
 
@@ -55,6 +44,3 @@ These are proposals, not approved work:
 - Avoid broad file moves while lifecycle and rendering performance work is active.
 - Any reorganization must preserve behavior, update namespaces atomically, and be covered by focused and full tests.
 - Multi photo uploads feature
-
-# Bug: does not read multiple pages of a trip information pdf
-- Only first page is extracted
