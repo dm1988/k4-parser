@@ -96,7 +96,7 @@ TEXT;
 
         $this->assertCount(3, $events);
         $this->assertSame('deadhead', $lastEvent['type']);
-        $this->assertSame('ANC - CVG (253)', $lastEvent['title']);
+        $this->assertSame('ANC - CVG (CKS 253)', $lastEvent['title']);
         $this->assertSame('2026-08-03T03:10:00+00:00', $lastEvent['start']);
         $this->assertSame('2026-08-03T13:25:00+00:00', $lastEvent['end']);
     }
@@ -155,6 +155,26 @@ TEXT;
         $this->assertSame('LAX - AUS (UA 5445)', $event['title']);
         $this->assertSame('UA 5445', $event['metadata']['flight_number']);
         $this->assertSame('United Airlines', $event['metadata']['airline_name']);
+    }
+
+    public function test_it_preserves_company_flight_numbers_for_deadheads_with_an_aircraft_model(): void
+    {
+        $text = <<<'TEXT'
+July 2026
+Details
+Duty start 09:00
+Thu DH 208NRT-HKG19:5123:0310:5115:03 - 74Y
+16Jul Duty end 15:33
+TEXT;
+
+        $event = app(TripInformationParser::class)->parse($text)['calendar_events'][0];
+
+        $this->assertSame(ParserEventType::Deadhead->value, $event['type']);
+        $this->assertSame('NRT - HKG (CKS 208)', $event['title']);
+        $this->assertSame('CKS 208', $event['metadata']['flight_number']);
+        $this->assertSame('208', $event['metadata']['activity_code']);
+        $this->assertSame('74Y', $event['metadata']['aircraft']);
+        $this->assertNull($event['metadata']['airline_name']);
     }
 
     public function test_it_extracts_trip_summary_fields_from_roster_text(): void

@@ -279,18 +279,21 @@ class TripInformationParser
             return null;
         }
 
+        $activityCode = $flightNumber;
+        $aircraft = $this->detectAircraft([$lineData]);
         $isDeadhead = str_contains(strtoupper($lineData), ' DH ');
-        $commercialDeadhead = $this->resolveCommercialDeadhead($flightNumber, $isDeadhead);
+        $commercialDeadhead = $this->resolveCommercialDeadhead($flightNumber, $isDeadhead, $aircraft);
         $flightNumber = $commercialDeadhead['flight_number'];
-        $type = $this->activityEventType($flightNumber, $isDeadhead)->value;
+        $type = $this->activityEventType($activityCode, $isDeadhead)->value;
         $title = "{$origin} - {$destination} ({$flightNumber})";
 
         return $this->calendarEvent($type, $title, $start, $end, [
             'flight_number' => $flightNumber,
-            'activity_code' => $flightNumber,
+            'activity_code' => $activityCode,
             'station' => $origin,
             'origin' => $origin,
             'destination' => $destination,
+            'aircraft' => $aircraft,
             'deadhead' => $isDeadhead,
             'airline_name' => $commercialDeadhead['airline_name'],
         ]);
@@ -553,11 +556,23 @@ class TripInformationParser
     /**
      * @return array{flight_number: ?string, airline_name: ?string}
      */
-    private function resolveCommercialDeadhead(?string $flightNumber, bool $isDeadhead): array
-    {
+    private function resolveCommercialDeadhead(
+        ?string $flightNumber,
+        bool $isDeadhead,
+        ?string $aircraft = null,
+    ): array {
         if (! $isDeadhead || $flightNumber === null) {
             return [
                 'flight_number' => $flightNumber,
+                'airline_name' => null,
+            ];
+        }
+        
+        if ($aircraft !== null) {
+            return [
+                'flight_number' => str_starts_with($flightNumber, 'CKS ')
+                    ? $flightNumber
+                    : 'CKS '.$flightNumber,
                 'airline_name' => null,
             ];
         }
