@@ -48,7 +48,7 @@ class ScheduleExtractorTest extends TestCase
         Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
             ->assertSee('Drop your schedule here')
-            ->assertSee('Supports PDF and all image formats. Or click to browse your files.')
+            ->assertSee('Supports PDF and all image formats. Click to browse your files.')
             ->assertSeeHtml('disabled')
             ->set('file', UploadedFile::fake()->create('published-roster.pdf', 512, 'application/pdf'))
             ->assertSee('published-roster.pdf')
