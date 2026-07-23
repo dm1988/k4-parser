@@ -9,32 +9,15 @@
         </section>
     @elseif ($view === 'upload')
         <section wire:key="schedule-extractor-upload" class="mx-auto max-w-3xl">
-            <div class="mb-5 rounded-lg bg-[#1B365D] p-5 text-[#F8F9FA] shadow-lg shadow-[#1B365D]/10">
-                <header>
-                    <span class="block text-xs font-bold uppercase tracking-widest text-[#C5A059]">
-                        Jeppesen Crew Access
-                    </span>
-                    <h1 class="mt-2 text-4xl font-black tracking-tight md:text-5xl">Schedule Extractor</h1>
-                    <p class="mt-4 max-w-md text-base leading-relaxed text-[#F8F9FA]/80">
-                        Upload a roster screenshot or trip PDF to instantly convert your schedule into calendar-ready events.
-                    </p>
-                </header>
-
-                <div class="mt-4 flex items-center gap-x-2 text-sm text-[#F8F9FA]/80">
-                    <span class="text-[#F8F9FA]/60">Not sure where to start?</span>
-                    <a
-                        class="inline-flex items-center gap-x-1.5 rounded-md border border-[#F8F9FA] bg-[#C5A059]/10 px-3 py-1.5 font-medium text-[#C5A059] transition-all hover:bg-[#C5A059]/20"
-                        href="{{ asset('documents/k4-parser-workflow.pdf') }}"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        <span>View the workflow guide</span>
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                        </svg>
-                    </a>
-                </div>
-            </div>
+            <header class="flex flex-col items-center px-1 pb-8 text-center">
+                <span class="block text-xs font-bold uppercase tracking-widest text-[#C5A059]">
+                    Jeppesen Crew Access
+                </span>
+                <h1 class="mt-2 text-4xl font-bold tracking-tight text-[#1B365D] md:text-5xl">Schedule Extractor</h1>
+                <p class="mt-4 max-w-2xl text-base leading-relaxed text-[#4A5568]">
+                    Upload a roster screenshot or trip PDF to instantly convert your schedule into calendar-ready events.
+                </p>
+            </header>
 
             <x-parser.form :event-types="$eventTypes" :file="$file" :filter-options="$filterOptions" />
         </section>

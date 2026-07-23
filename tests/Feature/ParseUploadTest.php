@@ -17,18 +17,29 @@ use Tests\TestCase;
 
 class ParseUploadTest extends TestCase
 {
-    public function test_parse_page_renders_processing_status_panel_and_disabled_button_styles(): void
+    public function test_parse_page_renders_centered_dropzone_and_disabled_extract_button(): void
     {
         $page = $this->actingAs(User::factory()->make())->get(route('parse.index'));
         $content = $page->getContent();
 
         $page->assertOk();
-        $page->assertSee('id="parserStatus"', false);
         $page->assertSee('wire:submit="parseRoster"', false);
         $page->assertSee('wire:model="file"', false);
+        $page->assertSeeText('Drop your schedule here');
+        $page->assertSeeText('Supports PDF and all image formats. Click to browse your files.');
         $page->assertSee('wire:loading.attr="disabled"', false);
         $page->assertSee('data-parse-submit', false);
-        $page->assertSee('disabled:bg-[#1B365D]/55', false);
+        $page->assertSee('disabled:bg-[#1B365D]/10', false);
+        $page->assertSee('disabled', false);
+        $page->assertDontSee('class="cc-card overflow-hidden"', false);
+        $page->assertDontSee('shadow-lg shadow-[#1B365D]/10', false);
+        $page->assertSee('text-[#1B365D] md:text-5xl', false);
+        $page->assertSee('text-base leading-relaxed text-[#4A5568]', false);
+        $page->assertSeeInOrder([
+            'Extract Schedule',
+            'Not sure where to start?',
+            'View the workflow guide',
+        ]);
         $page->assertDontSee('x-data="parserForm()"', false);
         $page->assertDontSee("const parserForm = document.getElementById('parserForm');", false);
         $page->assertSee('wire:name="schedule-extractor"', false);

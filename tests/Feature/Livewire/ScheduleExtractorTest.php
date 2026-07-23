@@ -35,11 +35,27 @@ class ScheduleExtractorTest extends TestCase
             ->assertSet('parseKey', null)
             ->assertSeeHtml('wire:key="schedule-extractor-upload"')
             ->assertSee('Schedule Extractor')
-            ->assertSee('Ready to extract')
+            ->assertSee('Drop your schedule here')
+            ->assertSee('System online: Ready to process')
             ->assertSee('Flights only')
             ->assertDontSee('Extracted Schedule');
 
         $this->assertNull($component->instance()->render()->getData()['viewModel']);
+    }
+
+    public function test_upload_dropzone_displays_the_selected_file_name_size_and_ready_action(): void
+    {
+        Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->assertSee('Drop your schedule here')
+            ->assertSee('Supports PDF and all image formats. Or click to browse your files.')
+            ->assertSeeHtml('disabled')
+            ->set('file', UploadedFile::fake()->create('published-roster.pdf', 512, 'application/pdf'))
+            ->assertSee('published-roster.pdf')
+            ->assertSee('512 KB')
+            ->assertSee('Click to change')
+            ->assertSee('File ready to extract')
+            ->assertSee('Extract Schedule');
     }
 
     public function test_the_view_state_cannot_be_changed_by_the_client(): void
