@@ -135,7 +135,7 @@
 
 <footer class="border-t border-slate-800/40 py-6 text-center text-xs text-slate-600">
     &copy; {{ date('Y') }} Crew Compass. All rights reserved.
-    Not affiliated with corporate entity systems.
+    This independent tool is not affiliated with or endorsed by Jeppesen, Boeing, or other corporate entity.
     |
     <a
         href="mailto:crewcompasscc@gmail.com"

@@ -22,6 +22,7 @@ class ExampleTest extends TestCase
             'Schedule Extractor',
         ]);
         $response->assertSeeText('Extract your JCA schedule instantly');
+        $response->assertSeeText('This independent tool is not affiliated with or endorsed by Jeppesen, Boeing, or or other corporate entity.');
         $response->assertDontSeeText('JCA SCHEDULE PARSER');
     }
 }
