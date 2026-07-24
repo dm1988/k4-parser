@@ -4,14 +4,14 @@ namespace App\Mappers;
 
 use App\DTOs\Flight;
 use App\Enums\MetadataKey;
-use App\Enums\ParserEventType;
+use App\Enums\ScheduleEventType;
 use Carbon\CarbonImmutable;
 
 final class FlightMapper
 {
     public function fromCalendarEvent(array $event, ?string $downloadId = null): ?Flight
     {
-        $eventType = ParserEventType::fromEvent($event);
+        $eventType = ScheduleEventType::fromEvent($event);
 
         if (! $eventType->isFlightLike()) {
             return null;

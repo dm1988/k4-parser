@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\DTOs\ExtractedResultData;
 use App\DTOs\Flight;
-use App\DTOs\ParserResultData;
 use App\Models\User;
 use App\Services\Clients\AirportLookupClient;
 use App\View\Models\Parser\ParserResultViewModel;
@@ -15,7 +15,7 @@ class ParserResultComponentTest extends TestCase
     public function test_it_renders_the_export_button_in_the_header_without_helper_copy(): void
     {
         $html = Blade::render('<x-parser.result :model="$model" />', [
-            'model' => ParserResultViewModel::fromData(ParserResultData::fromArray([
+            'model' => ParserResultViewModel::fromData(ExtractedResultData::fromArray([
                 'source' => 'text',
                 'parse_key' => '01KXK47PE0HNRXE4VV2N8K8N58',
                 'filters' => [],
@@ -75,7 +75,7 @@ class ParserResultComponentTest extends TestCase
 
         $this->app->instance(AirportLookupClient::class, $airportLookupClient);
 
-        $model = ParserResultViewModel::fromData(ParserResultData::fromArray([
+        $model = ParserResultViewModel::fromData(ExtractedResultData::fromArray([
             'source' => 'text',
             'parse_key' => '01KXK47PE0HNRXE4VV2N8K8N58',
             'filters' => [],
@@ -129,7 +129,7 @@ class ParserResultComponentTest extends TestCase
 
     private function makeResultModel(): ParserResultViewModel
     {
-        return ParserResultViewModel::fromData(ParserResultData::fromArray([
+        return ParserResultViewModel::fromData(ExtractedResultData::fromArray([
             'source' => 'text',
             'parse_key' => '01KXK47PE0HNRXE4VV2N8K8N58',
             'filters' => [],

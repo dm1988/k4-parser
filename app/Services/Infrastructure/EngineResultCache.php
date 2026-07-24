@@ -2,8 +2,8 @@
 
 namespace App\Services\Infrastructure;
 
-use App\DTOs\ParsedEventDTO;
-use App\DTOs\ParserResultData;
+use App\DTOs\ExtractedEventDTO;
+use App\DTOs\ExtractedResultData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -11,7 +11,7 @@ use LogicException;
 
 class EngineResultCache
 {
-    public function put(ParserResultData $result): void
+    public function put(ExtractedResultData $result): void
     {
         $parseKey = $result->parseKey ?? '';
         $ttlMinutes = config('cache.parsed_results_ttl', 60);
@@ -26,12 +26,12 @@ class EngineResultCache
         session(['latest_parse_key' => $parseKey]);
     }
 
-    public function get(string $parseKey): ?ParserResultData
+    public function get(string $parseKey): ?ExtractedResultData
     {
         $sessionResult = Cache::get($this->sessionCacheKey($parseKey));
 
         if (is_array($sessionResult)) {
-            return ParserResultData::fromArray($sessionResult);
+            return ExtractedResultData::fromArray($sessionResult);
         }
 
         $cached = Cache::get($this->parseKeyCacheKey($parseKey));
@@ -43,10 +43,10 @@ class EngineResultCache
             return null;
         }
 
-        return ParserResultData::fromArray($cached['result']);
+        return ExtractedResultData::fromArray($cached['result']);
     }
 
-    public function resolveForRequest(Request $request): ?ParserResultData
+    public function resolveForRequest(Request $request): ?ExtractedResultData
     {
         $parseKey = $request->query('parse_key');
 
@@ -63,7 +63,7 @@ class EngineResultCache
         return null;
     }
 
-    public function latest(): ?ParserResultData
+    public function latest(): ?ExtractedResultData
     {
         $parseKey = session('latest_parse_key');
 
@@ -96,7 +96,7 @@ class EngineResultCache
 
     private function normalizeForCache(mixed $value): mixed
     {
-        if ($value instanceof ParsedEventDTO) {
+        if ($value instanceof ExtractedEventDTO) {
             return $this->normalizeForCache($value->toArray());
         }
 

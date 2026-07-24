@@ -4,7 +4,7 @@ namespace App\DTOs;
 
 use JsonSerializable;
 
-final readonly class ParserResultData implements JsonSerializable
+final readonly class ExtractedResultData implements JsonSerializable
 {
     /**
      * @param  array<string, mixed>  $parsed

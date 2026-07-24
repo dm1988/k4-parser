@@ -3,9 +3,9 @@
 namespace App\Livewire;
 
 use App\Actions\HandleParseExecution;
-use App\DTOs\ParserResultData;
-use App\Enums\ParserEventType;
-use App\Exceptions\ParseSourceResolutionException;
+use App\DTOs\ExtractedResultData;
+use App\Enums\ScheduleEventType;
+use App\Exceptions\ExtractSourceResolutionException;
 use App\Models\User;
 use App\Services\Infrastructure\EngineResultCache;
 use App\Services\Schedule\JcaScheduleProcessor;
@@ -95,7 +95,7 @@ class ScheduleExtractor extends Component
                     $eventTypes,
                 ),
             );
-        } catch (ParseSourceResolutionException $exception) {
+        } catch (ExtractSourceResolutionException $exception) {
             $this->addParseErrors($exception);
 
             $this->view = self::VIEW_UPLOAD;
@@ -140,7 +140,7 @@ class ScheduleExtractor extends Component
     {
         return view('livewire.schedule-extractor', [
             'available' => auth()->user()?->canUseScheduleParser() ?? false,
-            'filterOptions' => ParserEventType::filterable(),
+            'filterOptions' => ScheduleEventType::filterable(),
             'viewModel' => $this->view === self::VIEW_RESULTS
                 ? ParserPageViewModel::fromResult($this->currentResult())
                 : null,
@@ -159,7 +159,7 @@ class ScheduleExtractor extends Component
         return ParserValidationRules::rosterMessages(eventTypesField: 'eventTypes');
     }
 
-    private function currentResult(): ?ParserResultData
+    private function currentResult(): ?ExtractedResultData
     {
         if ($this->parseKey !== null) {
             $result = $this->engineResultCache->get($this->parseKey);
@@ -201,7 +201,7 @@ class ScheduleExtractor extends Component
         };
     }
 
-    private function addParseErrors(ParseSourceResolutionException $exception): void
+    private function addParseErrors(ExtractSourceResolutionException $exception): void
     {
         foreach ($exception->errors() as $key => $messages) {
             $livewireKey = $this->livewireErrorKey($key);

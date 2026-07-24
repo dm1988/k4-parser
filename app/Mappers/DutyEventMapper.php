@@ -4,16 +4,16 @@ namespace App\Mappers;
 
 use App\DTOs\DutyEvent;
 use App\Enums\MetadataKey;
-use App\Enums\ParserEventType;
+use App\Enums\ScheduleEventType;
 use Carbon\CarbonImmutable;
 
 final class DutyEventMapper
 {
     public function fromCalendarEvent(array $event, ?string $downloadId = null): ?DutyEvent
     {
-        $eventType = ParserEventType::fromValue((string) ($event['type'] ?? null));
+        $eventType = ScheduleEventType::fromValue((string) ($event['type'] ?? null));
 
-        if ($eventType !== ParserEventType::Duty) {
+        if ($eventType !== ScheduleEventType::Duty) {
             return null;
         }
 

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Actions\BuildParserResult;
+use App\Actions\BuildScheduleResult;
 use App\DTOs\DutyEvent;
 use App\Models\User;
 use App\Services\Infrastructure\EngineResultCache;
@@ -14,7 +14,7 @@ class ExportFlightDutyCalendarEventTest extends TestCase
 {
     public function test_non_flight_dto_survives_result_assembly_cache_and_per_event_export(): void
     {
-        $result = app(BuildParserResult::class)->handle(
+        $result = app(BuildScheduleResult::class)->handle(
             type: 'roster',
             source: 'text',
             documentType: null,

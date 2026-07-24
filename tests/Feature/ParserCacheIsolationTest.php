@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\DTOs\ParserResultData;
+use App\DTOs\ExtractedResultData;
 use App\Models\User;
 use App\Services\Infrastructure\EngineResultCache;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -81,9 +81,9 @@ class ParserCacheIsolationTest extends TestCase
             ->assertSee('SUMMARY:Owned event');
     }
 
-    private function parserResult(string $parseKey, string $title, string $eventId): ParserResultData
+    private function parserResult(string $parseKey, string $title, string $eventId): ExtractedResultData
     {
-        return ParserResultData::fromArray([
+        return ExtractedResultData::fromArray([
             'type' => 'roster',
             'source' => 'text',
             'parse_key' => $parseKey,

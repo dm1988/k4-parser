@@ -2,17 +2,17 @@
 
 namespace Tests\Unit;
 
-use App\Actions\BuildParserResult;
+use App\Actions\BuildScheduleResult;
 use App\DTOs\DutyEvent;
+use App\DTOs\ExtractedResultData;
 use App\DTOs\Flight;
-use App\DTOs\ParserResultData;
 use Tests\TestCase;
 
-class BuildParserResultTest extends TestCase
+class BuildScheduleResultTest extends TestCase
 {
     public function test_it_assigns_download_ids_to_supported_event_payloads(): void
     {
-        $result = app(BuildParserResult::class)->handle(
+        $result = app(BuildScheduleResult::class)->handle(
             type: 'roster',
             source: 'text',
             documentType: null,
@@ -39,7 +39,7 @@ class BuildParserResultTest extends TestCase
 
         $events = $result->parsed['calendar_events'];
 
-        $this->assertInstanceOf(ParserResultData::class, $result);
+        $this->assertInstanceOf(ExtractedResultData::class, $result);
         $this->assertIsString($result->parseKey);
         $this->assertNotSame('', $result->parseKey);
         $this->assertInstanceOf(Flight::class, $events[0]);

@@ -2,8 +2,8 @@
 
 namespace App\Services\Calendar;
 
+use App\DTOs\ExtractedEventDTO;
 use App\DTOs\Flight;
-use App\DTOs\ParsedEventDTO;
 use App\Enums\MetadataKey;
 use App\Mappers\FlightMapper;
 use App\Services\Schedule\Extractor\CrewListParser;
@@ -71,7 +71,7 @@ class IcsGenerator
             return $this->flightMapper->toCalendarEvent($event);
         }
 
-        if ($event instanceof ParsedEventDTO) {
+        if ($event instanceof ExtractedEventDTO) {
             return $event->toArray();
         }
 

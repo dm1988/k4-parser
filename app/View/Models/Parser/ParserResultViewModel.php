@@ -3,8 +3,8 @@
 namespace App\View\Models\Parser;
 
 use App\DTOs\DutyEvent;
+use App\DTOs\ExtractedResultData;
 use App\DTOs\Flight;
-use App\DTOs\ParserResultData;
 use App\Enums\MetadataKey;
 use App\Mappers\DutyEventMapper;
 use App\Mappers\FlightMapper;
@@ -25,7 +25,7 @@ readonly class ParserResultViewModel
         public string $rawJson,
     ) {}
 
-    public static function fromData(ParserResultData $result): self
+    public static function fromData(ExtractedResultData $result): self
     {
         $filters = array_values(array_filter(
             $result->filters,

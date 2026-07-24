@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\DTOs\ParserResultData;
+use App\DTOs\ExtractedResultData;
 use App\Enums\ScheduleDocumentType;
 use App\Livewire\ScheduleExtractor;
 use App\Models\ParseRequest;
@@ -250,9 +250,9 @@ class ParserLifecycleBaselineTest extends TestCase
         });
     }
 
-    private function cacheResult(string $parseKey, string $title): ParserResultData
+    private function cacheResult(string $parseKey, string $title): ExtractedResultData
     {
-        $result = ParserResultData::fromArray([
+        $result = ExtractedResultData::fromArray([
             'type' => 'roster',
             'source' => 'text',
             'parse_key' => $parseKey,

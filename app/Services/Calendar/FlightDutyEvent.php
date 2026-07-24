@@ -4,7 +4,7 @@ namespace App\Services\Calendar;
 
 use App\DTOs\Flight;
 use App\Enums\MetadataKey;
-use App\Enums\ParserEventType;
+use App\Enums\ScheduleEventType;
 use App\Mappers\FlightMapper;
 use Carbon\CarbonImmutable;
 use Throwable;
@@ -22,7 +22,7 @@ final class FlightDutyEvent
     {
         $event = $this->normalizeEvent($event);
 
-        if ($event === null || ! ParserEventType::fromEvent($event)->isFlightLike()) {
+        if ($event === null || ! ScheduleEventType::fromEvent($event)->isFlightLike()) {
             return null;
         }
 
@@ -62,7 +62,7 @@ final class FlightDutyEvent
 
         return [
             'title' => 'Duty',
-            'type' => ParserEventType::Duty->value,
+            'type' => ScheduleEventType::Duty->value,
             'start' => $dutyStartUtc->toIso8601String(),
             'end' => $dutyEndUtc->toIso8601String(),
             'timezone' => 'UTC',

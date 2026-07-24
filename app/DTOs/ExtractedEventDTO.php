@@ -5,7 +5,7 @@ namespace App\DTOs;
 use ArrayAccess;
 use JsonSerializable;
 
-abstract readonly class ParsedEventDTO implements ArrayAccess, JsonSerializable
+abstract readonly class ExtractedEventDTO implements ArrayAccess, JsonSerializable
 {
     public function __construct(
         public string $title,

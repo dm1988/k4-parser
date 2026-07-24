@@ -4,7 +4,7 @@ namespace App\Services\Schedule\Extractor;
 
 use App\DTOs\Flight;
 use App\Enums\CrewPosition;
-use App\Enums\ParserEventType;
+use App\Enums\ScheduleEventType;
 use App\Mappers\FlightMapper;
 use App\Services\Clients\AirlineCodeLookupClient;
 use Illuminate\Support\Carbon;
@@ -299,16 +299,16 @@ class TripInformationParser
         ]);
     }
 
-    private function activityEventType(string $activityCode, bool $isDeadhead): ParserEventType
+    private function activityEventType(string $activityCode, bool $isDeadhead): ScheduleEventType
     {
         if ($isDeadhead) {
-            return ParserEventType::Deadhead;
+            return ScheduleEventType::Deadhead;
         }
 
         return match (strtoupper($activityCode)) {
-            '1IN7' => ParserEventType::OneInSeven,
-            'R2' => ParserEventType::Duty,
-            default => ParserEventType::Flight,
+            '1IN7' => ScheduleEventType::OneInSeven,
+            'R2' => ScheduleEventType::Duty,
+            default => ScheduleEventType::Flight,
         };
     }
 
@@ -346,7 +346,7 @@ class TripInformationParser
             $localTimes = $this->extractFlightLocalTimes($body);
 
             return $this->calendarEvent(
-                $isDeadhead ? ParserEventType::Deadhead->value : ParserEventType::Flight->value,
+                $isDeadhead ? ScheduleEventType::Deadhead->value : ScheduleEventType::Flight->value,
                 trim(($flightNumber ? "{$flightNumber} " : '')."{$route['origin']}-{$route['destination']}"),
                 $start,
                 $end,
@@ -477,7 +477,7 @@ class TripInformationParser
         $dutyEnd = Carbon::parse($dutyEvent['end']);
 
         foreach ($events as $index => $event) {
-            if (! ParserEventType::fromEvent($event)->isFlightLike()) {
+            if (! ScheduleEventType::fromEvent($event)->isFlightLike()) {
                 continue;
             }
 
@@ -567,7 +567,7 @@ class TripInformationParser
                 'airline_name' => null,
             ];
         }
-        
+
         if ($aircraft !== null) {
             return [
                 'flight_number' => str_starts_with($flightNumber, 'CKS ')

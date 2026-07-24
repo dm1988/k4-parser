@@ -5,7 +5,7 @@ namespace App\Exceptions;
 use RuntimeException;
 use Throwable;
 
-class ParseSourceResolutionException extends RuntimeException
+class ExtractSourceResolutionException extends RuntimeException
 {
     /**
      * @param  array<string, string|list<string>>  $errors

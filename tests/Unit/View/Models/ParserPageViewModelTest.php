@@ -3,9 +3,9 @@
 namespace Tests\Unit\View\Models;
 
 use App\DTOs\DutyEvent;
+use App\DTOs\ExtractedResultData;
 use App\DTOs\Flight;
-use App\DTOs\ParserResultData;
-use App\Enums\ParserEventType;
+use App\Enums\ScheduleEventType;
 use App\Services\Infrastructure\EngineResultCache;
 use App\View\Models\Parser\ParserPageViewModel;
 use Illuminate\Support\Facades\Cache;
@@ -17,7 +17,7 @@ class ParserPageViewModelTest extends TestCase
     #[Test]
     public function it_builds_selected_types_without_legacy_old_input(): void
     {
-        $viewModel = ParserPageViewModel::fromResult(ParserResultData::fromArray([
+        $viewModel = ParserPageViewModel::fromResult(ExtractedResultData::fromArray([
             'filters' => ['flight'],
         ]));
 
@@ -27,7 +27,7 @@ class ParserPageViewModelTest extends TestCase
     #[Test]
     public function it_formats_result_events_for_the_view(): void
     {
-        $viewModel = ParserPageViewModel::fromResult(ParserResultData::fromArray([
+        $viewModel = ParserPageViewModel::fromResult(ExtractedResultData::fromArray([
             'source' => 'pdf',
             'filters' => ['flight'],
             'parse_key' => '01JTESTPARSEKEYABC123',
@@ -54,13 +54,13 @@ class ParserPageViewModelTest extends TestCase
         $this->assertCount(1, $viewModel->result->events);
         $this->assertSame('01JTESTPARSEKEYABC123', $viewModel->result->parseKey);
         $this->assertSame(
-            route('parse.export', ['event_types' => [ParserEventType::Flight->value], 'parse_key' => '01JTESTPARSEKEYABC123']),
+            route('parse.export', ['event_types' => [ScheduleEventType::Flight->value], 'parse_key' => '01JTESTPARSEKEYABC123']),
             $viewModel->result->exportUrl
         );
         $this->assertCount(1, $viewModel->result->events);
-        $this->assertSame(ParserEventType::Deadhead->value, $viewModel->result->events[0]->type);
-        $this->assertSame(ParserEventType::Deadhead->label(), $viewModel->result->events[0]->typeLabel);
-        $this->assertSame(ParserEventType::Deadhead->icon(), $viewModel->result->events[0]->typeIcon);
+        $this->assertSame(ScheduleEventType::Deadhead->value, $viewModel->result->events[0]->type);
+        $this->assertSame(ScheduleEventType::Deadhead->label(), $viewModel->result->events[0]->typeLabel);
+        $this->assertSame(ScheduleEventType::Deadhead->icon(), $viewModel->result->events[0]->typeIcon);
         $this->assertSame('Jun 15 • 9:00 AM - 11:30 AM', $viewModel->result->events[0]->scheduleLabel);
         $this->assertSame('2h 30m', $viewModel->result->events[0]->durationLabel);
         $this->assertSame('HL1234', $viewModel->result->events[0]->tailNumber);
@@ -74,7 +74,7 @@ class ParserPageViewModelTest extends TestCase
     #[Test]
     public function it_adds_parse_scoped_export_urls_to_flight_dtos(): void
     {
-        $viewModel = ParserPageViewModel::fromResult(ParserResultData::fromArray([
+        $viewModel = ParserPageViewModel::fromResult(ExtractedResultData::fromArray([
             'source' => 'text',
             'filters' => [],
             'parse_key' => '01JTESTPARSEKEYABC123',
@@ -115,7 +115,7 @@ class ParserPageViewModelTest extends TestCase
     #[Test]
     public function it_adds_parse_scoped_export_urls_to_duty_event_dtos(): void
     {
-        $viewModel = ParserPageViewModel::fromResult(ParserResultData::fromArray([
+        $viewModel = ParserPageViewModel::fromResult(ExtractedResultData::fromArray([
             'source' => 'text',
             'filters' => [],
             'parse_key' => '01JTESTPARSEKEYABC123',
@@ -182,7 +182,7 @@ class ParserPageViewModelTest extends TestCase
     #[Test]
     public function it_marks_error_results(): void
     {
-        $viewModel = ParserPageViewModel::fromResult(ParserResultData::fromArray([
+        $viewModel = ParserPageViewModel::fromResult(ExtractedResultData::fromArray([
             'error' => 'Roster text resolution failed.',
         ]));
 
@@ -199,7 +199,7 @@ class ParserPageViewModelTest extends TestCase
         $viewModel = ParserPageViewModel::fromResult(null);
 
         $this->assertSame([], $viewModel->selectedTypes);
-        $this->assertSame(ParserEventType::filterValues(), array_column($viewModel->filterOptions, 'value'));
+        $this->assertSame(ScheduleEventType::filterValues(), array_column($viewModel->filterOptions, 'value'));
         $this->assertSame('Flights only', $viewModel->filterOptions[0]['label']);
         $this->assertSame('Scheduled flying segment.', $viewModel->filterOptions[0]['description']);
     }

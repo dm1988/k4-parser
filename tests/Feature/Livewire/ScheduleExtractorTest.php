@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Livewire;
 
-use App\DTOs\ParserResultData;
-use App\Exceptions\ParseSourceResolutionException;
+use App\DTOs\ExtractedResultData;
+use App\Exceptions\ExtractSourceResolutionException;
 use App\Livewire\ScheduleExtractor;
 use App\Models\User;
 use App\Services\Infrastructure\EngineResultCache;
@@ -254,7 +254,7 @@ class ScheduleExtractorTest extends TestCase
         $this->mock(JcaScheduleProcessor::class, function (MockInterface $mock): void {
             $mock->shouldReceive('parseRoster')
                 ->once()
-                ->andThrow(new ParseSourceResolutionException('Source resolution failed.', [
+                ->andThrow(new ExtractSourceResolutionException('Source resolution failed.', [
                     'file' => [
                         'The PDF could not be read.',
                         'The PDF appears damaged.',
@@ -424,9 +424,9 @@ class ScheduleExtractorTest extends TestCase
     }
 
     /** @param list<string> $filters */
-    private function cacheResult(string $parseKey, string $title, array $filters = []): ParserResultData
+    private function cacheResult(string $parseKey, string $title, array $filters = []): ExtractedResultData
     {
-        $result = ParserResultData::fromArray([
+        $result = ExtractedResultData::fromArray([
             'type' => 'roster',
             'source' => 'text',
             'parse_key' => $parseKey,

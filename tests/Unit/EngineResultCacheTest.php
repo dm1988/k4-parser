@@ -3,7 +3,7 @@
 namespace Tests\Unit;
 
 use App\DTOs\DutyEvent;
-use App\DTOs\ParserResultData;
+use App\DTOs\ExtractedResultData;
 use App\Models\User;
 use App\Services\Infrastructure\EngineResultCache;
 use Illuminate\Http\Request;
@@ -15,7 +15,7 @@ class EngineResultCacheTest extends TestCase
     public function test_it_stores_normalized_results_in_both_cache_namespaces(): void
     {
         $service = app(EngineResultCache::class);
-        $result = ParserResultData::fromArray([
+        $result = ExtractedResultData::fromArray([
             'type' => 'flight',
             'source' => 'text',
             'document_type' => null,
@@ -43,7 +43,7 @@ class EngineResultCacheTest extends TestCase
 
         $cached = $service->get('01JTESTPARSEKEYABC123');
 
-        $this->assertInstanceOf(ParserResultData::class, $cached);
+        $this->assertInstanceOf(ExtractedResultData::class, $cached);
         $this->assertIsArray($cached->parsed['calendar_events'][0]);
         $this->assertSame('01JTESTEVENTKEYABC123', $cached->parsed['calendar_events'][0]['download_id']);
         $this->assertSame('duty', $cached->parsed['calendar_events'][0]['type']);
@@ -74,7 +74,7 @@ class EngineResultCacheTest extends TestCase
 
         $result = $service->resolveForRequest($request);
 
-        $this->assertInstanceOf(ParserResultData::class, $result);
+        $this->assertInstanceOf(ExtractedResultData::class, $result);
         $this->assertSame('request', $result->parseKey);
     }
 

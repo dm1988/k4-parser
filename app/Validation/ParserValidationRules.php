@@ -2,7 +2,7 @@
 
 namespace App\Validation;
 
-use App\Enums\ParserEventType;
+use App\Enums\ScheduleEventType;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
 
@@ -15,7 +15,7 @@ final class ParserValidationRules
             'file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,bmp,tif,tiff,webp', 'max:12288', 'required_without:text'],
             'text' => ['nullable', 'string', 'required_without:file'],
             $eventTypesField => ['nullable', 'array'],
-            $eventTypesField.'.*' => [Rule::in(ParserEventType::filterValues())],
+            $eventTypesField.'.*' => [Rule::in(ScheduleEventType::filterValues())],
         ];
     }
 

@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Enums\ParserEventType;
+use App\Enums\ScheduleEventType;
 use App\Models\Airline;
 use App\Services\Schedule\Extractor\TripInformationParser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -130,11 +130,11 @@ TEXT;
             static fn (array $event): string => substr($event['start'], 0, 10),
         );
 
-        $this->assertSame(ParserEventType::OneInSeven->value, $eventsByDate['2026-07-20']['type']);
-        $this->assertSame(ParserEventType::OneInSeven->value, $eventsByDate['2026-07-22']['type']);
-        $this->assertSame(ParserEventType::Duty->value, $eventsByDate['2026-07-24']['type']);
-        $this->assertSame(ParserEventType::Duty->value, $eventsByDate['2026-07-25']['type']);
-        $this->assertSame(ParserEventType::OneInSeven->value, $eventsByDate['2026-07-26']['type']);
+        $this->assertSame(ScheduleEventType::OneInSeven->value, $eventsByDate['2026-07-20']['type']);
+        $this->assertSame(ScheduleEventType::OneInSeven->value, $eventsByDate['2026-07-22']['type']);
+        $this->assertSame(ScheduleEventType::Duty->value, $eventsByDate['2026-07-24']['type']);
+        $this->assertSame(ScheduleEventType::Duty->value, $eventsByDate['2026-07-25']['type']);
+        $this->assertSame(ScheduleEventType::OneInSeven->value, $eventsByDate['2026-07-26']['type']);
         $this->assertSame('R2', $eventsByDate['2026-07-25']['metadata']['activity_code']);
         $this->assertSame('1IN7', $eventsByDate['2026-07-26']['metadata']['activity_code']);
     }
@@ -169,7 +169,7 @@ TEXT;
 
         $event = app(TripInformationParser::class)->parse($text)['calendar_events'][0];
 
-        $this->assertSame(ParserEventType::Deadhead->value, $event['type']);
+        $this->assertSame(ScheduleEventType::Deadhead->value, $event['type']);
         $this->assertSame('NRT - HKG (CKS 208)', $event['title']);
         $this->assertSame('CKS 208', $event['metadata']['flight_number']);
         $this->assertSame('208', $event['metadata']['activity_code']);

@@ -1,7 +1,7 @@
 <?php
 
+use App\Http\Controllers\ExtractController;
 use App\Http\Controllers\FlightReleaseController;
-use App\Http\Controllers\ParserController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -14,22 +14,22 @@ Route::get('/privacy-policy', function () {
 })->name('privacy.policy');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', [ParserController::class, 'dashboard'])->name('dashboard');
+    Route::get('/dashboard', [ExtractController::class, 'dashboard'])->name('dashboard');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::get('/parse', [ParserController::class, 'index'])->name('parse.index');
+    Route::get('/parse', [ExtractController::class, 'index'])->name('parse.index');
 
     Route::middleware(['feature:schedule_parser', 'can:use-schedule-parser'])->group(function () {
-        Route::get('/parse/export', [ParserController::class, 'exportCalendar'])->name('parse.export');
-        Route::get('/parse/export/event/{eventId}', [ParserController::class, 'exportCalendarEvent'])
+        Route::get('/parse/export', [ExtractController::class, 'exportCalendar'])->name('parse.export');
+        Route::get('/parse/export/event/{eventId}', [ExtractController::class, 'exportCalendarEvent'])
             ->name('parse.export.event')
             ->whereAlphaNumeric('eventId');
     });
 
-    Route::get('/parse/export/event/{eventId}/duty', [ParserController::class, 'exportFlightDutyCalendarEvent'])
+    Route::get('/parse/export/event/{eventId}/duty', [ExtractController::class, 'exportFlightDutyCalendarEvent'])
         ->name('parse.export.event.duty')
         ->whereAlphaNumeric('eventId')
         ->middleware(['feature:schedule_parser', 'can:export-schedule-parser-duty']);

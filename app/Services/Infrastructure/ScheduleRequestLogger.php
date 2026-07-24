@@ -2,8 +2,8 @@
 
 namespace App\Services\Infrastructure;
 
-use App\DTOs\ParsedEventDTO;
-use App\Enums\ParserEventType;
+use App\DTOs\ExtractedEventDTO;
+use App\Enums\ScheduleEventType;
 use App\Models\ParseRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -91,15 +91,15 @@ class ScheduleRequestLogger
 
         foreach ($events as $event) {
             $eventCount++;
-            $type = $event instanceof ParsedEventDTO
-                ? ParserEventType::fromValue($event->type)
-                : (is_array($event) ? ParserEventType::fromEvent($event) : ParserEventType::Unknown);
+            $type = $event instanceof ExtractedEventDTO
+                ? ScheduleEventType::fromValue($event->type)
+                : (is_array($event) ? ScheduleEventType::fromEvent($event) : ScheduleEventType::Unknown);
 
             if ($type->isFlightLike()) {
                 $flightCount++;
             }
 
-            if ($type === ParserEventType::Layover) {
+            if ($type === ScheduleEventType::Layover) {
                 $hotelCount++;
             }
         }

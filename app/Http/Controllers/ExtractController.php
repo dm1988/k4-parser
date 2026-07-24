@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\DTOs\ParserResultData;
+use App\DTOs\ExtractedResultData;
 use App\Services\Calendar\ExportPayload;
 use App\Services\Infrastructure\EngineResultCache;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
 
-class ParserController extends Controller
+class ExtractController extends Controller
 {
     public function __construct(
         private readonly ExportPayload $exportPayload,
@@ -18,15 +18,15 @@ class ParserController extends Controller
 
     public function index(): View
     {
-        return $this->parserPage();
+        return $this->extractPage();
     }
 
     public function dashboard(): View
     {
-        return $this->parserPage();
+        return $this->extractPage();
     }
 
-    private function parserPage(): View
+    private function extractPage(): View
     {
         return view('dashboard');
     }
@@ -57,7 +57,7 @@ class ParserController extends Controller
         );
     }
 
-    private function resolveCachedEventsOrAbort(Request $request): ParserResultData
+    private function resolveCachedEventsOrAbort(Request $request): ExtractedResultData
     {
         $sessionResult = $this->engineResultCache->resolveForRequest($request);
 

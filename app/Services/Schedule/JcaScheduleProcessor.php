@@ -2,12 +2,12 @@
 
 namespace App\Services\Schedule;
 
-use App\Actions\BuildParserResult;
-use App\DTOs\ParsedEventDTO;
-use App\DTOs\ParserResultData;
-use App\Enums\ParserEventType;
+use App\Actions\BuildScheduleResult;
+use App\DTOs\ExtractedEventDTO;
+use App\DTOs\ExtractedResultData;
 use App\Enums\ScheduleDocumentType;
-use App\Exceptions\ParseSourceResolutionException;
+use App\Enums\ScheduleEventType;
+use App\Exceptions\ExtractSourceResolutionException;
 use App\Services\Infrastructure\EngineResultCache;
 use App\Services\Schedule\Extractor\ScheduleFormatParser;
 use App\Services\Schedule\Extractor\TripInformationParser;
@@ -17,7 +17,7 @@ use Throwable;
 class JcaScheduleProcessor
 {
     public function __construct(
-        private readonly BuildParserResult $buildParserResult,
+        private readonly BuildScheduleResult $buildScheduleResult,
         private readonly EngineResultCache $engineResultCache,
         private readonly ScheduleFormatParser $scheduleFormatParser,
         private readonly TripInformationParser $tripInformationParser,
@@ -28,7 +28,7 @@ class JcaScheduleProcessor
     /**
      * @return array{
      *     parsed: array<string, mixed>,
-     *     result: ParserResultData
+     *     result: ExtractedResultData
      * }
      */
     public function parseFlight(string $text): array
@@ -38,7 +38,7 @@ class JcaScheduleProcessor
             'calendar_events' => $this->tripInformationParser->extractFlightsDto($text),
         ];
 
-        $result = $this->buildParserResult->handle(
+        $result = $this->buildScheduleResult->handle(
             type: 'flight',
             source: 'text',
             documentType: null,
@@ -56,7 +56,7 @@ class JcaScheduleProcessor
     /**
      * @return array{
      *     parsed: array<string, mixed>,
-     *     result: ParserResultData
+     *     result: ExtractedResultData
      * }
      */
     public function parseHotel(string $text): array
@@ -66,7 +66,7 @@ class JcaScheduleProcessor
             'calendar_events' => $this->tripInformationParser->extractHotels($text),
         ];
 
-        $result = $this->buildParserResult->handle(
+        $result = $this->buildScheduleResult->handle(
             type: 'hotel',
             source: 'text',
             documentType: null,
@@ -85,7 +85,7 @@ class JcaScheduleProcessor
      * @param  list<string>  $eventTypes
      * @return array{
      *     parsed: array<string, mixed>,
-     *     result: ParserResultData,
+     *     result: ExtractedResultData,
      *     parser_type: string,
      *     page_count: ?int
      * }
@@ -95,7 +95,7 @@ class JcaScheduleProcessor
         try {
             $source = $this->scheduleInputResolver->resolve($file, $text);
         } catch (Throwable $throwable) {
-            throw ParseSourceResolutionException::fromThrowable($throwable, $file !== null);
+            throw ExtractSourceResolutionException::fromThrowable($throwable, $file !== null);
         }
 
         $parsed = $this->scheduleFormatParser->parse(
@@ -113,7 +113,7 @@ class JcaScheduleProcessor
 
         $filteredParsed = $this->airportEnrichmentService->enrich($filteredParsed);
 
-        $result = $this->buildParserResult->handle(
+        $result = $this->buildScheduleResult->handle(
             type: 'roster',
             source: $source['source'],
             documentType: $source['document_type'] ?? null,
@@ -138,15 +138,15 @@ class JcaScheduleProcessor
 
     private function eventType(mixed $event): string
     {
-        $eventType = $event instanceof ParsedEventDTO
-            ? ParserEventType::fromValue($event->type)
-            : (is_array($event) ? ParserEventType::fromEvent($event) : ParserEventType::Unknown);
+        $eventType = $event instanceof ExtractedEventDTO
+            ? ScheduleEventType::fromValue($event->type)
+            : (is_array($event) ? ScheduleEventType::fromEvent($event) : ScheduleEventType::Unknown);
 
         if ($eventType->isFlightLike()) {
-            return ParserEventType::Flight->value;
+            return ScheduleEventType::Flight->value;
         }
 
-        if ($event instanceof ParsedEventDTO) {
+        if ($event instanceof ExtractedEventDTO) {
             return $event->type;
         }
 

@@ -2,8 +2,8 @@
 
 namespace App\Actions;
 
-use App\DTOs\ParserResultData;
-use App\Exceptions\ParseSourceResolutionException;
+use App\DTOs\ExtractedResultData;
+use App\Exceptions\ExtractSourceResolutionException;
 use App\Services\Infrastructure\ScheduleRequestLogger;
 use Illuminate\Http\UploadedFile;
 use Throwable;
@@ -17,13 +17,13 @@ class HandleParseExecution
     /**
      * @param  callable(): array{
      *     parsed: array<string, mixed>,
-     *     result: ParserResultData,
+     *     result: ExtractedResultData,
      *     parser_type?: ?string,
      *     page_count?: ?int
      * }  $operation
      * @return array{
      *     parsed: array<string, mixed>,
-     *     result: ParserResultData,
+     *     result: ExtractedResultData,
      *     parser_type?: ?string,
      *     page_count?: ?int
      * }
@@ -51,7 +51,7 @@ class HandleParseExecution
 
             return $payload;
         } catch (Throwable $throwable) {
-            $loggedThrowable = $throwable instanceof ParseSourceResolutionException && $throwable->getPrevious() instanceof Throwable
+            $loggedThrowable = $throwable instanceof ExtractSourceResolutionException && $throwable->getPrevious() instanceof Throwable
                 ? $throwable->getPrevious()
                 : $throwable;
 

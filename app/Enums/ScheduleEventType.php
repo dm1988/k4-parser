@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-enum ParserEventType: string
+enum ScheduleEventType: string
 {
     case Flight = 'flight';
     case Duty = 'duty';

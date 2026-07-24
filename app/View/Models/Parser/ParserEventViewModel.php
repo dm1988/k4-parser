@@ -3,7 +3,7 @@
 namespace App\View\Models\Parser;
 
 use App\Enums\MetadataKey;
-use App\Enums\ParserEventType;
+use App\Enums\ScheduleEventType;
 use Carbon\CarbonImmutable;
 
 readonly class ParserEventViewModel
@@ -35,7 +35,7 @@ readonly class ParserEventViewModel
         $durationMinutes = (int) $start->diffInMinutes($end);
         $hours = intdiv($durationMinutes, 60);
         $minutes = $durationMinutes % 60;
-        $eventType = ParserEventType::fromEvent($event);
+        $eventType = ScheduleEventType::fromEvent($event);
         $downloadId = (string) ($event[MetadataKey::DownloadId->value] ?? '');
         $utcStart = $start->setTimezone('UTC');
         $utcEnd = $end->setTimezone('UTC');

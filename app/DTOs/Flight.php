@@ -2,7 +2,7 @@
 
 namespace App\DTOs;
 
-final readonly class Flight extends ParsedEventDTO
+final readonly class Flight extends ExtractedEventDTO
 {
     public function __construct(
         string $title,

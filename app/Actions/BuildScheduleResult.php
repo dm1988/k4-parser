@@ -2,12 +2,12 @@
 
 namespace App\Actions;
 
-use App\DTOs\ParsedEventDTO;
-use App\DTOs\ParserResultData;
+use App\DTOs\ExtractedEventDTO;
+use App\DTOs\ExtractedResultData;
 use App\Enums\MetadataKey;
 use Illuminate\Support\Str;
 
-class BuildParserResult
+class BuildScheduleResult
 {
     /**
      * @param  list<string>  $filters
@@ -23,8 +23,8 @@ class BuildParserResult
         mixed $file = null,
         ?string $mime = null,
         array $meta = [],
-    ): ParserResultData {
-        return new ParserResultData(
+    ): ExtractedResultData {
+        return new ExtractedResultData(
             type: $type,
             source: $source,
             documentType: $documentType,
@@ -48,7 +48,7 @@ class BuildParserResult
         foreach (($parsed['calendar_events'] ?? []) as $event) {
             $downloadId = (string) Str::ulid();
 
-            if ($event instanceof ParsedEventDTO) {
+            if ($event instanceof ExtractedEventDTO) {
                 $events[] = $event->withDownloadId($downloadId);
 
                 continue;

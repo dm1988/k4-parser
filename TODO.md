@@ -8,22 +8,35 @@ Follow these rules for every remaining task:
 9. Preserve unrelated working-tree changes.
 10. Update this file with outcomes instead of adding another plan or duplicate checklist.
 
-## Current focus: Product and UI Polish
+## Product and UI Polish
 
 * Continue spelling out “Jeppesen Crew Access” before introducing the “JCA” abbreviation.
 
-## Naming and Architecture
+## Current focus: Naming and Architecture
 
-* Clean up parser-to-extract naming.
-* Find all parser references
-* Decide how to hanlde to prefered extract verbage
-* Rename 2 dtos: ParsedEventDTO, ParserResultData
-* Rename Enum, Exceptions
-* Rename ParserEventType Enum to ScheduleEventType.php
-* Rename controller, policy
-* Rename model
-* Explore renaming DB table
-- Any reorganization must preserve behavior, update namespaces atomically, and be covered by focused and full tests.
+### Completed
+
+- Identified parser-related references for the completed rename scope.
+- Established `extract` / `extracted` as the preferred terminology for completed renames.
+- Renamed DTOs:
+  - `ParsedEventDTO` → `ExtractedEventDTO`
+  - `ParserResultData` → `ExtractedResultData`
+- Renamed `ParserEventType` → `ScheduleEventType`.
+- Renamed `ParseSourceResolutionException` → `ExtractSourceResolutionException`.
+- Renamed `ParserController` → `ExtractController`.
+- Renamed `BuildParserResult` → `BuildScheduleResult`.
+- Updated affected namespaces and references atomically.
+- Verified the completed renames with focused tests and Pint.
+
+### Pending
+
+- Review remaining parser-related names and decide whether each represents parsing behavior or should use `extract` / `extracted` terminology.
+- Rename the `ParseRequest` model.
+- Rename `ParseRequestPolicy` alongside the model so Laravel's conventional policy discovery continues to work without explicit registration.
+- Evaluate whether the underlying database table should be renamed.
+- Run the full test suite after the naming and architecture work is complete.
+
+Any reorganization must preserve behavior, update namespaces atomically, and be covered by focused tests during implementation and the full test suite at the final integration checkpoint.
 
 ## Multi photo uploads feature
 
@@ -37,3 +50,5 @@ Follow these rules for every remaining task:
 
 ## Release 1
 - All tests pass
+
+## API

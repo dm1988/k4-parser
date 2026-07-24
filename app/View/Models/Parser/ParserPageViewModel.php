@@ -2,8 +2,8 @@
 
 namespace App\View\Models\Parser;
 
-use App\DTOs\ParserResultData;
-use App\Enums\ParserEventType;
+use App\DTOs\ExtractedResultData;
+use App\Enums\ScheduleEventType;
 
 readonly class ParserPageViewModel
 {
@@ -18,23 +18,23 @@ readonly class ParserPageViewModel
         public bool $available,
     ) {}
 
-    public static function fromResult(?ParserResultData $result): self
+    public static function fromResult(?ExtractedResultData $result): self
     {
         $selectedTypes = array_values(array_filter(
             $result === null ? [] : $result->filters,
-            fn (string $value): bool => in_array($value, ParserEventType::filterValues(), true),
+            fn (string $value): bool => in_array($value, ScheduleEventType::filterValues(), true),
         ));
 
         return new self(
             result: $result === null ? null : ParserResultViewModel::fromData($result),
             selectedTypes: $selectedTypes,
             filterOptions: array_map(
-                static fn (ParserEventType $type): array => [
+                static fn (ScheduleEventType $type): array => [
                     'value' => $type->value,
                     'label' => $type->filterLabel(),
                     'description' => $type->description(),
                 ],
-                ParserEventType::filterable(),
+                ScheduleEventType::filterable(),
             ),
             available: auth()->user()?->canUseScheduleParser() ?? false,
         );

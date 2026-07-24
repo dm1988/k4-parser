@@ -2,10 +2,10 @@
 
 namespace App\Services\Calendar;
 
-use App\DTOs\ParsedEventDTO;
-use App\DTOs\ParserResultData;
+use App\DTOs\ExtractedEventDTO;
+use App\DTOs\ExtractedResultData;
 use App\Enums\MetadataKey;
-use App\Enums\ParserEventType;
+use App\Enums\ScheduleEventType;
 use App\Exports\ExportFlightDutyCalendarEvent;
 use Illuminate\Http\Response;
 
@@ -19,7 +19,7 @@ class ExportPayload
     /**
      * @param  list<string>  $eventTypes
      */
-    public function exportCalendar(ParserResultData $sessionResult, array $eventTypes = []): Response
+    public function exportCalendar(ExtractedResultData $sessionResult, array $eventTypes = []): Response
     {
         $events = $sessionResult->parsed['calendar_events'];
 
@@ -43,7 +43,7 @@ class ExportPayload
         );
     }
 
-    public function exportCalendarEvent(ParserResultData $sessionResult, string $eventId): Response
+    public function exportCalendarEvent(ExtractedResultData $sessionResult, string $eventId): Response
     {
         $event = $this->findEventOrAbort($sessionResult->parsed['calendar_events'], $eventId);
         $trip = is_array($sessionResult->parsed['trip'] ?? null) ? $sessionResult->parsed['trip'] : [];
@@ -55,7 +55,7 @@ class ExportPayload
         );
     }
 
-    public function exportFlightDutyCalendarEvent(ParserResultData $sessionResult, string $eventId): Response
+    public function exportFlightDutyCalendarEvent(ExtractedResultData $sessionResult, string $eventId): Response
     {
         $event = $this->findEventOrAbort($sessionResult->parsed['calendar_events'], $eventId);
         $trip = is_array($sessionResult->parsed['trip'] ?? null) ? $sessionResult->parsed['trip'] : [];
@@ -76,7 +76,7 @@ class ExportPayload
     private function findEventOrAbort(array $events, string $eventId): mixed
     {
         foreach ($events as $event) {
-            if ($event instanceof ParsedEventDTO && $event->downloadId === $eventId) {
+            if ($event instanceof ExtractedEventDTO && $event->downloadId === $eventId) {
                 return $event;
             }
 
@@ -90,15 +90,15 @@ class ExportPayload
 
     private function eventType(mixed $event): string
     {
-        $eventType = $event instanceof ParsedEventDTO
-            ? ParserEventType::fromValue($event->type)
-            : (is_array($event) ? ParserEventType::fromEvent($event) : ParserEventType::Unknown);
+        $eventType = $event instanceof ExtractedEventDTO
+            ? ScheduleEventType::fromValue($event->type)
+            : (is_array($event) ? ScheduleEventType::fromEvent($event) : ScheduleEventType::Unknown);
 
         if ($eventType->isFlightLike()) {
-            return ParserEventType::Flight->value;
+            return ScheduleEventType::Flight->value;
         }
 
-        if ($event instanceof ParsedEventDTO) {
+        if ($event instanceof ExtractedEventDTO) {
             return $event->type;
         }
 
