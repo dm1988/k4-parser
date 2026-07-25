@@ -12,33 +12,24 @@ Follow these rules for every remaining task:
 
 * Continue spelling out “Jeppesen Crew Access” before introducing the “JCA” abbreviation.
 
-## Current focus: Naming and Architecture
+## Naming and Architecture (Completed)
 
-### Completed
-
-- Identified parser-related references for the completed rename scope.
-- Established `extract` / `extracted` as the preferred terminology for completed renames.
-- Renamed DTOs:
-  - `ParsedEventDTO` → `ExtractedEventDTO`
-  - `ParserResultData` → `ExtractedResultData`
-- Renamed `ParserEventType` → `ScheduleEventType`.
-- Renamed `ParseSourceResolutionException` → `ExtractSourceResolutionException`.
-- Renamed `ParserController` → `ExtractController`.
-- Renamed `BuildParserResult` → `BuildScheduleResult`.
-- Updated affected namespaces and references atomically.
-- Verified the completed renames with focused tests and Pint.
-
-### Pending
-
-- Review remaining parser-related names and decide whether each represents parsing behavior or should use `extract` / `extracted` terminology.
-- Rename the `ParseRequest` model.
-- Rename `ParseRequestPolicy` alongside the model so Laravel's conventional policy discovery continues to work without explicit registration.
-- Evaluate whether the underlying database table should be renamed.
-- Run the full test suite after the naming and architecture work is complete.
-- env / config changes
-- ParseSchedule command
-
-Any reorganization must preserve behavior, update namespaces atomically, and be covered by focused tests during implementation and the full test suite at the final integration checkpoint.
+- Established `extract` / `extracted` as the terminology for the user-facing extraction workflow.
+- Renamed the extraction DTOs, enum, exception, controller, actions, validation rules, view models, Blade components, Livewire operations, and command class.
+- Renamed `ParseRequest` → `ExtractRequest` and `ParseRequestPolicy` → `ExtractRequestPolicy`, preserving Laravel's conventional policy discovery without explicit registration.
+- Renamed the related Filament resource, pages, schema, table, widgets, and tests.
+- Added a reversible migration that renames:
+  - `parse_requests` → `extract_requests`
+  - `parse_duration_ms` → `extraction_duration_ms`
+  - `parser_version` → `extractor_version`
+- Renamed extraction-facing environment and configuration values:
+  - `PARSER_VERSION` → `EXTRACTOR_VERSION`
+  - `PARSED_RESULTS_TTL` → `EXTRACTED_RESULTS_TTL`
+  - `FEATURES_SCHEDULE_PARSER_*` → `FEATURES_SCHEDULE_EXTRACTOR_*`
+- Retained backward-compatible fallbacks for the previous environment variable names.
+- Retained `Parser` terminology for classes and metadata that specifically represent internal parser implementations.
+- Retained the existing `/parse` routes, `parse.*` route names, and `parse:schedule` command signature as stable public interfaces.
+- Verified the completed work with focused tests, Pint, Larastan, and the full test suite.
 
 ## Multi photo uploads feature
 
