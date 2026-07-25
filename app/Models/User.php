@@ -75,23 +75,23 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         );
     }
 
-    public function canUseScheduleParser(): bool
+    public function canUseScheduleExtractor(): bool
     {
         if (! $this->hasVerifiedEmail()) {
             return false;
         }
 
         return $this->canUseConfiguredFeature(
-            enabled: (bool) config('features.schedule_parser.enabled', false),
-            forAllUsers: (bool) config('features.schedule_parser.for_all_users', false),
+            enabled: (bool) config('features.schedule_extractor.enabled', false),
+            forAllUsers: (bool) config('features.schedule_extractor.for_all_users', false),
         );
     }
 
-    public function canExportScheduleParserDuty(): bool
+    public function canExportScheduleExtractorDuty(): bool
     {
         return $this->canUseConfiguredFeature(
-            enabled: (bool) config('features.schedule_parser.enabled', true),
-            forAllUsers: (bool) config('features.schedule_parser.duty_export_for_all_users', false),
+            enabled: (bool) config('features.schedule_extractor.enabled', true),
+            forAllUsers: (bool) config('features.schedule_extractor.duty_export_for_all_users', false),
         );
     }
 

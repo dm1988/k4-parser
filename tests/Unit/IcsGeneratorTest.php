@@ -46,7 +46,7 @@ class IcsGeneratorTest extends TestCase
         $unfoldedIcs = $this->unfold($ics);
 
         $this->assertSame(2, substr_count($unfoldedIcs, 'BEGIN:VEVENT'));
-        $this->assertStringContainsString('PRODID:-//Crew Compass//Roster Parser//EN', $unfoldedIcs);
+        $this->assertStringContainsString('PRODID:-//Crew Compass//Roster Extractor//EN', $unfoldedIcs);
         $this->assertStringContainsString('CALSCALE:GREGORIAN', $unfoldedIcs);
         $this->assertStringContainsString('METHOD:PUBLISH', $unfoldedIcs);
         $this->assertStringContainsString('X-WR-CALNAME:JCA Parsed Trip 13131', $unfoldedIcs);

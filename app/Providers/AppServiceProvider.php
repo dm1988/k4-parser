@@ -24,8 +24,8 @@ class AppServiceProvider extends ServiceProvider
     {
         Model::shouldBeStrict(! $this->app->isProduction());
 
-        Gate::define('use-schedule-parser', fn (User $user): bool => $user->canUseScheduleParser());
-        Gate::define('export-schedule-parser-duty', fn (User $user): bool => $user->canExportScheduleParserDuty());
+        Gate::define('use-schedule-extractor', fn (User $user): bool => $user->canUseScheduleExtractor());
+        Gate::define('export-schedule-extractor-duty', fn (User $user): bool => $user->canExportScheduleExtractorDuty());
         Gate::define('use-flight-release', fn (User $user): bool => $user->canUseFlightRelease());
     }
 }

@@ -2,15 +2,15 @@
 
 namespace App\Livewire;
 
-use App\Actions\HandleParseExecution;
+use App\Actions\HandleExtractExecution;
 use App\DTOs\ExtractedResultData;
 use App\Enums\ScheduleEventType;
 use App\Exceptions\ExtractSourceResolutionException;
 use App\Models\User;
 use App\Services\Infrastructure\EngineResultCache;
 use App\Services\Schedule\JcaScheduleProcessor;
-use App\Validation\ParserValidationRules;
-use App\View\Models\Parser\ParserPageViewModel;
+use App\Validation\ExtractValidationRules;
+use App\View\Models\Extract\ExtractPageViewModel;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -41,18 +41,18 @@ class ScheduleExtractor extends Component
     #[Locked]
     public ?string $parseKey = null;
 
-    protected HandleParseExecution $handleParseExecution;
+    protected HandleExtractExecution $handleExtractExecution;
 
     protected JcaScheduleProcessor $jcaScheduleProcessor;
 
     protected EngineResultCache $engineResultCache;
 
     public function boot(
-        HandleParseExecution $handleParseExecution,
+        HandleExtractExecution $handleExtractExecution,
         JcaScheduleProcessor $jcaScheduleProcessor,
         EngineResultCache $engineResultCache,
     ): void {
-        $this->handleParseExecution = $handleParseExecution;
+        $this->handleExtractExecution = $handleExtractExecution;
         $this->jcaScheduleProcessor = $jcaScheduleProcessor;
         $this->engineResultCache = $engineResultCache;
     }
@@ -60,14 +60,14 @@ class ScheduleExtractor extends Component
     public function mount(): void
     {
         $result = $this->engineResultCache->latest();
-        $viewModel = ParserPageViewModel::fromResult($result);
+        $viewModel = ExtractPageViewModel::fromResult($result);
 
         $this->eventTypes = $viewModel->selectedTypes;
         $this->parseKey = $result?->parseKey;
         $this->view = $result === null ? self::VIEW_UPLOAD : self::VIEW_RESULTS;
     }
 
-    public function parseRoster(): void
+    public function extractRoster(): void
     {
         $user = $this->authorizedUser();
 
@@ -84,19 +84,19 @@ class ScheduleExtractor extends Component
         $sourceType = $this->resolveSourceType($file);
 
         try {
-            $payload = $this->handleParseExecution->handle(
+            $payload = $this->handleExtractExecution->handle(
                 userId: $user->id,
                 sourceType: $sourceType,
                 parserType: $sourceType === 'image' ? 'screenshot' : 'unknown',
                 file: $file,
-                operation: fn (): array => $this->jcaScheduleProcessor->parseRoster(
+                operation: fn (): array => $this->jcaScheduleProcessor->extractRoster(
                     $file,
                     $text,
                     $eventTypes,
                 ),
             );
         } catch (ExtractSourceResolutionException $exception) {
-            $this->addParseErrors($exception);
+            $this->addExtractErrors($exception);
 
             $this->view = self::VIEW_UPLOAD;
 
@@ -139,10 +139,10 @@ class ScheduleExtractor extends Component
     public function render(): View
     {
         return view('livewire.schedule-extractor', [
-            'available' => auth()->user()?->canUseScheduleParser() ?? false,
+            'available' => auth()->user()?->canUseScheduleExtractor() ?? false,
             'filterOptions' => ScheduleEventType::filterable(),
             'viewModel' => $this->view === self::VIEW_RESULTS
-                ? ParserPageViewModel::fromResult($this->currentResult())
+                ? ExtractPageViewModel::fromResult($this->currentResult())
                 : null,
         ]);
     }
@@ -150,13 +150,13 @@ class ScheduleExtractor extends Component
     /** @return array<string, mixed> */
     protected function rules(): array
     {
-        return ParserValidationRules::rosterRules(eventTypesField: 'eventTypes');
+        return ExtractValidationRules::rosterRules(eventTypesField: 'eventTypes');
     }
 
     /** @return array<string, string> */
     protected function messages(): array
     {
-        return ParserValidationRules::rosterMessages(eventTypesField: 'eventTypes');
+        return ExtractValidationRules::rosterMessages(eventTypesField: 'eventTypes');
     }
 
     private function currentResult(): ?ExtractedResultData
@@ -201,7 +201,7 @@ class ScheduleExtractor extends Component
         };
     }
 
-    private function addParseErrors(ExtractSourceResolutionException $exception): void
+    private function addExtractErrors(ExtractSourceResolutionException $exception): void
     {
         foreach ($exception->errors() as $key => $messages) {
             $livewireKey = $this->livewireErrorKey($key);
@@ -231,7 +231,7 @@ class ScheduleExtractor extends Component
 
         abort_unless($user instanceof User, 401);
 
-        Gate::authorize('use-schedule-parser');
+        Gate::authorize('use-schedule-extractor');
 
         return $user;
     }

@@ -25,7 +25,7 @@ class IcsGenerator
         $calendarName = filled($tripNumber) ? 'JCA Parsed Trip '.$tripNumber : null;
         $calendar = Calendar::create($calendarName)
             ->description('Calendar export from Crew Compass JCA parser')
-            ->productIdentifier('-//Crew Compass//Roster Parser//EN')
+            ->productIdentifier('-//Crew Compass//Roster Extractor//EN')
             ->withoutAutoTimezoneComponents();
 
         $calendar->appendProperty(TextProperty::create('CALSCALE', 'GREGORIAN'));

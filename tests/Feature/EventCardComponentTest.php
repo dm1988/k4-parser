@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Mappers\DutyEventMapper;
-use App\View\Models\Parser\ParserEventViewModel;
+use App\View\Models\Extract\ExtractEventViewModel;
 use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
@@ -11,8 +11,8 @@ class EventCardComponentTest extends TestCase
 {
     public function test_it_renders_date_only_headers_and_utc_schedule_labels_for_layovers(): void
     {
-        $html = Blade::render('<x-parser.event-card :event="$event" />', [
-            'event' => ParserEventViewModel::fromArray([
+        $html = Blade::render('<x-extract.event-card :event="$event" />', [
+            'event' => ExtractEventViewModel::fromArray([
                 'title' => 'Layover ICN',
                 'type' => 'layover',
                 'start' => '2026-07-02T23:59:00+00:00',
@@ -34,7 +34,7 @@ class EventCardComponentTest extends TestCase
 
     public function test_it_renders_utc_schedule_labels_for_duty_cards(): void
     {
-        $html = Blade::render('<x-parser.event-card :event="$event" />', [
+        $html = Blade::render('<x-extract.event-card :event="$event" />', [
             'event' => app(DutyEventMapper::class)->fromCalendarEvent([
                 'title' => 'Duty CVG',
                 'type' => 'duty',

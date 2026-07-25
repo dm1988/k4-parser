@@ -29,7 +29,7 @@ class PublishedRosterParser
                 continue;
             }
 
-            $flightFragment = $this->parseFlightFragment($entry);
+            $flightFragment = $this->extractFlightFragment($entry);
 
             if ($flightFragment !== null) {
                 [$parsedEvents, $pendingFlight, $fragmentTripIds] = $this->consumeFlightFragment($flightFragment, $pendingFlight);
@@ -201,7 +201,7 @@ class PublishedRosterParser
      *     airline_name: ?string
      * }|null
      */
-    private function parseFlightFragment(array $entry): ?array
+    private function extractFlightFragment(array $entry): ?array
     {
         $body = $this->compact($entry['body']);
         $body = preg_replace('/^\d{2}:\d{2}/', '', $body, 1) ?? $body;

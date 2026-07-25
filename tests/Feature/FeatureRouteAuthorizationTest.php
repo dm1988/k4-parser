@@ -11,9 +11,9 @@ class FeatureRouteAuthorizationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_disabled_schedule_parser_routes_return_not_found_before_validation(): void
+    public function test_disabled_schedule_extractor_routes_return_not_found_before_validation(): void
     {
-        Config::set('features.schedule_parser.enabled', false);
+        Config::set('features.schedule_extractor.enabled', false);
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)
@@ -24,9 +24,9 @@ class FeatureRouteAuthorizationTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_schedule_parser_routes_forbid_users_without_the_required_capability(): void
+    public function test_schedule_extractor_routes_forbid_users_without_the_required_capability(): void
     {
-        Config::set('features.schedule_parser.for_all_users', false);
+        Config::set('features.schedule_extractor.for_all_users', false);
         $user = User::factory()->create();
 
         $this->actingAs($user)
@@ -36,8 +36,8 @@ class FeatureRouteAuthorizationTest extends TestCase
 
     public function test_duty_export_route_uses_its_more_specific_capability(): void
     {
-        Config::set('features.schedule_parser.for_all_users', true);
-        Config::set('features.schedule_parser.duty_export_for_all_users', false);
+        Config::set('features.schedule_extractor.for_all_users', true);
+        Config::set('features.schedule_extractor.duty_export_for_all_users', false);
 
         $this->actingAs(User::factory()->create())
             ->get(route('parse.export.event.duty', ['eventId' => 'event123']))
@@ -46,7 +46,7 @@ class FeatureRouteAuthorizationTest extends TestCase
 
     public function test_parser_pages_keep_their_existing_unavailable_state(): void
     {
-        Config::set('features.schedule_parser.enabled', false);
+        Config::set('features.schedule_extractor.enabled', false);
 
         $this->actingAs(User::factory()->create())
             ->get(route('dashboard'))

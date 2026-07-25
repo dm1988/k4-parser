@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\DTOs\Flight;
 use App\Models\User;
-use App\View\Models\Parser\FlightCardViewModel;
+use App\View\Models\Extract\FlightCardViewModel;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
@@ -40,7 +40,7 @@ class FlightCardComponentTest extends TestCase
 
     public function test_non_admins_can_see_the_duty_calendar_download_button_when_the_feature_is_enabled_for_all_users(): void
     {
-        Config::set('features.schedule_parser.duty_export_for_all_users', true);
+        Config::set('features.schedule_extractor.duty_export_for_all_users', true);
 
         $user = User::factory()->make([
             'role' => 'user',
@@ -55,7 +55,7 @@ class FlightCardComponentTest extends TestCase
 
     public function test_it_shows_the_airline_name_when_a_tail_number_is_not_available(): void
     {
-        $html = Blade::render('<x-parser.flight-card :model="$model" />', [
+        $html = Blade::render('<x-extract.flight-card :model="$model" />', [
             'model' => FlightCardViewModel::fromFlight(Flight::fromArray([
                 'title' => 'G4 368 AUS-CVG',
                 'type' => 'deadhead',
@@ -89,7 +89,7 @@ class FlightCardComponentTest extends TestCase
 
     public function test_it_renders_airport_info_popover_triggers_when_airport_lookup_data_is_available(): void
     {
-        $html = Blade::render('<x-parser.flight-card :model="$model" />', [
+        $html = Blade::render('<x-extract.flight-card :model="$model" />', [
             'model' => FlightCardViewModel::fromFlight(Flight::fromArray([
                 'title' => 'CKS 240 ICN-HKG',
                 'type' => 'flight',
@@ -139,7 +139,7 @@ class FlightCardComponentTest extends TestCase
 
     private function renderFlightCard(): string
     {
-        return Blade::render('<x-parser.flight-card :model="$model" />', [
+        return Blade::render('<x-extract.flight-card :model="$model" />', [
             'model' => FlightCardViewModel::fromFlight(Flight::fromArray([
                 'title' => 'CKS 240 ICN-HKG',
                 'type' => 'flight',

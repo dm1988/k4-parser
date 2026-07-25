@@ -31,7 +31,7 @@ class JcaScheduleProcessor
      *     result: ExtractedResultData
      * }
      */
-    public function parseFlight(string $text): array
+    public function extractFlight(string $text): array
     {
         $parsed = [
             'trip' => [],
@@ -90,7 +90,7 @@ class JcaScheduleProcessor
      *     page_count: ?int
      * }
      */
-    public function parseRoster(?UploadedFile $file, ?string $text, array $eventTypes = []): array
+    public function extractRoster(?UploadedFile $file, ?string $text, array $eventTypes = []): array
     {
         try {
             $source = $this->scheduleInputResolver->resolve($file, $text);

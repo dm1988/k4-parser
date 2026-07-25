@@ -161,7 +161,7 @@ class ExportFlightDutyCalendarEventTest extends TestCase
 
     public function test_non_admin_users_can_export_duty_when_the_feature_is_enabled_for_all_users(): void
     {
-        Config::set('features.schedule_parser.duty_export_for_all_users', true);
+        Config::set('features.schedule_extractor.duty_export_for_all_users', true);
 
         $parseKey = '01JTESTPARSEKEYABC123';
         $eventId = '01JTESTEVENTKEYABC123';

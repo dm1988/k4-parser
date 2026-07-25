@@ -17,7 +17,7 @@ return [
 
     'version' => env('APP_VERSION'),
 
-    'parser_version' => env('PARSER_VERSION'),
+    'extractor_version' => env('EXTRACTOR_VERSION', env('PARSER_VERSION')),
 
     /*
     |--------------------------------------------------------------------------

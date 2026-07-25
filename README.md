@@ -116,7 +116,7 @@ Never commit `.env`; it contains machine-specific settings and secrets. The most
 | Variable | Purpose |
 | --- | --- |
 | `APP_ENV`, `APP_DEBUG`, `APP_URL` | Runtime environment, error visibility, and public URL |
-| `APP_VERSION`, `PARSER_VERSION` | Optional application/parser version labels |
+| `APP_VERSION`, `EXTRACTOR_VERSION` | Optional application/extractor version labels |
 | `DB_*` | SQLite or MySQL connection settings |
 | `REDIS_HOST`, `REDIS_PORT` | Redis connection; use `redis` as the Docker hostname |
 | `TESSERACT_PATH` | Tesseract executable path; defaults to `/usr/bin/tesseract` |

@@ -4,7 +4,7 @@ namespace App\Services\Infrastructure;
 
 use App\DTOs\ExtractedEventDTO;
 use App\Enums\ScheduleEventType;
-use App\Models\ParseRequest;
+use App\Models\ExtractRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -17,28 +17,28 @@ class ScheduleRequestLogger
         string $sourceType,
         string $parserType,
         ?UploadedFile $file = null,
-    ): ParseRequest {
+    ): ExtractRequest {
         $path = $file?->getRealPath();
 
-        return ParseRequest::create([
+        return ExtractRequest::create([
             'user_id' => $userId,
             'request_uuid' => (string) Str::uuid(),
             'source_type' => $sourceType,
             'parser_type' => $parserType,
             'status' => 'partial',
-            'parse_duration_ms' => 0,
+            'extraction_duration_ms' => 0,
             'file_hash' => is_string($path) && is_file($path) ? hash_file('sha256', $path) : null,
             'file_size_bytes' => $file?->getSize(),
             'detected_event_count' => 0,
             'detected_flight_count' => 0,
             'detected_hotel_count' => 0,
             'app_version' => config('app.version'),
-            'parser_version' => config('app.parser_version'),
+            'extractor_version' => config('app.extractor_version'),
         ]);
     }
 
     public function success(
-        ParseRequest $parseRequest,
+        ExtractRequest $extractRequest,
         int $startedAt,
         array $parsed,
         ?string $parserType = null,
@@ -46,30 +46,30 @@ class ScheduleRequestLogger
     ): void {
         $counts = $this->eventCounts($parsed['calendar_events'] ?? []);
 
-        $parseRequest->update([
-            'parser_type' => $parserType ?? $parseRequest->parser_type,
+        $extractRequest->update([
+            'parser_type' => $parserType ?? $extractRequest->parser_type,
             'status' => 'success',
-            'parse_duration_ms' => $this->durationMs($startedAt),
+            'extraction_duration_ms' => $this->durationMs($startedAt),
             'page_count' => $pageCount,
             ...$counts,
         ]);
 
-        Log::info('K4 parse completed', [
-            'parse_request_id' => $parseRequest->id,
+        Log::info('K4 extraction completed', [
+            'extract_request_id' => $extractRequest->id,
             ...$counts,
         ]);
     }
 
-    public function error(ParseRequest $parseRequest, int $startedAt, Throwable $e): void
+    public function error(ExtractRequest $extractRequest, int $startedAt, Throwable $e): void
     {
-        $parseRequest->update([
+        $extractRequest->update([
             'status' => 'failed',
             'error_code' => class_basename($e),
-            'parse_duration_ms' => $this->durationMs($startedAt),
+            'extraction_duration_ms' => $this->durationMs($startedAt),
         ]);
 
-        Log::error('K4 parse failed', [
-            'parse_request_id' => $parseRequest->id,
+        Log::error('K4 extraction failed', [
+            'extract_request_id' => $extractRequest->id,
             'error' => $e->getMessage(),
         ]);
     }

@@ -60,7 +60,7 @@ Block
 13:50h
 TEXT;
 
-        $this->parseRoster($text);
+        $this->extractRoster($text);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -106,7 +106,7 @@ CVG
 2:00
 TEXT;
 
-        $this->parseRoster($text, ['flight']);
+        $this->extractRoster($text, ['flight']);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -152,7 +152,7 @@ ry NRT - Hyatt Regency Tokyo Bay Vv
 68:35h
 TEXT;
 
-        $this->parseRoster($text);
+        $this->extractRoster($text);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -196,7 +196,7 @@ DEW ICN CVG NRT Flight Info
 18 19 20 21 22 23 24 Scheduled Time:
 TEXT;
 
-        $this->parseRoster($text);
+        $this->extractRoster($text);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -236,7 +236,7 @@ aXe Cameron Stovold 36879 DH LAX
 * David Gonzalez 34534 INZe) AUS
 TEXT;
 
-        $this->parseRoster($text);
+        $this->extractRoster($text);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -291,7 +291,7 @@ aXe Cameron Stovold 71835 DH LAX
 * David Gonzalez 72860 INZe) NUS
 TEXT;
 
-        $this->parseRoster($text);
+        $this->extractRoster($text);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -344,7 +344,7 @@ TEXT;
                 ]);
         });
 
-        $this->parseRoster('stub');
+        $this->extractRoster('stub');
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -372,7 +372,7 @@ TEXT;
         6:18h
         TEXT;
 
-        $this->parseRoster($text);
+        $this->extractRoster($text);
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
         $result = Cache::get($this->cacheKeyForSession($parseKey));
@@ -400,7 +400,7 @@ TEXT;
         DH
         TEXT;
 
-        $this->parseRoster($text);
+        $this->extractRoster($text);
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
         $result = Cache::get($this->cacheKeyForSession($parseKey));
@@ -440,7 +440,7 @@ TEXT;
         John Smith 67890 DH AUS
         TEXT;
 
-        $this->parseRoster($text);
+        $this->extractRoster($text);
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
         $result = Cache::get($this->cacheKeyForSession($parseKey));
@@ -474,7 +474,7 @@ TEXT;
         6:18h
         TEXT;
 
-        $this->parseRoster($text, ['flight']);
+        $this->extractRoster($text, ['flight']);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -518,13 +518,13 @@ TEXT;
         13:50h
         TEXT;
 
-        $this->parseRoster($firstText);
+        $this->extractRoster($firstText);
         $firstParseKey = session('latest_parse_key');
         $this->assertIsString($firstParseKey);
         $firstResult = Cache::get($this->cacheKeyForSession($firstParseKey));
         $firstEventId = $firstResult['parsed']['calendar_events'][0]['download_id'];
 
-        $this->parseRoster($secondText);
+        $this->extractRoster($secondText);
         $secondParseKey = session('latest_parse_key');
         $this->assertIsString($secondParseKey);
         $secondResult = Cache::get($this->cacheKeyForSession($secondParseKey));
@@ -562,7 +562,7 @@ TEXT;
         DH
         TEXT;
 
-        $this->parseRoster($text);
+        $this->extractRoster($text);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
@@ -588,9 +588,9 @@ TEXT;
     }
 
     /** @param  list<string>  $eventTypes */
-    private function parseRoster(string $text, array $eventTypes = []): void
+    private function extractRoster(string $text, array $eventTypes = []): void
     {
-        app(JcaScheduleProcessor::class)->parseRoster(null, $text, $eventTypes);
+        app(JcaScheduleProcessor::class)->extractRoster(null, $text, $eventTypes);
     }
 
     private function sessionCacheNamespace(): string

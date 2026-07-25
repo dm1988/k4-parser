@@ -22,7 +22,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/parse', [ExtractController::class, 'index'])->name('parse.index');
 
-    Route::middleware(['feature:schedule_parser', 'can:use-schedule-parser'])->group(function () {
+    Route::middleware(['feature:schedule_extractor', 'can:use-schedule-extractor'])->group(function () {
         Route::get('/parse/export', [ExtractController::class, 'exportCalendar'])->name('parse.export');
         Route::get('/parse/export/event/{eventId}', [ExtractController::class, 'exportCalendarEvent'])
             ->name('parse.export.event')
@@ -32,7 +32,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/parse/export/event/{eventId}/duty', [ExtractController::class, 'exportFlightDutyCalendarEvent'])
         ->name('parse.export.event.duty')
         ->whereAlphaNumeric('eventId')
-        ->middleware(['feature:schedule_parser', 'can:export-schedule-parser-duty']);
+        ->middleware(['feature:schedule_extractor', 'can:export-schedule-extractor-duty']);
 
     Route::middleware(['feature:flight_release', 'can:use-flight-release'])->group(function () {
         Route::get('/flight-route-extractor', [FlightReleaseController::class, 'index'])->name('flight-release.index');

@@ -4,8 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Aircraft;
 use App\Models\Airline;
+use App\Models\ExtractRequest;
 use App\Models\FlightEvent;
-use App\Models\ParseRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -75,29 +75,29 @@ class AdminAuthorizationPolicyTest extends TestCase
         $this->assertTrue($admin->can('deleteAny', FlightEvent::class));
     }
 
-    public function test_parse_request_policy_allows_admin_view_and_delete_only(): void
+    public function test_extract_request_policy_allows_admin_view_and_delete_only(): void
     {
         $admin = $this->makeAdminUser();
-        $parseRequest = ParseRequest::query()->create([
+        $extractRequest = ExtractRequest::query()->create([
             'user_id' => $admin->getKey(),
             'request_uuid' => '89f6a72f-16d1-499f-95ea-7fc13c5913ef',
             'source_type' => 'pasted_text',
             'parser_type' => 'roster',
             'status' => 'success',
-            'parse_duration_ms' => 55,
+            'extraction_duration_ms' => 55,
             'detected_event_count' => 1,
             'detected_flight_count' => 1,
             'detected_hotel_count' => 0,
             'app_version' => '1.0.0',
-            'parser_version' => '2026.06',
+            'extractor_version' => '2026.06',
         ]);
 
-        $this->assertTrue($admin->can('viewAny', ParseRequest::class));
-        $this->assertTrue($admin->can('view', $parseRequest));
-        $this->assertFalse($admin->can('create', ParseRequest::class));
-        $this->assertFalse($admin->can('update', $parseRequest));
-        $this->assertTrue($admin->can('delete', $parseRequest));
-        $this->assertTrue($admin->can('deleteAny', ParseRequest::class));
+        $this->assertTrue($admin->can('viewAny', ExtractRequest::class));
+        $this->assertTrue($admin->can('view', $extractRequest));
+        $this->assertFalse($admin->can('create', ExtractRequest::class));
+        $this->assertFalse($admin->can('update', $extractRequest));
+        $this->assertTrue($admin->can('delete', $extractRequest));
+        $this->assertTrue($admin->can('deleteAny', ExtractRequest::class));
     }
 
     public function test_user_policy_allows_admins_to_delete_other_users_but_not_themselves_or_users_in_bulk(): void
@@ -120,20 +120,20 @@ class AdminAuthorizationPolicyTest extends TestCase
         $aircraft = Aircraft::factory()->create();
         $airline = Airline::query()->create(['name' => 'Kalitta Air']);
         $flightEvent = FlightEvent::factory()->withoutAircraft()->create();
-        $parseRequest = ParseRequest::query()->create([
+        $extractRequest = ExtractRequest::query()->create([
             'user_id' => $user->getKey(),
             'request_uuid' => fake()->uuid(),
             'source_type' => 'pasted_text',
             'parser_type' => 'roster',
             'status' => 'success',
-            'parse_duration_ms' => 55,
+            'extraction_duration_ms' => 55,
         ]);
 
         foreach ([
             Aircraft::class => $aircraft,
             Airline::class => $airline,
             FlightEvent::class => $flightEvent,
-            ParseRequest::class => $parseRequest,
+            ExtractRequest::class => $extractRequest,
             User::class => $this->makeNormalUser(),
         ] as $modelClass => $model) {
             $this->assertFalse($user->can('viewAny', $modelClass));
@@ -162,16 +162,16 @@ class AdminAuthorizationPolicyTest extends TestCase
         $aircraft = Aircraft::factory()->create();
         $airline = Airline::query()->create(['name' => 'Kalitta Air']);
         $flightEvent = FlightEvent::factory()->withoutAircraft()->create();
-        $parseRequest = ParseRequest::query()->create([
+        $extractRequest = ExtractRequest::query()->create([
             'user_id' => $admin->getKey(),
             'request_uuid' => fake()->uuid(),
             'source_type' => 'pasted_text',
             'parser_type' => 'roster',
             'status' => 'success',
-            'parse_duration_ms' => 55,
+            'extraction_duration_ms' => 55,
         ]);
 
-        foreach ([$aircraft, $airline, $flightEvent, $parseRequest, $this->makeNormalUser()] as $model) {
+        foreach ([$aircraft, $airline, $flightEvent, $extractRequest, $this->makeNormalUser()] as $model) {
             $this->assertFalse($admin->can('restore', $model));
             $this->assertFalse($admin->can('forceDelete', $model));
         }
@@ -179,7 +179,7 @@ class AdminAuthorizationPolicyTest extends TestCase
         $this->assertTrue($admin->can('reorder', Aircraft::class));
         $this->assertTrue($admin->can('reorder', Airline::class));
         $this->assertFalse($admin->can('reorder', FlightEvent::class));
-        $this->assertFalse($admin->can('reorder', ParseRequest::class));
+        $this->assertFalse($admin->can('reorder', ExtractRequest::class));
     }
 
     private function makeAdminUser(bool $verified = true, bool $isActive = true): User

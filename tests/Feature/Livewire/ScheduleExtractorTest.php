@@ -113,7 +113,7 @@ class ScheduleExtractorTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(ScheduleExtractor::class)
-            ->call('parseRoster')
+            ->call('extractRoster')
             ->assertHasErrors([
                 'file' => 'required_without',
                 'text' => 'required_without',
@@ -121,7 +121,7 @@ class ScheduleExtractorTest extends TestCase
             ->assertSee('Please provide either roster text or an uploaded file.')
             ->set('text', 'Roster text')
             ->set('eventTypes', ['not-a-real-type'])
-            ->call('parseRoster')
+            ->call('extractRoster')
             ->assertHasErrors(['eventTypes.0' => 'in'])
             ->assertSee('The selected event type is invalid.');
     }
@@ -131,7 +131,7 @@ class ScheduleExtractorTest extends TestCase
         Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
             ->set('file', UploadedFile::fake()->create('roster.csv', 10, 'text/csv'))
-            ->call('parseRoster')
+            ->call('extractRoster')
             ->assertHasErrors(['file' => 'mimes'])
             ->assertSet('view', 'upload');
     }
@@ -140,7 +140,7 @@ class ScheduleExtractorTest extends TestCase
     {
         $component = Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
-            ->call('parseRoster')
+            ->call('extractRoster')
             ->assertHasErrors(['file', 'text'])
             ->set('text', 'Roster text')
             ->assertHasNoErrors('text')
@@ -180,7 +180,7 @@ class ScheduleExtractorTest extends TestCase
             ->test(ScheduleExtractor::class)
             ->set('text', 'Roster text')
             ->set('eventTypes', [2 => 'duty', 7 => 'flight'])
-            ->call('parseRoster')
+            ->call('extractRoster')
             ->assertHasNoErrors()
             ->assertNoRedirect()
             ->assertSet('view', 'results')
@@ -201,7 +201,7 @@ class ScheduleExtractorTest extends TestCase
         Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
             ->set('file', UploadedFile::fake()->create('roster.pdf', 120, 'application/pdf'))
-            ->call('parseRoster')
+            ->call('extractRoster')
             ->assertHasNoErrors()
             ->assertNoRedirect()
             ->assertSet('view', 'results')
@@ -217,7 +217,7 @@ class ScheduleExtractorTest extends TestCase
         Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
             ->set('file', UploadedFile::fake()->image('roster.png', 300, 200))
-            ->call('parseRoster')
+            ->call('extractRoster')
             ->assertHasNoErrors()
             ->assertNoRedirect()
             ->assertSet('view', 'results')
@@ -238,7 +238,7 @@ class ScheduleExtractorTest extends TestCase
             ->test(ScheduleExtractor::class)
             ->call('extractAnotherRoster')
             ->set('text', 'Roster text')
-            ->call('parseRoster')
+            ->call('extractRoster')
             ->assertSet('view', 'upload')
             ->assertSet('parseKey', $previous->parseKey)
             ->assertHasErrors(['file'])
@@ -252,7 +252,7 @@ class ScheduleExtractorTest extends TestCase
     public function test_source_resolution_errors_support_multiple_messages_and_livewire_field_names(): void
     {
         $this->mock(JcaScheduleProcessor::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('parseRoster')
+            $mock->shouldReceive('extractRoster')
                 ->once()
                 ->andThrow(new ExtractSourceResolutionException('Source resolution failed.', [
                     'file' => [
@@ -266,7 +266,7 @@ class ScheduleExtractorTest extends TestCase
         $component = Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
             ->set('text', 'Roster text')
-            ->call('parseRoster')
+            ->call('extractRoster')
             ->assertSet('view', 'upload')
             ->assertHasErrors(['file', 'eventTypes.0'])
             ->assertSee('The selected event type is unavailable.');
@@ -283,7 +283,7 @@ class ScheduleExtractorTest extends TestCase
 
         Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
-            ->call('parseRoster')
+            ->call('extractRoster')
             ->assertHasErrors(['file', 'text'])
             ->set('text', 'Temporary text')
             ->call('extractAnotherRoster')
@@ -309,7 +309,7 @@ class ScheduleExtractorTest extends TestCase
             ->test(ScheduleExtractor::class)
             ->call('extractAnotherRoster')
             ->set('text', 'Roster text')
-            ->call('parseRoster')
+            ->call('extractRoster')
             ->assertSet('view', 'upload')
             ->assertSet('parseKey', $previous->parseKey)
             ->assertHasErrors(['file'])
@@ -329,7 +329,7 @@ class ScheduleExtractorTest extends TestCase
         Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
             ->set('text', 'Roster text')
-            ->call('parseRoster')
+            ->call('extractRoster')
             ->assertSet('view', 'upload')
             ->assertSet('parseKey', null)
             ->assertHasErrors(['file'])
@@ -341,34 +341,34 @@ class ScheduleExtractorTest extends TestCase
     public function test_component_actions_enforce_authentication_verification_feature_and_gate_access(): void
     {
         Livewire::test(ScheduleExtractor::class)
-            ->call('parseRoster')
+            ->call('extractRoster')
             ->assertUnauthorized();
 
         Livewire::actingAs(User::factory()->unverified()->create())
             ->test(ScheduleExtractor::class)
-            ->call('parseRoster')
+            ->call('extractRoster')
             ->assertForbidden();
 
-        Config::set('features.schedule_parser.enabled', false);
+        Config::set('features.schedule_extractor.enabled', false);
 
         Livewire::actingAs(User::factory()->admin()->create())
             ->test(ScheduleExtractor::class)
-            ->call('parseRoster')
+            ->call('extractRoster')
             ->assertForbidden();
 
-        Config::set('features.schedule_parser', ['for_all_users' => true]);
+        Config::set('features.schedule_extractor', ['for_all_users' => true]);
 
         Livewire::actingAs(User::factory()->admin()->create())
             ->test(ScheduleExtractor::class)
-            ->call('parseRoster')
+            ->call('extractRoster')
             ->assertForbidden();
 
-        Config::set('features.schedule_parser.enabled', true);
-        Config::set('features.schedule_parser.for_all_users', false);
+        Config::set('features.schedule_extractor.enabled', true);
+        Config::set('features.schedule_extractor.for_all_users', false);
 
         Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
-            ->call('parseRoster')
+            ->call('extractRoster')
             ->assertForbidden();
     }
 

@@ -14,7 +14,7 @@ class EngineResultCache
     public function put(ExtractedResultData $result): void
     {
         $parseKey = $result->parseKey ?? '';
-        $ttlMinutes = config('cache.parsed_results_ttl', 60);
+        $ttlMinutes = config('cache.extracted_results_ttl', 60);
         $normalizedResult = $this->normalizeForCache($result);
 
         Cache::put($this->sessionCacheKey($parseKey), $normalizedResult, now()->addMinutes($ttlMinutes));

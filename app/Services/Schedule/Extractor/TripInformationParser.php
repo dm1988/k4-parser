@@ -318,8 +318,8 @@ class TripInformationParser
             return null;
         }
 
-        $start = $this->parseRosterDate($matches[1], $monthYears, $defaultYear);
-        $end = $this->parseRosterDate($matches[2], $monthYears, $defaultYear);
+        $start = $this->extractRosterDate($matches[1], $monthYears, $defaultYear);
+        $end = $this->extractRosterDate($matches[2], $monthYears, $defaultYear);
 
         if ($end->lessThanOrEqualTo($start)) {
             $end->addYear();
@@ -421,7 +421,7 @@ class TripInformationParser
         return null;
     }
 
-    private function parseRosterDate(string $value, array $monthYears, int $defaultYear): Carbon
+    private function extractRosterDate(string $value, array $monthYears, int $defaultYear): Carbon
     {
         preg_match('/^([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{2}:\d{2})$/', $value, $matches);
 

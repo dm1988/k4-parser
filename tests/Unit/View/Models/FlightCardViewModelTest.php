@@ -4,7 +4,7 @@ namespace Tests\Unit\View\Models;
 
 use App\DTOs\Flight;
 use App\Models\User;
-use App\View\Models\Parser\FlightCardViewModel;
+use App\View\Models\Extract\FlightCardViewModel;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 

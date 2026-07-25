@@ -35,9 +35,9 @@ class UserModelTest extends TestCase
     {
         Config::set('features.flight_release.enabled', true);
         Config::set('features.flight_release.for_all_users', false);
-        Config::set('features.schedule_parser.enabled', true);
-        Config::set('features.schedule_parser.for_all_users', true);
-        Config::set('features.schedule_parser.duty_export_for_all_users', false);
+        Config::set('features.schedule_extractor.enabled', true);
+        Config::set('features.schedule_extractor.for_all_users', true);
+        Config::set('features.schedule_extractor.duty_export_for_all_users', false);
 
         $admin = new User([
             'role' => 'admin',
@@ -52,11 +52,11 @@ class UserModelTest extends TestCase
 
         $this->assertTrue($admin->canUseFlightRelease());
         $this->assertFalse($user->canUseFlightRelease());
-        $this->assertTrue($admin->canUseScheduleParser());
-        $this->assertTrue($user->canUseScheduleParser());
-        $this->assertFalse($unverifiedAdmin->canUseScheduleParser());
-        $this->assertFalse($unverifiedUser->canUseScheduleParser());
-        $this->assertTrue($admin->canExportScheduleParserDuty());
-        $this->assertFalse($user->canExportScheduleParserDuty());
+        $this->assertTrue($admin->canUseScheduleExtractor());
+        $this->assertTrue($user->canUseScheduleExtractor());
+        $this->assertFalse($unverifiedAdmin->canUseScheduleExtractor());
+        $this->assertFalse($unverifiedUser->canUseScheduleExtractor());
+        $this->assertTrue($admin->canExportScheduleExtractorDuty());
+        $this->assertFalse($user->canExportScheduleExtractorDuty());
     }
 }

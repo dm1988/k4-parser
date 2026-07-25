@@ -19,7 +19,7 @@
                 </p>
             </header>
 
-            <x-parser.form :event-types="$eventTypes" :file="$file" :filter-options="$filterOptions" />
+            <x-extract.form :event-types="$eventTypes" :file="$file" :filter-options="$filterOptions" />
         </section>
     @elseif ($view === 'results' && $viewModel?->hasResult())
         <section wire:key="schedule-extractor-results-{{ $parseKey }}" class="mx-auto max-w-4xl space-y-5">
@@ -34,7 +34,7 @@
                 </button>
             </div>
 
-            <x-parser.result :model="$viewModel->result" />
+            <x-extract.result :model="$viewModel->result" />
         </section>
     @endif
 </div>

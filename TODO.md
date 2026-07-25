@@ -35,6 +35,8 @@ Follow these rules for every remaining task:
 - Rename `ParseRequestPolicy` alongside the model so Laravel's conventional policy discovery continues to work without explicit registration.
 - Evaluate whether the underlying database table should be renamed.
 - Run the full test suite after the naming and architecture work is complete.
+- env / config changes
+- ParseSchedule command
 
 Any reorganization must preserve behavior, update namespaces atomically, and be covered by focused tests during implementation and the full test suite at the final integration checkpoint.
 
@@ -47,6 +49,10 @@ Any reorganization must preserve behavior, update namespaces atomically, and be 
 - The navbar items ("Parse Schedule", "Route Extractor", etc.) are quite close to the top edge of the viewport. Adding a bit more top and bottom padding to the navbar container will give the text room to breathe and look cleaner.
 
 ## CKS flight codes strings should be extracted to env file and not in the codebase
+- add to user preferences
+
+## Airport Lookup Client address should be in .env with a fallback
+- migrate localhost value into .env and config
 
 ## Release 1
 - All tests pass
