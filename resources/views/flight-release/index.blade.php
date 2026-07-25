@@ -1,8 +1,8 @@
 <x-app-layout>
-    <div class="py-6">
+    <div class="py-6 sm:py-8">
         <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
             <div class="overflow-hidden rounded-lg bg-white shadow-sm">
-                <div class="border-b border-[#1B365D]/10 bg-[#1B365D] px-6 py-5 text-[#F8F9FA]">
+                <div class="border-b border-[#1B365D]/10 bg-[#1B365D] px-4 py-5 text-[#F8F9FA] sm:px-6">
                     <p class="text-sm font-semibold uppercase tracking-[0.16em] text-[#C5A059]">Flight deck</p>
                     <h1 class="mt-2 text-3xl font-bold">Flight Plan Extractor</h1>
                     <p class="mt-3 max-w-2xl text-sm leading-6 text-[#F8F9FA]/80">
@@ -10,7 +10,7 @@
                     </p>
                 </div>
 
-                <div class="space-y-6 p-6">
+                <div class="space-y-6 p-4 sm:p-6">
                     <form method="POST" action="{{ route('flight-release.store') }}" enctype="multipart/form-data" class="space-y-4">
                         @csrf
 

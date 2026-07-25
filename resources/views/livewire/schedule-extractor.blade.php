@@ -1,4 +1,4 @@
-<div class="mx-auto max-w-6xl px-5 py-6">
+<div class="mx-auto max-w-6xl">
     @if (! $available)
         <section class="mx-auto max-w-4xl">
             <section class="rounded-lg border border-amber-200 bg-amber-50 p-5 text-amber-900">
@@ -8,8 +8,8 @@
             </section>
         </section>
     @elseif ($view === 'upload')
-        <section wire:key="schedule-extractor-upload" class="mx-auto max-w-3xl">
-            <header class="flex flex-col items-center px-1 pb-8 text-center">
+        <section wire:key="schedule-extractor-upload" class="mx-auto flex max-w-3xl flex-col gap-6">
+            <header class="flex flex-col items-center px-1 text-center">
                 <span class="block text-xs font-bold uppercase tracking-widest text-[#C5A059]">
                     Jeppesen Crew Access
                 </span>
@@ -22,7 +22,7 @@
             <x-extract.form :event-types="$eventTypes" :file="$file" :filter-options="$filterOptions" />
         </section>
     @elseif ($view === 'results' && $viewModel?->hasResult())
-        <section wire:key="schedule-extractor-results-{{ $parseKey }}" class="mx-auto max-w-4xl space-y-5">
+        <section wire:key="schedule-extractor-results-{{ $parseKey }}" class="mx-auto max-w-4xl space-y-6">
             <div class="flex justify-end">
                 <button
                     type="button"

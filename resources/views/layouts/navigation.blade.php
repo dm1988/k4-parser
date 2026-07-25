@@ -1,18 +1,10 @@
 <nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-            <div class="flex">
-                <!-- Logo -->
-                <div class="shrink-0 flex items-center">
-                    <a href="{{ route('dashboard') }}">
-                        {{--
-                        <x-application-logo class="block h-9 w-auto fill-current text-gray-800" /> --}}
-                    </a>
-                </div>
-
+        <div class="flex min-h-16 justify-between gap-4">
+            <div class="flex min-w-0">
                 <!-- Navigation Links -->
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                <div class="hidden items-stretch gap-1 sm:flex">
                     @if (Auth::user()?->canUseScheduleExtractor())
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Extract Schedule') }}
@@ -30,7 +22,7 @@
                     </x-nav-link>
                     @endif
                     <a href="https://buymeacoffee.com/crewcompass"
-                        class="my-3 inline-flex items-center gap-2 rounded-md bg-[#FFDD00] px-4 py-2.5 text-sm font-bold text-black shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#ffe433] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#FFDD00] focus:ring-offset-2 active:translate-y-0"
+                        class="inline-flex items-center self-center gap-2 rounded-md bg-[#FFDD00] px-4 py-2.5 text-sm font-bold text-black shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#ffe433] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#FFDD00] focus:ring-offset-2 active:translate-y-0"
                         target="_blank" rel="noopener noreferrer">
                         <span class="text-base" aria-hidden="true">☕</span>
                         <span>Buy me a coffee</span>

@@ -8,36 +8,23 @@ Follow these rules for every remaining task:
 9. Preserve unrelated working-tree changes.
 10. Update this file with outcomes instead of adding another plan or duplicate checklist.
 
-## Product and UI Polish
-
-* Continue spelling out “Jeppesen Crew Access” before introducing the “JCA” abbreviation.
-
-## Naming and Architecture (Completed)
-
-- Established `extract` / `extracted` as the terminology for the user-facing extraction workflow.
-- Renamed the extraction DTOs, enum, exception, controller, actions, validation rules, view models, Blade components, Livewire operations, and command class.
-- Renamed `ParseRequest` → `ExtractRequest` and `ParseRequestPolicy` → `ExtractRequestPolicy`, preserving Laravel's conventional policy discovery without explicit registration.
-- Renamed the related Filament resource, pages, schema, table, widgets, and tests.
-- Added a reversible migration that renames:
-  - `parse_requests` → `extract_requests`
-  - `parse_duration_ms` → `extraction_duration_ms`
-  - `parser_version` → `extractor_version`
-- Renamed extraction-facing environment and configuration values:
-  - `PARSER_VERSION` → `EXTRACTOR_VERSION`
-  - `PARSED_RESULTS_TTL` → `EXTRACTED_RESULTS_TTL`
-  - `FEATURES_SCHEDULE_PARSER_*` → `FEATURES_SCHEDULE_EXTRACTOR_*`
-- Retained backward-compatible fallbacks for the previous environment variable names.
-- Retained `Parser` terminology for classes and metadata that specifically represent internal parser implementations.
-- Retained the existing `/parse` routes, `parse.*` route names, and `parse:schedule` command signature as stable public interfaces.
-- Verified the completed work with focused tests, Pint, Larastan, and the full test suite.
-
 ## Multi photo uploads feature
 
-## Refine Card Margins and Navbar Typography
+## Refine Card Margins and Navbar Typography (Completed)
 
-- Spacing: Increase the vertical spacing (gap or margin-bottom) between the hero header card and the upload card if you keep them separate.
+- Removed duplicate schedule-page vertical padding and standardized authenticated page spacing on `py-6 sm:py-8`.
+- Standardized page gutters on `px-4 sm:px-6 lg:px-8`.
+- Brought profile and flight-plan pages into the same spacing rhythm.
+- Removed the empty navbar logo offset and replaced desktop link spacing with a consistent gap.
+- Balanced navbar link padding and resized the coffee button to fit within the navigation row.
+- Standardized schedule cards on responsive `p-4 sm:p-6` or equivalent horizontal padding.
+- Reduced flight-card padding and route-icon spacing on mobile.
+- Updated event-card headers to stack safely on mobile instead of overflowing.
+- Replaced the flight-card accordion's large top margin with parent-controlled section spacing.
+- Replaced split hero/form padding and unrelated child margins with `gap-6` / `space-y-6`.
+- Verified the changes with focused feature/component tests and a successful production Vite build.
 
-- The navbar items ("Parse Schedule", "Route Extractor", etc.) are quite close to the top edge of the viewport. Adding a bit more top and bottom padding to the navbar container will give the text room to breathe and look cleaner.
+Perform a final visual review at mobile and desktop breakpoints.
 
 ## CKS flight codes strings should be extracted to env file and not in the codebase
 - add to user preferences

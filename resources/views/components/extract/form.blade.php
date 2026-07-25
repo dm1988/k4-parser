@@ -1,8 +1,8 @@
 @props(['eventTypes', 'file' => null, 'filterOptions'])
 
-<form wire:submit="extractRoster" id="extractForm">
+<form wire:submit="extractRoster" id="extractForm" class="space-y-6">
 
-    <div class="px-0 pb-7">
+    <div>
         <div class="mx-auto flex max-w-2xl flex-col gap-5">
             <div>
                 <label
@@ -115,7 +115,7 @@
         </div>
     </details>
 
-    <div class="flex flex-col items-center justify-center gap-1 pt-2 text-center text-sm text-[#4A5568] sm:flex-row sm:gap-2">
+    <div class="flex flex-col items-center justify-center gap-1 text-center text-sm text-[#4A5568] sm:flex-row sm:gap-2">
         <span>Not sure where to start?</span>
         <a
             class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-semibold text-[#1B365D] underline decoration-[#C5A059] decoration-2 underline-offset-4 transition hover:text-[#C5A059]"

@@ -118,7 +118,7 @@ class ExtractUploadTest extends TestCase
         $page->assertOk()
             ->assertSee('Extracted Schedule')
             ->assertSee('rounded-lg border border-[#1B365D]/15 bg-white shadow-sm', false)
-            ->assertSee('border-b border-[#1B365D]/10 bg-[#F8FAFD] px-5 py-4', false)
+            ->assertSee('border-b border-[#1B365D]/10 bg-[#F8FAFD] px-4 py-4 sm:px-6', false)
             ->assertDontSee('rounded-[1.9rem]', false);
     }
 

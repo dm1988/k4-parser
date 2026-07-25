@@ -2,7 +2,7 @@
 <aside class="space-y-5">
     <section class="rounded-lg border border-[#1B365D]/15 bg-white shadow-sm">
         <!-- REVISED HEADER: Removed harsh black background, matched to the soft slate/navy flight card style -->
-        <div class="border-b border-[#1B365D]/10 bg-[#F8FAFD] px-5 py-4">
+        <div class="border-b border-[#1B365D]/10 bg-[#F8FAFD] px-4 py-4 sm:px-6">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.16em] text-[#C5A059]">Manifest</p>
@@ -18,7 +18,7 @@
             </div>
         </div>
 
-        <div class="space-y-4 p-5">
+        <div class="space-y-4 p-4 sm:p-6">
             @if ($model->hasError())
             <p class="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">{{ $model->errorMessage }}
             </p>
@@ -58,7 +58,7 @@
 
     @if (auth()->user()?->isAdmin() ?? false)
     <!-- Raw JSON Component aligned with the overall style -->
-    <details class="group rounded-lg border border-[#1B365D]/15 bg-white p-5 shadow-sm">
+    <details class="group rounded-lg border border-[#1B365D]/15 bg-white p-4 shadow-sm sm:p-6">
         <summary
             class="flex cursor-pointer list-none items-center justify-between font-semibold text-[#1B365D] [&::-webkit-details-marker]:hidden">
             <span>Raw JSON</span>

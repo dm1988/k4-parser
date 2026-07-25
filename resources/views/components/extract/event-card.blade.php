@@ -10,11 +10,11 @@
 
 <article class="overflow-hidden rounded-lg border border-[#1B365D]/15 bg-white shadow-sm">
     <!-- HEADER: Aligns with the Flight Card visual system -->
-    <header class="border-b border-[#1B365D]/10 bg-[#E9F0F8] px-6 py-4 text-[#1B365D]">
-        <div class="flex flex-nowrap items-center justify-between gap-3">
+    <header class="border-b border-[#1B365D]/10 bg-[#E9F0F8] px-4 py-4 text-[#1B365D] sm:px-6">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex min-w-0 items-center gap-3">
                 <!-- Icon and Title -->
-                <div class="flex min-w-0 shrink-0 items-center gap-2">
+                <div class="flex min-w-0 items-center gap-2">
                     <h3 class="truncate font-mono text-[1.05rem] font-semibold uppercase tracking-[0.12em] text-[#1B365D]">
                         {{ $event->title }}
                     </h3>
@@ -28,7 +28,7 @@
                 </p>
             </div>
 
-            <div class="flex shrink-0 items-center gap-2">
+            <div class="flex shrink-0 items-center gap-2 self-start sm:self-auto">
                 <span
                     class="inline-flex shrink-0 items-center gap-1 rounded-full {{ $event->badgeColor }} px-2.5 py-1 text-xs font-bold uppercase"
                     title="{{ $event->typeDescription }}">
@@ -39,8 +39,8 @@
     </header>
 
     <!-- BODY: Displays time, duration, tail number, and action buttons -->
-    <div class="px-6 py-5">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div class="p-4 sm:p-6">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             
             <!-- Left Side: Schedule and Context -->
             <div class="space-y-2">

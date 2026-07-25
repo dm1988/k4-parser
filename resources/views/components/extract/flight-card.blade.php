@@ -2,7 +2,7 @@
 
 <article class="overflow-visible rounded-lg border border-[#1B365D]/15 bg-white shadow-sm">
     <!-- REVISED HEADER: Changed background to clean, light blue-gray tint with navy text -->
-    <header class="rounded-t-lg border-b border-[#1B365D]/10 bg-[#E9F0F8] px-6 py-4 text-[#1B365D]">
+    <header class="rounded-t-lg border-b border-[#1B365D]/10 bg-[#E9F0F8] px-4 py-4 text-[#1B365D] sm:px-6">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex min-w-0 items-center gap-3">
                 <h3 class="truncate font-mono text-[1.05rem] font-semibold uppercase tracking-[0.16em] text-[#1B365D]">
@@ -28,8 +28,8 @@
         </div>
     </header>
 
-    <div class="px-6 py-6">
-        <div class="mb-3 flex items-center justify-between gap-5">
+    <div class="space-y-6 px-4 py-5 sm:px-6 sm:py-6">
+        <div class="flex items-center justify-between gap-3 sm:gap-5">
             <div class="flex flex-col gap-2">
                 @if ($model->originAirportInfo())
                     <x-extract.flight-card.airport-popover :info="$model->originAirportInfo()" align="left" />
@@ -53,7 +53,7 @@
                 <div class="h-px flex-1 bg-[#1B365D]/15"></div>
 
                 <div
-                    class="mx-4 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1B365D] text-white shadow-sm">
+                    class="mx-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1B365D] text-white shadow-sm sm:mx-4">
                     <x-heroicon-s-paper-airplane class="h-4 w-4" />
                 </div>
 
@@ -86,7 +86,7 @@
             </span>
         </div>
 
-        <div class="mt-8 flex flex-wrap items-center gap-2">
+        <div class="flex flex-col gap-2">
             <x-extract.flight-card.accordion icon="heroicon-o-paper-airplane" title="Flight">
                 @include('extract.partials.flight-card.flight-details', [
                 'model' => $model,
@@ -103,7 +103,7 @@
         </div>
     </div>
 
-    <footer class="flex items-center justify-between rounded-b-lg border-t border-[#1B365D]/10 bg-[#F8F9FA] px-6 py-4">
+    <footer class="flex items-center justify-between rounded-b-lg border-t border-[#1B365D]/10 bg-[#F8F9FA] px-4 py-4 sm:px-6">
         <div class="flex items-center gap-3">
             @if ($model->hasFooterContext())
             <span class="text-sm font-semibold uppercase tracking-[0.12em] text-[#4A5568]">
