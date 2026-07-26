@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Enums\CrewPosition;
 use App\Services\Schedule\Extractor\CrewListParser;
 use Tests\TestCase;
 
@@ -56,6 +57,27 @@ class CrewListParserTest extends TestCase
         $this->assertSame(4, $summary['crew_count']);
         $this->assertSame(3, $summary['operating_crew_count']);
         $this->assertSame(1, $summary['deadheading_crew_count']);
+    }
+
+    public function test_it_parses_observer_role_from_an_embedded_crew_line(): void
+    {
+        $crew = app(CrewListParser::class)->parse([
+            'Ww Tiyal Bell 4325 OB CLD',
+        ]);
+
+        $this->assertCount(1, $crew);
+        $this->assertSame(CrewPosition::Observer->value, $crew[0]['role']);
+    }
+
+    public function test_it_classifies_an_observer_as_operating_crew_and_not_deadheading(): void
+    {
+        $summary = app(CrewListParser::class)->parseWithSummary([
+            'Ww Tiyal Bell 4325 OB CLD',
+        ]);
+
+        $this->assertSame(1, $summary['operating_crew_count']);
+        $this->assertSame(0, $summary['deadheading_crew_count']);
+        $this->assertFalse($summary['crew'][0]['deadheading']);
     }
 
     public function test_it_parses_four_digit_employee_ids_and_lm_positions(): void

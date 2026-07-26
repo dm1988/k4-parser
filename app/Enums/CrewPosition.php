@@ -13,6 +13,7 @@ enum CrewPosition: string
     case FlightMechanicEngineer = 'FME';
     case AircraftCommander = 'AC';
     case Operations = 'OP';
+    case Observer = 'OB';
     case AugmentedFirstOfficer = 'AFO';
     case AugmentedCrew = 'ACA';
     case Loadmaster = 'LM';

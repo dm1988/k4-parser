@@ -18,6 +18,15 @@ final class ExtractValidationRules
             $eventTypesField.'.*' => [Rule::in(ScheduleEventType::filterValues())],
         ];
     }
+    // public static function rosterRules(string $eventTypesField = 'eventTypes'): array
+    // {
+    //     return [
+    //         'files' => ['nullable', 'array', 'max:5'], // limit max uploaded files
+    //         'files.*' => ['file', 'mimes:png,jpg,jpeg,webp', 'max:10240'], // 10MB per file
+    //         'text' => ['nullable', 'string'],
+    //         // ...
+    //     ];
+    // }
 
     /** @return array<string, string> */
     public static function rosterMessages(string $eventTypesField = 'event_types'): array

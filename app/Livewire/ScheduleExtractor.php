@@ -31,6 +31,8 @@ class ScheduleExtractor extends Component
     #[Locked]
     public string $view = self::VIEW_UPLOAD;
 
+    // /** @var list<TemporaryUploadedFile> */
+    // public array $files = [];
     public ?TemporaryUploadedFile $file = null;
 
     public string $text = '';
@@ -121,6 +123,7 @@ class ScheduleExtractor extends Component
     public function updatedFile(): void
     {
         $this->resetValidation('file');
+        // $this->resetValidation('files.*');
     }
 
     public function updatedText(): void
@@ -185,12 +188,28 @@ class ScheduleExtractor extends Component
 
         return $file instanceof UploadedFile ? $file : null;
     }
+    // /** @return list<UploadedFile> */
+    // private function resolveValidatedFiles(array $validated): array
+    // {
+    //     $files = $validated['files'] ?? [];
+
+    //     if (! is_array($files)) {
+    //         return [];
+    //     }
+
+    //     return array_values(array_filter(
+    //         $files,
+    //         fn ($file) => $file instanceof UploadedFile
+    //     ));
+    // }
 
     private function resolveSourceType(?UploadedFile $file): string
     {
         if ($file === null) {
             return 'pasted_text';
         }
+        // Determine if all are images vs PDF
+        // $mimes = array_map(fn (UploadedFile $f) => $f->getMimeType(), $files);
 
         return match ($file->getMimeType()) {
             'application/pdf' => 'pdf',
