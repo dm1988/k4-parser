@@ -15,10 +15,10 @@ enum RouteTokenType: string
     public function cssClass(): string
     {
         return match ($this) {
-            self::SPEED  => 'text-amber-700',
+            self::SPEED => 'text-amber-700',
             self::AIRWAY => 'font-bold text-[#1B365D]',
             self::DIRECT => 'text-[#4A5568]/50',
-            self::FIX    => 'text-[#0B0E14]',
+            self::FIX => 'text-[#0B0E14]',
         };
     }
 }

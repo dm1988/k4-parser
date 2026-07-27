@@ -10,11 +10,11 @@ class DiskUsage extends StatsOverviewWidget
     protected static ?int $sort = 2;
 
     protected int|string|array $columnSpan = 1;
- 
+
     protected function getStats(): array
     {
         // Get directory path (defaulting to the root directory)
-        $path = base_path(); 
+        $path = base_path();
 
         $totalSpace = disk_total_space($path);
         $freeSpace = disk_free_space($path);
@@ -36,7 +36,7 @@ class DiskUsage extends StatsOverviewWidget
             $description = "Critical! Only {$freeGb} GB left.";
         } elseif ($percentageUsed >= 75) {
             $color = 'warning';
-            $description = "Warning: Disk space filling up fast.";
+            $description = 'Warning: Disk space filling up fast.';
         }
 
         return [
@@ -45,8 +45,8 @@ class DiskUsage extends StatsOverviewWidget
                 ->descriptionIcon($percentageUsed >= 75 ? 'heroicon-m-exclamation-triangle' : 'heroicon-m-check-circle')
                 ->chart([
                     // This creates a subtle background trend line representing the split
-                    $usedGb, 
-                    $totalGb
+                    $usedGb,
+                    $totalGb,
                 ])
                 ->color($color),
         ];

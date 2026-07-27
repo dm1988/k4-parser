@@ -36,8 +36,8 @@ enum ScheduleEventType: string
     public static function filterValues(): array
     {
         return array_map(
-            static fn(self $type): string => $type->value,
-            array_filter(self::cases(), static fn(self $type): bool => $type->isFilterable()),
+            static fn (self $type): string => $type->value,
+            array_filter(self::cases(), static fn (self $type): bool => $type->isFilterable()),
         );
     }
 
@@ -48,7 +48,7 @@ enum ScheduleEventType: string
     {
         return array_values(array_filter(
             self::cases(),
-            static fn(self $type): bool => $type->isFilterable(),
+            static fn (self $type): bool => $type->isFilterable(),
         ));
     }
 

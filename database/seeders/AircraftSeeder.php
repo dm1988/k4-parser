@@ -30,10 +30,12 @@ class AircraftSeeder extends Seeder
         $this->createFreighterAircraft($freighterTailNumbers);
         $this->createERSFAircraft($ersfTailNumbers);
     }
+
     private function createFreighterAircraft(array $tailNumbers): void
     {
         $this->createAircraft($tailNumbers, 'Kalitta Air, LLC', '777-F', 'Boeing 777-F');
     }
+
     private function createERSFAircraft(array $tailNumbers): void
     {
         $this->createAircraft($tailNumbers, 'Kalitta Air, LLC', '777-300ERSF', 'Boeing 777-300ERSF');

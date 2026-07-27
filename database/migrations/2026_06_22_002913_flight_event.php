@@ -43,12 +43,12 @@ return new class extends Migration
             $table->string('trip_id')->nullable();
             $table->string('flight_number')->nullable();
             $table->string('status')->nullable();
-            
+
             $table->foreignId('aircraft_id')
                 ->nullable()
                 ->constrained('aircraft')
                 ->nullOnDelete();
-                
+
             $table->timestamps();
 
             // Indexes
