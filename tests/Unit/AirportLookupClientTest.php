@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Services\Clients\AirportLookupClient;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
@@ -11,9 +12,10 @@ class AirportLookupClientTest extends TestCase
 {
     public function test_successful_lookups_return_airport_data(): void
     {
+        Config::set('services.airport_provider.url', 'https://airports.example.test/custom/v1/');
         Http::preventStrayRequests();
         Http::fake([
-            'https://crewcompass.cc/api/v1/airports/lookup*' => Http::response([
+            'https://airports.example.test/custom/v1/airports/lookup*' => Http::response([
                 'data' => [
                     'icao' => 'EGLL',
                     'iata' => 'LHR',
@@ -31,6 +33,7 @@ class AirportLookupClientTest extends TestCase
         $this->assertSame('LHR', $airport->iata);
         $this->assertSame('EGLL', $airport->icao);
         Http::assertSentCount(1);
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://airports.example.test/custom/v1/airports/lookup?iata=LHR');
     }
 
     public function test_connection_failures_are_retried_and_return_null(): void

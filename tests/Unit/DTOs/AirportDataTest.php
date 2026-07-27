@@ -4,6 +4,7 @@ namespace Tests\Unit\DTOs;
 
 use App\DTOs\AirportData;
 use App\Services\Clients\AirportLookupClient;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -28,8 +29,9 @@ class AirportDataTest extends TestCase
 
     public function test_it_resolves_a_successful_lookup_response_to_a_dto(): void
     {
+        Config::set('services.airport_provider.url', 'https://airports.example.test/api/v1');
         Http::fake([
-            'https://crewcompass.cc/api/v1/airports/lookup*' => Http::response([
+            'https://airports.example.test/api/v1/airports/lookup*' => Http::response([
                 'data' => [
                     'icao' => 'EGLL',
                     'iata' => 'LHR',

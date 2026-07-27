@@ -10,18 +10,11 @@ Follow these rules for every remaining task:
 7. Create a commit message for each task
 
 
-## Completed: Clean crew names and remove deadhead badge
-* Outcome: Leading OCR markers such as `Xx` are removed from crew names, and crew rows retain the `DH` role without rendering a redundant `Deadhead` badge.
-* Verification: 12 focused tests pass with 87 assertions; Pint passes for dirty PHP files.
+## Completed: Configurable Airport Lookup Client address
+* Outcome: `AIRPORT_PROVIDER_URL` now controls the client base URL through service configuration, defaults to `http://localhost/api/v1`, and the client normalizes trailing slashes before requests.
+* Verification: 8 focused tests pass with 28 assertions; Pint passes for dirty PHP files.
 
-## Completed: Configurable schedule airline codes
-* Outcome: Schedule IATA/ICAO codes now come from environment-backed configuration, with validated per-user overrides available on the Profile page and used by both roster parsers.
-* Verification: 20 focused tests pass with 125 assertions; Pint passes for dirty PHP files.
-
-## Current focus: Airport Lookup Client address should be in .env with a fallback
-- migrate localhost value into .env and config
-
-## Flight accordion: 
+## Current focus: Flight accordion
 * Convert FLIGHT TIMES (LOCAL) and DUTY TIMES (LOCAL) into standard 2-column grid cards just like the rest, then group them under a distinct sub-heading so the layout pattern stays consistent.
 
 ## Remove Observer from operating crew

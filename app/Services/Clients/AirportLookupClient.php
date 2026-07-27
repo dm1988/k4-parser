@@ -16,7 +16,7 @@ class AirportLookupClient
 
     public function __construct()
     {
-        $this->baseUrl = config('services.airport_provider.url', 'http://localhost/api/v1');
+        $this->baseUrl = rtrim((string) config('services.airport_provider.url'), '/');
     }
 
     /**

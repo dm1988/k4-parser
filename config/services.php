@@ -14,7 +14,7 @@ return [
     |
     */
     'airport_provider' => [
-        'url' => env('AIRPORT_PROVIDER_URL', 'https://crewcompass.cc/api/v1'),
+        'url' => env('AIRPORT_PROVIDER_URL', 'http://localhost/api/v1'),
     ],
 
     'postmark' => [
