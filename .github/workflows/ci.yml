@@ -1,0 +1,85 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "directory=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.directory }}
+          key: ${{ runner.os }}-php-8.5-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-8.5-composer-
+
+      # Sail lives in vendor, so Composer must be bootstrapped before Sail can start.
+      - name: Bootstrap Sail
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          sed -i 's/DB_CONNECTION=sqlite/DB_CONNECTION=mysql/' .env
+          sed -i 's/# DB_HOST=127.0.0.1/DB_HOST=mysql/' .env
+          sed -i 's/# DB_PORT=3306/DB_PORT=3306/' .env
+          sed -i 's/# DB_DATABASE=laravel/DB_DATABASE=laravel/' .env
+          sed -i 's/# DB_USERNAME=root/DB_USERNAME=sail/' .env
+          sed -i 's/# DB_PASSWORD=/DB_PASSWORD=password/' .env
+
+      - name: Start Sail
+        run: vendor/bin/sail up -d
+
+      - name: Install PHP dependencies
+        run: vendor/bin/sail composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Generate application key
+        run: vendor/bin/sail artisan key:generate
+
+      - name: Install frontend dependencies
+        run: vendor/bin/sail npm ci
+
+      - name: Build frontend assets
+        run: vendor/bin/sail npm run build
+
+      - name: Check PHP formatting
+        run: |
+          vendor/bin/sail bin pint --format agent
+          git diff --exit-code
+
+      - name: Run test suite
+        run: vendor/bin/sail artisan test --compact
+
+      - name: Stop Sail
+        if: always()
+        run: vendor/bin/sail down
