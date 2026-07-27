@@ -15,8 +15,8 @@ Follow these rules for every remaining task:
 * Verification: 8 focused tests pass with 28 assertions; Pint passes for dirty PHP files.
 
 ## Completed: Flight accordion local-time layout
-* Outcome: Flight and duty local times now render as standard cards in a responsive two-column grid beneath a distinct Local Times subheading.
-* Verification: 7 focused component tests pass with 24 assertions; Pint passes for dirty PHP files.
+* Outcome: Flight details use a reusable label/value card component, while flight and duty local times render in a gold-bordered, muted blue-gray responsive two-column group beneath a distinct Local Times subheading.
+* Verification: 7 focused component tests pass with 29 assertions; Pint passes for dirty PHP files.
 
 ## Current focus: Remove Observer from operating crew count
 * Change Crew List Parser Test assertion
@@ -38,3 +38,5 @@ Fix: Check where this cache lookup is being invoked in your controller, service,
 
 ## Flight plan extractor improvements
 * Extract ETOPs EENT, EEXP and ETP
+
+## Dark mode

@@ -1,106 +1,65 @@
 <div class="grid gap-2 sm:grid-cols-2">
     <div>
-        <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568]">
-                Flight Number
-            </p>
-            <p class="font-mono text-sm font-semibold text-[#0B0E14] text-right whitespace-nowrap">
-                {{ $model->flight->flightNumber ?? '—' }}
-            </p>
-        </div>
+        <x-extract.detail-card label="Flight Number" value-class="whitespace-nowrap font-mono">
+            {{ $model->flight->flightNumber ?? '—' }}
+        </x-extract.detail-card>
     </div>
     <div>
-        <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568]">
-                Type
-            </p>
-            <p class="min-w-0 truncate text-sm font-semibold text-[#0B0E14] text-right">
-                {{ $model->flight->typeLabel ?? '—' }}
-            </p>
-        </div>
+        <x-extract.detail-card label="Type" value-class="truncate">
+            {{ $model->flight->typeLabel ?? '—' }}
+        </x-extract.detail-card>
     </div>
-    
-    <div class="grid grid-cols-2 gap-2 sm:col-span-2">
-        <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568]">
-                Departure
-            </p>
-            <p class="text-sm font-semibold text-[#0B0E14] text-right whitespace-nowrap">
-                {{ $model->originTimeLabel() }}
-            </p>
-        </div>
 
-        <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568]">
-                Arrival
-            </p>
-            <p class="text-sm font-semibold text-[#0B0E14] text-right whitespace-nowrap">
-                {{ $model->destinationTimeLabel() }}
-            </p>
-        </div>
+    <div class="grid grid-cols-2 gap-2 sm:col-span-2">
+        <x-extract.detail-card label="Departure" value-class="whitespace-nowrap">
+            {{ $model->originTimeLabel() }}
+        </x-extract.detail-card>
+
+        <x-extract.detail-card label="Arrival" value-class="whitespace-nowrap">
+            {{ $model->destinationTimeLabel() }}
+        </x-extract.detail-card>
     </div>
 
     @if ($model->hasLegLocalTimes() || $model->hasDutyLocalTimes())
-        <section class="space-y-2 sm:col-span-2" aria-labelledby="local-times-heading">
+        <section
+            data-local-times-group
+            class="space-y-2 rounded-xl border border-[#C5A059]/40 bg-[#F8F9FA] p-3 sm:col-span-2"
+            aria-labelledby="local-times-heading"
+        >
             <h4 id="local-times-heading" class="text-xs font-bold uppercase tracking-wider text-[#1B365D]">
                 Local Times
             </h4>
 
             <div data-local-times-grid class="grid gap-2 sm:grid-cols-2">
                 @if ($model->hasLegLocalTimes())
-                    <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
-                        <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568]">
-                            Flight Times (Local)
-                        </p>
-                        <p class="whitespace-nowrap text-right text-sm font-semibold text-[#0B0E14]">
-                            {{ $model->legLocalTimesLabel() }}
-                        </p>
-                    </div>
+                    <x-extract.detail-card label="Flight Times" value-class="whitespace-nowrap">
+                        {{ $model->legLocalTimesLabel() }}
+                    </x-extract.detail-card>
                 @endif
 
                 @if ($model->hasDutyLocalTimes())
-                    <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
-                        <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568]">
-                            Duty Times (Local)
-                        </p>
-                        <p class="whitespace-nowrap text-right text-sm font-semibold text-[#0B0E14]">
-                            {{ $model->dutyLocalTimesLabel() }}
-                        </p>
-                    </div>
+                    <x-extract.detail-card label="Duty Times" value-class="whitespace-nowrap">
+                        {{ $model->dutyLocalTimesLabel() }}
+                    </x-extract.detail-card>
                 @endif
             </div>
         </section>
     @endif
 
     <div>
-        <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568]">
-                Duration
-            </p>
-            <p class="min-w-0 truncate text-sm font-semibold text-[#0B0E14] text-right">
-                {{ $model->flight->durationLabel ?? '—' }}
-            </p>
-        </div>
+        <x-extract.detail-card label="Duration" value-class="truncate">
+            {{ $model->flight->durationLabel ?? '—' }}
+        </x-extract.detail-card>
     </div>
     <div>
-        <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568]">
-                Aircraft Type
-            </p>
-            <p class="min-w-0 truncate font-mono text-sm font-semibold text-[#0B0E14] text-right">
-                {{ $model->flight->aircraft ?? '—' }}
-            </p>
-        </div>
+        <x-extract.detail-card label="Aircraft Type" value-class="truncate font-mono">
+            {{ $model->flight->aircraft ?? '—' }}
+        </x-extract.detail-card>
     </div>
     <div>
-        <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568]">
-                Tail Number
-            </p>
-            <p class="min-w-0 truncate font-mono text-sm font-semibold text-[#0B0E14] text-right">
-                {{ $model->flight->tailNumber ?? '—' }}
-            </p>
-        </div>
+        <x-extract.detail-card label="Tail Number" value-class="truncate font-mono">
+            {{ $model->flight->tailNumber ?? '—' }}
+        </x-extract.detail-card>
     </div>
     @if ( $model->flight->tailNumber )
     <div>
