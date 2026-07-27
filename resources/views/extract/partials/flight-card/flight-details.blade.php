@@ -40,30 +40,36 @@
         </div>
     </div>
 
-    @if ($model->hasLegLocalTimes())
-    <div class="sm:col-span-2">
-        <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568]">
-                Flight Times (Local)
-            </p>
-            <p class="text-sm font-semibold text-[#0B0E14] text-right whitespace-nowrap">
-                {{ $model->legLocalTimesLabel() }}
-            </p>
-        </div>
-    </div>
-    @endif
+    @if ($model->hasLegLocalTimes() || $model->hasDutyLocalTimes())
+        <section class="space-y-2 sm:col-span-2" aria-labelledby="local-times-heading">
+            <h4 id="local-times-heading" class="text-xs font-bold uppercase tracking-wider text-[#1B365D]">
+                Local Times
+            </h4>
 
-    @if ($model->hasDutyLocalTimes())
-    <div class="sm:col-span-2">
-        <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568]">
-                Duty Times (Local)
-            </p>
-            <p class="text-sm font-semibold text-[#0B0E14] text-right whitespace-nowrap">
-                {{ $model->dutyLocalTimesLabel() }}
-            </p>
-        </div>
-    </div>
+            <div data-local-times-grid class="grid gap-2 sm:grid-cols-2">
+                @if ($model->hasLegLocalTimes())
+                    <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568]">
+                            Flight Times (Local)
+                        </p>
+                        <p class="whitespace-nowrap text-right text-sm font-semibold text-[#0B0E14]">
+                            {{ $model->legLocalTimesLabel() }}
+                        </p>
+                    </div>
+                @endif
+
+                @if ($model->hasDutyLocalTimes())
+                    <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568]">
+                            Duty Times (Local)
+                        </p>
+                        <p class="whitespace-nowrap text-right text-sm font-semibold text-[#0B0E14]">
+                            {{ $model->dutyLocalTimesLabel() }}
+                        </p>
+                    </div>
+                @endif
+            </div>
+        </section>
     @endif
 
     <div>

@@ -14,10 +14,11 @@ Follow these rules for every remaining task:
 * Outcome: `AIRPORT_PROVIDER_URL` now controls the client base URL through service configuration, defaults to `http://localhost/api/v1`, and the client normalizes trailing slashes before requests.
 * Verification: 8 focused tests pass with 28 assertions; Pint passes for dirty PHP files.
 
-## Current focus: Flight accordion
-* Convert FLIGHT TIMES (LOCAL) and DUTY TIMES (LOCAL) into standard 2-column grid cards just like the rest, then group them under a distinct sub-heading so the layout pattern stays consistent.
+## Completed: Flight accordion local-time layout
+* Outcome: Flight and duty local times now render as standard cards in a responsive two-column grid beneath a distinct Local Times subheading.
+* Verification: 7 focused component tests pass with 24 assertions; Pint passes for dirty PHP files.
 
-## Remove Observer from operating crew
+## Current focus: Remove Observer from operating crew count
 * Change Crew List Parser Test assertion
 
 ## Duplicate Database Queries

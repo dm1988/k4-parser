@@ -145,6 +145,18 @@ class FlightCardComponentTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/<span[^>]*>\s*Deadhead\s*<\/span>/', $html);
     }
 
+    public function test_it_groups_local_flight_and_duty_times_in_a_two_column_grid(): void
+    {
+        $html = $this->renderFlightCard();
+
+        $this->assertStringContainsString('aria-labelledby="local-times-heading"', $html);
+        $this->assertStringContainsString('data-local-times-grid class="grid gap-2 sm:grid-cols-2"', $html);
+        $this->assertMatchesRegularExpression(
+            '/Local Times.*Flight Times \(Local\).*Duty Times \(Local\)/s',
+            $html,
+        );
+    }
+
     private function renderFlightCard(): string
     {
         return Blade::render('<x-extract.flight-card :model="$model" />', [
