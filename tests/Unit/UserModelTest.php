@@ -17,6 +17,8 @@ class UserModelTest extends TestCase
         $this->assertSame([
             'name',
             'email',
+            'airline_iata_code',
+            'airline_icao_code',
             'email_verified_at',
             'password',
             'remember_token',
