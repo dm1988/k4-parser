@@ -142,6 +142,7 @@ class CrewListParser
     private function extractName(string $value): ?string
     {
         $value = trim((string) preg_replace('/^[^A-Za-z]+/', '', $value));
+        $value = trim((string) preg_replace('/^(?:[xw]{1,2}|axe)\s+/i', '', $value));
         $words = preg_split('/\s+/', $value) ?: [];
 
         while (count($words) > 2 && preg_match('/^[A-Z][a-z]+$/', $words[0]) !== 1) {

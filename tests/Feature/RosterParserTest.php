@@ -232,7 +232,7 @@ Scheduled Time: Jun 15 13:00 - Jun 15 17:00
 Crew list
 Name Crew Pos Base
 w Jesper Brandt Jensen 98765 (OP ete)
-w Julio Rodriguez Batista 12456 FO EYW
+Xx Julio Rodriguez Batista 12456 FO EYW
 aXe Cameron Stovold 36879 DH LAX
 * David Gonzalez 34534 INZe) AUS
 TEXT;
@@ -262,6 +262,7 @@ TEXT;
         $this->assertSame(3, $events[0]['metadata']['operating_crew_count']);
         $this->assertSame(1, $events[0]['metadata']['deadheading_crew_count']);
         $this->assertCount(4, $events[0]['metadata']['crew']);
+        $this->assertSame('Julio Rodriguez Batista', $events[0]['metadata']['crew'][1]['name']);
         $this->assertSame('David Gonzalez', $events[0]['metadata']['crew'][3]['name']);
         $this->assertSame('34534', $events[0]['metadata']['crew'][3]['employee_id']);
         $this->assertSame('AUS', $events[0]['metadata']['crew'][3]['base']);

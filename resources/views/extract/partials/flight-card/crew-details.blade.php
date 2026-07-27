@@ -47,11 +47,6 @@
                             </span>
                         @endif
 
-                        @if (data_get($crewMember, 'deadheading'))
-                            <span class="rounded-full bg-[#C5A059]/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#1B365D]">
-                                Deadhead
-                            </span>
-                        @endif
                     </div>
                 </div>
             @endforeach

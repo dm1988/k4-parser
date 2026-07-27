@@ -13,7 +13,7 @@ class CrewListParserTest extends TestCase
         $crew = app(CrewListParser::class)->parse([
             'Name Crew Pos Base',
             'w Jesper Brandt Jensen 71022 (OP ete)',
-            'w Julio Rodriguez Batista 71559 FO EYW',
+            'Xx Julio Rodriguez Batista 71559 FO EYW',
             'aXe Cameron Stovold 71835 DH LAX',
             '* David Gonzalez 72860 INZe) AUS',
         ]);

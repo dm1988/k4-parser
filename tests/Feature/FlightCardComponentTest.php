@@ -137,6 +137,14 @@ class FlightCardComponentTest extends TestCase
         $this->assertStringContainsString('x-bind:id="$id(\'airport-popover\')"', $html);
     }
 
+    public function test_it_does_not_render_a_deadhead_badge_for_crew_members(): void
+    {
+        $html = $this->renderFlightCard();
+
+        $this->assertStringContainsString('Deadheading', $html);
+        $this->assertDoesNotMatchRegularExpression('/<span[^>]*>\s*Deadhead\s*<\/span>/', $html);
+    }
+
     private function renderFlightCard(): string
     {
         return Blade::render('<x-extract.flight-card :model="$model" />', [
@@ -165,6 +173,18 @@ class FlightCardComponentTest extends TestCase
                 'end' => '2026-06-16T03:45:00+00:00',
                 'origin' => 'ICN',
                 'destination' => 'HKG',
+                'metadata' => [
+                    'crew_count' => 1,
+                    'operating_crew_count' => 0,
+                    'deadheading_crew_count' => 1,
+                    'crew' => [
+                        [
+                            'name' => 'Cameron Stovold',
+                            'role' => 'DH',
+                            'deadheading' => true,
+                        ],
+                    ],
+                ],
             ])),
         ]);
     }

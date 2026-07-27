@@ -10,48 +10,17 @@ Follow these rules for every remaining task:
 7. Create a commit message for each task
 
 ## Completed: Multi photo uploads feature
-* Only allow multiple images, not multiple PDFs
+* Constraint: Allow multiple images, but only one PDF.
 * Outcome: Implemented multi-image selection (maximum five), single-PDF enforcement, source conflict validation, per-image OCR/parsing, merged/deduplicated/date-sorted events, aggregate request logging, file-list UI, and updated focused tests.
 * Verification: 37 focused Sail tests pass with 304 assertions; Pint passes for dirty PHP files.
-
-### Current focus: Public property state
-* Change public ?TemporaryUploadedFile $file to public array $files = []
-* Update updated hook to updatedFiles() and pass the array through validation.
-* Iterate and combine results sorted by date
-
-### Validation rules
-* if an image is uploaded, PDFs or text cannot be accepted
-
-### Backend execution handling
-* JcaScheduleProcessor needs to accept array<UploadedFile>
-* loop through each $file
-* perform extraction
-* merge/deduplicate the resulting calendar_events
-* HandleExtractExecution::handle() - Update type hinting to accept array|UploadedFile|null $file
-
-### Blade view updates
-* <input 
-    type="file" 
-    wire:model="files" 
-    multiple 
-    accept="image/png,image/jpeg,image/webp,application/pdf" 
-/>
-* <!-- Multi-file preview list (Optional) -->
-@if ($files)
-    <ul>
-        @foreach ($files as $file)
-            <li>{{ $file->getClientOriginalName() }}</li>
-        @endforeach
-    </ul>
-@endif
-
-<!-- Validation Errors -->
-@error('files') <span class="error">{{ $message }}</span> @enderror
-@error('files.*') <span class="error">{{ $message }}</span> @enderror
 
 ## Completed: Prefer explicit tail ID during roster parsing
 * Outcome: Explicit `Tail id` values now take precedence over generic registration-like OCR tokens, so `ETDIIG` no longer overrides `N772CK`.
 * Verification: 13 focused roster parser tests pass with 145 assertions; Pint passes for dirty PHP files.
+
+## Completed: Clean crew names and remove deadhead badge
+* Outcome: Leading OCR markers such as `Xx` are removed from crew names, and crew rows retain the `DH` role without rendering a redundant `Deadhead` badge.
+* Verification: 12 focused tests pass with 87 assertions; Pint passes for dirty PHP files.
 
 ## CKS flight codes strings should be extracted to env file and not in the codebase
 - add to user preferences
