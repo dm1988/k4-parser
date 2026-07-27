@@ -6,6 +6,8 @@ use App\DTOs\DutyEvent;
 use App\DTOs\ExtractedResultData;
 use App\Models\User;
 use App\Services\Infrastructure\EngineResultCache;
+use Illuminate\Cache\ArrayStore;
+use Illuminate\Cache\Repository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -76,6 +78,54 @@ class EngineResultCacheTest extends TestCase
 
         $this->assertInstanceOf(ExtractedResultData::class, $result);
         $this->assertSame('request', $result->parseKey);
+    }
+
+    public function test_it_reads_the_same_session_result_from_the_cache_once_per_request(): void
+    {
+        $store = new class extends ArrayStore
+        {
+            public int $readCount = 0;
+
+            public function get($key): mixed
+            {
+                $this->readCount++;
+
+                return parent::get($key);
+            }
+        };
+
+        config([
+            'cache.default' => 'counting',
+            'cache.stores.counting' => ['driver' => 'counting'],
+        ]);
+        Cache::extend('counting', fn (): Repository => new Repository($store));
+        session(['parsed_results_namespace' => '01JTESTSESSIONKEYABC123']);
+
+        Cache::put(
+            'sessions:01JTESTSESSIONKEYABC123:parsed_results:01JTESTPARSEKEYABC123',
+            ['parse_key' => '01JTESTPARSEKEYABC123'],
+        );
+
+        $service = app(EngineResultCache::class);
+        $firstResult = $service->get('01JTESTPARSEKEYABC123');
+        $secondResult = $service->get('01JTESTPARSEKEYABC123');
+
+        $this->assertInstanceOf(ExtractedResultData::class, $firstResult);
+        $this->assertInstanceOf(ExtractedResultData::class, $secondResult);
+        $this->assertSame(1, $store->readCount);
+    }
+
+    public function test_put_invalidates_a_memoized_missing_result(): void
+    {
+        $service = app(EngineResultCache::class);
+
+        $this->assertNull($service->get('01JTESTPARSEKEYABC123'));
+
+        $service->put(ExtractedResultData::fromArray([
+            'parse_key' => '01JTESTPARSEKEYABC123',
+        ]));
+
+        $this->assertSame('01JTESTPARSEKEYABC123', $service->get('01JTESTPARSEKEYABC123')?->parseKey);
     }
 
     public function test_it_rejects_ownerless_legacy_global_cache_entries(): void

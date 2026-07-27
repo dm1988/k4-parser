@@ -16,9 +16,10 @@ class EngineResultCache
         $parseKey = $result->parseKey ?? '';
         $ttlMinutes = config('cache.extracted_results_ttl', 60);
         $normalizedResult = $this->normalizeForCache($result);
+        $cache = Cache::memo();
 
-        Cache::put($this->sessionCacheKey($parseKey), $normalizedResult, now()->addMinutes($ttlMinutes));
-        Cache::put($this->parseKeyCacheKey($parseKey), [
+        $cache->put($this->sessionCacheKey($parseKey), $normalizedResult, now()->addMinutes($ttlMinutes));
+        $cache->put($this->parseKeyCacheKey($parseKey), [
             'owner_id' => auth()->id(),
             'result' => $normalizedResult,
         ], now()->addMinutes($ttlMinutes));
@@ -28,13 +29,14 @@ class EngineResultCache
 
     public function get(string $parseKey): ?ExtractedResultData
     {
-        $sessionResult = Cache::get($this->sessionCacheKey($parseKey));
+        $cache = Cache::memo();
+        $sessionResult = $cache->get($this->sessionCacheKey($parseKey));
 
         if (is_array($sessionResult)) {
             return ExtractedResultData::fromArray($sessionResult);
         }
 
-        $cached = Cache::get($this->parseKeyCacheKey($parseKey));
+        $cached = $cache->get($this->parseKeyCacheKey($parseKey));
 
         if (! is_array($cached)
             || ! array_key_exists('owner_id', $cached)

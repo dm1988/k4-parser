@@ -93,8 +93,8 @@ class ScheduleExtractorTest extends TestCase
         $namespace = session('parsed_results_namespace');
         $this->assertIsString($namespace);
 
-        Cache::forget("sessions:{$namespace}:parsed_results:{$staleResult->parseKey}");
-        Cache::forget("parsed_results:{$staleResult->parseKey}");
+        Cache::memo()->forget("sessions:{$namespace}:parsed_results:{$staleResult->parseKey}");
+        Cache::memo()->forget("parsed_results:{$staleResult->parseKey}");
 
         $latestResult = $this->cacheResult('01JLATESTPARSEKEYABC12', 'Latest duty');
 
