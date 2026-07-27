@@ -14,6 +14,11 @@ use Tests\TestCase;
 
 class EngineResultCacheTest extends TestCase
 {
+    public function test_extracted_results_ttl_is_configured_as_an_integer(): void
+    {
+        $this->assertIsInt(config('cache.extracted_results_ttl'));
+    }
+
     public function test_it_stores_normalized_results_in_both_cache_namespaces(): void
     {
         $service = app(EngineResultCache::class);

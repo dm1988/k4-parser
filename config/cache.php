@@ -134,5 +134,5 @@ return [
     'serializable_classes' => false,
 
     // Custom configuration for extracted results TTL
-    'extracted_results_ttl' => env('EXTRACTED_RESULTS_TTL', env('PARSED_RESULTS_TTL', 60)),
+    'extracted_results_ttl' => (int) env('EXTRACTED_RESULTS_TTL', env('PARSED_RESULTS_TTL', 60)),
 ];
