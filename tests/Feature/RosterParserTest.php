@@ -222,6 +222,7 @@ TEXT;
     {
         $text = <<<'TEXT'
 Jun 15 23:45 - Jun 1603:45 — ETOyAG?5))
+- (ETDIIG#5)
 @ K4 240 Pos AC Block Cxn a
 ICN - HKG | AFO 77X 4:00h -27:45h
 Tail id N772CK Leg LT Jun 16 08:45 - Jun 16 11:45 Duty LT Jun 16 06:45 - Jun 15 12:00 Customer DHL 777 NET

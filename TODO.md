@@ -49,6 +49,10 @@ Follow these rules for every remaining task:
 @error('files') <span class="error">{{ $message }}</span> @enderror
 @error('files.*') <span class="error">{{ $message }}</span> @enderror
 
+## Completed: Prefer explicit tail ID during roster parsing
+* Outcome: Explicit `Tail id` values now take precedence over generic registration-like OCR tokens, so `ETDIIG` no longer overrides `N772CK`.
+* Verification: 13 focused roster parser tests pass with 145 assertions; Pint passes for dirty PHP files.
+
 ## CKS flight codes strings should be extracted to env file and not in the codebase
 - add to user preferences
 
