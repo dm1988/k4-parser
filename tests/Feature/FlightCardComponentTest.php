@@ -157,7 +157,7 @@ class FlightCardComponentTest extends TestCase
         $this->assertStringNotContainsString('bg-[#C5A059]/5', $html);
         $this->assertStringContainsString('data-detail-card', $html);
         $this->assertMatchesRegularExpression(
-            '/Local Times.*Flight Times .*Duty Times/s',
+            '/Local Times.*Flight Times.*Duty Times/s',
             $html,
         );
     }

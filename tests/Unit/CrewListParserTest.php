@@ -69,13 +69,14 @@ class CrewListParserTest extends TestCase
         $this->assertSame(CrewPosition::Observer->value, $crew[0]['role']);
     }
 
-    public function test_it_classifies_an_observer_as_operating_crew_and_not_deadheading(): void
+    public function test_it_excludes_an_observer_from_operating_crew_count(): void
     {
         $summary = app(CrewListParser::class)->parseWithSummary([
             'Ww Tiyal Bell 4325 OB CLD',
         ]);
 
-        $this->assertSame(1, $summary['operating_crew_count']);
+        $this->assertSame(1, $summary['crew_count']);
+        $this->assertSame(0, $summary['operating_crew_count']);
         $this->assertSame(0, $summary['deadheading_crew_count']);
         $this->assertFalse($summary['crew'][0]['deadheading']);
     }

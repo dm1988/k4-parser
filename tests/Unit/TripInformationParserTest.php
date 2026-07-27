@@ -245,7 +245,7 @@ TEXT;
         $this->assertSame('AFO', $event['metadata']['position']);
         $this->assertFalse($event['metadata']['deadhead']);
         $this->assertSame(5, $event['metadata']['crew_count']);
-        $this->assertSame(4, $event['metadata']['operating_crew_count']);
+        $this->assertSame(3, $event['metadata']['operating_crew_count']);
         $this->assertSame(1, $event['metadata']['deadheading_crew_count']);
         $this->assertSame('Anthony Sabanski', $event['metadata']['crew'][2]['name']);
         $this->assertTrue($event['metadata']['crew'][2]['deadheading']);

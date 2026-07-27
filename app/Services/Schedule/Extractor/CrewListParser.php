@@ -90,7 +90,11 @@ class CrewListParser
         }
 
         $deadheadingCount = count(array_filter($crew, fn (array $member): bool => $member['deadheading']));
-        $operatingCount = $count - $deadheadingCount;
+        $operatingCount = count(array_filter(
+            $crew,
+            static fn (array $member): bool => ! $member['deadheading']
+                && $member['role'] !== CrewPosition::Observer->value,
+        ));
 
         return [
             'crew_count' => $count,

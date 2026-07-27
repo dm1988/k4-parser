@@ -9,17 +9,13 @@ Follow these rules for every remaining task:
 6. Update TODO.md with outcomes instead of adding another plan or duplicate checklist.
 7. Create a commit message for each task
 
+## Completed: Align User fillable attribute test
+* Outcome: The expected fillable order now matches the User model, with airline IATA and ICAO preferences immediately after email.
+* Verification: 2 focused model tests pass with 9 assertions; Pint passes.
 
-## Completed: Configurable Airport Lookup Client address
-* Outcome: `AIRPORT_PROVIDER_URL` now controls the client base URL through service configuration, defaults to `http://localhost/api/v1`, and the client normalizes trailing slashes before requests.
-* Verification: 8 focused tests pass with 28 assertions; Pint passes for dirty PHP files.
-
-## Completed: Flight accordion local-time layout
-* Outcome: Flight details use a reusable label/value card component, while flight and duty local times render in a gold-bordered, muted blue-gray responsive two-column group beneath a distinct Local Times subheading.
-* Verification: 7 focused component tests pass with 29 assertions; Pint passes for dirty PHP files.
-
-## Current focus: Remove Observer from operating crew count
-* Change Crew List Parser Test assertion
+## Completed: Remove Observer from operating crew count
+* Outcome: Observer crew remain in the crew list and total crew count, but are excluded from the operating crew count without being classified as deadheading.
+* Verification: 15 focused parser tests pass with 99 assertions; Pint passes.
 
 ## Duplicate Database Queries
 Issue: 2 out of 5 SQL statements executed during this request are exact duplicates.
