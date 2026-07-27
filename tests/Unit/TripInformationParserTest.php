@@ -4,12 +4,32 @@ namespace Tests\Unit;
 
 use App\Enums\ScheduleEventType;
 use App\Models\Airline;
+use App\Models\User;
 use App\Services\Schedule\Extractor\TripInformationParser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class TripInformationParserTest extends TestCase
 {
+    public function test_it_uses_the_authenticated_users_airline_code_preferences(): void
+    {
+        $this->actingAs(User::factory()->make([
+            'airline_iata_code' => 'AB',
+            'airline_icao_code' => 'XYZ',
+        ]));
+
+        $text = <<<'TEXT'
+Jun 15 23:45 - Jun 16 03:45
+AB 240
+ICN - HKG | AFO 77X 4:00h
+TEXT;
+
+        $event = app(TripInformationParser::class)->parse($text)['calendar_events'][0];
+
+        $this->assertSame('XYZ 240', $event['metadata']['flight_number']);
+        $this->assertSame('XYZ 240 ICN-HKG', $event['title']);
+    }
+
     use RefreshDatabase;
 
     public function test_it_parses_a_duty_block_into_a_flight_event(): void
@@ -227,7 +247,7 @@ TEXT;
         $this->assertSame(5, $event['metadata']['crew_count']);
         $this->assertSame(4, $event['metadata']['operating_crew_count']);
         $this->assertSame(1, $event['metadata']['deadheading_crew_count']);
-        $this->assertSame('Ww Anthony Sabanski', $event['metadata']['crew'][2]['name']);
+        $this->assertSame('Anthony Sabanski', $event['metadata']['crew'][2]['name']);
         $this->assertTrue($event['metadata']['crew'][2]['deadheading']);
     }
 

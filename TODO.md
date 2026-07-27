@@ -9,23 +9,16 @@ Follow these rules for every remaining task:
 6. Update TODO.md with outcomes instead of adding another plan or duplicate checklist.
 7. Create a commit message for each task
 
-## Completed: Multi photo uploads feature
-* Constraint: Allow multiple images, but only one PDF.
-* Outcome: Implemented multi-image selection (maximum five), single-PDF enforcement, source conflict validation, per-image OCR/parsing, merged/deduplicated/date-sorted events, aggregate request logging, file-list UI, and updated focused tests.
-* Verification: 37 focused Sail tests pass with 304 assertions; Pint passes for dirty PHP files.
-
-## Completed: Prefer explicit tail ID during roster parsing
-* Outcome: Explicit `Tail id` values now take precedence over generic registration-like OCR tokens, so `ETDIIG` no longer overrides `N772CK`.
-* Verification: 13 focused roster parser tests pass with 145 assertions; Pint passes for dirty PHP files.
 
 ## Completed: Clean crew names and remove deadhead badge
 * Outcome: Leading OCR markers such as `Xx` are removed from crew names, and crew rows retain the `DH` role without rendering a redundant `Deadhead` badge.
 * Verification: 12 focused tests pass with 87 assertions; Pint passes for dirty PHP files.
 
-## CKS flight codes strings should be extracted to env file and not in the codebase
-- add to user preferences
+## Completed: Configurable schedule airline codes
+* Outcome: Schedule IATA/ICAO codes now come from environment-backed configuration, with validated per-user overrides available on the Profile page and used by both roster parsers.
+* Verification: 20 focused tests pass with 125 assertions; Pint passes for dirty PHP files.
 
-## Airport Lookup Client address should be in .env with a fallback
+## Current focus: Airport Lookup Client address should be in .env with a fallback
 - migrate localhost value into .env and config
 
 ## Flight accordion: 
@@ -33,6 +26,16 @@ Follow these rules for every remaining task:
 
 ## Remove Observer from operating crew
 * Change Crew List Parser Test assertion
+
+## Duplicate Database Queries
+Issue: 2 out of 5 SQL statements executed during this request are exact duplicates.
+
+Details: The query select * from cache where key in ('dev-k4-parser-cache-sessions:...') is executed twice back-to-back (560µs and 410µs).
+
+Fix: Check where this cache lookup is being invoked in your controller, service, or Livewire component lifecycle. Memoize the result in memory (e.g., storing it in a property or static variable) so it only hits the database once per request.
+
+## Switch SESSION_DRIVER and CACHE_STORE to an in-memory store like Redis or Memcached 
+* In production to prevent session updates (update sessions set payload = ...) from competing with application queries.
 
 ## Release 1
 - All tests pass

@@ -47,6 +47,24 @@
             @endif
         </div>
 
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <x-input-label for="airline_iata_code" :value="__('Airline IATA code')" />
+                <x-text-input id="airline_iata_code" name="airline_iata_code" type="text" class="mt-1 block w-full uppercase" :value="old('airline_iata_code', $user->airline_iata_code)" maxlength="2" placeholder="{{ config('schedule.airline_codes.iata') }}" autocomplete="off" />
+                <x-input-error class="mt-2" :messages="$errors->get('airline_iata_code')" />
+            </div>
+
+            <div>
+                <x-input-label for="airline_icao_code" :value="__('Airline ICAO code')" />
+                <x-text-input id="airline_icao_code" name="airline_icao_code" type="text" class="mt-1 block w-full uppercase" :value="old('airline_icao_code', $user->airline_icao_code)" maxlength="3" placeholder="{{ config('schedule.airline_codes.icao') }}" autocomplete="off" />
+                <x-input-error class="mt-2" :messages="$errors->get('airline_icao_code')" />
+            </div>
+
+            <p class="text-sm text-gray-600 sm:col-span-2">
+                {{ __('Leave these blank to use the configured schedule airline codes.') }}
+            </p>
+        </div>
+
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 

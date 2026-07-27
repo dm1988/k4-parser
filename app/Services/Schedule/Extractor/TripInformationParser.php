@@ -7,6 +7,7 @@ use App\Enums\CrewPosition;
 use App\Enums\ScheduleEventType;
 use App\Mappers\FlightMapper;
 use App\Services\Clients\AirlineCodeLookupClient;
+use App\Services\Schedule\ScheduleAirlineCodes;
 use Illuminate\Support\Carbon;
 
 class TripInformationParser
@@ -15,6 +16,7 @@ class TripInformationParser
         private readonly FlightMapper $flightMapper,
         private readonly CrewListParser $crewListParser,
         private readonly AirlineCodeLookupClient $airlineCodeLookupClient,
+        private readonly ScheduleAirlineCodes $scheduleAirlineCodes,
     ) {}
 
     public function parse(string $text): array
@@ -570,9 +572,9 @@ class TripInformationParser
 
         if ($aircraft !== null) {
             return [
-                'flight_number' => str_starts_with($flightNumber, 'CKS ')
+                'flight_number' => str_starts_with($flightNumber, $this->scheduleAirlineCodes->icao().' ')
                     ? $flightNumber
-                    : 'CKS '.$flightNumber,
+                    : $this->scheduleAirlineCodes->icao().' '.$flightNumber,
                 'airline_name' => null,
             ];
         }
@@ -804,7 +806,11 @@ class TripInformationParser
             if (preg_match('/\b([A-Z][A-Z0-9]?\s*\d{1,4}[A-Z]?)\b/', $line, $matches)) {
                 $flightNumber = preg_replace('/\s+/', ' ', trim($matches[1]));
 
-                return preg_replace('/^K4\s+/', 'CKS ', $flightNumber);
+                return preg_replace(
+                    '/^'.preg_quote($this->scheduleAirlineCodes->iata(), '/').'\s+/',
+                    $this->scheduleAirlineCodes->icao().' ',
+                    $flightNumber,
+                );
             }
         }
 

@@ -4,12 +4,14 @@ namespace App\Services\Schedule\Extractor;
 
 use App\Enums\MetadataKey;
 use App\Services\Clients\AirlineCodeLookupClient;
+use App\Services\Schedule\ScheduleAirlineCodes;
 use Illuminate\Support\Carbon;
 
 class PublishedRosterParser
 {
     public function __construct(
         private readonly AirlineCodeLookupClient $airlineCodeLookupClient,
+        private readonly ScheduleAirlineCodes $scheduleAirlineCodes,
     ) {}
 
     public function parse(string $text): array
@@ -573,7 +575,7 @@ class PublishedRosterParser
     private function normalizeFlightNumber(string $flightNumber): string
     {
         return preg_match('/^\d+$/', $flightNumber) === 1
-            ? 'CKS '.$flightNumber
+            ? $this->scheduleAirlineCodes->icao().' '.$flightNumber
             : $flightNumber;
     }
 

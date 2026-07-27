@@ -61,6 +61,42 @@ class ProfileTest extends TestCase
         $this->assertNotNull($user->refresh()->email_verified_at);
     }
 
+    public function test_user_can_update_schedule_airline_code_preferences(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->patch('/profile', [
+                'name' => $user->name,
+                'email' => $user->email,
+                'airline_iata_code' => 'ab',
+                'airline_icao_code' => 'xyz',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect('/profile');
+
+        $user->refresh();
+
+        $this->assertSame('AB', $user->airline_iata_code);
+        $this->assertSame('XYZ', $user->airline_icao_code);
+    }
+
+    public function test_schedule_airline_code_preferences_must_be_valid(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->from('/profile')
+            ->patch('/profile', [
+                'name' => $user->name,
+                'email' => $user->email,
+                'airline_iata_code' => 'TOO',
+                'airline_icao_code' => '12!',
+            ])
+            ->assertSessionHasErrors(['airline_iata_code', 'airline_icao_code'])
+            ->assertRedirect('/profile');
+    }
+
     public function test_user_can_delete_their_account(): void
     {
         $user = User::factory()->create();
