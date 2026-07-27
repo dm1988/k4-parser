@@ -36,13 +36,40 @@ class ExtractRequestValidationTest extends TestCase
         Livewire::test(ScheduleExtractor::class)
             ->call('extractRoster')
             ->assertHasErrors([
-                'file' => 'required_without',
+                'files' => 'required_without',
                 'text' => 'required_without',
             ]);
 
         Livewire::test(ScheduleExtractor::class)
-            ->set('file', UploadedFile::fake()->create('roster.csv', 10, 'text/csv'))
+            ->set('files', [UploadedFile::fake()->create('roster.csv', 10, 'text/csv')])
             ->call('extractRoster')
-            ->assertHasErrors(['file' => 'mimes']);
+            ->assertHasErrors(['files.0' => 'mimes']);
+    }
+
+    public function test_livewire_limits_image_uploads_and_rejects_mixed_sources(): void
+    {
+        $images = array_map(
+            static fn (int $number): UploadedFile => UploadedFile::fake()->image("roster-{$number}.png", 300, 200),
+            range(1, 6),
+        );
+
+        Livewire::test(ScheduleExtractor::class)
+            ->set('files', $images)
+            ->call('extractRoster')
+            ->assertHasErrors(['files' => 'max']);
+
+        Livewire::test(ScheduleExtractor::class)
+            ->set('files', [
+                UploadedFile::fake()->image('roster.png', 300, 200),
+                UploadedFile::fake()->create('roster.pdf', 120, 'application/pdf'),
+            ])
+            ->call('extractRoster')
+            ->assertHasErrors(['files']);
+
+        Livewire::test(ScheduleExtractor::class)
+            ->set('files', [UploadedFile::fake()->image('roster.png', 300, 200)])
+            ->set('text', 'Roster text')
+            ->call('extractRoster')
+            ->assertHasErrors(['files' => 'prohibits', 'text' => 'prohibits']);
     }
 }

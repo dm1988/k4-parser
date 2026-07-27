@@ -48,13 +48,13 @@ class ScheduleExtractorTest extends TestCase
         Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
             ->assertSee('Drop your schedule here')
-            ->assertSee('Supports PDF and all image formats. Click to browse your files.')
+            ->assertSee('Select up to five images, or one PDF. Click to browse your files.')
             ->assertSeeHtml('disabled')
-            ->set('file', UploadedFile::fake()->create('published-roster.pdf', 512, 'application/pdf'))
+            ->set('files', [UploadedFile::fake()->create('published-roster.pdf', 512, 'application/pdf')])
             ->assertSee('published-roster.pdf')
             ->assertSee('512 KB')
             ->assertSee('Click to change')
-            ->assertSee('File ready to extract')
+            ->assertSee('Files ready to extract')
             ->assertSee('Extract Schedule');
     }
 
@@ -115,10 +115,10 @@ class ScheduleExtractorTest extends TestCase
             ->test(ScheduleExtractor::class)
             ->call('extractRoster')
             ->assertHasErrors([
-                'file' => 'required_without',
+                'files' => 'required_without',
                 'text' => 'required_without',
             ])
-            ->assertSee('Please provide either roster text or an uploaded file.')
+            ->assertSee('Please provide either roster text or one or more uploaded files.')
             ->set('text', 'Roster text')
             ->set('eventTypes', ['not-a-real-type'])
             ->call('extractRoster')
@@ -130,9 +130,9 @@ class ScheduleExtractorTest extends TestCase
     {
         Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
-            ->set('file', UploadedFile::fake()->create('roster.csv', 10, 'text/csv'))
+            ->set('files', [UploadedFile::fake()->create('roster.csv', 10, 'text/csv')])
             ->call('extractRoster')
-            ->assertHasErrors(['file' => 'mimes'])
+            ->assertHasErrors(['files.0' => 'mimes'])
             ->assertSet('view', 'upload');
     }
 
@@ -141,14 +141,15 @@ class ScheduleExtractorTest extends TestCase
         $component = Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
             ->call('extractRoster')
-            ->assertHasErrors(['file', 'text'])
+            ->assertHasErrors(['files', 'text'])
             ->set('text', 'Roster text')
             ->assertHasNoErrors('text')
-            ->assertHasErrors('file');
+            ->assertHasErrors('files');
 
         $component
-            ->set('file', UploadedFile::fake()->create('roster.pdf', 120, 'application/pdf'))
-            ->assertHasNoErrors('file');
+            ->set('text', '')
+            ->set('files', [UploadedFile::fake()->create('roster.pdf', 120, 'application/pdf')])
+            ->assertHasNoErrors('files');
     }
 
     public function test_source_type_resolution_rejects_a_validated_upload_with_an_unknown_mime_type(): void
@@ -168,7 +169,7 @@ class ScheduleExtractorTest extends TestCase
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Validated upload has an unsupported MIME type.');
 
-        $method->invoke($component, $file);
+        $method->invoke($component, [$file]);
     }
 
     public function test_it_parses_pasted_roster_text_without_a_redirect(): void
@@ -200,12 +201,12 @@ class ScheduleExtractorTest extends TestCase
 
         Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
-            ->set('file', UploadedFile::fake()->create('roster.pdf', 120, 'application/pdf'))
+            ->set('files', [UploadedFile::fake()->create('roster.pdf', 120, 'application/pdf')])
             ->call('extractRoster')
             ->assertHasNoErrors()
             ->assertNoRedirect()
             ->assertSet('view', 'results')
-            ->assertSet('file', null)
+            ->assertSet('files', [])
             ->assertSee('PDF duty');
     }
 
@@ -216,12 +217,55 @@ class ScheduleExtractorTest extends TestCase
 
         Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
-            ->set('file', UploadedFile::fake()->image('roster.png', 300, 200))
+            ->set('files', [UploadedFile::fake()->image('roster.png', 300, 200)])
             ->call('extractRoster')
             ->assertHasNoErrors()
             ->assertNoRedirect()
             ->assertSet('view', 'results')
             ->assertSee('Image duty');
+    }
+
+    public function test_it_merges_deduplicates_and_sorts_multiple_image_results(): void
+    {
+        $files = [
+            UploadedFile::fake()->image('second-page.png', 300, 200),
+            UploadedFile::fake()->image('first-page.png', 300, 200),
+        ];
+        $laterEvent = $this->event('Later duty', '2026-06-14T14:00:00+00:00');
+        $earlierEvent = $this->event('Earlier duty', '2026-06-13T14:00:00+00:00');
+
+        $this->mock(ScheduleInputResolver::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('resolve')
+                ->twice()
+                ->andReturn(
+                    $this->resolvedImageSource('Second page OCR'),
+                    $this->resolvedImageSource('First page OCR'),
+                );
+        });
+        $this->mock(ScheduleFormatParser::class, function (MockInterface $mock) use ($earlierEvent, $laterEvent): void {
+            $mock->shouldReceive('parse')
+                ->twice()
+                ->andReturn(
+                    ['trip' => [], 'calendar_events' => [$laterEvent]],
+                    ['trip' => [], 'calendar_events' => [$earlierEvent, $laterEvent]],
+                );
+        });
+
+        Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->set('files', $files)
+            ->call('extractRoster')
+            ->assertHasNoErrors()
+            ->assertSet('view', 'results')
+            ->assertSeeInOrder(['Earlier duty', 'Later duty']);
+
+        $events = app(EngineResultCache::class)->latest()?->parsed['calendar_events'] ?? [];
+
+        $this->assertCount(2, $events);
+        $this->assertSame(['Earlier duty', 'Later duty'], array_map(
+            static fn (mixed $event): string => (string) data_get($event, 'title'),
+            $events,
+        ));
     }
 
     public function test_source_resolution_failure_stays_on_upload_and_preserves_the_previous_result(): void
@@ -241,7 +285,7 @@ class ScheduleExtractorTest extends TestCase
             ->call('extractRoster')
             ->assertSet('view', 'upload')
             ->assertSet('parseKey', $previous->parseKey)
-            ->assertHasErrors(['file'])
+            ->assertHasErrors(['files'])
             ->assertSee('Roster text resolution failed: Parser unavailable');
 
         $latest = app(EngineResultCache::class)->latest();
@@ -268,13 +312,13 @@ class ScheduleExtractorTest extends TestCase
             ->set('text', 'Roster text')
             ->call('extractRoster')
             ->assertSet('view', 'upload')
-            ->assertHasErrors(['file', 'eventTypes.0'])
+            ->assertHasErrors(['files', 'eventTypes.0'])
             ->assertSee('The selected event type is unavailable.');
 
         $this->assertSame([
             'The PDF could not be read.',
             'The PDF appears damaged.',
-        ], $component->instance()->getErrorBag()->get('file'));
+        ], $component->instance()->getErrorBag()->get('files'));
     }
 
     public function test_extract_another_roster_resets_form_state_without_clearing_cache_or_filters(): void
@@ -284,11 +328,11 @@ class ScheduleExtractorTest extends TestCase
         Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
             ->call('extractRoster')
-            ->assertHasErrors(['file', 'text'])
+            ->assertHasErrors(['files', 'text'])
             ->set('text', 'Temporary text')
             ->call('extractAnotherRoster')
             ->assertSet('view', 'upload')
-            ->assertSet('file', null)
+            ->assertSet('files', [])
             ->assertSet('text', '')
             ->assertSet('eventTypes', ['flight'])
             ->assertSet('parseKey', $previous->parseKey)
@@ -312,7 +356,7 @@ class ScheduleExtractorTest extends TestCase
             ->call('extractRoster')
             ->assertSet('view', 'upload')
             ->assertSet('parseKey', $previous->parseKey)
-            ->assertHasErrors(['file'])
+            ->assertHasErrors(['files'])
             ->assertSee('No calendar events were found in that schedule.')
             ->assertDontSee('Extracted Schedule');
 
@@ -332,7 +376,7 @@ class ScheduleExtractorTest extends TestCase
             ->call('extractRoster')
             ->assertSet('view', 'upload')
             ->assertSet('parseKey', null)
-            ->assertHasErrors(['file'])
+            ->assertHasErrors(['files'])
             ->assertSee('No calendar events were found in that schedule.');
 
         $this->assertNull(app(EngineResultCache::class)->latest());
@@ -412,14 +456,27 @@ class ScheduleExtractorTest extends TestCase
     }
 
     /** @return array<string, mixed> */
-    private function event(string $title): array
+    private function event(string $title, string $start = '2026-06-13T14:00:00+00:00'): array
     {
         return [
             'title' => $title,
             'type' => 'duty',
-            'start' => '2026-06-13T14:00:00+00:00',
+            'start' => $start,
             'end' => '2026-06-13T16:00:00+00:00',
             'metadata' => [],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function resolvedImageSource(string $rawText): array
+    {
+        return [
+            'source' => 'image',
+            'document_type' => null,
+            'file' => null,
+            'mime' => 'image/png',
+            'raw_text' => $rawText,
+            'meta' => null,
         ];
     }
 

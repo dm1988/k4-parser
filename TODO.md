@@ -6,14 +6,15 @@ Follow these rules for every remaining task:
 3. Run Pint after PHP files change.
 4. Larastan once at the final integration checkpoint, not after every small edit.
 5. Preserve unrelated working-tree changes.
-6. Update this file with outcomes instead of adding another plan or duplicate checklist.
+6. Update TODO.md with outcomes instead of adding another plan or duplicate checklist.
+7. Create a commit message for each task
 
-## Completed: Add OB - Observer to crew roles
-
-## Current focus: Multi photo uploads feature
+## Completed: Multi photo uploads feature
 * Only allow multiple images, not multiple PDFs
+* Outcome: Implemented multi-image selection (maximum five), single-PDF enforcement, source conflict validation, per-image OCR/parsing, merged/deduplicated/date-sorted events, aggregate request logging, file-list UI, and updated focused tests.
+* Verification: 37 focused Sail tests pass with 304 assertions; Pint passes for dirty PHP files.
 
-### Public property state
+### Current focus: Public property state
 * Change public ?TemporaryUploadedFile $file to public array $files = []
 * Update updated hook to updatedFiles() and pass the array through validation.
 * Iterate and combine results sorted by date

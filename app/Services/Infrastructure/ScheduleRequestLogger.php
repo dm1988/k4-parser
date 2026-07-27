@@ -16,9 +16,18 @@ class ScheduleRequestLogger
         ?int $userId,
         string $sourceType,
         string $parserType,
-        ?UploadedFile $file = null,
+        array|UploadedFile|null $file = null,
     ): ExtractRequest {
-        $path = $file?->getRealPath();
+        $files = $file instanceof UploadedFile ? [$file] : (is_array($file) ? $file : []);
+        $paths = array_values(array_filter(array_map(
+            static fn (mixed $upload): ?string => $upload instanceof UploadedFile ? $upload->getRealPath() : null,
+            $files,
+        ), static fn (?string $path): bool => is_string($path) && is_file($path)));
+        $hashes = array_map(static fn (string $path): string|false => hash_file('sha256', $path), $paths);
+        $sizes = array_map(
+            static fn (mixed $upload): int => $upload instanceof UploadedFile ? (int) $upload->getSize() : 0,
+            $files,
+        );
 
         return ExtractRequest::create([
             'user_id' => $userId,
@@ -27,8 +36,8 @@ class ScheduleRequestLogger
             'parser_type' => $parserType,
             'status' => 'partial',
             'extraction_duration_ms' => 0,
-            'file_hash' => is_string($path) && is_file($path) ? hash_file('sha256', $path) : null,
-            'file_size_bytes' => $file?->getSize(),
+            'file_hash' => $hashes === [] ? null : hash('sha256', implode('', $hashes)),
+            'file_size_bytes' => $sizes === [] ? null : array_sum($sizes),
             'detected_event_count' => 0,
             'detected_flight_count' => 0,
             'detected_hotel_count' => 0,

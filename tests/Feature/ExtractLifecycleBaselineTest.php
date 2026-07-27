@@ -41,7 +41,7 @@ class ExtractLifecycleBaselineTest extends TestCase
 
         Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
-            ->set('file', $file)
+            ->set('files', [$file])
             ->call('extractRoster')
             ->assertHasNoErrors()
             ->assertSet('view', 'results');
@@ -75,7 +75,7 @@ class ExtractLifecycleBaselineTest extends TestCase
 
         Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
-            ->set('file', $file)
+            ->set('files', [$file])
             ->call('extractRoster')
             ->assertHasNoErrors()
             ->assertSet('view', 'results');
@@ -105,7 +105,7 @@ class ExtractLifecycleBaselineTest extends TestCase
             ->set('text', 'private roster contents')
             ->set('eventTypes', ['flight'])
             ->call('extractRoster')
-            ->assertHasErrors(['file'])
+            ->assertHasErrors(['files'])
             ->assertSee('Roster text resolution failed: Parser unavailable')
             ->assertSet('text', 'private roster contents')
             ->assertSet('eventTypes', ['flight'])
@@ -179,7 +179,7 @@ class ExtractLifecycleBaselineTest extends TestCase
             ->test(ScheduleExtractor::class)
             ->set('text', 'Roster text with no events')
             ->call('extractRoster')
-            ->assertHasErrors(['file'])
+            ->assertHasErrors(['files'])
             ->assertSet('view', 'upload');
 
         $latest = app(EngineResultCache::class)->latest();

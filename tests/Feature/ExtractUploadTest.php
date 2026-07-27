@@ -24,9 +24,9 @@ class ExtractUploadTest extends TestCase
 
         $page->assertOk();
         $page->assertSee('wire:submit="extractRoster"', false);
-        $page->assertSee('wire:model="file"', false);
+        $page->assertSee('wire:model="files"', false);
         $page->assertSeeText('Drop your schedule here');
-        $page->assertSeeText('Supports PDF and all image formats. Click to browse your files.');
+        $page->assertSeeText('Select up to five images, or one PDF. Click to browse your files.');
         $page->assertSee('wire:loading.attr="disabled"', false);
         $page->assertSee('data-extract-submit', false);
         $page->assertSee('disabled:bg-[#1B365D]/10', false);
@@ -186,7 +186,7 @@ class ExtractUploadTest extends TestCase
             ->test(ScheduleExtractor::class)
             ->set('text', 'private roster contents')
             ->call('extractRoster')
-            ->assertHasErrors(['file']);
+            ->assertHasErrors(['files']);
 
         $extractRequest = ExtractRequest::query()->latest('id')->firstOrFail();
         $this->assertSame('failed', $extractRequest->status);

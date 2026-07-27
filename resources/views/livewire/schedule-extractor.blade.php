@@ -19,7 +19,7 @@
                 </p>
             </header>
 
-            <x-extract.form :event-types="$eventTypes" :file="$file" :filter-options="$filterOptions" />
+            <x-extract.form :event-types="$eventTypes" :files="$files" :filter-options="$filterOptions" />
         </section>
     @elseif ($view === 'results' && $viewModel?->hasResult())
         <section wire:key="schedule-extractor-results-{{ $parseKey }}" class="mx-auto max-w-4xl space-y-6">

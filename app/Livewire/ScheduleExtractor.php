@@ -31,9 +31,8 @@ class ScheduleExtractor extends Component
     #[Locked]
     public string $view = self::VIEW_UPLOAD;
 
-    // /** @var list<TemporaryUploadedFile> */
-    // public array $files = [];
-    public ?TemporaryUploadedFile $file = null;
+    /** @var list<TemporaryUploadedFile> */
+    public array $files = [];
 
     public string $text = '';
 
@@ -74,7 +73,7 @@ class ScheduleExtractor extends Component
         $user = $this->authorizedUser();
 
         $validated = $this->validate($this->rules(), $this->messages());
-        $file = $this->resolveValidatedFile($validated);
+        $files = $this->resolveValidatedFiles($validated);
         $text = is_string($validated['text'] ?? null) && filled($validated['text'])
             ? $validated['text']
             : null;
@@ -83,16 +82,16 @@ class ScheduleExtractor extends Component
             static fn (mixed $eventType): bool => is_string($eventType),
         ));
         $this->eventTypes = $eventTypes;
-        $sourceType = $this->resolveSourceType($file);
+        $sourceType = $this->resolveSourceType($files);
 
         try {
             $payload = $this->handleExtractExecution->handle(
                 userId: $user->id,
                 sourceType: $sourceType,
                 parserType: $sourceType === 'image' ? 'screenshot' : 'unknown',
-                file: $file,
+                file: $files,
                 operation: fn (): array => $this->jcaScheduleProcessor->extractRoster(
-                    $file,
+                    $files,
                     $text,
                     $eventTypes,
                 ),
@@ -108,22 +107,21 @@ class ScheduleExtractor extends Component
         $result = $payload['result'];
 
         if (($result->parsed['calendar_events'] ?? []) === []) {
-            $this->addError('file', 'No calendar events were found in that schedule. Try another file or adjust the event filters.');
+            $this->addError('files', 'No calendar events were found in that schedule. Try another file or adjust the event filters.');
             $this->view = self::VIEW_UPLOAD;
 
             return;
         }
 
         $this->parseKey = $result->parseKey;
-        $this->reset('file');
+        $this->reset('files');
         $this->view = self::VIEW_RESULTS;
         $this->resetValidation();
     }
 
-    public function updatedFile(): void
+    public function updatedFiles(): void
     {
-        $this->resetValidation('file');
-        // $this->resetValidation('files.*');
+        $this->resetValidation(['files', 'files.*']);
     }
 
     public function updatedText(): void
@@ -177,41 +175,36 @@ class ScheduleExtractor extends Component
 
     private function resetRosterForm(): void
     {
-        $this->reset(['file', 'text']);
+        $this->reset(['files', 'text']);
         $this->resetValidation();
     }
 
-    /** @param array<string, mixed> $validated */
-    private function resolveValidatedFile(array $validated): ?UploadedFile
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return list<UploadedFile>
+     */
+    private function resolveValidatedFiles(array $validated): array
     {
-        $file = $validated['file'] ?? null;
+        $files = $validated['files'] ?? [];
 
-        return $file instanceof UploadedFile ? $file : null;
+        if (! is_array($files)) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            $files,
+            static fn (mixed $file): bool => $file instanceof UploadedFile,
+        ));
     }
-    // /** @return list<UploadedFile> */
-    // private function resolveValidatedFiles(array $validated): array
-    // {
-    //     $files = $validated['files'] ?? [];
 
-    //     if (! is_array($files)) {
-    //         return [];
-    //     }
-
-    //     return array_values(array_filter(
-    //         $files,
-    //         fn ($file) => $file instanceof UploadedFile
-    //     ));
-    // }
-
-    private function resolveSourceType(?UploadedFile $file): string
+    /** @param list<UploadedFile> $files */
+    private function resolveSourceType(array $files): string
     {
-        if ($file === null) {
+        if ($files === []) {
             return 'pasted_text';
         }
-        // Determine if all are images vs PDF
-        // $mimes = array_map(fn (UploadedFile $f) => $f->getMimeType(), $files);
 
-        return match ($file->getMimeType()) {
+        return match ($files[0]->getMimeType()) {
             'application/pdf' => 'pdf',
             'image/jpeg',
             'image/png',
@@ -233,6 +226,10 @@ class ScheduleExtractor extends Component
 
     private function livewireErrorKey(string $key): string
     {
+        if ($key === 'file') {
+            return 'files';
+        }
+
         if ($key === 'event_types') {
             return 'eventTypes';
         }

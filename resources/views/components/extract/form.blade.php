@@ -1,4 +1,4 @@
-@props(['eventTypes', 'file' => null, 'filterOptions'])
+@props(['eventTypes', 'files' => [], 'filterOptions'])
 
 <form wire:submit="extractRoster" id="extractForm" class="space-y-6">
 
@@ -6,15 +6,16 @@
         <div class="mx-auto flex max-w-2xl flex-col gap-5">
             <div>
                 <label
-                    for="file"
+                    for="files"
                     class="group relative flex min-h-48 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed border-[#1B365D]/20 bg-white px-6 py-6 text-center transition duration-300 hover:border-[#C5A059]/70 hover:bg-white hover:shadow-lg focus-within:border-[#C5A059] focus-within:ring-4 focus-within:ring-[#C5A059]/20"
                 >
                     <input
-                        id="file"
+                        id="files"
                         type="file"
-                        name="file"
-                        accept="application/pdf,image/*"
-                        wire:model="file"
+                        name="files[]"
+                        accept="image/png,image/jpeg,image/webp,application/pdf"
+                        wire:model="files"
+                        multiple
                         class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                     >
 
@@ -25,19 +26,33 @@
                     </span>
 
                     <span class="max-w-full text-xl font-bold text-[#1B365D]">
-                        {{ $file ? $file->getClientOriginalName() : 'Drop your schedule here' }}
+                        {{ $files !== [] ? count($files).' '.\Illuminate\Support\Str::plural('file', count($files)).' selected' : 'Drop your schedule here' }}
                     </span>
 
                     <span class="mt-2 max-w-md text-sm leading-6 text-[#4A5568]">
-                        @if ($file)
-                            {{ \Illuminate\Support\Number::fileSize($file->getSize()) }} <span aria-hidden="true">&bull;</span> Click to change
+                        @if ($files !== [])
+                            Up to five images, or one PDF <span aria-hidden="true">&bull;</span> Click to change
                         @else
-                            Supports PDF and all image formats. Click to browse your files.
+                            Select up to five images, or one PDF. Click to browse your files.
                         @endif
                     </span>
                 </label>
 
-                @error('file')
+                @if ($files !== [])
+                    <ul class="mt-3 grid gap-2 text-sm text-[#1B365D]">
+                        @foreach ($files as $selectedFile)
+                            <li class="flex items-center justify-between gap-3 rounded-xl border border-[#1B365D]/10 bg-white px-4 py-2">
+                                <span class="min-w-0 truncate font-medium">{{ $selectedFile->getClientOriginalName() }}</span>
+                                <span class="shrink-0 text-xs text-[#4A5568]">{{ \Illuminate\Support\Number::fileSize($selectedFile->getSize()) }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+
+                @error('files')
+                <p class="mt-2 text-sm font-medium text-red-700">{{ $message }}</p>
+                @enderror
+                @error('files.*')
                 <p class="mt-2 text-sm font-medium text-red-700">{{ $message }}</p>
                 @enderror
             </div>
@@ -46,9 +61,9 @@
                 id="extractBtn"
                 type="submit"
                 data-extract-submit
-                @disabled(! $file)
+                @disabled($files === [])
                 wire:loading.attr="disabled"
-                wire:target="file, extractRoster"
+                wire:target="files, extractRoster"
                 class="inline-flex w-full items-center justify-center gap-3 rounded-2xl bg-[#C5A059] px-6 py-4 text-lg font-bold text-[#0B0E14] shadow-lg shadow-[#C5A059]/20 transition duration-300 hover:bg-[#D4AF37] hover:shadow-[#C5A059]/40 disabled:cursor-not-allowed disabled:bg-[#1B365D]/10 disabled:text-[#1B365D]/40 disabled:shadow-none"
             >
                 <span data-submit-label wire:loading.remove wire:target="extractRoster">Extract Schedule</span>
@@ -56,7 +71,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0-7 7m7-7H3" />
                 </svg>
                 <span data-submit-label wire:loading wire:target="extractRoster">Extracting Schedule...</span>
-                <svg data-submit-spinner wire:loading wire:target="file, extractRoster" class="h-5 w-5 animate-spin" viewBox="0 0 24 24" aria-hidden="true">
+                <svg data-submit-spinner wire:loading wire:target="files, extractRoster" class="h-5 w-5 animate-spin" viewBox="0 0 24 24" aria-hidden="true">
                     <circle class="opacity-25" cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="4" />
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647Z" />
                 </svg>
@@ -64,10 +79,10 @@
 
             <div class="flex items-center justify-center gap-2 text-center text-xs font-medium text-[#4A5568]" role="status" aria-live="polite">
                 <span class="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden="true"></span>
-                <span wire:loading.remove wire:target="file, extractRoster">
-                    {{ $file ? 'File ready to extract' : 'System online: Ready to process' }}
+                <span wire:loading.remove wire:target="files, extractRoster">
+                    {{ $files !== [] ? 'Files ready to extract' : 'System online: Ready to process' }}
                 </span>
-                <span wire:loading wire:target="file, extractRoster">
+                <span wire:loading wire:target="files, extractRoster">
                     Reading your schedule...
                 </span>
             </div>

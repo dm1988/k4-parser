@@ -32,7 +32,7 @@ class HandleExtractExecution
         ?int $userId,
         string $sourceType,
         string $parserType,
-        ?UploadedFile $file,
+        array|UploadedFile|null $file,
         callable $operation,
     ): array {
         $startedAt = hrtime(true);

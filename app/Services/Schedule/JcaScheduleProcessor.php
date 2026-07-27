@@ -90,18 +90,11 @@ class JcaScheduleProcessor
      *     page_count: ?int
      * }
      */
-    public function extractRoster(?UploadedFile $file, ?string $text, array $eventTypes = []): array
+    public function extractRoster(array|UploadedFile|null $file, ?string $text, array $eventTypes = []): array
     {
-        try {
-            $source = $this->scheduleInputResolver->resolve($file, $text);
-        } catch (Throwable $throwable) {
-            throw ExtractSourceResolutionException::fromThrowable($throwable, $file !== null);
-        }
-
-        $parsed = $this->scheduleFormatParser->parse(
-            $source['raw_text'],
-            $source['document_type'] ?? null,
-        );
+        $files = $file instanceof UploadedFile ? [$file] : (is_array($file) ? $file : []);
+        $sources = $this->resolveSources($files, $text);
+        $parsed = $this->parseSources($sources);
         $filteredParsed = $parsed;
 
         if ($eventTypes !== []) {
@@ -115,13 +108,13 @@ class JcaScheduleProcessor
 
         $result = $this->buildScheduleResult->handle(
             type: 'roster',
-            source: $source['source'],
-            documentType: $source['document_type'] ?? null,
+            source: $sources[0]['source'],
+            documentType: $sources[0]['document_type'] ?? null,
             parsed: $filteredParsed,
             filters: $eventTypes,
-            file: $source['file'],
-            mime: $source['mime'],
-            meta: is_array($source['meta'] ?? null) ? $source['meta'] : [],
+            file: $sources[0]['file'],
+            mime: $sources[0]['mime'],
+            meta: $this->sourceMeta($sources),
         );
 
         if (($result->parsed['calendar_events'] ?? []) !== []) {
@@ -131,9 +124,95 @@ class JcaScheduleProcessor
         return [
             'parsed' => $parsed,
             'result' => $result,
-            'parser_type' => $this->parserType($source['source'], $source['document_type'] ?? null),
-            'page_count' => data_get($source, 'meta.page_count'),
+            'parser_type' => $this->parserType($sources[0]['source'], $sources[0]['document_type'] ?? null),
+            'page_count' => $this->pageCount($sources),
         ];
+    }
+
+    /**
+     * @param  list<UploadedFile>  $files
+     * @return list<array<string, mixed>>
+     */
+    private function resolveSources(array $files, ?string $text): array
+    {
+        try {
+            if ($files === []) {
+                return [$this->scheduleInputResolver->resolve(null, $text)];
+            }
+
+            return array_map(
+                fn (UploadedFile $file): array => $this->scheduleInputResolver->resolve($file, null),
+                $files,
+            );
+        } catch (Throwable $throwable) {
+            throw ExtractSourceResolutionException::fromThrowable($throwable, $files !== []);
+        }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $sources
+     * @return array<string, mixed>
+     */
+    private function parseSources(array $sources): array
+    {
+        $parsedResults = array_map(
+            fn (array $source): array => $this->scheduleFormatParser->parse(
+                (string) $source['raw_text'],
+                $source['document_type'] ?? null,
+            ),
+            $sources,
+        );
+
+        $parsed = $parsedResults[0];
+        $events = array_merge(...array_map(
+            static fn (array $result): array => is_array($result['calendar_events'] ?? null)
+                ? $result['calendar_events']
+                : [],
+            $parsedResults,
+        ));
+
+        $uniqueEvents = [];
+
+        foreach ($events as $event) {
+            $eventData = $event instanceof ExtractedEventDTO ? $event->toArray() : $event;
+            $key = hash('sha256', serialize($eventData));
+            $uniqueEvents[$key] = $event;
+        }
+
+        $events = array_values($uniqueEvents);
+        usort($events, static function (mixed $first, mixed $second): int {
+            $firstStart = $first instanceof ExtractedEventDTO ? $first->start : data_get($first, 'start');
+            $secondStart = $second instanceof ExtractedEventDTO ? $second->start : data_get($second, 'start');
+
+            return strcmp((string) $firstStart, (string) $secondStart);
+        });
+
+        $parsed['calendar_events'] = $events;
+
+        return $parsed;
+    }
+
+    /** @param list<array<string, mixed>> $sources */
+    private function sourceMeta(array $sources): array
+    {
+        $meta = is_array($sources[0]['meta'] ?? null) ? $sources[0]['meta'] : [];
+
+        if (count($sources) > 1) {
+            $meta['image_count'] = count($sources);
+        }
+
+        return $meta;
+    }
+
+    /** @param list<array<string, mixed>> $sources */
+    private function pageCount(array $sources): ?int
+    {
+        $pageCounts = array_filter(array_map(
+            static fn (array $source): ?int => data_get($source, 'meta.page_count'),
+            $sources,
+        ), static fn (?int $pageCount): bool => $pageCount !== null);
+
+        return $pageCounts === [] ? null : array_sum($pageCounts);
     }
 
     private function eventType(mixed $event): string
