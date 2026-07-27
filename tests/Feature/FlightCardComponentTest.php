@@ -85,6 +85,7 @@ class FlightCardComponentTest extends TestCase
         $this->assertStringContainsString('Airline', $html);
         $this->assertStringContainsString('Allegiant Air', $html);
         $this->assertStringNotContainsString('Tail</span>', $html);
+        $this->assertStringNotContainsString('Airport details unavailable', $html);
     }
 
     public function test_it_renders_airport_info_popover_triggers_when_airport_lookup_data_is_available(): void

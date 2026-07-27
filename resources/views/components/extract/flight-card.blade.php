@@ -38,9 +38,6 @@
                         <span class="font-mono text-xl font-bold tracking-[0.04em] text-[#1B365D] sm:text-2xl">
                             {{ $model->originLabel() }}
                         </span>
-                        @if ($model->originAirportDetailsUnavailable())
-                            <span class="text-xs text-slate-500">Airport details unavailable</span>
-                        @endif
                     </div>
                 @endif
 
@@ -68,9 +65,6 @@
                         <span class="font-mono text-xl font-bold tracking-[0.04em] text-[#1B365D] sm:text-2xl">
                             {{ $model->destinationLabel() }}
                         </span>
-                        @if ($model->destinationAirportDetailsUnavailable())
-                            <span class="text-xs text-slate-500">Airport details unavailable</span>
-                        @endif
                     </div>
                 @endif
 
