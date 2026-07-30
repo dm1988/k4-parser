@@ -9,9 +9,6 @@ Follow these rules for every remaining task:
 6. Update TODO.md with outcomes instead of adding another plan or duplicate checklist.
 7. Create a commit message for each task
 
-## Completed: Release 1
-- All tests pass
-
 ## Switch SESSION_DRIVER and CACHE_STORE to an in-memory store like Redis or Memcached 
 * In production to prevent session updates (update sessions set payload = ...) from competing with application queries.
 Moving your Laravel app from database-backed storage to **Redis** for sessions and cache will drastically drop your database I/O and lower latency.
@@ -43,38 +40,20 @@ Open your production `.env` file and update your Redis connection and driver key
 ```ini
 # Driver configuration
 SESSION_DRIVER=redis
-CACHE_STORE=redis        # Laravel 11+ (use CACHE_DRIVER=redis on Laravel 10 or older)
+CACHE_STORE=redis
 
 # Redis Connection details
-REDIS_CLIENT=phpredis   # Change to 'predis' if using composer package
+REDIS_CLIENT=phpredis
 REDIS_HOST=127.0.0.1
 REDIS_PASSWORD=null     # Add password if configured in redis.conf
 REDIS_PORT=6379
+QUEUE_CONNECTION=redis
 
 ```
 
+sudo -u www-data php artisan optimize:clear
+sudo -u www-data php artisan optimize
 
-3. **Update config/database.php (Optional):** Prevent Redis key collision.
-By default, Laravel stores cache and session data under separate Redis database indexes or prefixes. Make sure your `config/database.php` has distinct databases assigned for cache and sessions to avoid key collisions:
-
-```php
-'redis' => [
-    'client' => env('REDIS_CLIENT', 'phpredis'),
-
-    'default' => [
-        'host' => env('REDIS_HOST', '127.0.0.1'),
-        'port' => env('REDIS_PORT', '6379'),
-        'database' => env('REDIS_DB', '0'),
-    ],
-
-    'cache' => [
-        'host' => env('REDIS_HOST', '127.0.0.1'),
-        'port' => env('REDIS_PORT', '6379'),
-        'database' => env('REDIS_CACHE_DB', '1'),
-    ],
-],
-
-```
 
 
 4. **Clear and Recache App Configuration:** Apply changes live.
@@ -105,9 +84,46 @@ redis-cli
 Once everything is running smoothly on Redis, you can drop or archive the old `sessions` and `cache` tables from your SQL database to free up disk space.
 
 ## API
+- For use with iphone app and Ben Napier's Crew Room app
+
 * Use certificate
+* Accepts PDFs and multiple images
+* Extracts schedule
+* Returns DL link - auth here?
 
 ## Flight plan extractor improvements
 * Extract ETOPs EENT, EEXP and ETP
 
 ## Dark mode
+
+* Configure Tailwind CSS v3 with `darkMode: 'class'`.
+* Define a three-state theme preference: `light`, `dark`, or `system`.
+* Add an inline `<head>` initialization script to apply the saved preference before the page renders and prevent a flash of the wrong theme.
+* Persist the preference in `localStorage`; when `system` is selected, respond to changes from `prefers-color-scheme`.
+* Add an accessible theme control to the desktop and mobile navigation with clear labels, keyboard support, and the current state exposed to assistive technology.
+* Apply the theme initialization and controls consistently to the authenticated and guest layouts.
+* Add semantic light/dark styles to the shared component classes in `resources/css/app.css`, including cards, headers, buttons, badges, and file inputs.
+* Add `dark:` variants throughout shared Blade components before updating individual pages, covering backgrounds, text, borders, shadows, form controls, validation states, dropdowns, modals, and focus rings.
+* Update the dashboard, schedule extractor, flight-plan extractor, profile, and authentication pages to use the shared dark-mode patterns.
+* Decide whether the already-dark welcome and privacy-policy pages should remain fixed-dark or honor the saved theme, then make their behavior consistent with that decision.
+* Verify Filament's admin-panel theme setting separately so it follows the same default and does not conflict with the application preference.
+* Add tests that assert the theme initializer and accessible control are rendered in both layouts.
+* Manually verify light, dark, and system modes at mobile and desktop breakpoints, including refresh behavior and live operating-system theme changes.
+* Run the focused PHPUnit tests and `vendor/bin/sail npm run build` to confirm the Blade and Tailwind changes compile successfully.
+
+## Flight Plan extract request log to database
+
+* Record the authenticated user, `source_type = pdf`, and `parser_type = flight_plan`.
+* Create the row immediately before extraction with `status = partial`.
+* Reuse the existing request logger to capture the UUID, file hash, file size, duration, and application/extractor versions.
+* Mark the request `success` after extraction.
+* Mark the request `failed` with `FlightRouteNotFoundException` or another exception type when extraction fails.
+* Keep the current redirect, validation message, temporary-file deletion, and application logging behavior unchanged.
+* Add `Flight Plan` to the parser filter in the Filament Extract Requests table.
+* Generalize the schedule-specific logger into an `ExtractRequestLogger` with a completion method that accepts explicit counts.
+* For a successful flight-plan extraction, record:
+  * `detected_event_count = 1`
+  * `detected_flight_count = 1`
+  * `detected_hotel_count = 0`
+  * `page_count = null`, unless PDF page counting is added
+* Add tests covering successful extraction, recognized extraction failure, unexpected exceptions, file cleanup, correct user/hash/size metadata, and confirmation that invalid uploads do not create rows.
