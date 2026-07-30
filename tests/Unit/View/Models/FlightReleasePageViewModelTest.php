@@ -135,6 +135,16 @@ class FlightReleasePageViewModelTest extends TestCase
                 ],
                 'destination_airport' => null,
                 'alternate_airport' => null,
+                'etps' => [
+                    [
+                        'label' => 'ETP1',
+                        'airports' => 'KSFO-PACD',
+                        'coordinates' => 'N45 43.7 W143 53.1',
+                        'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
+                    ],
+                ],
+                'eent_coordinates' => 'N40 31.1 W131 22.6',
+                'eexp_coordinates' => 'N45 19.3 E151 36.4',
                 'initial_altitude' => 'FL 330',
                 'duration' => '07h12m',
                 'route' => 'DCT TEST',
@@ -150,6 +160,11 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('Ted Stevens Anchorage International Airport', $viewModel->departureAirport()['name']);
         $this->assertSame('ANC', $viewModel->departureAirport()['iata']);
         $this->assertSame('PANC', $viewModel->departureAirport()['icao']);
+        $this->assertTrue($viewModel->hasEtopsData());
+        $this->assertSame('KSFO-PACD', $viewModel->etps()[0]['airports']);
+        $this->assertSame(['KSFO', 'PACD'], $viewModel->etpAirports($viewModel->etps()[0]));
+        $this->assertSame('N40 31.1 W131 22.6', $viewModel->eentCoordinates());
+        $this->assertSame('N45 19.3 E151 36.4', $viewModel->eexpCoordinates());
     }
 
     #[Test]

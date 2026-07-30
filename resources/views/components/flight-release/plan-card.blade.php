@@ -113,6 +113,65 @@
         </div>
     </details>
 
+    @if ($model->hasEtopsData())
+        <section class="border-t border-[#1B365D]/8">
+            <div class="flex items-center gap-2 bg-[#F8F9FA] px-4 py-2">
+                <x-heroicon-o-globe-alt class="h-4 w-4 text-[#1B365D]" />
+                <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568]">
+                    ETOPS critical points
+                </span>
+            </div>
+
+            @if ($model->etps() !== [])
+                <div class="grid gap-3 border-t border-[#1B365D]/8 p-4 md:grid-cols-2">
+                    @foreach ($model->etps() as $etp)
+                        <div class="min-w-0 space-y-3 rounded-lg border border-[#1B365D]/10 bg-white p-3">
+                            <div class="grid grid-cols-2 gap-2">
+                                @foreach ($model->etpAirports($etp) as $airport)
+                                    <x-flight-release.copy-field
+                                        :id="'etp-'.$loop->parent->index.'-airport-'.$loop->index"
+                                        :label="'Airport '.($loop->index + 1)"
+                                        :value="$airport"
+                                    />
+                                @endforeach
+                            </div>
+
+                            <x-flight-release.copy-field
+                                :id="'etp-'.$loop->index.'-coordinates'"
+                                label="Coordinates"
+                                :value="$etp['coordinates']"
+                            />
+
+                            <p class="break-words text-[11px] font-semibold text-[#4A5568]">
+                                {{ $etp['scenario'] }}
+                            </p>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+
+            @if ($model->eentCoordinates() || $model->eexpCoordinates())
+                <div class="grid gap-3 border-t border-[#1B365D]/8 p-4 md:grid-cols-2">
+                    @if ($model->eentCoordinates())
+                        <x-flight-release.copy-field
+                            id="eent-coordinates"
+                            label="EENT coordinates"
+                            :value="$model->eentCoordinates()"
+                        />
+                    @endif
+
+                    @if ($model->eexpCoordinates())
+                        <x-flight-release.copy-field
+                            id="eexp-coordinates"
+                            label="EEXP coordinates"
+                            :value="$model->eexpCoordinates()"
+                        />
+                    @endif
+                </div>
+            @endif
+        </section>
+    @endif
+
     <div class="border-t border-[#1B365D]/8">
         <div class="flex items-center justify-between gap-3 bg-[#F8F9FA] px-4 py-2">
             <div class="flex items-center gap-2">

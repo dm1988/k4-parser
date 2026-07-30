@@ -114,6 +114,43 @@ readonly class FlightReleasePageViewModel
         return $this->departureRunway() !== null || $this->arrivalRunway() !== null;
     }
 
+    /**
+     * @return list<array{label: string, airports: string, coordinates: string, scenario: string}>
+     */
+    public function etps(): array
+    {
+        return $this->flightPlan === null ? [] : $this->flightPlan->etps;
+    }
+
+    /**
+     * @param  array{label: string, airports: string, coordinates: string, scenario: string}  $etp
+     * @return list<string>
+     */
+    public function etpAirports(array $etp): array
+    {
+        return array_values(array_filter(
+            explode('-', $etp['airports']),
+            static fn (string $airport): bool => $airport !== '',
+        ));
+    }
+
+    public function eentCoordinates(): ?string
+    {
+        return $this->flightPlan?->eentCoordinates;
+    }
+
+    public function eexpCoordinates(): ?string
+    {
+        return $this->flightPlan?->eexpCoordinates;
+    }
+
+    public function hasEtopsData(): bool
+    {
+        return $this->etps() !== []
+            || $this->eentCoordinates() !== null
+            || $this->eexpCoordinates() !== null;
+    }
+
     public function duration(): string
     {
         return $this->flightPlan === null ? '' : $this->flightPlan->duration;
@@ -216,7 +253,7 @@ readonly class FlightReleasePageViewModel
 
         $countryName = Locale::getDisplayRegion('-'.$countryCode, 'en');
 
-        return is_string($countryName) && $countryName !== '' ? $countryName : $country;
+        return $countryName !== '' ? $countryName : $country;
     }
 
     /**
@@ -243,6 +280,9 @@ readonly class FlightReleasePageViewModel
             arrivalRunway: self::nullableString($flightPlan, 'arrival_runway'),
             departureSid: self::nullableString($flightPlan, 'departure_sid'),
             arrivalStar: self::nullableString($flightPlan, 'arrival_star'),
+            etps: self::etpsFromArray($flightPlan['etps'] ?? null),
+            eentCoordinates: self::nullableString($flightPlan, 'eent_coordinates'),
+            eexpCoordinates: self::nullableString($flightPlan, 'eexp_coordinates'),
             initialAltitude: is_string($flightPlan['initial_altitude'] ?? null) ? $flightPlan['initial_altitude'] : '',
             duration: is_string($flightPlan['duration'] ?? null) ? $flightPlan['duration'] : '',
             route: is_string($flightPlan['route'] ?? null) ? $flightPlan['route'] : '',
@@ -257,5 +297,39 @@ readonly class FlightReleasePageViewModel
         $value = $flightPlan[$key] ?? null;
 
         return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    /**
+     * @return list<array{label: string, airports: string, coordinates: string, scenario: string}>
+     */
+    private static function etpsFromArray(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        $etps = [];
+
+        foreach ($value as $etp) {
+            if (! is_array($etp)) {
+                continue;
+            }
+
+            $label = $etp['label'] ?? null;
+            $airports = $etp['airports'] ?? null;
+            $coordinates = $etp['coordinates'] ?? null;
+            $scenario = $etp['scenario'] ?? null;
+
+            if (! is_string($label)
+                || ! is_string($airports)
+                || ! is_string($coordinates)
+                || ! is_string($scenario)) {
+                continue;
+            }
+
+            $etps[] = compact('label', 'airports', 'coordinates', 'scenario');
+        }
+
+        return $etps;
     }
 }

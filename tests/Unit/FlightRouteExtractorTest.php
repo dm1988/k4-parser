@@ -84,6 +84,9 @@ TEXT;
             'arrival_runway' => null,
             'departure_sid' => null,
             'arrival_star' => null,
+            'etps' => [],
+            'eent_coordinates' => null,
+            'eexp_coordinates' => null,
             'initial_altitude' => 'FL 330',
             'duration' => '07h12m',
             'route' => "DCT JOH DCT YAK J541 SSR DCT 5726N13228W DCT YXS DCT\nDESNU DCT HASOS DCT TIMMR DCT FSD Q19 DSM/N0486F350 J45 IRK DCT\nFAM J151 GETME DCT VLKNN Q139 MGMRY DCT ACORI FROGZ5",
@@ -108,6 +111,7 @@ TEXT);
         $this->assertSame('33R', $flightPlan['arrival_runway']);
         $this->assertSame('SUMMR2 SCTRR', $flightPlan['departure_sid']);
         $this->assertSame('GUKDO GUKD2E', $flightPlan['arrival_star']);
+        $this->assertSame('12h10m', $flightPlan['duration']);
     }
 
     public function test_extract_flight_plan_data_from_flattened_pdf_text_returns_planned_runways_sid_and_star(): void
@@ -123,6 +127,7 @@ TEXT);
         $this->assertSame('33R', $flightPlan['arrival_runway']);
         $this->assertSame('SUMMR2 SCTRR', $flightPlan['departure_sid']);
         $this->assertSame('GUKDO GUKD2E', $flightPlan['arrival_star']);
+        $this->assertSame('12h10m', $flightPlan['duration']);
     }
 
     public function test_sample_flight_release_extracts_planned_runways_sid_and_star(): void
@@ -137,6 +142,23 @@ TEXT);
         $this->assertSame('33R', $flightPlan['arrival_runway']);
         $this->assertSame('SUMMR2 SCTRR', $flightPlan['departure_sid']);
         $this->assertSame('GUKDO GUKD2E', $flightPlan['arrival_star']);
+        $this->assertSame('12h10m', $flightPlan['duration']);
+        $this->assertSame([
+            [
+                'label' => 'ETP1',
+                'airports' => 'KSFO-PACD',
+                'coordinates' => 'N45 43.7 W143 53.1',
+                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
+            ],
+            [
+                'label' => 'ETP2',
+                'airports' => 'PACD-RJSS',
+                'coordinates' => 'N51 48.6 E164 12.8',
+                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
+            ],
+        ], $flightPlan['etps']);
+        $this->assertSame('N40 31.1 W131 22.6', $flightPlan['eent_coordinates']);
+        $this->assertSame('N45 19.3 E151 36.4', $flightPlan['eexp_coordinates']);
     }
 
     public function test_extract_flight_plan_data_sets_planned_runway_values_to_null_when_lines_are_missing(): void
@@ -155,6 +177,25 @@ TEXT);
         $this->assertNull($flightPlan['arrival_runway']);
         $this->assertNull($flightPlan['departure_sid']);
         $this->assertNull($flightPlan['arrival_star']);
+        $this->assertSame([], $flightPlan['etps']);
+        $this->assertNull($flightPlan['eent_coordinates']);
+        $this->assertNull($flightPlan['eexp_coordinates']);
+    }
+
+    public function test_extract_flight_plan_data_ignores_non_all_engine_etp_scenarios(): void
+    {
+        $extractor = $this->makeExtractor();
+
+        $flightPlan = $extractor->extractFlightPlanDataFromText(<<<'TEXT'
+ETP1  KSFO-PACD  N46 01.0  W144 35.5  1EO/DRIFTDOWN/84M/320KIAS
+(FPL-CKS272-IS
+-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1
+-SBKP1000
+-N0487F360 OSUDO4A ASETA
+-SCEL0322)
+TEXT);
+
+        $this->assertSame([], $flightPlan['etps']);
     }
 
     public function test_extract_route_uses_the_pdf_parser_output(): void
@@ -201,6 +242,9 @@ TEXT);
             'arrival_runway' => null,
             'departure_sid' => null,
             'arrival_star' => null,
+            'etps' => [],
+            'eent_coordinates' => null,
+            'eexp_coordinates' => null,
             'initial_altitude' => 'FL 360',
             'duration' => '03h22m',
             'route' => 'OSUDO4A ASETA',
@@ -239,6 +283,9 @@ TEXT);
             'arrival_runway' => null,
             'departure_sid' => null,
             'arrival_star' => null,
+            'etps' => [],
+            'eent_coordinates' => null,
+            'eexp_coordinates' => null,
             'initial_altitude' => 'FL 360',
             'duration' => '03h22m',
             'route' => 'OSUDO4A ASETA',

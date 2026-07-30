@@ -6,6 +6,9 @@ use App\DTOs\AirportData;
 
 readonly class FlightPlan
 {
+    /**
+     * @param  list<array{label: string, airports: string, coordinates: string, scenario: string}>  $etps
+     */
     public function __construct(
         public string $departure,
         public string $destination,
@@ -20,5 +23,8 @@ readonly class FlightPlan
         public ?string $arrivalRunway = null,
         public ?string $departureSid = null,
         public ?string $arrivalStar = null,
+        public array $etps = [],
+        public ?string $eentCoordinates = null,
+        public ?string $eexpCoordinates = null,
     ) {}
 }

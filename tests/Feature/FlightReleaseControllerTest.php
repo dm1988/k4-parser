@@ -191,6 +191,22 @@ class FlightReleaseControllerTest extends TestCase
             'arrival_runway' => '33R',
             'departure_sid' => 'SUMMR2 SCTRR',
             'arrival_star' => 'GUKDO GUKD2E',
+            'etps' => [
+                [
+                    'label' => 'ETP1',
+                    'airports' => 'KSFO-PACD',
+                    'coordinates' => 'N45 43.7 W143 53.1',
+                    'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
+                ],
+                [
+                    'label' => 'ETP2',
+                    'airports' => 'PACD-RJSS',
+                    'coordinates' => 'N51 48.6 E164 12.8',
+                    'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
+                ],
+            ],
+            'eent_coordinates' => 'N40 31.1 W131 22.6',
+            'eexp_coordinates' => 'N45 19.3 E151 36.4',
             'initial_altitude' => 'FL 330',
             'duration' => '07h12m',
             'route' => 'DCT TEST',
@@ -213,7 +229,26 @@ class FlightReleaseControllerTest extends TestCase
             ->assertSeeText('33R')
             ->assertSeeText('STAR')
             ->assertSeeText('GUKDO GUKD2E')
-            ->assertSee('grid grid-cols-2 divide-x divide-[#1B365D]/6', false);
+            ->assertSee('grid grid-cols-2 divide-x divide-[#1B365D]/6', false)
+            ->assertSeeText('ETOPS critical points')
+            ->assertSee('value="KSFO"', false)
+            ->assertSee('value="PACD"', false)
+            ->assertSee('value="N45 43.7 W143 53.1"', false)
+            ->assertSee('value="RJSS"', false)
+            ->assertSee('value="N51 48.6 E164 12.8"', false)
+            ->assertSeeText('ALL ENGINE/DECOMPRESSION/LRC')
+            ->assertSeeText('EENT coordinates')
+            ->assertSee('value="N40 31.1 W131 22.6"', false)
+            ->assertSeeText('EEXP coordinates')
+            ->assertSee('value="N45 19.3 E151 36.4"', false)
+            ->assertSee('data-copy-target="etp-0-airport-0"', false)
+            ->assertSee('data-copy-target="etp-0-airport-1"', false)
+            ->assertSee('data-copy-target="etp-0-coordinates"', false)
+            ->assertSee('data-copy-target="eent-coordinates"', false)
+            ->assertSee('data-copy-target="eexp-coordinates"', false)
+            ->assertDontSee('data-copy-target="etp-0-label"', false)
+            ->assertDontSee('value="KSFO-PACD"', false)
+            ->assertDontSee('data-copy-target="etp-0-airports"', false);
     }
 
     public function test_flight_release_results_use_mobile_first_layout_and_wrap_long_content(): void

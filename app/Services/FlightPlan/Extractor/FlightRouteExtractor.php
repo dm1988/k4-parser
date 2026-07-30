@@ -42,6 +42,9 @@ class FlightRouteExtractor
      *     arrival_runway: ?string,
      *     departure_sid: ?string,
      *     arrival_star: ?string,
+     *     etps: list<array{label: string, airports: string, coordinates: string, scenario: string}>,
+     *     eent_coordinates: ?string,
+     *     eexp_coordinates: ?string,
      *     initial_altitude: string,
      *     duration: string,
      *     route: string
@@ -81,6 +84,9 @@ class FlightRouteExtractor
      *     arrival_runway: ?string,
      *     departure_sid: ?string,
      *     arrival_star: ?string,
+     *     etps: list<array{label: string, airports: string, coordinates: string, scenario: string}>,
+     *     eent_coordinates: ?string,
+     *     eexp_coordinates: ?string,
      *     initial_altitude: string,
      *     duration: string,
      *     route: string
@@ -114,6 +120,9 @@ class FlightRouteExtractor
             'arrival_runway' => $plannedRunways['arrival_runway'],
             'departure_sid' => $plannedRunways['departure_sid'],
             'arrival_star' => $plannedRunways['arrival_star'],
+            'etps' => $this->extractEtps($text),
+            'eent_coordinates' => $this->extractMarkerCoordinates($text, 'EENT'),
+            'eexp_coordinates' => $this->extractMarkerCoordinates($text, 'EEXP'),
             'initial_altitude' => $this->formatInitialAltitude($matches[2]),
             'duration' => $this->formatDuration($matches[5]),
             'route' => $route,
@@ -172,6 +181,53 @@ class FlightRouteExtractor
             'runway' => $matches[1],
             'procedure' => is_string($procedure) ? rtrim($procedure, '.') : null,
         ];
+    }
+
+    /**
+     * @return list<array{label: string, airports: string, coordinates: string, scenario: string}>
+     */
+    private function extractEtps(string $text): array
+    {
+        $pattern = '/(ETP\d+)\s+([A-Z]{4}-[A-Z]{4})\s+'
+            .'([NS]\d{2}\s+\d{2}\.\d\s+[EW]\d{3}\s+\d{2}\.\d)\s+'
+            .'(ALL ENGINE\/DECOMPRESSION\/LRC)\b/';
+
+        if (preg_match_all($pattern, $text, $matches, PREG_SET_ORDER) === false) {
+            return [];
+        }
+
+        $etps = [];
+
+        foreach ($matches as $match) {
+            $coordinates = preg_replace('/\s+/', ' ', trim($match[3]));
+
+            if (! is_string($coordinates)) {
+                continue;
+            }
+
+            $etps[$match[1]] = [
+                'label' => $match[1],
+                'airports' => $match[2],
+                'coordinates' => $coordinates,
+                'scenario' => $match[4],
+            ];
+        }
+
+        return array_values($etps);
+    }
+
+    private function extractMarkerCoordinates(string $text, string $marker): ?string
+    {
+        $pattern = '/([NS]\d{2}\s+\d{2}\.\d\s+[EW]\d{3}\s+\d{2}\.\d)'
+            .'\s*\('.preg_quote($marker, '/').'\)/';
+
+        if (preg_match($pattern, $text, $matches) !== 1) {
+            return null;
+        }
+
+        $coordinates = preg_replace('/\s+/', ' ', trim($matches[1]));
+
+        return is_string($coordinates) ? $coordinates : null;
     }
 
     /**
