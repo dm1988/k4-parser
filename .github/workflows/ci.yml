@@ -94,7 +94,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=sail-php84
 
       - name: Start Sail
-        run: vendor/bin/sail up -d --no-build
+        run: vendor/bin/sail up -d --wait --wait-timeout 120 --no-build
 
       - name: Generate application key
         run: vendor/bin/sail artisan key:generate
