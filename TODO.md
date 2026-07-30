@@ -91,8 +91,41 @@ Once everything is running smoothly on Redis, you can drop or archive the old `s
 * Extracts schedule
 * Returns DL link - auth here?
 
-## Flight plan extractor improvements
-* Extract ETOPs EENT, EEXP and ETP
+## Current focus: Flight plan extractor improvements
+1. [x] Use storage/app/private/test_data/CKS025625KLAX.pdf as sample data
+2. [x] Extract: PLANNED TO DEPT RUNWAY: 25R   SUMMR2 SCTRR
+           PLANNED TO ARRV RUNWAY: 33R   GUKDO GUKD2E
+    * Display Departure runway and arrival runway grouped (25R, 33R)
+    * Display SID Departure (SUMMR2 SCTRR)
+    * Display STAR Arrival (GUKDO GUKD2E)
+    * Outcome: Extracted values are carried through the flight-plan view model and displayed in a grouped departure/arrival runway section.
+3. Extract flight time (12h10m)
+    - Add to FlightPlan Value Object
+    - sample:  SUGNO Y16 SAPRA Y685 GUKDO GUKDO2E
+        -RKSI1210
+    - Display only no need to copy
+4. Extract ETOPs ETPs
+    - Add to FlightPlan Value Object
+
+    * Always extract the ALL ENGINE/DECOMPRESSION/LRC
+    * ETP1  KSFO-PACD  N45 43.7  W143 53.1  ALL ENGINE/DECOMPRESSION/LRC
+    * ETP1 has 2 airports. KSFO-PACD. These should be in a copable text box
+    * The coordinates N45 43.7  W143 53.1 should be in a copable text box
+    * ETP1 / ETP2 text should be copable
+    * ETP2 ETP2  PACD-RJSS  N51 48.6  E164 12.8  ALL ENGINE/DECOMPRESSION/LRC
+5. Consider adding navigation fix value object storing name, type, and coordinates
+6. Extract EENT
+    - Add to FlightPlan Value Object
+
+    * N40 31.1 W131 22.6
+        (EENT) 0238 288 340
+    * Coordinates should be copyable
+7. Extract EEXP
+    - Add to FlightPlan Value Object
+
+    * N45 19.3 E151 36.4
+        (EEXP)
+    * Coordinates should be copyable
 
 ## Dark mode
 

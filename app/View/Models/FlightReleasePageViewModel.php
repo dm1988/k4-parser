@@ -88,6 +88,31 @@ readonly class FlightReleasePageViewModel
         return $this->flightPlan === null ? '' : $this->flightPlan->initialAltitude;
     }
 
+    public function departureRunway(): ?string
+    {
+        return $this->flightPlan?->departureRunway;
+    }
+
+    public function arrivalRunway(): ?string
+    {
+        return $this->flightPlan?->arrivalRunway;
+    }
+
+    public function departureSid(): ?string
+    {
+        return $this->flightPlan?->departureSid;
+    }
+
+    public function arrivalStar(): ?string
+    {
+        return $this->flightPlan?->arrivalStar;
+    }
+
+    public function hasPlannedRunways(): bool
+    {
+        return $this->departureRunway() !== null || $this->arrivalRunway() !== null;
+    }
+
     public function duration(): string
     {
         return $this->flightPlan === null ? '' : $this->flightPlan->duration;
@@ -187,9 +212,23 @@ readonly class FlightReleasePageViewModel
             departureAirport: ($flightPlan['departure_airport'] ?? null) instanceof AirportData ? $flightPlan['departure_airport'] : null,
             destinationAirport: ($flightPlan['destination_airport'] ?? null) instanceof AirportData ? $flightPlan['destination_airport'] : null,
             alternateAirport: ($flightPlan['alternate_airport'] ?? null) instanceof AirportData ? $flightPlan['alternate_airport'] : null,
+            departureRunway: self::nullableString($flightPlan, 'departure_runway'),
+            arrivalRunway: self::nullableString($flightPlan, 'arrival_runway'),
+            departureSid: self::nullableString($flightPlan, 'departure_sid'),
+            arrivalStar: self::nullableString($flightPlan, 'arrival_star'),
             initialAltitude: is_string($flightPlan['initial_altitude'] ?? null) ? $flightPlan['initial_altitude'] : '',
             duration: is_string($flightPlan['duration'] ?? null) ? $flightPlan['duration'] : '',
             route: is_string($flightPlan['route'] ?? null) ? $flightPlan['route'] : '',
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $flightPlan
+     */
+    private static function nullableString(array $flightPlan, string $key): ?string
+    {
+        $value = $flightPlan[$key] ?? null;
+
+        return is_string($value) && $value !== '' ? $value : null;
     }
 }

@@ -38,6 +38,10 @@ class FlightRouteExtractor
      *     departure_airport: ?AirportData,
      *     destination_airport: ?AirportData,
      *     alternate_airport: ?AirportData,
+     *     departure_runway: ?string,
+     *     arrival_runway: ?string,
+     *     departure_sid: ?string,
+     *     arrival_star: ?string,
      *     initial_altitude: string,
      *     duration: string,
      *     route: string
@@ -73,6 +77,10 @@ class FlightRouteExtractor
      *     departure_airport: ?AirportData,
      *     destination_airport: ?AirportData,
      *     alternate_airport: ?AirportData,
+     *     departure_runway: ?string,
+     *     arrival_runway: ?string,
+     *     departure_sid: ?string,
+     *     arrival_star: ?string,
      *     initial_altitude: string,
      *     duration: string,
      *     route: string
@@ -83,6 +91,7 @@ class FlightRouteExtractor
     public function extractFlightPlanDataFromText(string $text): array
     {
         $flightPlanBlock = $this->extractFlightPlanBlock($text);
+        $plannedRunways = $this->extractPlannedRunways($text);
 
         if (! preg_match(self::FLIGHT_PLAN_DETAILS_PATTERN, $flightPlanBlock, $matches)) {
             throw FlightRouteNotFoundException::routeSegmentMissing();
@@ -101,6 +110,10 @@ class FlightRouteExtractor
             'departure_airport' => $this->lookupAirport($departure),
             'destination_airport' => $this->lookupAirport($destination),
             'alternate_airport' => $this->lookupAirport($alternate),
+            'departure_runway' => $plannedRunways['departure_runway'],
+            'arrival_runway' => $plannedRunways['arrival_runway'],
+            'departure_sid' => $plannedRunways['departure_sid'],
+            'arrival_star' => $plannedRunways['arrival_star'],
             'initial_altitude' => $this->formatInitialAltitude($matches[2]),
             'duration' => $this->formatDuration($matches[5]),
             'route' => $route,
@@ -114,6 +127,51 @@ class FlightRouteExtractor
         }
 
         return $this->airportLookupClient->lookupByIcao($icao);
+    }
+
+    /**
+     * @return array{
+     *     departure_runway: ?string,
+     *     arrival_runway: ?string,
+     *     departure_sid: ?string,
+     *     arrival_star: ?string
+     * }
+     */
+    private function extractPlannedRunways(string $text): array
+    {
+        $departure = $this->extractPlannedRunwayLine($text, 'DEPT');
+        $arrival = $this->extractPlannedRunwayLine($text, 'ARRV');
+
+        return [
+            'departure_runway' => $departure['runway'],
+            'arrival_runway' => $arrival['runway'],
+            'departure_sid' => $departure['procedure'],
+            'arrival_star' => $arrival['procedure'],
+        ];
+    }
+
+    /**
+     * @return array{runway: ?string, procedure: ?string}
+     */
+    private function extractPlannedRunwayLine(string $text, string $type): array
+    {
+        $pattern = '/PLANNED\s+TO\s+'.preg_quote($type, '/').'\s+RUNWAY:\s*'
+            .'(\d{2}[LCR]?)\s+(.+?)'
+            .'(?=\s+PLANNED\s+TO\s+(?:DEPT|ARRV)\s+RUNWAY:|\.\s+\*{3,}|\R|$)/i';
+
+        if (preg_match($pattern, $text, $matches) !== 1) {
+            return [
+                'runway' => null,
+                'procedure' => null,
+            ];
+        }
+
+        $procedure = preg_replace('/\s+/', ' ', trim($matches[2]));
+
+        return [
+            'runway' => $matches[1],
+            'procedure' => is_string($procedure) ? rtrim($procedure, '.') : null,
+        ];
     }
 
     /**

@@ -46,6 +46,40 @@
         />
     </div>
 
+    @if ($model->hasPlannedRunways())
+        <div class="grid grid-cols-2 divide-x divide-[#1B365D]/6 border-t border-[#1B365D]/8 bg-white">
+            <div class="flex min-w-0 flex-col gap-2 px-4 py-3">
+                <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568]">
+                    Departure runway
+                </span>
+                <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <span class="font-mono text-lg font-bold text-[#1B365D]">{{ $model->departureRunway() ?? '—' }}</span>
+                    @if ($model->departureSid())
+                        <span class="break-words font-mono text-xs font-semibold text-[#0B0E14]">
+                            <span class="text-[10px] font-bold uppercase tracking-[0.14em] text-[#4A5568]">SID</span>
+                            {{ $model->departureSid() }}
+                        </span>
+                    @endif
+                </div>
+            </div>
+
+            <div class="flex min-w-0 flex-col gap-2 px-4 py-3">
+                <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568]">
+                    Arrival runway
+                </span>
+                <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <span class="font-mono text-lg font-bold text-[#1B365D]">{{ $model->arrivalRunway() ?? '—' }}</span>
+                    @if ($model->arrivalStar())
+                        <span class="break-words font-mono text-xs font-semibold text-[#0B0E14]">
+                            <span class="text-[10px] font-bold uppercase tracking-[0.14em] text-[#4A5568]">STAR</span>
+                            {{ $model->arrivalStar() }}
+                        </span>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
+
     <details class="group border-t border-[#1B365D]/8">
         <summary class="flex cursor-pointer list-none items-center justify-between gap-2 bg-[#F8F9FA] px-4 py-2 text-left transition-colors hover:bg-[#eef0f3] [&::-webkit-details-marker]:hidden">
             <div class="flex items-center gap-2">

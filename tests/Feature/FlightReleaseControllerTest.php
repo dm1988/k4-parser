@@ -187,6 +187,10 @@ class FlightReleaseControllerTest extends TestCase
                 'state' => 'Florida',
                 'country' => 'United States',
             ],
+            'departure_runway' => '25R',
+            'arrival_runway' => '33R',
+            'departure_sid' => 'SUMMR2 SCTRR',
+            'arrival_star' => 'GUKDO GUKD2E',
             'initial_altitude' => 'FL 330',
             'duration' => '07h12m',
             'route' => 'DCT TEST',
@@ -200,7 +204,16 @@ class FlightReleaseControllerTest extends TestCase
             ->assertOk()
             ->assertSeeText('Ted Stevens Anchorage International Airport')
             ->assertSeeText('Miami International Airport')
-            ->assertSeeText('Southwest Florida International Airport');
+            ->assertSeeText('Southwest Florida International Airport')
+            ->assertSeeText('Departure runway')
+            ->assertSeeText('25R')
+            ->assertSeeText('SID')
+            ->assertSeeText('SUMMR2 SCTRR')
+            ->assertSeeText('Arrival runway')
+            ->assertSeeText('33R')
+            ->assertSeeText('STAR')
+            ->assertSeeText('GUKDO GUKD2E')
+            ->assertSee('grid grid-cols-2 divide-x divide-[#1B365D]/6', false);
     }
 
     public function test_flight_release_results_use_mobile_first_layout_and_wrap_long_content(): void

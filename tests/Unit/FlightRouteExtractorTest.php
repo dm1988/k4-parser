@@ -80,10 +80,81 @@ TEXT;
             'departure_airport' => $departureAirport,
             'destination_airport' => $destinationAirport,
             'alternate_airport' => $alternateAirport,
+            'departure_runway' => null,
+            'arrival_runway' => null,
+            'departure_sid' => null,
+            'arrival_star' => null,
             'initial_altitude' => 'FL 330',
             'duration' => '07h12m',
             'route' => "DCT JOH DCT YAK J541 SSR DCT 5726N13228W DCT YXS DCT\nDESNU DCT HASOS DCT TIMMR DCT FSD Q19 DSM/N0486F350 J45 IRK DCT\nFAM J151 GETME DCT VLKNN Q139 MGMRY DCT ACORI FROGZ5",
         ], $flightPlan);
+    }
+
+    public function test_extract_flight_plan_data_from_text_returns_planned_runways_sid_and_star(): void
+    {
+        $extractor = $this->makeExtractor();
+
+        $flightPlan = $extractor->extractFlightPlanDataFromText(<<<'TEXT'
+PLANNED TO DEPT RUNWAY: 25R   SUMMR2 SCTRR
+PLANNED TO ARRV RUNWAY: 33R   GUKDO GUKD2E
+(FPL-CKS025-IS
+-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1
+-KLAX1000
+-N0487F360 SUMMR2 SCTRR DCT GUKDO GUKD2E
+-RKSI1210)
+TEXT);
+
+        $this->assertSame('25R', $flightPlan['departure_runway']);
+        $this->assertSame('33R', $flightPlan['arrival_runway']);
+        $this->assertSame('SUMMR2 SCTRR', $flightPlan['departure_sid']);
+        $this->assertSame('GUKDO GUKD2E', $flightPlan['arrival_star']);
+    }
+
+    public function test_extract_flight_plan_data_from_flattened_pdf_text_returns_planned_runways_sid_and_star(): void
+    {
+        $extractor = $this->makeExtractor();
+
+        $flightPlan = $extractor->extractFlightPlanDataFromText(<<<'TEXT'
+KALITTA AIR RELEASE TIME 2154     ********************************************************************* BASED ON FORECAST WINDS:          PLANNED TO DEPT RUNWAY: 25R   SUMMR2 SCTRR          PLANNED TO ARRV RUNWAY: 33R   GUKDO GUKD2E.     ******************************************************************     * REFER TO FSA PRIOR TO DEPARTURE
+(FPL-CKS256-IS-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1-KLAX0220-N0487F340 SUMMR2 SCTRR DCT GUKDO GUKDO2E-RKSI1210 RKTU-PBN/A1L1B1C1D1O1S2)
+TEXT);
+
+        $this->assertSame('25R', $flightPlan['departure_runway']);
+        $this->assertSame('33R', $flightPlan['arrival_runway']);
+        $this->assertSame('SUMMR2 SCTRR', $flightPlan['departure_sid']);
+        $this->assertSame('GUKDO GUKD2E', $flightPlan['arrival_star']);
+    }
+
+    public function test_sample_flight_release_extracts_planned_runways_sid_and_star(): void
+    {
+        $extractor = $this->makeExtractor();
+
+        $flightPlan = $extractor->extractFlightPlanData(
+            storage_path('app/private/test_data/CKS025625KLAX.pdf')
+        );
+
+        $this->assertSame('25R', $flightPlan['departure_runway']);
+        $this->assertSame('33R', $flightPlan['arrival_runway']);
+        $this->assertSame('SUMMR2 SCTRR', $flightPlan['departure_sid']);
+        $this->assertSame('GUKDO GUKD2E', $flightPlan['arrival_star']);
+    }
+
+    public function test_extract_flight_plan_data_sets_planned_runway_values_to_null_when_lines_are_missing(): void
+    {
+        $extractor = $this->makeExtractor();
+
+        $flightPlan = $extractor->extractFlightPlanDataFromText(<<<'TEXT'
+(FPL-CKS272-IS
+-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1
+-SBKP1000
+-N0487F360 OSUDO4A ASETA
+-SCEL0322)
+TEXT);
+
+        $this->assertNull($flightPlan['departure_runway']);
+        $this->assertNull($flightPlan['arrival_runway']);
+        $this->assertNull($flightPlan['departure_sid']);
+        $this->assertNull($flightPlan['arrival_star']);
     }
 
     public function test_extract_route_uses_the_pdf_parser_output(): void
@@ -126,6 +197,10 @@ TEXT;
             'departure_airport' => null,
             'destination_airport' => null,
             'alternate_airport' => null,
+            'departure_runway' => null,
+            'arrival_runway' => null,
+            'departure_sid' => null,
+            'arrival_star' => null,
             'initial_altitude' => 'FL 360',
             'duration' => '03h22m',
             'route' => 'OSUDO4A ASETA',
@@ -160,6 +235,10 @@ TEXT;
             'departure_airport' => null,
             'destination_airport' => null,
             'alternate_airport' => null,
+            'departure_runway' => null,
+            'arrival_runway' => null,
+            'departure_sid' => null,
+            'arrival_star' => null,
             'initial_altitude' => 'FL 360',
             'duration' => '03h22m',
             'route' => 'OSUDO4A ASETA',

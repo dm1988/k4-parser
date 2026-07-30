@@ -16,5 +16,9 @@ readonly class FlightPlan
         public string $initialAltitude,
         public string $duration,
         public string $route,
+        public ?string $departureRunway = null,
+        public ?string $arrivalRunway = null,
+        public ?string $departureSid = null,
+        public ?string $arrivalStar = null,
     ) {}
 }
