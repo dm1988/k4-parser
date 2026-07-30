@@ -5,6 +5,7 @@ namespace App\View\Models;
 use App\DTOs\AirportData;
 use App\Enums\RouteTokenType;
 use App\ValueObjects\FlightPlan;
+use Locale;
 
 readonly class FlightReleasePageViewModel
 {
@@ -187,9 +188,35 @@ readonly class FlightReleasePageViewModel
 
     private function airportLocation(AirportData $airport): string
     {
-        return collect([$airport->city, $airport->state, $airport->country])
+        return collect([
+            $airport->city,
+            $this->normalizedAirportState($airport->state),
+            $this->normalizedAirportCountry($airport->country),
+        ])
             ->filter(static fn (?string $value): bool => ! empty($value))
             ->implode(', ');
+    }
+
+    private function normalizedAirportState(?string $state): ?string
+    {
+        if ($state === null || ctype_digit(trim($state))) {
+            return null;
+        }
+
+        return $state;
+    }
+
+    private function normalizedAirportCountry(string $country): string
+    {
+        $countryCode = strtoupper(trim($country));
+
+        if (strlen($countryCode) !== 2 || ! ctype_alpha($countryCode)) {
+            return $country;
+        }
+
+        $countryName = Locale::getDisplayRegion('-'.$countryCode, 'en');
+
+        return is_string($countryName) && $countryName !== '' ? $countryName : $country;
     }
 
     /**

@@ -55,6 +55,25 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
+    public function it_normalizes_numeric_regions_and_iso_country_codes_for_airport_display(): void
+    {
+        $viewModel = new FlightReleasePageViewModel(new FlightPlan(
+            departure: 'KLAX',
+            destination: 'RKSI',
+            alternate: 'RKTU',
+            departureAirport: null,
+            destinationAirport: new AirportData('RKSI', 'ICN', 'Incheon International Airport', 'Seoul', '28', 'KR'),
+            alternateAirport: new AirportData('RKTU', 'CJJ', 'Cheongju International Airport', 'Cheongju', '43', 'KR'),
+            initialAltitude: '',
+            duration: '',
+            route: '',
+        ));
+
+        $this->assertSame('Seoul, South Korea', $viewModel->destinationAirport()['location']);
+        $this->assertSame('Cheongju, South Korea', $viewModel->alternateAirport()['location']);
+    }
+
+    #[Test]
     public function it_classifies_route_tokens_for_display(): void
     {
         $viewModel = new FlightReleasePageViewModel(new FlightPlan(
