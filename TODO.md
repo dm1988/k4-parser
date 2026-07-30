@@ -91,7 +91,7 @@ Once everything is running smoothly on Redis, you can drop or archive the old `s
 * Extracts schedule
 * Returns DL link - auth here?
 
-## Current focus: Flight plan extractor improvements
+## Completed: Flight plan extractor improvements
 1. [x] Use storage/app/private/test_data/CKS025625KLAX.pdf as sample data
 2. [x] Extract: PLANNED TO DEPT RUNWAY: 25R   SUMMR2 SCTRR
            PLANNED TO ARRV RUNWAY: 33R   GUKDO GUKD2E
