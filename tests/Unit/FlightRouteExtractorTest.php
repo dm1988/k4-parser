@@ -120,6 +120,11 @@ TEXT);
 
         $flightPlan = $extractor->extractFlightPlanDataFromText(<<<'TEXT'
 KALITTA AIR RELEASE TIME 2154     ********************************************************************* BASED ON FORECAST WINDS:          PLANNED TO DEPT RUNWAY: 25R   SUMMR2 SCTRR          PLANNED TO ARRV RUNWAY: 33R   GUKDO GUKD2E.     ******************************************************************     * REFER TO FSA PRIOR TO DEPARTURE
+ETOPS 60/180ETP1  KSFO-PACD  N45  43.7  W143  53.1  ALL ENGINE/DECOMPRESSION/LRC TIME TO ETP: 03:09
+ETP1  KSFO-PACD  N46 01.0  W144 35.5  1EO/DRIFTDOWN/84M/320KIAS
+ETP2  PACD-RJSS  N51  48.6  E164  12.8  ALL ENGINE/DECOMPRESSION/LRC TIME TO ETP: 07:42
+N40 31.1 W131 22.6(EENT) 0238 288 340
+N45 19.3 E151 36.4(EEXP)
 (FPL-CKS256-IS-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1-KLAX0220-N0487F340 SUMMR2 SCTRR DCT GUKDO GUKDO2E-RKSI1210 RKTU-PBN/A1L1B1C1D1O1S2)
 TEXT);
 
@@ -128,15 +133,34 @@ TEXT);
         $this->assertSame('SUMMR2 SCTRR', $flightPlan['departure_sid']);
         $this->assertSame('GUKDO GUKD2E', $flightPlan['arrival_star']);
         $this->assertSame('12h10m', $flightPlan['duration']);
+        $this->assertSame([
+            [
+                'label' => 'ETP1',
+                'airports' => 'KSFO-PACD',
+                'coordinates' => 'N45 43.7 W143 53.1',
+                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
+            ],
+            [
+                'label' => 'ETP2',
+                'airports' => 'PACD-RJSS',
+                'coordinates' => 'N51 48.6 E164 12.8',
+                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
+            ],
+        ], $flightPlan['etps']);
+        $this->assertSame('N40 31.1 W131 22.6', $flightPlan['eent_coordinates']);
+        $this->assertSame('N45 19.3 E151 36.4', $flightPlan['eexp_coordinates']);
     }
 
     public function test_sample_flight_release_extracts_planned_runways_sid_and_star(): void
     {
         $extractor = $this->makeExtractor();
+        $samplePath = storage_path('app/private/test_data/CKS025625KLAX.pdf');
 
-        $flightPlan = $extractor->extractFlightPlanData(
-            storage_path('app/private/test_data/CKS025625KLAX.pdf')
-        );
+        if (! is_file($samplePath)) {
+            $this->markTestSkipped('The private flight-release PDF fixture is not available.');
+        }
+
+        $flightPlan = $extractor->extractFlightPlanData($samplePath);
 
         $this->assertSame('25R', $flightPlan['departure_runway']);
         $this->assertSame('33R', $flightPlan['arrival_runway']);
