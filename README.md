@@ -2,6 +2,8 @@
 
 K4 Parser is a Laravel application for parsing crew roster and schedule documents, reviewing fleet activity, and exporting parsed events as iCalendar data. It can run locally with SQLite or in Docker with MySQL and Redis.
 
+[![Continuous Integration](https://github.com/dm1988/k4-parser/actions/workflows/ci.yml/badge.svg)](https://github.com/dm1988/k4-parser/actions/workflows/ci.yml)
+
 ## Requirements
 
 For the Docker workflow:
