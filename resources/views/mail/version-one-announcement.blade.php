@@ -1,11 +1,11 @@
 <x-mail::message>
-# K4 Parser Version 1 is live
+# Your JCA roster can now become organized, calendar-ready events in just a few steps.
 
 Hi {{ filled($recipientName) ? \Illuminate\Support\Str::before($recipientName, ' ') : 'there' }},
 
-K4 Parser Version 1 is officially live!
+K4 Schedule Extractor Version 1 is officially live!
 
-The **Schedule Extractor** takes the schedule information you already receive through Jeppesen Crew Access and converts it into organized, calendar-ready events—without rebuilding your trip one leg at a time.
+The **Schedule Extractor** takes the schedule information you already receive through Jeppesen Crew Access and converts it into organized, calendar-ready events, without rebuilding your trip one leg at a time.
 
 ### What it can do
 
@@ -25,7 +25,7 @@ This is the first official release, so I’d love your feedback. If the extracto
 
 Please continue to compare extracted information against your official schedule before relying on it.
 
-Thanks for helping test and improve K4 Parser!
+Thanks for helping test and improve K4 Schedule Extractor!
 
 Dave
 </x-mail::message>

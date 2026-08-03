@@ -21,7 +21,7 @@ class VersionOneAnnouncement extends Mailable implements ShouldQueue
             replyTo: [
                 new Address('crewcompass@gmail.com', 'Dave'),
             ],
-            subject: 'K4 Parser v1 is live — turn your JCA schedule into calendar events',
+            subject: 'K4 Schedule Extractor v1: Instantly turn your JCA schedule into calendar events',
         );
     }
 
