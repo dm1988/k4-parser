@@ -13,6 +13,10 @@ class VersionOneAnnouncement extends Mailable implements ShouldQueue
 {
     use Queueable;
 
+    public int $tries = 5;
+
+    public array $backoff = [60, 120, 300, 600];
+
     public function __construct(
         public string $recipientName,
         public bool $isEmailVerified,

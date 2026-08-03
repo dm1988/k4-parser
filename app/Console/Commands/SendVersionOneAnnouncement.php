@@ -97,12 +97,15 @@ class SendVersionOneAnnouncement extends Command
 
         $query->chunkById(100, function ($users) use (&$queued): void {
             foreach ($users as $user) {
-                Mail::to($user)->queue(
-                    new VersionOneAnnouncement(
-                        (string) $user->name,
-                        $user->hasVerifiedEmail(),
-                    )
-                );
+                $message = (new VersionOneAnnouncement(
+                    (string) $user->name,
+                    $user->hasVerifiedEmail(),
+                ))
+                    ->onQueue('broadcasts')
+                    ->delay(now()->addSeconds($queued * 4));
+
+                Mail::to($user)->queue($message);
+
                 $queued++;
             }
         });
