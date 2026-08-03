@@ -71,8 +71,8 @@ class SendVersionOneAnnouncement extends Command
 
         $query = User::query()
             ->where('is_active', true)
-            ->whereNotNull('email_verified_at')
-            ->whereNotNull('email');
+            ->whereNotNull('email')
+            ->where('email', '!=', '');
 
         $recipientCount = $query->count();
 
@@ -84,7 +84,7 @@ class SendVersionOneAnnouncement extends Command
 
         $this->table(
             ['Audience', 'Recipients'],
-            [['Active users with verified email addresses', $recipientCount]],
+            [['All active users with email addresses', $recipientCount]],
         );
 
         if (! $this->confirm("Queue the announcement for {$recipientCount} users?")) {
