@@ -6,12 +6,15 @@ use App\Actions\BuildScheduleResult;
 use App\DTOs\DutyEvent;
 use App\Models\User;
 use App\Services\Infrastructure\EngineResultCache;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
 
 class ExportFlightDutyCalendarEventTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_non_flight_dto_survives_result_assembly_cache_and_per_event_export(): void
     {
         $result = app(BuildScheduleResult::class)->handle(
