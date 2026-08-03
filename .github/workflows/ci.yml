@@ -20,6 +20,29 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: testing
+          MYSQL_ROOT_PASSWORD: password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: testing
+      DB_USERNAME: root
+      DB_PASSWORD: password
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -27,9 +50,16 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
+          php-version: '8.5'
+          extensions: pdo_mysql
           tools: composer:v2
           coverage: none
+
+      - name: Install PHP dependencies
+        uses: ramsey/composer-install@v4
+
+      - name: Check PHP formatting
+        run: vendor/bin/pint --test
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -38,70 +68,15 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Get Composer cache directory
-        id: composer-cache
-        run: echo "directory=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Composer downloads
-        uses: actions/cache@v5
-        with:
-          path: ${{ steps.composer-cache.outputs.directory }}
-          key: ${{ runner.os }}-php-8.4-composer-${{ hashFiles('composer.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-php-8.4-composer-
+      - name: Build frontend assets
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
 
       - name: Prepare environment
         run: |
           cp .env.example .env
-          sed -i 's/DB_CONNECTION=sqlite/DB_CONNECTION=mysql/' .env
-          sed -i 's/# DB_HOST=127.0.0.1/DB_HOST=mysql/' .env
-          sed -i 's/# DB_PORT=3306/DB_PORT=3306/' .env
-          sed -i 's/# DB_DATABASE=laravel/DB_DATABASE=laravel/' .env
-          sed -i 's/# DB_USERNAME=root/DB_USERNAME=sail/' .env
-          sed -i 's/# DB_PASSWORD=/DB_PASSWORD=password/' .env
-
-      - name: Install PHP dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction
-
-      - name: Install frontend dependencies
-        run: npm ci --no-audit --no-fund
-
-      - name: Build frontend assets
-        run: npm run build
-
-      - name: Check PHP formatting
-        run: |
-          vendor/bin/pint --format agent
-          git diff --exit-code HEAD
-
-      - name: Get runner group ID
-        id: runner
-        run: echo "group=$(id -g)" >> "$GITHUB_OUTPUT"
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Build cached Sail image
-        uses: docker/build-push-action@v7
-        with:
-          context: ./docker/8.4
-          file: ./docker/8.4/Dockerfile
-          load: true
-          tags: sail-8.4/app
-          build-args: |
-            WWWGROUP=${{ steps.runner.outputs.group }}
-          cache-from: type=gha,scope=sail-php84
-          cache-to: type=gha,mode=max,scope=sail-php84
-
-      - name: Start Sail
-        run: vendor/bin/sail up -d --wait --wait-timeout 120 --no-build
-
-      - name: Generate application key
-        run: vendor/bin/sail artisan key:generate
+          php artisan key:generate
 
       - name: Run test suite
-        run: vendor/bin/sail artisan test --compact
-
-      - name: Stop Sail
-        if: always()
-        run: vendor/bin/sail down
+        run: php artisan test --compact
