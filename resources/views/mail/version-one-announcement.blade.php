@@ -17,6 +17,10 @@ The **Schedule Extractor** takes the schedule information you already receive th
 - Download your complete schedule as an `.ics` calendar file
 - Export individual events separately
 
+@unless ($isEmailVerified)
+If you haven’t signed in recently, you may be asked to verify your email address first.
+@endunless
+
 <x-mail::button :url="route('parse.index')">
 Open the Schedule Extractor
 </x-mail::button>

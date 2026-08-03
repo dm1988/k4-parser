@@ -49,7 +49,7 @@ class SendVersionOneAnnouncement extends Command
             return self::FAILURE;
         }
 
-        Mail::to($email)->send(new VersionOneAnnouncement('Dave'));
+        Mail::to($email)->send(new VersionOneAnnouncement('Dave', true));
 
         $this->info("Preview sent to {$email}.");
 
@@ -98,7 +98,10 @@ class SendVersionOneAnnouncement extends Command
         $query->chunkById(100, function ($users) use (&$queued): void {
             foreach ($users as $user) {
                 Mail::to($user)->queue(
-                    new VersionOneAnnouncement((string) $user->name)
+                    new VersionOneAnnouncement(
+                        (string) $user->name,
+                        $user->hasVerifiedEmail(),
+                    )
                 );
                 $queued++;
             }

@@ -13,7 +13,10 @@ class VersionOneAnnouncement extends Mailable implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public string $recipientName) {}
+    public function __construct(
+        public string $recipientName,
+        public bool $isEmailVerified,
+    ) {}
 
     public function envelope(): Envelope
     {

@@ -158,3 +158,7 @@ Once everything is running smoothly on Redis, you can drop or archive the old `s
   * `detected_hotel_count = 0`
   * `page_count = null`, unless PDF page counting is added
 * Add tests covering successful extraction, recognized extraction failure, unexpected exceptions, file cleanup, correct user/hash/size metadata, and confirmation that invalid uploads do not create rows.
+
+## Context engineering
+- Add CONTEXT.md
+- Identify branding
