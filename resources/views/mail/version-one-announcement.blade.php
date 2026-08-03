@@ -1,7 +1,7 @@
 <x-mail::message>
 # K4 Parser Version 1 is live
 
-Hi {{ filled($user->name) ? \Illuminate\Support\Str::before($user->name, ' ') : 'there' }},
+Hi {{ filled($recipientName) ? \Illuminate\Support\Str::before($recipientName, ' ') : 'there' }},
 
 K4 Parser Version 1 is officially live!
 
