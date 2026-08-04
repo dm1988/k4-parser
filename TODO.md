@@ -9,13 +9,55 @@ Follow these rules for every remaining task:
 6. Update TODO.md with outcomes instead of adding another plan or duplicate checklist.
 7. Create a commit message for each task
 
-## API
-- For use with iphone app and Ben Napier's Crew Room app
+## API: trusted-client schedule extraction
 
-* Use certificate
-* Accepts PDFs and multiple images
-* Extracts schedule
-* Returns DL link - auth here?
+### Goal and trust boundary
+
+* Add a versioned API for the iPhone app and Ben Napier's Crew Room service to submit schedules and download the generated calendar file.
+* Keep the API deny-by-default: only explicitly provisioned clients may connect.
+* Treat this as a server-to-server API. The iPhone app must call through an approved backend; a distributed mobile app is not a known host and cannot safely hold a shared client certificate.
+* Do not use CORS or the request `Host` header as client authentication. CORS only constrains browsers, and Laravel trusted-host validation protects the destination host rather than proving who sent a request.
+
+### Client authentication and network controls
+
+* Expose the API only over HTTPS through the production reverse proxy or API gateway; prevent direct public access to the application server.
+* Require mutual TLS (mTLS). Issue a separate client certificate for each approved integration so it can be identified, rotated, and revoked independently.
+* Allowlist each client's fixed egress IP/CIDR at the edge when stable addresses are available; use this as a second control, not as a replacement for mTLS.
+* Configure the proxy to validate the client-certificate chain and revocation status, strip any inbound certificate identity headers, and forward a verified client identity to Laravel only over the trusted internal connection.
+* Add an application middleware that maps the verified identity to an enabled API client and rejects missing, unknown, disabled, expired, or mismatched clients before controller code runs.
+* Store client names, certificate fingerprints/subjects, status, ownership, and last-used timestamps without storing private keys. Keep CA material and certificate secrets in the deployment secret store.
+* Give each client an explicit `schedule:extract` capability and apply a named rate limiter keyed by verified client ID plus source IP.
+* Apply request-size limits at both the proxy and Laravel layers, and structured audit logging without logging uploaded schedule contents, certificates, or credentials.
+
+### API contract
+
+* Register `routes/api.php` in `bootstrap/app.php` and place the contract under `/api/v1`.
+* `POST /api/v1/schedule-extractions` accepts `multipart/form-data` with either one PDF or up to five JPEG, PNG, or WebP images. Reject mixed PDF/image batches and multiple PDFs; validate both extension and actual MIME type with the existing 12 MB per-file limit.
+* Accept optional `event_types[]` filters and an `Idempotency-Key` header so client retries cannot create duplicate work.
+* Persist uploads to a private disk, create an extraction owned by the authenticated API client, dispatch a queued job, and return `202 Accepted` with the extraction UUID, status, and status URL.
+* `GET /api/v1/schedule-extractions/{extraction}` returns only that client's job status (`pending`, `processing`, `completed`, or `failed`). A completed response includes event counts, expiry time, and the calendar download URL; failures expose a stable public error code without internal exception details.
+* `GET /api/v1/schedule-extractions/{extraction}/calendar` returns one full-calendar `.ics` file only when the URL signature is valid, has not expired, the extraction belongs to the authenticated client, and the job completed successfully. Per-event downloads are out of scope for v1.
+* Use a Form Request, thin controllers, and API Resources to produce a stable snake_case JSON envelope instead of exposing internal DTO shapes. Document `401` for failed client authentication, `403` for ownership/disabled-client failures, `404` for unknown resources, `413` for oversized requests, `422` for invalid uploads or unparseable schedules, and `429` for throttling.
+
+### Extraction and storage implementation
+
+* Extract the reusable schedule-extraction workflow from the Livewire/session boundary so the web UI and API call the same validation, parsing, enrichment, logging, and ICS generation services.
+* Remove the API path's dependency on `auth()`, `session()`, and `EngineResultCache`; use explicit API-client ownership and a persistent result repository while preserving the existing web cache isolation.
+* Do not pass `UploadedFile` instances to the queue. Store inputs first and give the job private storage paths plus the API client and extraction identifiers.
+* Extend the extraction record, or add a related API-extraction record, to attribute requests to an API client and track queue status, idempotency key, input paths, result path, expiry, error code, and timestamps. Add indexes for client/idempotency and status/created-at lookups; do not represent service clients as browser users.
+* Generate the `.ics` artifact on a private disk. Use a short-lived signed route, aligned with the result retention period, that still requires client authentication and ownership; do not return a public storage URL.
+* Delete source uploads and generated downloads after the configured retention period, including failed and abandoned jobs, while retaining non-sensitive request metadata for auditing.
+* Make the job idempotent, set an explicit timeout and retry/backoff policy, prevent concurrent processing of the same extraction, and mark terminal failures consistently.
+
+### Verification and rollout
+
+* Add PHPUnit feature tests for valid trusted-proxy identity, missing/spoofed/unknown/revoked client identity, client capability checks, ownership isolation, per-client throttling, route middleware, and JSON content types.
+* Test one PDF, one image, multiple images, mixed/unsupported/oversized files, empty extraction results, parser failures, duplicate idempotency keys, and successful retry behavior.
+* Test the queued state transitions, private storage and cleanup, audit metadata, expiring signed download URL, tampered/expired signatures, cross-client download attempts, and JSON error shapes.
+* Add staging ingress tests for mTLS validation, revoked/expired certificates, spoofed forwarded identity headers, source allowlists, and direct Laravel-origin bypass attempts.
+* Add a deployment runbook for issuing, rotating, and revoking each client certificate; emergency client disablement; configuring trusted proxies and firewall rules; and confirming that the Laravel origin cannot be reached directly.
+* Roll out to a staging hostname first, provision one client at a time, verify logs and rate limits, then enable production access.
+* Run focused API and web-extraction regression tests, then run Pint for changed PHP files before the task is complete.
 
 ## Completed: Flight plan extractor improvements
 1. [x] Use storage/app/private/test_data/CKS025625KLAX.pdf as sample data
