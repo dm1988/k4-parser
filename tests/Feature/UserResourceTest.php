@@ -14,7 +14,7 @@ class UserResourceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admins_can_update_only_safe_user_fields_without_changing_password_or_role(): void
+    public function test_admins_can_update_safe_user_fields_and_active_status_without_changing_password_or_role(): void
     {
         $admin = User::factory()->create();
         $admin->forceFill([
@@ -56,7 +56,49 @@ class UserResourceTest extends TestCase
         $this->assertNotNull($targetUser->email_verified_at);
         $this->assertSame($originalPassword, $targetUser->password);
         $this->assertSame('user', $targetUser->role);
-        $this->assertTrue((bool) $targetUser->is_active);
+        $this->assertFalse((bool) $targetUser->is_active);
+    }
+
+    public function test_admins_can_reactivate_inactive_users_from_the_form(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+        $inactiveUser = User::factory()->inactive()->create();
+
+        Livewire::test(EditUser::class, ['record' => $inactiveUser->getKey()])
+            ->fillForm([
+                'is_active' => true,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertTrue((bool) $inactiveUser->fresh()->is_active);
+    }
+
+    public function test_users_table_displays_active_status(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+        $activeUser = User::factory()->create();
+        $inactiveUser = User::factory()->inactive()->create();
+
+        Livewire::test(ListUsers::class)
+            ->assertTableColumnStateSet('is_active', true, $activeUser)
+            ->assertTableColumnStateSet('is_active', false, $inactiveUser);
+    }
+
+    public function test_admins_can_not_deactivate_themselves_from_the_form(): void
+    {
+        $admin = $this->makeAdminUser();
+        $this->actingAs($admin);
+
+        Livewire::test(EditUser::class, ['record' => $admin->getKey()])
+            ->assertFormFieldDisabled('is_active')
+            ->fillForm([
+                'is_active' => false,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertTrue((bool) $admin->fresh()->is_active);
     }
 
     public function test_admin_promotion_remains_manual_only_from_the_filament_user_resource(): void

@@ -62,36 +62,10 @@ Follow these rules for every remaining task:
 ## Completed: Flight plan extractor improvements
 1. [x] Use storage/app/private/test_data/CKS025625KLAX.pdf as sample data
 2. [x] Extract: PLANNED TO DEPT RUNWAY: 25R   SUMMR2 SCTRR
-           PLANNED TO ARRV RUNWAY: 33R   GUKDO GUKD2E
-    * Display Departure runway and arrival runway grouped (25R, 33R)
-    * Display SID Departure (SUMMR2 SCTRR)
-    * Display STAR Arrival (GUKDO GUKD2E)
-    * Outcome: Extracted values are carried through the flight-plan view model and displayed in a grouped departure/arrival runway section.
-
 3. [x] Extract ETOPs ETPs
-    - Add to FlightPlan Value Object
-
-    * Always extract the ALL ENGINE/DECOMPRESSION/LRC
-    * ETP1  KSFO-PACD  N45 43.7  W143 53.1  ALL ENGINE/DECOMPRESSION/LRC
-    * ETP1 has 2 airports. KSFO-PACD. These should be in a copable text box
-    * The coordinates N45 43.7  W143 53.1 should be in a copable text box
-    * ETP1 / ETP2 text should be copable
-    * ETP2 ETP2  PACD-RJSS  N51 48.6  E164 12.8  ALL ENGINE/DECOMPRESSION/LRC
 4. [x] Consider adding navigation fix value object storing name, type, and coordinates
-    - Outcome: Kept these values on the existing FlightPlan value object because ETPs require airport pairs and scenarios in addition to navigation-fix coordinates.
 5. [x] Extract EENT
-    - Add to FlightPlan Value Object
-
-    * N40 31.1 W131 22.6
-        (EENT) 0238 288 340
-    * Coordinates should be copyable
 6. [x] Extract EEXP
-    - Add to FlightPlan Value Object
-
-    * N45 19.3 E151 36.4
-        (EEXP)
-    * Coordinates should be copyable
-    * Outcome: ALL ENGINE/DECOMPRESSION/LRC ETPs, EENT, and EEXP are extracted from the sample PDF and displayed with the requested copy controls.
 
 ## Dark mode
 
@@ -110,6 +84,19 @@ Follow these rules for every remaining task:
 * Manually verify light, dark, and system modes at mobile and desktop breakpoints, including refresh behavior and live operating-system theme changes.
 * Run the focused PHPUnit tests and `vendor/bin/sail npm run build` to confirm the Blade and Tailwind changes compile successfully.
 
+## Current focus: Filament - User - is active
+
+- [x] Allow admins to modify another user's `is_active` value from the User form and display the status in the table.
+- [x] Prevent the current admin from deactivating themselves and losing panel access.
+- [x] Add focused coverage for deactivation, reactivation, table status display, and self-deactivation protection.
+- [ ] Run the focused User resource test and Pint after the local Docker service is started.
+- Outcome so far: The User form includes an Active toggle, and the users table displays the boolean status without using Filament's policy-bypassing inline toggle column.
+
+## Registered users stat
+- filament widget
+- shows registered users
+
+## Cron email alerts
 ## Flight Plan extract request log to database
 
 * Record the authenticated user, `source_type = pdf`, and `parser_type = flight_plan`.

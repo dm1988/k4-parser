@@ -7,6 +7,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -23,6 +24,10 @@ class UsersTable
                     ->searchable(),
                 TextColumn::make('email_verified_at')
                     ->dateTime()
+                    ->sortable(),
+                IconColumn::make('is_active')
+                    ->label('Active')
+                    ->boolean()
                     ->sortable(),
                 TextColumn::make('created_at')
                     ->dateTime()
