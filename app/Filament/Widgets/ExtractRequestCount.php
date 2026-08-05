@@ -8,9 +8,11 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class ExtractRequestCount extends StatsOverviewWidget
 {
-    protected static ?int $sort = 3;
+    protected static ?int $sort = 4;
 
     protected int|string|array $columnSpan = 1;
+
+    protected int|array|null $columns = 1;
 
     protected function getStats(): array
     {

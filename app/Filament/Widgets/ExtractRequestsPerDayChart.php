@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\DB;
 
 class ExtractRequestsPerDayChart extends ChartWidget
 {
-    protected static ?int $sort = 4;
+    protected static ?int $sort = 5;
 
-    protected int|string|array $columnSpan = 1;
+    protected int|string|array $columnSpan = 'full';
 
     protected ?string $heading = 'Extract Requests Per Day';
 
