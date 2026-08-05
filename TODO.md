@@ -9,13 +9,6 @@ Follow these rules for every remaining task:
 6. Update TODO.md with outcomes instead of adding another plan or duplicate checklist.
 7. Create a commit message for each task
 
-## Completed: Flight plan extractor improvements
-1. [x] Use storage/app/private/test_data/CKS025625KLAX.pdf as sample data
-2. [x] Extract: PLANNED TO DEPT RUNWAY: 25R   SUMMR2 SCTRR
-3. [x] Extract ETOPs ETPs
-4. [x] Consider adding navigation fix value object storing name, type, and coordinates
-5. [x] Extract EENT
-6. [x] Extract EEXP
 
 ## Dark mode
 
@@ -34,23 +27,21 @@ Follow these rules for every remaining task:
 * Manually verify light, dark, and system modes at mobile and desktop breakpoints, including refresh behavior and live operating-system theme changes.
 * Run the focused PHPUnit tests and `vendor/bin/sail npm run build` to confirm the Blade and Tailwind changes compile successfully.
 
-## Complete - Filament - User - is active
-
-- [x] Allow admins to modify another user's `is_active` value from the User form and display the status in the table.
-- [x] Prevent the current admin from deactivating themselves and losing panel access.
-- [x] Add focused coverage for deactivation, reactivation, table status display, and self-deactivation protection.
-- [x] Run the focused User resource test and Pint after the local Docker service is started.
-- Outcome so far: The User form includes an Active toggle, and the users table displays the boolean status without using Filament's policy-bypassing inline toggle column.
-
-## Complete - Verified users stat
-
-- [x] Keep the registered-user total in its existing Filament widget.
-- [x] Add a parallel Filament widget showing users with verified email addresses.
-- [x] Keep both user widgets together in the dashboard sort order.
-- [x] Add focused coverage for mixed users, zero verified users, and dashboard visibility.
-- [x] Tighten the dashboard into a two-by-two stat-card grid with a full-width chart below it.
 
 ## Cron email alerts
+- Low disk space available
+    - Warning: Less than 20%
+    - Critical: Less than 10%
+- High number of user signups
+    - Signups in the last 24 hours
+    - Warning: Review 30 day max and add 500 percent (30-day max * 6)
+- High volume of extract requests
+    - Warning: Review 30 day max and add 500 percent (30-day max * 6)
+- Implement alert throttling 
+    - warning once every 12–24 hours
+    - critical once every 1–2 hours until resolved
+    
+
 ## Flight Plan extract request log to database
 
 * Record the authenticated user, `source_type = pdf`, and `parser_type = flight_plan`.
