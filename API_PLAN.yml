@@ -1,0 +1,322 @@
+openapi: 3.0.3
+info:
+  title: Crew Compass Schedule Extraction API
+  version: 1.0.0
+  description: |
+    Server-to-server API for submitting roster images/PDFs and downloading
+    standard iCalendar (.ics) files.
+
+    ### Security Requirements
+    - **mTLS Required**: Requests must be made using an approved client certificate.
+    - **Trusted Backend Only**: Calls must originate from authorized server infrastructure (no direct mobile calls).
+paths:
+  /api/v1/schedule-extractions:
+    post:
+      summary: Submit schedule files for extraction
+      operationId: createScheduleExtraction
+      headers:
+        Idempotency-Key:
+          schema:
+            type: string
+            format: uuid
+          required: false
+          description: Unique UUID per attempt to prevent duplicate processing on retries.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - files
+              properties:
+                files:
+                  type: array
+                  description: Either 1 PDF document OR up to 5 JPEG/PNG/WebP images. Max 12MB per file.
+                  items:
+                    type: string
+                    format: binary
+                event_types:
+                  type: array
+                  description: Optional filter to restrict extracted event types.
+                  items:
+                    type: string
+                    enum: [flight, duty, layover, simulator, reserve]
+      responses:
+        '202':
+          description: Extraction job accepted and queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtractionAcceptedResponse'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '401':
+          $ref: '#/components/responses/401Unauthorized'
+        '413':
+          $ref: '#/components/responses/413PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/422Unprocessable'
+        '429':
+          $ref: '#/components/responses/429TooManyRequests'
+
+  /api/v1/schedule-extractions/{id}:
+    get:
+      summary: Get extraction job status
+      operationId: getScheduleExtractionStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Job status details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtractionStatusResponse'
+        '401':
+          $ref: '#/components/responses/401Unauthorized'
+        '403':
+          $ref: '#/components/responses/403Forbidden'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+
+  /api/v1/schedule-extractions/{id}/calendar:
+    get:
+      summary: Download generated iCalendar (.ics) file
+      operationId: downloadCalendar
+      description: |
+        Requires a valid URL signature parameters (`signature` and `expires`)
+        generated upon job completion. Must still be requested with mTLS headers.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: expires
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: signature
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The generated iCalendar file stream.
+          headers:
+            Content-Type:
+              schema:
+                type: string
+                example: text/calendar; charset=utf-8
+            Content-Disposition:
+              schema:
+                type: string
+                example: attachment; filename="schedule-extraction-12345.ics"
+          content:
+            text/calendar:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/401Unauthorized'
+        '403':
+          $ref: '#/components/responses/403Forbidden'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+
+components:
+  schemas:
+    ExtractionAcceptedResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - id
+            - status
+            - status_url
+            - created_at
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+            status:
+              type: string
+              enum: [pending, processing]
+              example: "pending"
+            status_url:
+              type: string
+              format: uri
+              example: "https://crewcompass.cc/api/v1/schedule-extractions/9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+            created_at:
+              type: string
+              format: date-time
+              example: "2026-08-05T18:30:00Z"
+
+    ExtractionStatusResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - id
+            - status
+            - created_at
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+            status:
+              type: string
+              enum: [pending, processing, completed, failed]
+              example: "completed"
+            metrics:
+              type: object
+              nullable: true
+              properties:
+                events_extracted:
+                  type: integer
+                  example: 14
+                flight_hours:
+                  type: number
+                  format: float
+                  example: 32.5
+            download_url:
+              type: string
+              format: uri
+              nullable: true
+              description: Provided only when status is 'completed'.
+              example: "https://crewcompass.cc/api/v1/schedule-extractions/9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d/calendar?expires=1785960000&signature=a8b7c6..."
+            expires_at:
+              type: string
+              format: date-time
+              nullable: true
+              description: Timestamp when the download URL and artifact will be purged.
+              example: "2026-08-06T18:30:00Z"
+            error:
+              type: object
+              nullable: true
+              description: Provided only when status is 'failed'.
+              properties:
+                code:
+                  type: string
+                  example: "UNPARSEABLE_SCHEDULE_FORMAT"
+                message:
+                  type: string
+                  example: "Unable to detect recognizable roster dates or flight numbers."
+
+    ApiErrorEnvelope:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              example: "INVALID_INPUT"
+            message:
+              type: string
+              example: "The provided files could not be processed."
+            details:
+              type: object
+              nullable: true
+
+  responses:
+    400BadRequest:
+      description: Bad request / Invalid file combination
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorEnvelope'
+          example:
+            error:
+              code: "MIXED_FILE_TYPES_REJECTED"
+              message: "Cannot mix PDF documents with image files in the same batch."
+
+    401Unauthorized:
+      description: Missing or invalid mTLS certificate / Client identity
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorEnvelope'
+          example:
+            error:
+              code: "CLIENT_AUTHENTICATION_FAILED"
+              message: "Valid client certificate required."
+
+    403Forbidden:
+      description: Disabled client or unauthorized access to resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorEnvelope'
+          example:
+            error:
+              code: "ACCESS_DENIED"
+              message: "Client does not own this extraction resource."
+
+    404NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorEnvelope'
+          example:
+            error:
+              code: "RESOURCE_NOT_FOUND"
+              message: "The requested extraction UUID does not exist."
+
+    413PayloadTooLarge:
+      description: Upload exceeds size limit
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorEnvelope'
+          example:
+            error:
+              code: "FILE_TOO_LARGE"
+              message: "File exceeds the maximum limit of 12MB."
+
+    422Unprocessable:
+      description: Validation failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorEnvelope'
+          example:
+            error:
+              code: "VALIDATION_FAILED"
+              message: "The given data was invalid."
+              details:
+                files: ["Maximum of 5 images allowed."]
+
+    429TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorEnvelope'
+          example:
+            error:
+              code: "RATE_LIMIT_EXCEEDED"
+              message: "Too many requests. Retry after 60 seconds."
