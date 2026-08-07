@@ -113,6 +113,7 @@ class ExtractRequestsTable
                         'roster' => 'Roster',
                         'trip_information' => 'Trip Information',
                         'published_roster' => 'Published Roster',
+                        'flight_plan' => 'Flight Plan',
                     ]),
                 SelectFilter::make('user')
                     ->relationship('user', 'email')

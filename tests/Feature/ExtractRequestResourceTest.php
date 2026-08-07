@@ -38,7 +38,7 @@ class ExtractRequestResourceTest extends TestCase
             'user_id' => User::factory()->create()->getKey(),
             'request_uuid' => '22222222-2222-2222-2222-222222222222',
             'source_type' => 'pdf',
-            'parser_type' => 'published_roster',
+            'parser_type' => 'flight_plan',
             'status' => 'failed',
             'error_code' => 'RuntimeException',
             'extraction_duration_ms' => 320,
@@ -74,7 +74,7 @@ class ExtractRequestResourceTest extends TestCase
             'user_id' => $user->getKey(),
             'status' => 'failed',
             'source_type' => 'pdf',
-            'parser_type' => 'published_roster',
+            'parser_type' => 'flight_plan',
             'error_code' => 'RuntimeException',
         ]);
         $otherRequest = $this->createExtractRequest();
@@ -82,7 +82,7 @@ class ExtractRequestResourceTest extends TestCase
         Livewire::test(ListExtractRequests::class)
             ->filterTable('status', 'failed')
             ->filterTable('source_type', 'pdf')
-            ->filterTable('parser_type', 'published_roster')
+            ->filterTable('parser_type', 'flight_plan')
             ->filterTable('user', $user)
             ->filterTable('error_code', true)
             ->assertCanSeeTableRecords([$matchingRequest])

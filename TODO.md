@@ -1,16 +1,37 @@
 # Codex Usage Rules
 
 Follow these rules for every remaining task:
-1. Work on one task at a time marked by ##.
-2. Run only focused tests while implementing a task.
-3. Run Pint after PHP files change.
-4. Larastan once at the final integration checkpoint, not after every small edit.
-5. Preserve unrelated working-tree changes.
-6. Update TODO.md with outcomes instead of adding another plan or duplicate checklist.
-7. Create a commit message for each task
+1. Do not start work unless sail is available
+2. Work on one task at a time marked by ##.
+3. Run only focused tests while implementing a task.
+4. Run Pint after PHP files change.
+5. Larastan once at the final integration checkpoint, not after every small edit.
+6. Preserve unrelated working-tree changes.
+7. Update TODO.md with outcomes instead of adding another plan or duplicate checklist.
+8. Create a commit message for each ## task
 
+## 1. Completed: Flight Plan extract request log to database
 
-## Dark mode
+Outcome: Flight Plan PDF extraction now records the authenticated user and full request lifecycle through the generalized `ExtractRequestLogger`. Successful requests store the explicit `1/1/0` event counts, recognized and unexpected failures store their exception type, invalid uploads create no row, temporary files are always removed, and the existing redirect, validation, and logging behavior is preserved. The Filament parser filter now includes `Flight Plan`.
+
+Focused verification: 24 tests passed with 195 assertions across the Flight Plan controller, Extract Requests resource, and shared schedule extraction lifecycle suites. Pint completed successfully.
+
+Commit message: `Log Flight Plan extract request lifecycle`
+
+## 2. Cron email alerts
+- Low disk space available
+    - Warning: Less than 20%
+    - Critical: Less than 10%
+- High number of user signups
+    - Signups in the last 24 hours
+    - Warning: Review 30 day max and add 500 percent (30-day max * 6)
+- High volume of extract requests
+    - Warning: Review 30 day max and add 500 percent (30-day max * 6)
+- Implement alert throttling 
+    - warning once every 12–24 hours
+    - critical once every 1–2 hours until resolved
+
+## 3. Dark mode
 
 * Configure Tailwind CSS v3 with `darkMode: 'class'`.
 * Define a three-state theme preference: `light`, `dark`, or `system`.
@@ -27,43 +48,11 @@ Follow these rules for every remaining task:
 * Manually verify light, dark, and system modes at mobile and desktop breakpoints, including refresh behavior and live operating-system theme changes.
 * Run the focused PHPUnit tests and `vendor/bin/sail npm run build` to confirm the Blade and Tailwind changes compile successfully.
 
-
-## Cron email alerts
-- Low disk space available
-    - Warning: Less than 20%
-    - Critical: Less than 10%
-- High number of user signups
-    - Signups in the last 24 hours
-    - Warning: Review 30 day max and add 500 percent (30-day max * 6)
-- High volume of extract requests
-    - Warning: Review 30 day max and add 500 percent (30-day max * 6)
-- Implement alert throttling 
-    - warning once every 12–24 hours
-    - critical once every 1–2 hours until resolved
-    
-
-## Flight Plan extract request log to database
-
-* Record the authenticated user, `source_type = pdf`, and `parser_type = flight_plan`.
-* Create the row immediately before extraction with `status = partial`.
-* Reuse the existing request logger to capture the UUID, file hash, file size, duration, and application/extractor versions.
-* Mark the request `success` after extraction.
-* Mark the request `failed` with `FlightRouteNotFoundException` or another exception type when extraction fails.
-* Keep the current redirect, validation message, temporary-file deletion, and application logging behavior unchanged.
-* Add `Flight Plan` to the parser filter in the Filament Extract Requests table.
-* Generalize the schedule-specific logger into an `ExtractRequestLogger` with a completion method that accepts explicit counts.
-* For a successful flight-plan extraction, record:
-  * `detected_event_count = 1`
-  * `detected_flight_count = 1`
-  * `detected_hotel_count = 0`
-  * `page_count = null`, unless PDF page counting is added
-* Add tests covering successful extraction, recognized extraction failure, unexpected exceptions, file cleanup, correct user/hash/size metadata, and confirmation that invalid uploads do not create rows.
-
-## Context engineering
+## 4. Context engineering
 - Add CONTEXT.md
 - Identify branding
 
-## Identify places to incorporate Crew Compass
+## 5. Identify places to incorporate Crew Compass
 
 Audit outcome:
 
@@ -78,3 +67,8 @@ Simple plan:
 2. Extend schedule enrichment to include unique layover station codes and attach the city summary to layover metadata, reusing the existing cached airport-resolution flow and avoiding requests from Blade views.
 3. Expose typed city-summary data through the event and flight-card view models, then render a reusable Crew Compass city-summary component on layover cards and airport popovers.
 4. Add focused provider, enrichment, view-model, and Blade component tests for available, unavailable, zero-place, duplicate-city, and provider-failure cases.
+
+# 6. Github actions Pint concurrency
+
+# Filament Extract Requests table filter - Source type missing 'image'
+- Review must show columns on extract requests table, toggleable check

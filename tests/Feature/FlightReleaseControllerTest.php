@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\DTOs\AirportData;
 use App\Exceptions\FlightRouteNotFoundException;
+use App\Models\ExtractRequest;
 use App\Models\User;
 use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Mockery\MockInterface;
+use RuntimeException;
 use Tests\TestCase;
 
 class FlightReleaseControllerTest extends TestCase
@@ -110,6 +112,58 @@ class FlightReleaseControllerTest extends TestCase
             ], escape: false)
             ->assertSee('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105', escape: false)
             ->assertSee(' UMKAL UMKAL6A', escape: false);
+    }
+
+    public function test_successful_extraction_records_request_metadata_and_explicit_counts(): void
+    {
+        Storage::fake('user_flight_releases');
+        Config::set('app.version', '1.2.3');
+        Config::set('app.extractor_version', '2026.08');
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $file = UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf');
+        $expectedHash = hash('sha256', (string) hash_file('sha256', $file->getRealPath()));
+
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock) use ($admin, $expectedHash, $file): void {
+            $mock->shouldReceive('extractFlightPlanData')
+                ->once()
+                ->andReturnUsing(function () use ($admin, $expectedHash, $file): array {
+                    $extractRequest = ExtractRequest::query()->sole();
+
+                    $this->assertSame($admin->getKey(), $extractRequest->user_id);
+                    $this->assertSame('pdf', $extractRequest->source_type);
+                    $this->assertSame('flight_plan', $extractRequest->parser_type);
+                    $this->assertSame('partial', $extractRequest->status);
+                    $this->assertSame($expectedHash, $extractRequest->file_hash);
+                    $this->assertSame($file->getSize(), $extractRequest->file_size_bytes);
+
+                    return [
+                        'route' => 'DCT TEST',
+                    ];
+                });
+            $mock->shouldReceive('formatForIcaoDisplay')
+                ->once()
+                ->with('DCT TEST')
+                ->andReturn('DCT TEST');
+        });
+
+        $this->actingAs($admin)
+            ->post(route('flight-release.store'), ['flight_release' => $file])
+            ->assertRedirect(route('flight-release.index'));
+
+        $extractRequest = ExtractRequest::query()->sole();
+
+        $this->assertSame('success', $extractRequest->status);
+        $this->assertNull($extractRequest->error_code);
+        $this->assertSame(1, $extractRequest->detected_event_count);
+        $this->assertSame(1, $extractRequest->detected_flight_count);
+        $this->assertSame(0, $extractRequest->detected_hotel_count);
+        $this->assertNull($extractRequest->page_count);
+        $this->assertSame('1.2.3', $extractRequest->app_version);
+        $this->assertSame('2026.08', $extractRequest->extractor_version);
+        $this->assertNotEmpty($extractRequest->request_uuid);
+        $this->assertGreaterThanOrEqual(0, $extractRequest->extraction_duration_ms);
+        $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
     }
 
     public function test_uploaded_pdf_route_page_handles_missing_airport_details(): void
@@ -300,6 +354,7 @@ class FlightReleaseControllerTest extends TestCase
         $response->assertSessionHasErrors([
             'flight_release' => 'Only PDF flight release uploads are supported.',
         ]);
+        $this->assertSame(0, ExtractRequest::query()->count());
     }
 
     public function test_route_not_found_error_is_returned_when_extractor_cannot_match_route(): void
@@ -330,7 +385,38 @@ class FlightReleaseControllerTest extends TestCase
         ]);
 
         $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
+        $extractRequest = ExtractRequest::query()->sole();
+        $this->assertSame('failed', $extractRequest->status);
+        $this->assertSame(class_basename(FlightRouteNotFoundException::class), $extractRequest->error_code);
         Log::shouldHaveReceived('warning')->once();
+    }
+
+    public function test_unexpected_extraction_exception_is_recorded_rethrown_and_cleans_up_the_file(): void
+    {
+        Storage::fake('user_flight_releases');
+
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('extractFlightPlanData')
+                ->once()
+                ->andThrow(new RuntimeException('Unexpected extractor failure'));
+        });
+
+        try {
+            $this->withoutExceptionHandling()
+                ->actingAs(User::factory()->create(['role' => 'admin']))
+                ->post(route('flight-release.store'), [
+                    'flight_release' => UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'),
+                ]);
+
+            $this->fail('Expected the extractor exception to be rethrown.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Unexpected extractor failure', $exception->getMessage());
+        }
+
+        $extractRequest = ExtractRequest::query()->sole();
+        $this->assertSame('failed', $extractRequest->status);
+        $this->assertSame(RuntimeException::class, $extractRequest->error_code);
+        $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
     }
 
     public function test_flight_release_returns_not_found_when_the_feature_is_disabled(): void
