@@ -7,6 +7,8 @@
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
+        <x-theme-initializer />
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
@@ -14,15 +16,17 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans text-gray-900 antialiased">
-        <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100">
+    <body class="font-sans text-gray-900 antialiased dark:text-gray-100">
+        <div class="relative flex min-h-screen flex-col items-center bg-gray-100 pt-16 transition-colors dark:bg-gray-950 sm:justify-center sm:pt-0">
+            <x-theme-selector id="guest-theme-selector" class="absolute end-4 top-4 sm:end-6 sm:top-6" />
+
             <div>
                 <a href="/">
-                    <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
+                    <x-application-logo class="h-20 w-20 fill-current text-gray-500 dark:text-gray-400" />
                 </a>
             </div>
 
-            <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg">
+            <div class="mt-6 w-full overflow-hidden bg-white px-6 py-4 shadow-md dark:bg-gray-900 dark:shadow-black/30 sm:max-w-md sm:rounded-lg">
                 {{ $slot }}
             </div>
         </div>

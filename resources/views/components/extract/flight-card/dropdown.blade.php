@@ -12,7 +12,7 @@
     ]) }}
 >
     <summary
-        class="inline-flex h-10 cursor-pointer list-none items-center gap-2 rounded-xl border border-[#D8E0EC] bg-white px-3 text-[#1F3C6D] shadow-sm transition hover:bg-[#F8FAFD] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1B365D]/20 [&::-webkit-details-marker]:hidden"
+        class="inline-flex h-10 cursor-pointer list-none items-center gap-2 rounded-xl border border-[#D8E0EC] bg-white px-3 text-[#1F3C6D] shadow-sm transition hover:bg-[#F8FAFD] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1B365D]/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:focus-visible:ring-[#C5A059]/40 [&::-webkit-details-marker]:hidden"
     >
         @if($icon)
             <x-dynamic-component
@@ -34,7 +34,7 @@
 
     <div
         @class([
-            'absolute z-30 mt-2 w-72 rounded-2xl border border-[#E1E7F0] bg-white p-4 shadow-xl',
+            'absolute z-30 mt-2 w-72 rounded-2xl border border-[#E1E7F0] bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-900',
             'left-0' => $position === 'left',
             'right-0' => $position === 'right',
         ])

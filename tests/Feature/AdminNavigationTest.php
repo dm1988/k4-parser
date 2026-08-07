@@ -79,6 +79,7 @@ class AdminNavigationTest extends TestCase
         $response->assertOk()
             ->assertSee('https://buymeacoffee.com/crewcompass', escape: false)
             ->assertSee('rel="noopener noreferrer"', escape: false)
+            ->assertSee('dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300', escape: false)
             ->assertSee('action="'.route('logout').'"', escape: false)
             ->assertDontSee('cdnjs.buymeacoffee.com', escape: false)
             ->assertDontSee('onclick=', escape: false);

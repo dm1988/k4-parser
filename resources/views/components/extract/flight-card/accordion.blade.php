@@ -3,13 +3,13 @@
     'subtitle' => null,
     'open' => false,
     'icon' => null,
-    'iconClass' => 'h-4 w-4 text-[#1B365D]',
+    'iconClass' => 'h-4 w-4 text-[#1B365D] dark:text-slate-300',
 ])
 <span class="w-full space-y-2">
 <details
     @if($open) open @endif
     {{ $attributes->merge([
-        'class' => 'group rounded-lg border border-[#1B365D]/10 bg-[#F8F9FA] shadow-sm'
+        'class' => 'group rounded-lg border border-[#1B365D]/10 bg-[#F8F9FA] shadow-sm dark:border-slate-700 dark:bg-slate-800'
     ]) }}
 >
     <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 [&::-webkit-details-marker]:hidden">
@@ -24,24 +24,24 @@
             @endif
 
             <div class="min-w-0 leading-none">
-                <p class="text-sm font-semibold text-[#1B365D]">
+                <p class="text-sm font-semibold text-[#1B365D] dark:text-slate-100">
                     {{ $title }}
                 </p>
 
                 @if($subtitle)
-                    <p class="mt-0.5 text-[11px] text-[#4A5568]">
+                    <p class="mt-0.5 text-[11px] text-[#4A5568] dark:text-slate-400">
                         {{ $subtitle }}
                     </p>
                 @endif
             </div>
         </div>
 
-        <div class="shrink-0 text-[#4A5568] transition group-open:rotate-180">
+        <div class="shrink-0 text-[#4A5568] transition group-open:rotate-180 dark:text-slate-400">
             <x-heroicon-o-chevron-down class="h-4 w-4" />
         </div>
     </summary>
 
-    <div class="border-t border-[#1B365D]/10 px-3 py-3">
+    <div class="border-t border-[#1B365D]/10 px-3 py-3 dark:border-slate-700">
         {{ $slot }}
     </div>
 </details>

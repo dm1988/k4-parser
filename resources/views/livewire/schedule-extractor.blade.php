@@ -1,7 +1,7 @@
 <div class="mx-auto max-w-6xl">
     @if (! $available)
         <section class="mx-auto max-w-4xl">
-            <section class="rounded-lg border border-amber-200 bg-amber-50 p-5 text-amber-900">
+            <section class="rounded-lg border border-amber-200 bg-amber-50 p-5 text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
                 <p class="text-sm font-semibold uppercase tracking-[0.16em]">Feature unavailable</p>
                 <h2 class="mt-2 text-2xl font-bold">Schedule extractor access is currently unavailable.</h2>
                 <p class="mt-3 text-sm leading-6">This feature is disabled or restricted for your account.</p>
@@ -13,8 +13,8 @@
                 <span class="block text-xs font-bold uppercase tracking-widest text-[#C5A059]">
                     Jeppesen Crew Access
                 </span>
-                <h1 class="mt-2 text-4xl font-bold tracking-tight text-[#1B365D] md:text-5xl">Schedule Extractor</h1>
-                <p class="mt-4 max-w-2xl text-base leading-relaxed text-[#4A5568]">
+                <h1 class="mt-2 text-4xl font-bold tracking-tight text-[#1B365D] dark:text-slate-100 md:text-5xl">Schedule Extractor</h1>
+                <p class="mt-4 max-w-2xl text-base leading-relaxed text-[#4A5568] dark:text-slate-400">
                     Upload a roster screenshot or trip PDF to instantly convert your schedule into calendar-ready events.
                 </p>
             </header>
@@ -28,7 +28,7 @@
                     type="button"
                     wire:click="extractAnotherRoster"
                     wire:loading.attr="disabled"
-                    class="inline-flex items-center justify-center rounded-md bg-[#1B365D] px-4 py-2 text-sm font-semibold text-[#F8F9FA] transition hover:bg-[#142a49] disabled:cursor-not-allowed disabled:opacity-60"
+                    class="inline-flex items-center justify-center rounded-md bg-[#1B365D] px-4 py-2 text-sm font-semibold text-[#F8F9FA] transition hover:bg-[#142a49] disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#C5A059] dark:text-[#0B0E14] dark:hover:bg-[#d3b271]"
                 >
                     Extract another roster
                 </button>

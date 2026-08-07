@@ -32,6 +32,7 @@ class FlightReleaseControllerTest extends TestCase
         $response->assertOk();
         $response->assertSeeText('Flight Plan Extractor');
         $response->assertSeeText('Extract Flight Plan');
+        $response->assertSee('dark:border-slate-600 dark:bg-[#1B365D]', escape: false);
     }
 
     public function test_non_admin_users_can_not_view_the_flight_release_extractor_page(): void

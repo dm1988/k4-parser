@@ -12,40 +12,21 @@ Follow these rules for every remaining task:
 
 ## 1. Completed: Flight Plan extract request log to database
 
-Outcome: Flight Plan PDF extraction now records the authenticated user and full request lifecycle through the generalized `ExtractRequestLogger`. Successful requests store the explicit `1/1/0` event counts, recognized and unexpected failures store their exception type, invalid uploads create no row, temporary files are always removed, and the existing redirect, validation, and logging behavior is preserved. The Filament parser filter now includes `Flight Plan`.
-
-Focused verification: 24 tests passed with 195 assertions across the Flight Plan controller, Extract Requests resource, and shared schedule extraction lifecycle suites. Pint completed successfully.
-
-Commit message: `Log Flight Plan extract request lifecycle`
-
 ## 2. Completed: System alert email notifications
 
-Outcome: The hourly `system:check-alerts` command now sends queued, on-demand email notifications for disk warnings below 20%, disk critical alerts below 10%, and six-times historical spikes in user signups or extract requests. Volume checks compare the current 24 hours with the preceding 30-day baseline, alerts use atomic 12-hour warning and 1-hour critical throttles, resolved conditions reset their throttle, and notification failures release the throttle for retry. The schedule prevents overlap and runs on one server.
+## 3. In progress: Dark Mode Implementation
 
-Configuration: Set `MAIL_ADMIN_ADDRESS` in the deployment environment. The value is exposed through `config('mail.admin_address')`, validated before checks run, and documented in `.env.example`.
+- Enabled Tailwind class-based dark mode with persisted `light`, `dark`, and `system` preferences.
+- Added a synchronous, reusable head initializer to prevent theme flashing and a dedicated JavaScript module for selector synchronization and live operating-system theme changes.
+- Added accessible native theme selectors to the guest layout and authenticated desktop/mobile navigation.
+- Added dark variants to shared Blade controls, layouts, auth/profile screens, schedule extraction views, flight cards, and flight-plan extraction views.
+- Updated the Welcome and Privacy Policy pages to conform to the persisted light, dark, and system preference.
+- Refined dark-mode contrast for the schedule upload surface, disabled extract action, navigation coffee link, and flight-plan header.
+- Verified that Filament v5 dark mode is enabled and uses the same `localStorage.theme` values, so preferences persist between the application and admin panel.
+- Added focused PHPUnit coverage for guest, authenticated, marketing/legal layouts, and Filament configuration.
+- Verified the affected view/controller tests and a production Vite build. Manual cross-browser visual QA remains a release-checkpoint task.
 
-Database: Added standalone `created_at` indexes for the hourly user and extract-request range queries.
-
-Focused verification: 9 tests passed with 35 assertions covering severity thresholds, throttling, escalation, recovery, historical volume baselines, recipient configuration, queued mail content, and schedule registration. Pint completed successfully.
-
-Commit message: `Add throttled system health email alerts`
-
-## 3. Dark mode
-
-* Configure Tailwind CSS v3 with `darkMode: 'class'`.
-* Define a three-state theme preference: `light`, `dark`, or `system`.
-* Add an inline `<head>` initialization script to apply the saved preference before the page renders and prevent a flash of the wrong theme.
-* Persist the preference in `localStorage`; when `system` is selected, respond to changes from `prefers-color-scheme`.
-* Add an accessible theme control to the desktop and mobile navigation with clear labels, keyboard support, and the current state exposed to assistive technology.
-* Apply the theme initialization and controls consistently to the authenticated and guest layouts.
-* Add semantic light/dark styles to the shared component classes in `resources/css/app.css`, including cards, headers, buttons, badges, and file inputs.
-* Add `dark:` variants throughout shared Blade components before updating individual pages, covering backgrounds, text, borders, shadows, form controls, validation states, dropdowns, modals, and focus rings.
-* Update the dashboard, schedule extractor, flight-plan extractor, profile, and authentication pages to use the shared dark-mode patterns.
-* Decide whether the already-dark welcome and privacy-policy pages should remain fixed-dark or honor the saved theme, then make their behavior consistent with that decision.
-* Verify Filament's admin-panel theme setting separately so it follows the same default and does not conflict with the application preference.
-* Add tests that assert the theme initializer and accessible control are rendered in both layouts.
-* Manually verify light, dark, and system modes at mobile and desktop breakpoints, including refresh behavior and live operating-system theme changes.
-* Run the focused PHPUnit tests and `vendor/bin/sail npm run build` to confirm the Blade and Tailwind changes compile successfully.
+Commit message: `feat: add persistent light dark and system themes`
 
 ## 4. Context engineering
 - Add CONTEXT.md

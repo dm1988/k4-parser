@@ -14,8 +14,8 @@
 ])>
     <div class="flex items-start justify-between gap-3">
         <div class="min-w-0 flex-1">
-            <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568]">{{ $label }}</p>
-            <p id="{{ $copyTarget }}" class="mt-1 font-mono text-base font-semibold text-[#0B0E14] sm:text-lg">{{ $code }}</p>
+            <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568] dark:text-slate-400">{{ $label }}</p>
+            <p id="{{ $copyTarget }}" class="mt-1 font-mono text-base font-semibold text-[#0B0E14] dark:text-slate-100 sm:text-lg">{{ $code }}</p>
         </div>
 
         @if ($copyable)
@@ -32,6 +32,6 @@
         id="{{ $copyStatus }}"
         role="status"
         aria-live="polite"
-        class="mt-2 min-h-4 text-[11px] text-[#4A5568] transition-opacity duration-[3000ms]"
+        class="mt-2 min-h-4 text-[11px] text-[#4A5568] transition-opacity duration-[3000ms] dark:text-slate-400"
     ></p>
 </div>
