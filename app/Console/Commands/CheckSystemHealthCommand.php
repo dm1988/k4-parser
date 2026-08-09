@@ -18,13 +18,13 @@ use Throwable;
 #[Description('Evaluate system metrics and send throttled email alerts')]
 class CheckSystemHealthCommand extends Command
 {
-    private const int CriticalThrottleHours = 1;
+    private const int CRITICAL_THROTTLE_HOURS = 1;
 
-    private const int HistoricalDays = 30;
+    private const int HISTORICAL_DAYS = 30;
 
-    private const int SpikeMultiplier = 6;
+    private const int SPIKE_MULTIPLIER = 6;
 
-    private const int WarningThrottleHours = 12;
+    private const int WARNING_THROTTLE_HOURS = 12;
 
     public function __construct(private readonly DiskSpaceMonitor $diskSpaceMonitor)
     {
@@ -62,7 +62,7 @@ class CheckSystemHealthCommand extends Command
             $this->resolveAlert('disk_space_warning');
             $this->sendThrottledAlert(
                 key: 'disk_space_critical',
-                ttlHours: self::CriticalThrottleHours,
+                ttlHours: self::CRITICAL_THROTTLE_HOURS,
                 type: 'Disk Space',
                 level: 'critical',
                 message: 'Disk space is critically low: '.number_format($freePercentage, 2).'% remaining.',
@@ -75,7 +75,7 @@ class CheckSystemHealthCommand extends Command
             $this->resolveAlert('disk_space_critical');
             $this->sendThrottledAlert(
                 key: 'disk_space_warning',
-                ttlHours: self::WarningThrottleHours,
+                ttlHours: self::WARNING_THROTTLE_HOURS,
                 type: 'Disk Space',
                 level: 'warning',
                 message: 'Disk space is low: '.number_format($freePercentage, 2).'% remaining.',
@@ -141,7 +141,7 @@ class CheckSystemHealthCommand extends Command
             ->where('created_at', '>=', now()->subHours(24))
             ->count();
         $historicalMaximum = $this->historicalDailyMaximum($query);
-        $threshold = $historicalMaximum * self::SpikeMultiplier;
+        $threshold = $historicalMaximum * self::SPIKE_MULTIPLIER;
 
         if ($historicalMaximum === 0 || $currentCount <= $threshold) {
             $this->resolveAlert($key);
@@ -151,7 +151,7 @@ class CheckSystemHealthCommand extends Command
 
         $this->sendThrottledAlert(
             key: $key,
-            ttlHours: self::WarningThrottleHours,
+            ttlHours: self::WARNING_THROTTLE_HOURS,
             type: $type,
             level: 'warning',
             message: "{$message}: {$currentCount} (threshold: {$threshold}).",
@@ -161,7 +161,7 @@ class CheckSystemHealthCommand extends Command
     private function historicalDailyMaximum(Builder $query): int
     {
         return (int) ((clone $query)
-            ->where('created_at', '>=', now()->subDays(self::HistoricalDays + 1))
+            ->where('created_at', '>=', now()->subDays(self::HISTORICAL_DAYS + 1))
             ->where('created_at', '<', now()->subHours(24))
             ->selectRaw('DATE(created_at) as date, COUNT(*) as aggregate')
             ->groupBy('date')
