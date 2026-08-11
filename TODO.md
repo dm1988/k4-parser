@@ -12,12 +12,6 @@ Follow these rules for every remaining task:
 
 ## 1. Completed: Flight Plan extract request log to database
 
-Outcome: Flight Plan PDF extraction now records the authenticated user and full request lifecycle through the generalized `ExtractRequestLogger`. Successful requests store the explicit `1/1/0` event counts, recognized and unexpected failures store their exception type, invalid uploads create no row, temporary files are always removed, and the existing redirect, validation, and logging behavior is preserved. The Filament parser filter now includes `Flight Plan`.
-
-Focused verification: 24 tests passed with 195 assertions across the Flight Plan controller, Extract Requests resource, and shared schedule extraction lifecycle suites. Pint completed successfully.
-
-Commit message: `Log Flight Plan extract request lifecycle`
-
 ## 2. Completed: System alert email notifications
 
 Outcome: The hourly `system:check-alerts` command now sends queued, on-demand email notifications for disk warnings below 20%, disk critical alerts below 10%, and six-times historical spikes in user signups or extract requests. Volume checks compare the current 24 hours with the preceding 30-day baseline, alerts use atomic 12-hour warning and 1-hour critical throttles, resolved conditions reset their throttle, and notification failures release the throttle for retry. The schedule prevents overlap and runs on one server.
@@ -52,6 +46,8 @@ Commit message: `Add throttled system health email alerts`
 - Identify branding
 
 ## 5. Identify places to incorporate Crew Compass
+
+Reference figma make plan
 
 Audit outcome:
 
