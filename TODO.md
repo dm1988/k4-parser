@@ -49,12 +49,17 @@ Simple plan:
 3. Expose typed city-summary data through the event and flight-card view models, then render a reusable Crew Compass city-summary component on layover cards and airport popovers.
 4. Add focused provider, enrichment, view-model, and Blade component tests for available, unavailable, zero-place, duplicate-city, and provider-failure cases.
 
-# 4. Filament Extract Requests table filter - Source type missing 'image'
-- Review must show columns on extract requests table, toggleable check
-
 ------------------------------------------------
 
 # Completed
+
+## Completed: Filament Extract Requests table source filter and columns
+
+Outcome: The Source filter now includes image-based extraction requests. Request, Status, Source, Parser, and Created remain always visible; User, Duration, Events, Flights, Hotels, and Error are toggleable and visible by default; Pages, File Size, File Hash, App Version, and Extractor Version remain toggleable and hidden by default.
+
+Focused verification: 8 Extract Requests resource tests passed with 59 assertions covering the Image filter option and behavior, required columns, visible optional columns, and hidden forensic columns. Pint completed successfully.
+
+Commit message: `Add image filtering and toggleable extract request metrics`
 
 ## Completed: GitHub Actions Pint concurrency
 

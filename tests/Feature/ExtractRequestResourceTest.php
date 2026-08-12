@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Filament\Resources\ExtractRequests\Pages\ListExtractRequests;
 use App\Models\ExtractRequest;
 use App\Models\User;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -87,6 +89,60 @@ class ExtractRequestResourceTest extends TestCase
             ->filterTable('error_code', true)
             ->assertCanSeeTableRecords([$matchingRequest])
             ->assertCanNotSeeTableRecords([$otherRequest]);
+    }
+
+    public function test_source_filter_includes_and_filters_image_requests(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+        $imageRequest = $this->createExtractRequest([
+            'source_type' => 'image',
+            'parser_type' => 'screenshot',
+        ]);
+        $pdfRequest = $this->createExtractRequest([
+            'source_type' => 'pdf',
+        ]);
+
+        Livewire::test(ListExtractRequests::class)
+            ->assertTableFilterExists(
+                'source_type',
+                fn (SelectFilter $filter): bool => $filter->getOptions() === [
+                    'pasted_text' => 'Pasted Text',
+                    'pdf' => 'PDF',
+                    'image' => 'Image',
+                ],
+            )
+            ->filterTable('source_type', 'image')
+            ->assertCanSeeTableRecords([$imageRequest])
+            ->assertCanNotSeeTableRecords([$pdfRequest]);
+    }
+
+    public function test_table_keeps_identity_columns_visible_and_allows_secondary_columns_to_be_toggled(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+        $component = Livewire::test(ListExtractRequests::class);
+
+        foreach (['request_uuid', 'status', 'source_type', 'parser_type', 'created_at'] as $columnName) {
+            $component->assertTableColumnExists(
+                $columnName,
+                fn (TextColumn $column): bool => ! $column->isToggleable(),
+            );
+        }
+
+        foreach (['user.email', 'extraction_duration_ms', 'detected_event_count', 'detected_flight_count', 'detected_hotel_count', 'error_code'] as $columnName) {
+            $component->assertTableColumnExists(
+                $columnName,
+                fn (TextColumn $column): bool => $column->isToggleable()
+                    && ! $column->isToggledHiddenByDefault(),
+            );
+        }
+
+        foreach (['page_count', 'file_size_bytes', 'file_hash', 'app_version', 'extractor_version'] as $columnName) {
+            $component->assertTableColumnExists(
+                $columnName,
+                fn (TextColumn $column): bool => $column->isToggleable()
+                    && $column->isToggledHiddenByDefault(),
+            );
+        }
     }
 
     public function test_extract_requests_are_sorted_by_creation_time_descending_by_default(): void

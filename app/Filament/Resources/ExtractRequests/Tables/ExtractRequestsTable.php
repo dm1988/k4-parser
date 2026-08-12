@@ -49,15 +49,18 @@ class ExtractRequestsTable
                     ->label('Duration')
                     ->numeric()
                     ->suffix(' ms')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('detected_event_count')
                     ->label('Events')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('detected_flight_count')
                     ->label('Flights')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('detected_hotel_count')
                     ->label('Hotels')
                     ->numeric()
@@ -107,6 +110,7 @@ class ExtractRequestsTable
                     ->options([
                         'pasted_text' => 'Pasted Text',
                         'pdf' => 'PDF',
+                        'image' => 'Image',
                     ]),
                 SelectFilter::make('parser_type')
                     ->options([
