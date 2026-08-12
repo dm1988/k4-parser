@@ -14,7 +14,7 @@ use Tests\TestCase;
 class FilamentDashboardLayoutTest extends TestCase
 {
     use RefreshDatabase;
-    
+
     public function test_each_stat_fills_its_widget_column(): void
     {
         $widgets = [
