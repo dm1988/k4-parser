@@ -116,19 +116,19 @@ class ExtractRequestResourceTest extends TestCase
             ->assertCanNotSeeTableRecords([$pdfRequest]);
     }
 
-    public function test_table_keeps_identity_columns_visible_and_allows_secondary_columns_to_be_toggled(): void
+    public function test_table_configures_fixed_and_toggleable_columns_with_the_expected_default_visibility(): void
     {
         $this->actingAs($this->makeAdminUser());
         $component = Livewire::test(ListExtractRequests::class);
 
-        foreach (['request_uuid', 'status', 'source_type', 'parser_type', 'created_at'] as $columnName) {
+        foreach (['status', 'source_type', 'parser_type', 'created_at'] as $columnName) {
             $component->assertTableColumnExists(
                 $columnName,
                 fn (TextColumn $column): bool => ! $column->isToggleable(),
             );
         }
 
-        foreach (['user.email', 'extraction_duration_ms', 'detected_event_count', 'detected_flight_count', 'detected_hotel_count', 'error_code'] as $columnName) {
+        foreach (['user.email', 'extraction_duration_ms', 'detected_event_count', 'detected_flight_count'] as $columnName) {
             $component->assertTableColumnExists(
                 $columnName,
                 fn (TextColumn $column): bool => $column->isToggleable()
@@ -136,7 +136,7 @@ class ExtractRequestResourceTest extends TestCase
             );
         }
 
-        foreach (['page_count', 'file_size_bytes', 'file_hash', 'app_version', 'extractor_version'] as $columnName) {
+        foreach (['request_uuid', 'detected_hotel_count', 'page_count', 'file_size_bytes', 'file_hash', 'app_version', 'extractor_version'] as $columnName) {
             $component->assertTableColumnExists(
                 $columnName,
                 fn (TextColumn $column): bool => $column->isToggleable()

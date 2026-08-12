@@ -16,11 +16,16 @@ class ExtractRequestsTable
     {
         return $table
             ->columns([
+                TextColumn::make('user.email')
+                    ->label('User')
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('request_uuid')
                     ->label('Request')
                     ->searchable()
                     ->copyable()
                     ->limit(12)
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->tooltip(fn ($state): ?string => filled($state) ? $state : null),
                 TextColumn::make('status')
                     ->badge()
@@ -31,10 +36,6 @@ class ExtractRequestsTable
                         default => 'gray',
                     })
                     ->sortable(),
-                TextColumn::make('user.email')
-                    ->label('User')
-                    ->searchable()
-                    ->toggleable(),
                 TextColumn::make('source_type')
                     ->label('Source')
                     ->badge()
@@ -65,7 +66,7 @@ class ExtractRequestsTable
                     ->label('Hotels')
                     ->numeric()
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('page_count')
                     ->label('Pages')
                     ->numeric()
