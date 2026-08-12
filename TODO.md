@@ -10,21 +10,7 @@ Follow these rules for every remaining task:
 7. Update TODO.md with outcomes instead of adding another plan or duplicate checklist.
 8. Create a commit message for each ## task
 
-## 1. Completed: Flight Plan extract request log to database
-
-## 2. Completed: System alert email notifications
-
-Outcome: The hourly `system:check-alerts` command now sends queued, on-demand email notifications for disk warnings below 20%, disk critical alerts below 10%, and six-times historical spikes in user signups or extract requests. Volume checks compare the current 24 hours with the preceding 30-day baseline, alerts use atomic 12-hour warning and 1-hour critical throttles, resolved conditions reset their throttle, and notification failures release the throttle for retry. The schedule prevents overlap and runs on one server.
-
-Configuration: Set `MAIL_ADMIN_ADDRESS` in the deployment environment. The value is exposed through `config('mail.admin_address')`, validated before checks run, and documented in `.env.example`.
-
-Database: Added standalone `created_at` indexes for the hourly user and extract-request range queries.
-
-Focused verification: 9 tests passed with 35 assertions covering severity thresholds, throttling, escalation, recovery, historical volume baselines, recipient configuration, queued mail content, and schedule registration. Pint completed successfully.
-
-Commit message: `Add throttled system health email alerts`
-
-## 3. Dark mode
+## 1. Dark mode
 
 * Configure Tailwind CSS v3 with `darkMode: 'class'`.
 * Define a three-state theme preference: `light`, `dark`, or `system`.
@@ -41,11 +27,11 @@ Commit message: `Add throttled system health email alerts`
 * Manually verify light, dark, and system modes at mobile and desktop breakpoints, including refresh behavior and live operating-system theme changes.
 * Run the focused PHPUnit tests and `vendor/bin/sail npm run build` to confirm the Blade and Tailwind changes compile successfully.
 
-## 4. Context engineering
+## 2. Context engineering
 - Add CONTEXT.md
 - Identify branding
 
-## 5. Identify places to incorporate Crew Compass
+## 3. Identify places to incorporate Crew Compass
 
 Reference figma make plan
 
@@ -63,13 +49,15 @@ Simple plan:
 3. Expose typed city-summary data through the event and flight-card view models, then render a reusable Crew Compass city-summary component on layover cards and airport popovers.
 4. Add focused provider, enrichment, view-model, and Blade component tests for available, unavailable, zero-place, duplicate-city, and provider-failure cases.
 
-## 6. Completed: GitHub Actions Pint concurrency
-
-Outcome: CI now runs Pint, frontend asset compilation, and the Laravel test suite as independent parallel jobs. Backend tests use ParaTest across the runner's CPU cores, while MySQL stores its data in RAM and checks readiness every three seconds. The backend job no longer installs Node or builds assets; the shared test base disables Vite because compiled assets are not part of backend behavior. A fixed non-secret test application key replaces per-run `.env` copying and key generation.
-
-Focused verification: The Vite-disabled test and parallel test suite passed. Pint and the frontend production build completed successfully.
-
-Commit message: `Parallelize and optimize GitHub Actions checks`
-
-# Filament Extract Requests table filter - Source type missing 'image'
+# 4. Filament Extract Requests table filter - Source type missing 'image'
 - Review must show columns on extract requests table, toggleable check
+
+------------------------------------------------
+
+# Completed
+
+## Completed: GitHub Actions Pint concurrency
+
+## Completed: Flight Plan extract request log to database
+
+## Completed: System alert email notifications

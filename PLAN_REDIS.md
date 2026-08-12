@@ -2,9 +2,6 @@
 
 ## Check if Redis switch is needed
 
-
-
-
 ## Switch SESSION_DRIVER and CACHE_STORE to an in-memory store like Redis or Memcached 
 * In production to prevent session updates (update sessions set payload = ...) from competing with application queries.
 Moving your Laravel app from database-backed storage to **Redis** for sessions and cache will drastically drop your database I/O and lower latency.

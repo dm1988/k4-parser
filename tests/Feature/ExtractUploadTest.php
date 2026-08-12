@@ -8,6 +8,7 @@ use App\Models\ExtractRequest;
 use App\Models\User;
 use App\Services\Schedule\Extractor\ScheduleFormatParser;
 use App\Services\Schedule\ScheduleInputResolver;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Livewire\Livewire;
@@ -17,6 +18,8 @@ use Tests\TestCase;
 
 class ExtractUploadTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_parse_page_renders_centered_dropzone_and_disabled_extract_button(): void
     {
         $page = $this->actingAs(User::factory()->make())->get(route('parse.index'));

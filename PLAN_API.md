@@ -117,7 +117,7 @@ Route::middleware(['api.mtls', 'capability:schedule:extract', 'signed'])
 
 
 # OpenAPI 3.0 Specification
-See API_PLAN.yml
+See PLAN_API.yml
 
 # Developer Integration Guide
 ## Overview & Architecture Rules

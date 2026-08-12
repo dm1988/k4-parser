@@ -7,11 +7,14 @@ use App\Models\Airline;
 use App\Models\User;
 use App\Services\Schedule\Extractor\ScheduleFormatParser;
 use App\Services\Schedule\JcaScheduleProcessor;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class RosterParserTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected function setUp(): void
     {
         parent::setUp();
