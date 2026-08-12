@@ -8,10 +8,13 @@ use App\Filament\Widgets\ExtractRequestsPerDayChart;
 use App\Filament\Widgets\UserCount;
 use App\Filament\Widgets\VerifiedUserCount;
 use Filament\Widgets\StatsOverviewWidget;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class FilamentDashboardLayoutTest extends TestCase
 {
+    use RefreshDatabase;
+    
     public function test_each_stat_fills_its_widget_column(): void
     {
         $widgets = [
