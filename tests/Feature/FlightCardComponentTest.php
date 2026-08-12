@@ -26,6 +26,8 @@ class FlightCardComponentTest extends TestCase
 
     public function test_non_admins_can_not_see_the_duty_calendar_download_button(): void
     {
+        Config::set('features.schedule_extractor.duty_export_for_all_users', false);
+
         $user = User::factory()->make([
             'role' => 'user',
         ]);

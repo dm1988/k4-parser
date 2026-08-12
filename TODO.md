@@ -63,7 +63,13 @@ Simple plan:
 3. Expose typed city-summary data through the event and flight-card view models, then render a reusable Crew Compass city-summary component on layover cards and airport popovers.
 4. Add focused provider, enrichment, view-model, and Blade component tests for available, unavailable, zero-place, duplicate-city, and provider-failure cases.
 
-# 6. Github actions Pint concurrency
+## 6. Completed: GitHub Actions Pint concurrency
+
+Outcome: CI now runs Pint, frontend asset compilation, and the Laravel test suite as independent parallel jobs. Backend tests use ParaTest across the runner's CPU cores, while MySQL stores its data in RAM and checks readiness every three seconds. The backend job no longer installs Node or builds assets; the shared test base disables Vite because compiled assets are not part of backend behavior. A fixed non-secret test application key replaces per-run `.env` copying and key generation.
+
+Focused verification: The Vite-disabled test and parallel test suite passed. Pint and the frontend production build completed successfully.
+
+Commit message: `Parallelize and optimize GitHub Actions checks`
 
 # Filament Extract Requests table filter - Source type missing 'image'
 - Review must show columns on extract requests table, toggleable check

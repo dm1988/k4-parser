@@ -15,8 +15,53 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  APP_KEY: base64:QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=
+
 jobs:
-  test:
+  pint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_mysql
+          tools: composer:v2
+          coverage: none
+
+      - name: Install PHP dependencies
+        uses: ramsey/composer-install@v4
+
+      - name: Check PHP formatting
+        run: vendor/bin/pint --test
+
+  frontend-assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Build frontend assets
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+  tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -29,10 +74,11 @@ jobs:
         ports:
           - 3306:3306
         options: >-
+          --tmpfs /var/lib/mysql:rw
           --health-cmd="mysqladmin ping"
-          --health-interval=10s
+          --health-interval=3s
           --health-timeout=5s
-          --health-retries=5
+          --health-retries=10
 
     env:
       APP_ENV: testing
@@ -58,25 +104,5 @@ jobs:
       - name: Install PHP dependencies
         uses: ramsey/composer-install@v4
 
-      - name: Check PHP formatting
-        run: vendor/bin/pint --test
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Build frontend assets
-        run: |
-          npm ci --no-audit --no-fund
-          npm run build
-
-      - name: Prepare environment
-        run: |
-          cp .env.example .env
-          php artisan key:generate
-
       - name: Run test suite
-        run: php artisan test --compact
+        run: php artisan test --compact --parallel
