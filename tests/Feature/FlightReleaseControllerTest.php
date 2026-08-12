@@ -7,6 +7,7 @@ use App\Exceptions\FlightRouteNotFoundException;
 use App\Models\ExtractRequest;
 use App\Models\User;
 use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
+use App\Services\Infrastructure\ExtractRequestLogger;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
@@ -417,6 +418,36 @@ class FlightReleaseControllerTest extends TestCase
         $this->assertSame('failed', $extractRequest->status);
         $this->assertSame(RuntimeException::class, $extractRequest->error_code);
         $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
+    }
+
+    public function test_extract_request_logging_exception_is_rethrown_and_cleans_up_the_file(): void
+    {
+        Storage::fake('user_flight_releases');
+
+        $this->mock(ExtractRequestLogger::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('start')
+                ->once()
+                ->andThrow(new RuntimeException('Unable to record extraction'));
+            $mock->shouldNotReceive('error');
+        });
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
+            $mock->shouldNotReceive('extractFlightPlanData');
+        });
+
+        try {
+            $this->withoutExceptionHandling()
+                ->actingAs(User::factory()->create(['role' => 'admin']))
+                ->post(route('flight-release.store'), [
+                    'flight_release' => UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'),
+                ]);
+
+            $this->fail('Expected the logging exception to be rethrown.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Unable to record extraction', $exception->getMessage());
+        }
+
+        $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
+        $this->assertSame(0, ExtractRequest::query()->count());
     }
 
     public function test_flight_release_returns_not_found_when_the_feature_is_disabled(): void

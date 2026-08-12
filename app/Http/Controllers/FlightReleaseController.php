@@ -30,9 +30,10 @@ class FlightReleaseController extends Controller
         $uploadedFile = $request->file('flight_release');
         $disk = Storage::disk('user_flight_releases');
         $path = $uploadedFile->store('', 'user_flight_releases');
+        $startedAt = hrtime(true);
+        $extractRequest = null;
 
         try {
-            $startedAt = hrtime(true);
             $extractRequest = $extractRequestLogger->start(
                 $request->user()?->getKey(),
                 'pdf',
@@ -50,9 +51,7 @@ class FlightReleaseController extends Controller
                 detectedHotelCount: 0,
             );
         } catch (FlightRouteNotFoundException $exception) {
-            if (isset($extractRequest, $startedAt)) {
-                $extractRequestLogger->error($extractRequest, $startedAt, $exception);
-            }
+            $extractRequestLogger->error($extractRequest, $startedAt, $exception);
 
             Log::warning('Flight release route extraction failed', [
                 'filename' => $uploadedFile->getClientOriginalName(),
@@ -65,7 +64,7 @@ class FlightReleaseController extends Controller
                 ->route('flight-release.index')
                 ->withErrors(['flight_release' => $exception->getMessage()]);
         } catch (Throwable $throwable) {
-            if (isset($extractRequest, $startedAt)) {
+            if ($extractRequest !== null) {
                 $extractRequestLogger->error($extractRequest, $startedAt, $throwable);
             }
 
