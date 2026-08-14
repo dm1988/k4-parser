@@ -14,7 +14,7 @@ Follow these rules for every remaining task:
 
 ## 2. Completed: System alert email notifications
 
-## 3. In progress: Dark Mode Implementation
+## 3. Completed: Dark Mode Implementation
 
 - Enabled Tailwind class-based dark mode with persisted `light`, `dark`, and `system` preferences.
 - Added a synchronous, reusable head initializer to prevent theme flashing and a dedicated JavaScript module for selector synchronization and live operating-system theme changes.
@@ -24,7 +24,7 @@ Follow these rules for every remaining task:
 - Refined dark-mode contrast for the schedule upload surface, disabled extract action, navigation coffee link, and flight-plan header.
 - Verified that Filament v5 dark mode is enabled and uses the same `localStorage.theme` values, so preferences persist between the application and admin panel.
 - Added focused PHPUnit coverage for guest, authenticated, marketing/legal layouts, and Filament configuration.
-- Verified the affected view/controller tests and a production Vite build. Manual cross-browser visual QA remains a release-checkpoint task.
+- Verified 22 focused view/controller tests with 227 assertions and a production Vite build. Manual cross-browser visual QA remains a release-checkpoint task.
 
 Commit message: `feat: add persistent light dark and system themes`
 

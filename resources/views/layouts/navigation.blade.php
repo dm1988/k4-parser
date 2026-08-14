@@ -32,8 +32,6 @@
 
             <!-- Settings Dropdown -->
             <div class="hidden gap-3 sm:ms-6 sm:flex sm:items-center">
-                <x-theme-selector id="desktop-theme-selector" />
-
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button
@@ -52,6 +50,13 @@
                     </x-slot>
 
                     <x-slot name="content">
+                        <div data-theme-menu class="border-b border-gray-100 px-4 py-3 dark:border-gray-800" @click.stop>
+                            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                {{ __('Color theme') }}
+                            </p>
+                            <x-theme-selector id="desktop-theme-selector" />
+                        </div>
+
                         <x-dropdown-link :href="route('profile.edit')">
                             {{ __('Profile') }}
                         </x-dropdown-link>

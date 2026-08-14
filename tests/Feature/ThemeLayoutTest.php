@@ -31,7 +31,12 @@ class ThemeLayoutTest extends TestCase
             ->assertSee("localStorage.getItem('theme')", escape: false)
             ->assertSee('data-theme-selector', escape: false)
             ->assertSee('id="desktop-theme-selector"', escape: false)
-            ->assertSee('id="mobile-theme-selector"', escape: false);
+            ->assertSee('id="mobile-theme-selector"', escape: false)
+            ->assertSeeInOrder([
+                'data-theme-menu',
+                'id="desktop-theme-selector"',
+                route('profile.edit'),
+            ], escape: false);
     }
 
     public function test_admin_panel_keeps_filament_dark_mode_enabled(): void
