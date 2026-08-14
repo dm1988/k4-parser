@@ -1,38 +1,57 @@
-# Codex Usage Rules
+# 1. Plan: Release flight extractor trial
 
-Follow these rules for every remaining task:
-1. Do not start work unless sail is available
-2. Work on one task at a time marked by ##.
-3. Run only focused tests while implementing a task.
-4. Run Pint after PHP files change.
-5. Larastan once at the final integration checkpoint, not after every small edit.
-6. Preserve unrelated working-tree changes.
-7. Update TODO.md with outcomes instead of adding another plan or duplicate checklist.
-8. Create a commit message for each ## task
+Goal: release the flight extractor as a clearly labeled demo, validate usage, and then gate it behind its own Stripe subscription at $5 per year with a one-time two-month trial per user.
 
-## 1. Completed: Flight Plan extract request log to database
+## Phase 1: Demo release and measurement
 
-## 2. Completed: System alert email notifications
+1. Add a reusable `Demo` badge to the desktop and mobile flight-extractor navigation links without changing the existing feature gate.
+2. Enable `FEATURES_FLIGHT_RELEASE_FOR_ALL_USERS=true` in the target deployment environment; keep `.env.example` defaulted to `false` so access remains opt-in per environment.
+3. Confirm verified non-admin users can see and use the extractor, while disabling `FEATURES_FLIGHT_RELEASE_ENABLED` still returns 404 and removes navigation access.
+4. Use the existing `extract_requests` logging and Filament metrics to review request volume, failures, processing time, and user adoption before billing launches.
+5. Add focused navigation, authorization, and extraction tests for enabled, disabled, admin, verified-user, and unverified-user behavior.
 
-## 3. Completed: Dark Mode Implementation
+## Phase 2: Stripe and Cashier foundation
 
-- Enabled Tailwind class-based dark mode with persisted `light`, `dark`, and `system` preferences.
-- Added a synchronous, reusable head initializer to prevent theme flashing and a dedicated JavaScript module for selector synchronization and live operating-system theme changes.
-- Added accessible native theme selectors to the guest layout and authenticated desktop/mobile navigation.
-- Added dark variants to shared Blade controls, layouts, auth/profile screens, schedule extraction views, flight cards, and flight-plan extraction views.
-- Updated the Welcome and Privacy Policy pages to conform to the persisted light, dark, and system preference.
-- Refined dark-mode contrast for the schedule upload surface, disabled extract action, navigation coffee link, and flight-plan header.
-- Verified that Filament v5 dark mode is enabled and uses the same `localStorage.theme` values, so preferences persist between the application and admin panel.
-- Added focused PHPUnit coverage for guest, authenticated, marketing/legal layouts, and Filament configuration.
-- Verified 22 focused view/controller tests with 227 assertions and a production Vite build. Manual cross-browser visual QA remains a release-checkpoint task.
+1. Create a Stripe product with a recurring annual price of $5; store only its Stripe price ID in billing configuration and environment variables.
+2. Add Cashier's `Billable` trait to `User`, cast `trial_ends_at` as a datetime, and verify the existing Cashier customer/subscription migrations match Cashier v16 requirements.
+3. Use a dedicated subscription name such as `flight-release` instead of `default`, keeping this entitlement independent from future paid feature tiers.
+4. Configure test/live Stripe keys, webhook signing secrets, currency, and Cashier path without committing secrets.
 
-Commit message: `feat: add persistent light dark and system themes`
+## Phase 3: Checkout and one-time trial
 
-## 2. Context engineering
+1. Add an authenticated billing page showing the annual price, trial terms, current subscription state, renewal date, and cancellation or grace-period state.
+2. Start the `flight-release` subscription through Stripe Checkout with `trialUntil(now()->addMonths(2))`, collecting a payment method so billing can begin automatically after the trial.
+3. Prevent repeat trials by checking retained subscription history before offering trial terms; returning subscribers start paid access immediately.
+4. Add named routes and thin controllers for checkout, success, cancellation, and Stripe's billing portal. Handle incomplete/SCA payments through Cashier's payment-confirmation flow.
+5. Make checkout creation idempotent so repeated submissions cannot create duplicate subscriptions.
+
+## Phase 4: Entitlement and lifecycle handling
+
+1. Centralize flight-extractor entitlement in `User::canUseFlightRelease()`: the master feature must be enabled, admins retain access, the demo override grants temporary access, and regular users otherwise need an active, trialing, or grace-period `flight-release` subscription.
+2. Keep the existing gate and route middleware as the single authorization boundary, and use the same method to decide whether navigation is rendered.
+3. Configure Cashier's signed webhook endpoint and CSRF exclusion, then verify subscription creation, updates, cancellation, payment failure, and deletion synchronize locally.
+4. Show actionable billing states for trialing, active, incomplete, past-due, canceled-on-grace-period, and ended subscriptions; never grant access to incomplete or past-due subscriptions.
+5. Turn `FEATURES_FLIGHT_RELEASE_FOR_ALL_USERS` back to `false` only after checkout, webhooks, and entitlement behavior are verified in production test mode.
+
+## Phase 5: Verification and launch
+
+1. Add PHPUnit coverage for configuration, gates, middleware, checkout authorization, one-time trial eligibility, subscription states, admin bypass, demo override, and canceled/grace-period access.
+2. Test webhook signature rejection and representative Stripe lifecycle payloads without making normal unit and feature tests depend on live Stripe network access.
+3. Complete Stripe test-mode smoke tests for successful checkout, 3DS/SCA, declined payment, trial conversion, cancellation, portal return, and webhook replay.
+4. Run focused tests and Pint during implementation, then run the full PHPUnit suite, Larastan, and a production Vite build at the final integration checkpoint.
+5. Document the production rollout checklist in this section: Stripe product/price IDs, webhook URL and events, secrets, demo-flag cutoff, monitoring window, and rollback by restoring the demo override.
+
+Open decisions before implementation:
+
+- “two months” means two calendar months
+- Existing demo users receive the full trial when billing launches
+- Confirm tax handling and the customer-facing refund/cancellation policy before enabling live charges.
+
+# 2. Context engineering
 - Add CONTEXT.md
 - Identify branding
 
-## 3. Identify places to incorporate Crew Compass
+# 3. Identify places to incorporate Crew Compass
 
 Reference figma make plan
 
@@ -67,3 +86,21 @@ Commit message: `Add image filtering and toggleable extract request metrics`
 ## Completed: Flight Plan extract request log to database
 
 ## Completed: System alert email notifications
+
+## 1. Completed: Flight Plan extract request log to database
+
+## 2. Completed: System alert email notifications
+
+## 3. Completed: Dark Mode Implementation
+
+- Enabled Tailwind class-based dark mode with persisted `light`, `dark`, and `system` preferences.
+- Added a synchronous, reusable head initializer to prevent theme flashing and a dedicated JavaScript module for selector synchronization and live operating-system theme changes.
+- Added accessible native theme selectors to the guest layout and authenticated desktop/mobile navigation.
+- Added dark variants to shared Blade controls, layouts, auth/profile screens, schedule extraction views, flight cards, and flight-plan extraction views.
+- Updated the Welcome and Privacy Policy pages to conform to the persisted light, dark, and system preference.
+- Refined dark-mode contrast for the schedule upload surface, disabled extract action, navigation coffee link, and flight-plan header.
+- Verified that Filament v5 dark mode is enabled and uses the same `localStorage.theme` values, so preferences persist between the application and admin panel.
+- Added focused PHPUnit coverage for guest, authenticated, marketing/legal layouts, and Filament configuration.
+- Verified 22 focused view/controller tests with 227 assertions and a production Vite build. Manual cross-browser visual QA remains a release-checkpoint task.
+
+Commit message: `feat: add persistent light dark and system themes`
