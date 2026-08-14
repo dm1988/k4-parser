@@ -13,8 +13,8 @@
     data-copy-status="{{ $status }}"
     @class([
         'inline-flex items-center justify-center rounded-md transition',
-        'h-8 w-8 shrink-0 border border-[#1B365D]/10 bg-[#F8F9FA] text-[#1B365D] hover:bg-[#eef0f3]' => $compact,
-        'gap-2 border border-[#1B365D]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#1B365D] hover:bg-[#eef0f3]' => ! $compact,
+        'h-8 w-8 shrink-0 border border-[#1B365D]/10 bg-[#F8F9FA] text-[#1B365D] hover:bg-[#eef0f3] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700' => $compact,
+        'gap-2 border border-[#1B365D]/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#1B365D] hover:bg-[#eef0f3] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700' => ! $compact,
     ])
 >
     <x-heroicon-o-document-duplicate @class([

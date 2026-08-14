@@ -1,18 +1,18 @@
 @props(['model'])
 
-<article class="overflow-visible rounded-lg border border-[#1B365D]/15 bg-white shadow-sm">
+<article class="overflow-visible rounded-lg border border-[#1B365D]/15 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
     <!-- REVISED HEADER: Changed background to clean, light blue-gray tint with navy text -->
-    <header class="rounded-t-lg border-b border-[#1B365D]/10 bg-[#E9F0F8] px-4 py-4 text-[#1B365D] sm:px-6">
+    <header class="rounded-t-lg border-b border-[#1B365D]/10 bg-[#E9F0F8] px-4 py-4 text-[#1B365D] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:px-6">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex min-w-0 items-center gap-3">
-                <h3 class="truncate font-mono text-[1.05rem] font-semibold uppercase tracking-[0.16em] text-[#1B365D]">
+                <h3 class="truncate font-mono text-[1.05rem] font-semibold uppercase tracking-[0.16em] text-[#1B365D] dark:text-slate-100">
                     {{ $model->heading() }}
                 </h3>
 
                 <!-- Gold separator dot matches the brand colors -->
                 <span aria-hidden="true" class="h-1.5 w-1.5 rounded-full bg-[#C5A059]"></span>
 
-                <p class="text-[1.05rem] font-medium tracking-[0.01em] text-[#4A5568]">
+                <p class="text-[1.05rem] font-medium tracking-[0.01em] text-[#4A5568] dark:text-slate-400">
                     {{ $model->headingDateLabel() }}
                 </p>
             </div>
@@ -35,26 +35,26 @@
                     <x-extract.flight-card.airport-popover :info="$model->originAirportInfo()" align="left" />
                 @else
                     <div class="flex flex-col gap-0.5">
-                        <span class="font-mono text-xl font-bold tracking-[0.04em] text-[#1B365D] sm:text-2xl">
+                        <span class="font-mono text-xl font-bold tracking-[0.04em] text-[#1B365D] dark:text-slate-100 sm:text-2xl">
                             {{ $model->originLabel() }}
                         </span>
                     </div>
                 @endif
 
-                <span class="text-base font-semibold text-[#0B0E14]">
+                <span class="text-base font-semibold text-[#0B0E14] dark:text-slate-100">
                     {{ $model->originCardTimeLabel() }}
                 </span>
             </div>
 
             <div class="flex min-w-0 flex-1 items-center">
-                <div class="h-px flex-1 bg-[#1B365D]/15"></div>
+                <div class="h-px flex-1 bg-[#1B365D]/15 dark:bg-slate-700"></div>
 
                 <div
                     class="mx-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1B365D] text-white shadow-sm sm:mx-4">
                     <x-heroicon-s-paper-airplane class="h-4 w-4" />
                 </div>
 
-                <div class="h-px flex-1 bg-[#1B365D]/15"></div>
+                <div class="h-px flex-1 bg-[#1B365D]/15 dark:bg-slate-700"></div>
             </div>
 
             <div class="flex flex-col items-end gap-2 text-right">
@@ -62,20 +62,20 @@
                     <x-extract.flight-card.airport-popover :info="$model->destinationAirportInfo()" align="right" />
                 @else
                     <div class="flex flex-col items-end gap-0.5">
-                        <span class="font-mono text-xl font-bold tracking-[0.04em] text-[#1B365D] sm:text-2xl">
+                        <span class="font-mono text-xl font-bold tracking-[0.04em] text-[#1B365D] dark:text-slate-100 sm:text-2xl">
                             {{ $model->destinationLabel() }}
                         </span>
                     </div>
                 @endif
 
-                <span class="text-base font-semibold text-[#0B0E14]">
+                <span class="text-base font-semibold text-[#0B0E14] dark:text-slate-100">
                     {{ $model->destinationCardTimeLabel() }}
                 </span>
             </div>
         </div>
 
         <div class="mx-auto flex max-w-[34rem] flex-col items-center gap-3">
-            <span class="font-mono text-[1.1rem] font-semibold tracking-[0.04em] text-[#4A5568]">
+            <span class="font-mono text-[1.1rem] font-semibold tracking-[0.04em] text-[#4A5568] dark:text-slate-400">
                 {{ $model->flight->durationLabel }}
             </span>
         </div>
@@ -97,14 +97,14 @@
         </div>
     </div>
 
-    <footer class="flex items-center justify-between rounded-b-lg border-t border-[#1B365D]/10 bg-[#F8F9FA] px-4 py-4 sm:px-6">
+    <footer class="flex items-center justify-between rounded-b-lg border-t border-[#1B365D]/10 bg-[#F8F9FA] px-4 py-4 dark:border-slate-700 dark:bg-slate-800 sm:px-6">
         <div class="flex items-center gap-3">
             @if ($model->hasFooterContext())
-            <span class="text-sm font-semibold uppercase tracking-[0.12em] text-[#4A5568]">
+            <span class="text-sm font-semibold uppercase tracking-[0.12em] text-[#4A5568] dark:text-slate-400">
                 {{ $model->footerContextLabel() }}
             </span>
 
-            <span class="font-mono text-[1.15rem] font-semibold text-[#1B365D]">
+            <span class="font-mono text-[1.15rem] font-semibold text-[#1B365D] dark:text-slate-100">
                 {{ $model->footerContextValue() }}
             </span>
             @endif

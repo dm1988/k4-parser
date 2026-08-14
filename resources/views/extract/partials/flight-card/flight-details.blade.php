@@ -23,10 +23,10 @@
     @if ($model->hasLegLocalTimes() || $model->hasDutyLocalTimes())
         <section
             data-local-times-group
-            class="space-y-2 rounded-xl border border-[#C5A059]/40 bg-[#F8F9FA] p-3 sm:col-span-2"
+            class="space-y-2 rounded-xl border border-[#C5A059]/40 bg-[#F8F9FA] p-3 dark:bg-slate-900 sm:col-span-2"
             aria-labelledby="local-times-heading"
         >
-            <h4 id="local-times-heading" class="text-xs font-bold uppercase tracking-wider text-[#1B365D]">
+            <h4 id="local-times-heading" class="text-xs font-bold uppercase tracking-wider text-[#1B365D] dark:text-slate-200">
                 Local Times
             </h4>
 
@@ -63,13 +63,13 @@
     </div>
     @if ( $model->flight->tailNumber )
     <div>
-        <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568]">
+        <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568] dark:text-slate-400">
                 Flight Tracking
             </p>
             <a href="https://flightaware.com/live/flight/{{ $model->flight->tailNumber }}" target="_blank"
                 rel="noopener noreferrer"
-                class="inline-flex min-w-0 items-center gap-1 font-mono text-sm font-semibold text-[#1B365D] transition-colors hover:text-[#C5A059] group">
+                class="group inline-flex min-w-0 items-center gap-1 font-mono text-sm font-semibold text-[#1B365D] transition-colors hover:text-[#C5A059] dark:text-slate-200">
                 <span class="underline decoration-transparent transition-all group-hover:decoration-[#C5A059]">Flight
                     Aware</span>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"

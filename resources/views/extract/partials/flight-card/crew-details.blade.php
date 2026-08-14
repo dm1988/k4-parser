@@ -4,29 +4,29 @@
 
 <div class="space-y-2">
     <div class="grid gap-2 sm:grid-cols-3">
-        <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568]">
+        <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568] dark:text-slate-400">
                 Total Crew
             </p>
-            <p class="text-sm font-bold text-[#0B0E14]">
+            <p class="text-sm font-bold text-[#0B0E14] dark:text-slate-100">
                 {{ $model->crewCount() }}
             </p>
         </div>
 
-        <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568]">
+        <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568] dark:text-slate-400">
                 Operating
             </p>
-            <p class="text-sm font-bold text-[#0B0E14]">
+            <p class="text-sm font-bold text-[#0B0E14] dark:text-slate-100">
                 {{ $model->operatingCrewCount() }}
             </p>
         </div>
 
-        <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568]">
+        <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568] dark:text-slate-400">
                 Deadheading
             </p>
-            <p class="text-sm font-bold text-[#0B0E14]">
+            <p class="text-sm font-bold text-[#0B0E14] dark:text-slate-100">
                 {{ $model->deadheadingCrewCount() }}
             </p>
         </div>
@@ -35,14 +35,14 @@
     @if (!empty($crew))
         <div class="space-y-2">
             @foreach ($crew as $crewMember)
-                <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2">
-                    <p class="truncate text-sm font-semibold text-[#0B0E14]">
+                <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
+                    <p class="truncate text-sm font-semibold text-[#0B0E14] dark:text-slate-100">
                         {{ data_get($crewMember, 'name', 'Unknown Crew Member') }}
                     </p>
 
                     <div class="flex flex-wrap items-center justify-end gap-2">
                         @if (data_get($crewMember, 'role'))
-                            <span class="text-xs font-medium text-[#4A5568]">
+                            <span class="text-xs font-medium text-[#4A5568] dark:text-slate-400">
                                 {{ data_get($crewMember, 'role') }}
                             </span>
                         @endif
@@ -52,7 +52,7 @@
             @endforeach
         </div>
     @else
-        <p class="text-sm font-medium text-[#4A5568]">
+        <p class="text-sm font-medium text-[#4A5568] dark:text-slate-400">
             Individual crew names were not extracted for this flight.
         </p>
     @endif

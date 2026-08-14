@@ -32,11 +32,13 @@ class ExtractUploadTest extends TestCase
         $page->assertSeeText('Select up to five images, or one PDF. Click to browse your files.');
         $page->assertSee('wire:loading.attr="disabled"', false);
         $page->assertSee('data-extract-submit', false);
-        $page->assertSee('disabled:bg-[#1B365D]/10', false);
+        $page->assertSee('dark:disabled:bg-slate-800', false);
+        $page->assertSee('dark:disabled:text-slate-500', false);
+        $page->assertSee('dark:border-slate-600 dark:bg-slate-800/80', false);
         $page->assertSee('disabled', false);
         $page->assertDontSee('class="cc-card overflow-hidden"', false);
         $page->assertDontSee('shadow-lg shadow-[#1B365D]/10', false);
-        $page->assertSee('text-[#1B365D] md:text-5xl', false);
+        $page->assertSee('text-[#1B365D] dark:text-slate-100 md:text-5xl', false);
         $page->assertSee('text-base leading-relaxed text-[#4A5568]', false);
         $page->assertSeeInOrder([
             'Extract Schedule',
@@ -121,7 +123,7 @@ class ExtractUploadTest extends TestCase
         $page->assertOk()
             ->assertSee('Extracted Schedule')
             ->assertSee('rounded-lg border border-[#1B365D]/15 bg-white shadow-sm', false)
-            ->assertSee('border-b border-[#1B365D]/10 bg-[#F8FAFD] px-4 py-4 sm:px-6', false)
+            ->assertSee('border-b border-[#1B365D]/10 bg-[#F8FAFD] px-4 py-4 dark:border-slate-700 dark:bg-slate-800 sm:px-6', false)
             ->assertDontSee('rounded-[1.9rem]', false);
     }
 

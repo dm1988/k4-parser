@@ -7,7 +7,7 @@
             <div>
                 <label
                     for="files"
-                    class="group relative flex min-h-48 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed border-[#1B365D]/20 bg-white px-6 py-6 text-center transition duration-300 hover:border-[#C5A059]/70 hover:bg-white hover:shadow-lg focus-within:border-[#C5A059] focus-within:ring-4 focus-within:ring-[#C5A059]/20"
+                    class="group relative flex min-h-48 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed border-[#1B365D]/20 bg-white px-6 py-6 text-center transition duration-300 hover:border-[#C5A059]/70 hover:bg-white hover:shadow-lg focus-within:border-[#C5A059] focus-within:ring-4 focus-within:ring-[#C5A059]/20 dark:border-slate-600 dark:bg-slate-800/80 dark:shadow-lg dark:shadow-black/20 dark:hover:border-[#C5A059]/70 dark:hover:bg-slate-800"
                 >
                     <input
                         id="files"
@@ -25,11 +25,11 @@
                         </svg>
                     </span>
 
-                    <span class="max-w-full text-xl font-bold text-[#1B365D]">
+                    <span class="max-w-full text-xl font-bold text-[#1B365D] dark:text-slate-100">
                         {{ $files !== [] ? count($files).' '.\Illuminate\Support\Str::plural('file', count($files)).' selected' : 'Drop your schedule here' }}
                     </span>
 
-                    <span class="mt-2 max-w-md text-sm leading-6 text-[#4A5568]">
+                    <span class="mt-2 max-w-md text-sm leading-6 text-[#4A5568] dark:text-slate-400">
                         @if ($files !== [])
                             Up to five images, or one PDF <span aria-hidden="true">&bull;</span> Click to change
                         @else
@@ -39,21 +39,21 @@
                 </label>
 
                 @if ($files !== [])
-                    <ul class="mt-3 grid gap-2 text-sm text-[#1B365D]">
+                    <ul class="mt-3 grid gap-2 text-sm text-[#1B365D] dark:text-slate-200">
                         @foreach ($files as $selectedFile)
-                            <li class="flex items-center justify-between gap-3 rounded-xl border border-[#1B365D]/10 bg-white px-4 py-2">
+                            <li class="flex items-center justify-between gap-3 rounded-xl border border-[#1B365D]/10 bg-white px-4 py-2 dark:border-slate-700 dark:bg-slate-900">
                                 <span class="min-w-0 truncate font-medium">{{ $selectedFile->getClientOriginalName() }}</span>
-                                <span class="shrink-0 text-xs text-[#4A5568]">{{ \Illuminate\Support\Number::fileSize($selectedFile->getSize()) }}</span>
+                                <span class="shrink-0 text-xs text-[#4A5568] dark:text-slate-400">{{ \Illuminate\Support\Number::fileSize($selectedFile->getSize()) }}</span>
                             </li>
                         @endforeach
                     </ul>
                 @endif
 
                 @error('files')
-                <p class="mt-2 text-sm font-medium text-red-700">{{ $message }}</p>
+                <p class="mt-2 text-sm font-medium text-red-700 dark:text-red-400">{{ $message }}</p>
                 @enderror
                 @error('files.*')
-                <p class="mt-2 text-sm font-medium text-red-700">{{ $message }}</p>
+                <p class="mt-2 text-sm font-medium text-red-700 dark:text-red-400">{{ $message }}</p>
                 @enderror
             </div>
 
@@ -64,7 +64,7 @@
                 @disabled($files === [])
                 wire:loading.attr="disabled"
                 wire:target="files, extractRoster"
-                class="inline-flex w-full items-center justify-center gap-3 rounded-2xl bg-[#C5A059] px-6 py-4 text-lg font-bold text-[#0B0E14] shadow-lg shadow-[#C5A059]/20 transition duration-300 hover:bg-[#D4AF37] hover:shadow-[#C5A059]/40 disabled:cursor-not-allowed disabled:bg-[#1B365D]/10 disabled:text-[#1B365D]/40 disabled:shadow-none"
+                class="inline-flex w-full items-center justify-center gap-3 rounded-2xl bg-[#C5A059] px-6 py-4 text-lg font-bold text-[#0B0E14] shadow-lg shadow-[#C5A059]/20 transition duration-300 hover:bg-[#D4AF37] hover:shadow-[#C5A059]/40 disabled:cursor-not-allowed disabled:bg-[#1B365D]/10 disabled:text-[#1B365D]/40 disabled:shadow-none dark:disabled:border dark:disabled:border-slate-700 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
             >
                 <span data-submit-label wire:loading.remove wire:target="extractRoster">Extract Schedule</span>
                 <svg wire:loading.remove wire:target="extractRoster" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -77,7 +77,7 @@
                 </svg>
             </button>
 
-            <div class="flex items-center justify-center gap-2 text-center text-xs font-medium text-[#4A5568]" role="status" aria-live="polite">
+            <div class="flex items-center justify-center gap-2 text-center text-xs font-medium text-[#4A5568] dark:text-slate-400" role="status" aria-live="polite">
                 <span class="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden="true"></span>
                 <span wire:loading.remove wire:target="files, extractRoster">
                     {{ $files !== [] ? 'Files ready to extract' : 'System online: Ready to process' }}
@@ -94,31 +94,31 @@
         $hasFilterErrors = $errors->has('eventTypes') || $errors->has('eventTypes.*');
     @endphp
 
-    <details class="group mx-auto max-w-2xl border-t border-[#1B365D]/10 py-5" @open($hasFilterSelections || $hasFilterErrors)>
+    <details class="group mx-auto max-w-2xl border-t border-[#1B365D]/10 py-5 dark:border-slate-700" @open($hasFilterSelections || $hasFilterErrors)>
         <summary
-            class="inline-flex cursor-pointer list-none items-center gap-1.5 font-semibold text-[#1B365D] [&::-webkit-details-marker]:hidden">
+            class="inline-flex cursor-pointer list-none items-center gap-1.5 font-semibold text-[#1B365D] dark:text-slate-200 [&::-webkit-details-marker]:hidden">
             <span>Filters</span>
-            <x-heroicon-o-chevron-down class="h-4 w-4 text-[#4A5568] group-open:hidden" />
-            <x-heroicon-o-chevron-up class="hidden h-4 w-4 text-[#4A5568] group-open:block" />
+            <x-heroicon-o-chevron-down class="h-4 w-4 text-[#4A5568] dark:text-slate-400 group-open:hidden" />
+            <x-heroicon-o-chevron-up class="hidden h-4 w-4 text-[#4A5568] dark:text-slate-400 group-open:block" />
         </summary>
 
         <div class="mt-4">
             <div class="grid gap-3 sm:grid-cols-2">
                 @foreach ($filterOptions as $option)
                 <label
-                    class="flex items-center gap-3 rounded-md border border-[#1B365D]/15 bg-[#F8F9FA] px-4 py-3 text-sm font-medium text-[#0B0E14]">
+                    class="flex items-center gap-3 rounded-md border border-[#1B365D]/15 bg-[#F8F9FA] px-4 py-3 text-sm font-medium text-[#0B0E14] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
                     <input type="checkbox" name="event_types[]" value="{{ $option->value }}"
                         wire:model="eventTypes"
                         class="h-4 w-4 accent-[#C5A059]">
                     <span>
                         <span class="block">{{ $option->filterLabel() }}</span>
-                        <span class="block text-xs font-normal text-[#4A5568]">{{ $option->description() }}</span>
+                        <span class="block text-xs font-normal text-[#4A5568] dark:text-slate-400">{{ $option->description() }}</span>
                     </span>
                 </label>
                 @endforeach
             </div>
 
-            <p class="mt-2 text-sm text-[#4A5568]">Leave all unchecked to include duties, flights, and layovers.</p>
+            <p class="mt-2 text-sm text-[#4A5568] dark:text-slate-400">Leave all unchecked to include duties, flights, and layovers.</p>
 
             @error('eventTypes')
             <p class="mt-2 text-sm font-medium text-red-700">{{ $message }}</p>
@@ -130,10 +130,10 @@
         </div>
     </details>
 
-    <div class="flex flex-col items-center justify-center gap-1 text-center text-sm text-[#4A5568] sm:flex-row sm:gap-2">
+    <div class="flex flex-col items-center justify-center gap-1 text-center text-sm text-[#4A5568] dark:text-slate-400 sm:flex-row sm:gap-2">
         <span>Not sure where to start?</span>
         <a
-            class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-semibold text-[#1B365D] underline decoration-[#C5A059] decoration-2 underline-offset-4 transition hover:text-[#C5A059]"
+            class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-semibold text-[#1B365D] underline decoration-[#C5A059] decoration-2 underline-offset-4 transition hover:text-[#C5A059] dark:text-slate-200 dark:hover:text-[#C5A059]"
             href="{{ asset('documents/k4-parser-workflow.pdf') }}"
             target="_blank"
             rel="noopener noreferrer"

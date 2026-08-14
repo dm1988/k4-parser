@@ -8,14 +8,14 @@
             : $event->scheduleLabel);
 @endphp
 
-<article class="overflow-hidden rounded-lg border border-[#1B365D]/15 bg-white shadow-sm">
+<article class="overflow-hidden rounded-lg border border-[#1B365D]/15 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
     <!-- HEADER: Aligns with the Flight Card visual system -->
-    <header class="border-b border-[#1B365D]/10 bg-[#E9F0F8] px-4 py-4 text-[#1B365D] sm:px-6">
+    <header class="border-b border-[#1B365D]/10 bg-[#E9F0F8] px-4 py-4 text-[#1B365D] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:px-6">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex min-w-0 items-center gap-3">
                 <!-- Icon and Title -->
                 <div class="flex min-w-0 items-center gap-2">
-                    <h3 class="truncate font-mono text-[1.05rem] font-semibold uppercase tracking-[0.12em] text-[#1B365D]">
+                    <h3 class="truncate font-mono text-[1.05rem] font-semibold uppercase tracking-[0.12em] text-[#1B365D] dark:text-slate-100">
                         {{ $event->title }}
                     </h3>
                 </div>
@@ -23,7 +23,7 @@
                 <!-- Brand gold separator dot -->
                 <span aria-hidden="true" class="shrink-0 h-1.5 w-1.5 rounded-full bg-[#C5A059]"></span>
 
-                <p class="text-[1.05rem] font-medium tracking-[0.01em] text-[#4A5568] truncate">
+                <p class="truncate text-[1.05rem] font-medium tracking-[0.01em] text-[#4A5568] dark:text-slate-400">
                     {{ $headerDateLabel }}
                 </p>
             </div>
@@ -46,18 +46,18 @@
             <div class="space-y-2">
                 <div class="flex flex-col">
                     <!-- Clean, secondary text styling for times -->
-                    <span class="text-base text-[#0B0E14]">
+                    <span class="text-base text-[#0B0E14] dark:text-slate-100">
                         {{ $event->scheduleLabel }}
                     </span>
-                    <span class="mt-1 font-mono text-sm text-[#4A5568]">
+                    <span class="mt-1 font-mono text-sm text-[#4A5568] dark:text-slate-400">
                         Duration: {{ $event->durationLabel }}
                     </span>
                 </div>
 
                 @if (filled($event->hotel ?? null))
-                <div class="rounded-md border border-[#1B365D]/10 bg-[#F8FAFD] px-3 py-2">
-                    <span class="text-xs font-semibold uppercase tracking-wider text-[#4A5568]/70">Hotel</span>
-                    <p class="mt-1 text-sm font-medium text-[#0B0E14]">
+                <div class="rounded-md border border-[#1B365D]/10 bg-[#F8FAFD] px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-[#4A5568]/70 dark:text-slate-500">Hotel</span>
+                    <p class="mt-1 text-sm font-medium text-[#0B0E14] dark:text-slate-100">
                         {{ $event->hotel }}
                     </p>
                 </div>
@@ -65,8 +65,8 @@
 
                 @if ($event->tailNumber)
                 <div class="inline-flex items-center gap-1.5 pt-1">
-                    <span class="text-xs font-semibold uppercase tracking-wider text-[#4A5568]/70">Tail:</span>
-                    <span class="rounded border border-[#1B365D]/10 bg-[#F8FAFD] px-2 py-0.5 font-mono text-xs font-semibold text-[#1B365D]">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-[#4A5568]/70 dark:text-slate-500">Tail:</span>
+                    <span class="rounded border border-[#1B365D]/10 bg-[#F8FAFD] px-2 py-0.5 font-mono text-xs font-semibold text-[#1B365D] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                         {{ $event->tailNumber }}
                     </span>
                 </div>
@@ -74,7 +74,7 @@
             </div>
 
             <!-- Right Side: Actions matching standard action footprints -->
-            <div class="flex items-center justify-end border-t border-[#1B365D]/5 pt-3 sm:border-t-0 sm:pt-0">
+            <div class="flex items-center justify-end border-t border-[#1B365D]/5 pt-3 dark:border-slate-800 sm:border-t-0 sm:pt-0">
                 <a href="{{ $event->downloadUrl }}"
                     class="inline-flex h-10 w-10 items-center justify-center rounded-md bg-[#1B365D] text-[#F8F9FA] transition hover:bg-[#142a49]"
                     title="Download .ics">
