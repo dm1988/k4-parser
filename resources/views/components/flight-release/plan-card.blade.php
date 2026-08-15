@@ -18,7 +18,7 @@
         </div>
     </div>
 
-    <div class="grid divide-y divide-[#1B365D]/6 md:grid-cols-3 md:divide-x md:divide-y-0">
+    <div class="grid divide-y divide-[#1B365D]/6 dark:divide-slate-700 md:grid-cols-3 md:divide-x md:divide-y-0">
         <x-flight-release.airport-card
             label="Departure"
             :code="$model->departure()"
@@ -80,7 +80,7 @@
         </div>
     @endif
 
-    <details class="group border-t border-[#1B365D]/8">
+    <details class="group border-t border-[#1B365D]/8 dark:border-slate-700">
         <summary class="flex cursor-pointer list-none items-center justify-between gap-2 bg-[#F8F9FA] px-4 py-2 text-left transition-colors hover:bg-[#eef0f3] dark:bg-slate-800 dark:hover:bg-slate-700 [&::-webkit-details-marker]:hidden">
             <div class="flex items-center gap-2">
                 <x-heroicon-o-information-circle class="h-4 w-4 text-[#1B365D] dark:text-slate-300" />
@@ -91,7 +91,7 @@
             <x-heroicon-o-chevron-down class="h-3.5 w-3.5 text-[#4A5568]/60 transition group-open:rotate-180 dark:text-slate-500" />
         </summary>
 
-        <div class="grid divide-y divide-[#1B365D]/6 border-t border-[#1B365D]/8 md:grid-cols-3 md:divide-x md:divide-y-0">
+        <div class="grid divide-y divide-[#1B365D]/6 border-t border-[#1B365D]/8 dark:divide-slate-700 dark:border-slate-700 md:grid-cols-3 md:divide-x md:divide-y-0">
             <x-flight-release.airport-detail-column
                 label="Departure"
                 :airport="$departureAirport"
@@ -114,7 +114,7 @@
     </details>
 
     @if ($model->hasEtopsData())
-        <section class="border-t border-[#1B365D]/8">
+        <section class="border-t border-[#1B365D]/8 dark:border-slate-700">
             <div class="flex items-center gap-2 bg-[#F8F9FA] px-4 py-2 dark:bg-slate-800">
                 <x-heroicon-o-globe-alt class="h-4 w-4 text-[#1B365D] dark:text-slate-300" />
                 <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568] dark:text-slate-400">
@@ -123,7 +123,7 @@
             </div>
 
             @if ($model->etps() !== [])
-                <div class="grid gap-3 border-t border-[#1B365D]/8 p-4 md:grid-cols-2">
+                <div class="grid gap-3 border-t border-[#1B365D]/8 p-4 dark:border-slate-700 md:grid-cols-2">
                     @foreach ($model->etps() as $etp)
                         <div class="min-w-0 space-y-3 rounded-lg border border-[#1B365D]/10 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
                             <div class="grid grid-cols-2 gap-2">
@@ -151,7 +151,7 @@
             @endif
 
             @if ($model->eentCoordinates() || $model->eexpCoordinates())
-                <div class="grid gap-3 border-t border-[#1B365D]/8 p-4 md:grid-cols-2">
+                <div class="grid gap-3 border-t border-[#1B365D]/8 p-4 dark:border-slate-700 md:grid-cols-2">
                     @if ($model->eentCoordinates())
                         <x-flight-release.copy-field
                             id="eent-coordinates"
@@ -172,7 +172,7 @@
         </section>
     @endif
 
-    <div class="border-t border-[#1B365D]/8">
+    <div class="border-t border-[#1B365D]/8 dark:border-slate-700">
         <div class="flex items-center justify-between gap-3 bg-[#F8F9FA] px-4 py-2 dark:bg-slate-800">
             <div class="flex items-center gap-2">
                 <x-heroicon-o-map class="h-4 w-4 text-[#1B365D] dark:text-slate-300" />

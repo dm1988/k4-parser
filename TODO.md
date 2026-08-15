@@ -1,8 +1,10 @@
-# Current focus: bug: from route http://127.0.0.1/flight-route-extractor menu drop downs do not work
+# Completed: bug: from route http://127.0.0.1/flight-route-extractor menu drop downs do not work
 - Mobile hamburger nav doesn't open
 - Full size user profile doesn't open
 - Investigation outcome: both controls depend on Alpine directives in the shared navigation, but `resources/js/app.js` no longer imports or starts Alpine. The removal occurred in merge commit `d1fc39d`; the current Vite bundle also contains no Alpine runtime. This affects every authenticated page using the application layout, not only the flight route extractor.
 - Fixed by restoring Alpine initialization in the application JavaScript entry point. Added focused regression coverage for the shared navigation runtime and rebuilt the production Vite assets successfully.
+- Fixed unreadable flight-route tokens in dark mode by adding accessible dark variants for fixes, airways, direct markers, and speed/altitude tokens, with focused classification coverage.
+- Fixed all flight-plan section borders and column dividers in dark mode with the shared slate-700 color.
 
 # 1. Plan: Release flight extractor trial
 

@@ -268,7 +268,7 @@ class FlightReleaseControllerTest extends TestCase
             'route' => 'DCT TEST',
         ];
 
-        $this->actingAs(User::factory()->create([
+        $response = $this->actingAs(User::factory()->create([
             'role' => 'admin',
         ]))
             ->withSession(['flight_plan' => $flightPlan])
@@ -305,6 +305,30 @@ class FlightReleaseControllerTest extends TestCase
             ->assertDontSee('data-copy-target="etp-0-label"', false)
             ->assertDontSee('value="KSFO-PACD"', false)
             ->assertDontSee('data-copy-target="etp-0-airports"', false);
+
+        $borderClassCount = preg_match_all(
+            '/class="([^"]*border-\[\#1B365D\]\/8[^"]*)"/',
+            $response->getContent(),
+            $borderClassMatches,
+        );
+
+        $this->assertSame(8, $borderClassCount);
+
+        foreach ($borderClassMatches[1] as $borderClasses) {
+            $this->assertStringContainsString('dark:border-slate-700', $borderClasses);
+        }
+
+        $dividerClassCount = preg_match_all(
+            '/class="([^"]*divide-\[\#1B365D\]\/6[^"]*)"/',
+            $response->getContent(),
+            $dividerClassMatches,
+        );
+
+        $this->assertSame(3, $dividerClassCount);
+
+        foreach ($dividerClassMatches[1] as $dividerClasses) {
+            $this->assertStringContainsString('dark:divide-slate-700', $dividerClasses);
+        }
     }
 
     public function test_flight_release_results_use_mobile_first_layout_and_wrap_long_content(): void
@@ -335,7 +359,7 @@ class FlightReleaseControllerTest extends TestCase
 
         $response->assertOk();
         $response->assertSeeText($longAirportName);
-        $response->assertSee('grid divide-y divide-[#1B365D]/6 md:grid-cols-3 md:divide-x md:divide-y-0', false);
+        $response->assertSee('grid divide-y divide-[#1B365D]/6 dark:divide-slate-700 md:grid-cols-3 md:divide-x md:divide-y-0', false);
         $response->assertSee('flex min-w-0 flex-col gap-1 px-4 py-3', false);
         $response->assertSee('break-words text-xs font-semibold leading-snug', false);
         $response->assertSee('break-words text-[11px] leading-relaxed', false);

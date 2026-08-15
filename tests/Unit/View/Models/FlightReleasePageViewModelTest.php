@@ -92,27 +92,27 @@ class FlightReleasePageViewModelTest extends TestCase
             [
                 'value' => 'DCT',
                 'type' => RouteTokenType::DIRECT,
-                'class' => 'text-[#4A5568]/50',
+                'class' => 'text-[#4A5568]/50 dark:text-slate-400',
             ],
             [
                 'value' => 'OSUDO4A',
                 'type' => RouteTokenType::FIX,
-                'class' => 'text-[#0B0E14]',
+                'class' => 'text-[#0B0E14] dark:text-slate-100',
             ],
             [
                 'value' => 'Q139',
                 'type' => RouteTokenType::AIRWAY,
-                'class' => 'font-bold text-[#1B365D]',
+                'class' => 'font-bold text-[#1B365D] dark:text-sky-300',
             ],
             [
                 'value' => 'DSM/N0486F350',
                 'type' => RouteTokenType::SPEED,
-                'class' => 'text-amber-700',
+                'class' => 'text-amber-700 dark:text-amber-300',
             ],
             [
                 'value' => 'GETME',
                 'type' => RouteTokenType::FIX,
-                'class' => 'text-[#0B0E14]',
+                'class' => 'text-[#0B0E14] dark:text-slate-100',
             ],
         ], $viewModel->routeTokens());
     }
