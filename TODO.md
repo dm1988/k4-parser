@@ -1,22 +1,21 @@
-# Completed: bug: from route http://127.0.0.1/flight-route-extractor menu drop downs do not work
-- Mobile hamburger nav doesn't open
-- Full size user profile doesn't open
-- Investigation outcome: both controls depend on Alpine directives in the shared navigation, but `resources/js/app.js` no longer imports or starts Alpine. The removal occurred in merge commit `d1fc39d`; the current Vite bundle also contains no Alpine runtime. This affects every authenticated page using the application layout, not only the flight route extractor.
-- Fixed by restoring Alpine initialization in the application JavaScript entry point. Added focused regression coverage for the shared navigation runtime and rebuilt the production Vite assets successfully.
-- Fixed unreadable flight-route tokens in dark mode by adding accessible dark variants for fixes, airways, direct markers, and speed/altitude tokens, with focused classification coverage.
-- Fixed all flight-plan section borders and column dividers in dark mode with the shared slate-700 color.
-
 # 1. Plan: Release flight extractor trial
 
 Goal: release the flight extractor as a clearly labeled demo, validate usage, and then gate it behind its own Stripe subscription at $5 per year with a one-time two-month trial per user.
 
-## Phase 1: Demo release and measurement
+## Current focus: Phase 1: Demo release and measurement
 
-1. Add a reusable `Demo` badge to the desktop and mobile flight-extractor navigation links without changing the existing feature gate.
-2. Enable `FEATURES_FLIGHT_RELEASE_FOR_ALL_USERS=true` in the target deployment environment; keep `.env.example` defaulted to `false` so access remains opt-in per environment.
-3. Confirm verified non-admin users can see and use the extractor, while disabling `FEATURES_FLIGHT_RELEASE_ENABLED` still returns 404 and removes navigation access.
-4. Use the existing `extract_requests` logging and Filament metrics to review request volume, failures, processing time, and user adoption before billing launches.
-5. Add focused navigation, authorization, and extraction tests for enabled, disabled, admin, verified-user, and unverified-user behavior.
+Implementation outcome:
+
+- Added a reusable, dark-mode-compatible `Demo` badge with default, info, and success variants, custom slot content, and safe fallback styling to both flight-plan navigation links without changing their existing feature gate.
+- Demo access now explicitly requires a verified email. Verified non-admin users receive access when the environment-specific demo override is enabled; admins retain access; unverified users remain blocked.
+- The disabled master feature continues to return 404 and hide navigation access for every user.
+- Added a flight-plan-specific Filament dashboard widget for request volume, failure count and rate, average processing time, and distinct-user adoption using existing `extract_requests` data.
+- Added focused navigation, authorization, extraction logging, model entitlement, dashboard layout, and metric tests covering enabled, disabled, admin, verified-user, and unverified-user behavior.
+- Kept `.env.example` defaulted to `FEATURES_FLIGHT_RELEASE_FOR_ALL_USERS=false`. Deployment action remaining: set this value to `true` in the target environment and refresh cached configuration when the demo is released.
+
+Focused verification: 34 tests passed with 226 assertions. Pint and Larastan completed successfully.
+
+Commit message: `feat: release and measure flight plan demo access`
 
 ## Phase 2: Stripe and Cashier foundation
 
@@ -118,3 +117,11 @@ Commit message: `Add image filtering and toggleable extract request metrics`
 - Verified 22 focused view/controller tests with 227 assertions and a production Vite build. Manual cross-browser visual QA remains a release-checkpoint task.
 
 Commit message: `feat: add persistent light dark and system themes`
+
+# Completed: bug: from route http://127.0.0.1/flight-route-extractor menu drop downs do not work
+- Mobile hamburger nav doesn't open
+- Full size user profile doesn't open
+- Investigation outcome: both controls depend on Alpine directives in the shared navigation, but `resources/js/app.js` no longer imports or starts Alpine. The removal occurred in merge commit `d1fc39d`; the current Vite bundle also contains no Alpine runtime. This affects every authenticated page using the application layout, not only the flight route extractor.
+- Fixed by restoring Alpine initialization in the application JavaScript entry point. Added focused regression coverage for the shared navigation runtime and rebuilt the production Vite assets successfully.
+- Fixed unreadable flight-route tokens in dark mode by adding accessible dark variants for fixes, airways, direct markers, and speed/altitude tokens, with focused classification coverage.
+- Fixed all flight-plan section borders and column dividers in dark mode with the shared slate-700 color.

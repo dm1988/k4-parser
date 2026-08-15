@@ -72,4 +72,18 @@ class FeatureRouteAuthorizationTest extends TestCase
             ->post(route('flight-release.store'))
             ->assertNotFound();
     }
+
+    public function test_unverified_users_are_redirected_before_demo_routes_are_authorized(): void
+    {
+        Config::set('features.flight_release.enabled', true);
+        Config::set('features.flight_release.for_all_users', true);
+
+        $unverifiedUser = User::factory()->unverified()->create();
+
+        $this->actingAs($unverifiedUser)
+            ->get(route('flight-release.index'))
+            ->assertRedirect(route('verification.notice'));
+
+        $this->assertFalse($unverifiedUser->canUseFlightRelease());
+    }
 }

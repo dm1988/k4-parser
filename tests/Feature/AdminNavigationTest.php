@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
 
 class AdminNavigationTest extends TestCase
@@ -69,6 +70,46 @@ class AdminNavigationTest extends TestCase
             ->assertOk()
             ->assertDontSeeText('Admin Panel')
             ->assertDontSee(route('filament.admin.pages.dashboard'), escape: false);
+    }
+
+    public function test_verified_demo_users_see_badged_flight_plan_links_in_desktop_and_mobile_navigation(): void
+    {
+        Config::set('features.flight_release.enabled', true);
+        Config::set('features.flight_release.for_all_users', true);
+
+        $response = $this->actingAs(User::factory()->create())
+            ->get(route('dashboard'));
+
+        $response->assertOk()
+            ->assertSeeText('Extract Flight Plan')
+            ->assertSeeText('Demo')
+            ->assertSee('cc-badge inline-flex shrink-0 items-center', escape: false)
+            ->assertSeeInOrder([
+                'hidden items-stretch',
+                'data-demo-badge',
+                'id="mobile-navigation"',
+                'data-demo-badge',
+            ], escape: false);
+    }
+
+    public function test_flight_plan_navigation_is_hidden_when_demo_access_is_not_granted(): void
+    {
+        Config::set('features.flight_release.enabled', true);
+        Config::set('features.flight_release.for_all_users', false);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSeeText('Extract Flight Plan')
+            ->assertDontSee('data-demo-badge', escape: false);
+
+        Config::set('features.flight_release.enabled', false);
+
+        $this->actingAs(User::factory()->admin()->create())
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSeeText('Extract Flight Plan')
+            ->assertDontSee('data-demo-badge', escape: false);
     }
 
     public function test_navigation_uses_safe_links_and_forms_without_inline_javascript(): void

@@ -44,6 +44,16 @@ class FlightReleaseControllerTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_verified_non_admin_users_can_view_the_extractor_during_the_demo(): void
+    {
+        Config::set('features.flight_release.for_all_users', true);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('flight-release.index'))
+            ->assertOk()
+            ->assertSeeText('Flight Plan Extractor');
+    }
+
     public function test_uploaded_pdf_route_is_displayed_after_extraction(): void
     {
         Storage::fake('user_flight_releases');
@@ -119,20 +129,21 @@ class FlightReleaseControllerTest extends TestCase
     public function test_successful_extraction_records_request_metadata_and_explicit_counts(): void
     {
         Storage::fake('user_flight_releases');
+        Config::set('features.flight_release.for_all_users', true);
         Config::set('app.version', '1.2.3');
         Config::set('app.extractor_version', '2026.08');
 
-        $admin = User::factory()->create(['role' => 'admin']);
+        $demoUser = User::factory()->create();
         $file = UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf');
         $expectedHash = hash('sha256', (string) hash_file('sha256', $file->getRealPath()));
 
-        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock) use ($admin, $expectedHash, $file): void {
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock) use ($demoUser, $expectedHash, $file): void {
             $mock->shouldReceive('extractFlightPlanData')
                 ->once()
-                ->andReturnUsing(function () use ($admin, $expectedHash, $file): array {
+                ->andReturnUsing(function () use ($demoUser, $expectedHash, $file): array {
                     $extractRequest = ExtractRequest::query()->sole();
 
-                    $this->assertSame($admin->getKey(), $extractRequest->user_id);
+                    $this->assertSame($demoUser->getKey(), $extractRequest->user_id);
                     $this->assertSame('pdf', $extractRequest->source_type);
                     $this->assertSame('flight_plan', $extractRequest->parser_type);
                     $this->assertSame('partial', $extractRequest->status);
@@ -149,7 +160,7 @@ class FlightReleaseControllerTest extends TestCase
                 ->andReturn('DCT TEST');
         });
 
-        $this->actingAs($admin)
+        $this->actingAs($demoUser)
             ->post(route('flight-release.store'), ['flight_release' => $file])
             ->assertRedirect(route('flight-release.index'));
 

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Filament\Widgets\DiskUsage;
 use App\Filament\Widgets\ExtractRequestCount;
 use App\Filament\Widgets\ExtractRequestsPerDayChart;
+use App\Filament\Widgets\FlightPlanDemoMetrics;
 use App\Filament\Widgets\UserCount;
 use App\Filament\Widgets\VerifiedUserCount;
 use Filament\Widgets\StatsOverviewWidget;
@@ -32,6 +33,7 @@ class FilamentDashboardLayoutTest extends TestCase
 
     public function test_extract_request_chart_spans_the_full_dashboard_width(): void
     {
+        $this->assertSame('full', (new FlightPlanDemoMetrics)->getColumnSpan());
         $this->assertSame('full', (new ExtractRequestsPerDayChart)->getColumnSpan());
     }
 

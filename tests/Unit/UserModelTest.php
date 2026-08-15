@@ -54,6 +54,18 @@ class UserModelTest extends TestCase
 
         $this->assertTrue($admin->canUseFlightRelease());
         $this->assertFalse($user->canUseFlightRelease());
+        $this->assertFalse($unverifiedAdmin->canUseFlightRelease());
+        $this->assertFalse($unverifiedUser->canUseFlightRelease());
+
+        Config::set('features.flight_release.for_all_users', true);
+
+        $this->assertTrue($user->canUseFlightRelease());
+        $this->assertFalse($unverifiedUser->canUseFlightRelease());
+
+        Config::set('features.flight_release.enabled', false);
+
+        $this->assertFalse($admin->canUseFlightRelease());
+        $this->assertFalse($user->canUseFlightRelease());
         $this->assertTrue($admin->canUseScheduleExtractor());
         $this->assertTrue($user->canUseScheduleExtractor());
         $this->assertFalse($unverifiedAdmin->canUseScheduleExtractor());

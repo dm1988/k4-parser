@@ -74,6 +74,10 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 
     public function canUseFlightRelease(): bool
     {
+        if (! $this->hasVerifiedEmail()) {
+            return false;
+        }
+
         return $this->canUseConfiguredFeature(
             enabled: (bool) config('features.flight_release.enabled', true),
             forAllUsers: (bool) config('features.flight_release.for_all_users', false),

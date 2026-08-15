@@ -12,7 +12,10 @@
                     @endif
                     @if (Auth::user()?->canUseFlightRelease())
                     <x-nav-link :href="route('flight-release.index')" :active="request()->routeIs('flight-release.*')">
-                        {{ __('Extract Flight Plan') }}
+                        <span class="flex items-center gap-2">
+                            {{ __('Extract Flight Plan') }}
+                            <x-demo-badge data-demo-badge />
+                        </span>
                     </x-nav-link>
                     @endif
                     @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
@@ -103,7 +106,10 @@
             @if (Auth::user()?->canUseFlightRelease())
             <x-responsive-nav-link :href="route('flight-release.index')"
                 :active="request()->routeIs('flight-release.*')">
-                {{ __('Extract Flight Plan') }}
+                <span class="flex items-center gap-2">
+                    {{ __('Extract Flight Plan') }}
+                    <x-demo-badge data-demo-badge />
+                </span>
             </x-responsive-nav-link>
             @endif
             @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
