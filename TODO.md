@@ -1,3 +1,9 @@
+# Current focus: bug: from route http://127.0.0.1/flight-route-extractor menu drop downs do not work
+- Mobile hamburger nav doesn't open
+- Full size user profile doesn't open
+- Investigation outcome: both controls depend on Alpine directives in the shared navigation, but `resources/js/app.js` no longer imports or starts Alpine. The removal occurred in merge commit `d1fc39d`; the current Vite bundle also contains no Alpine runtime. This affects every authenticated page using the application layout, not only the flight route extractor.
+- Fixed by restoring Alpine initialization in the application JavaScript entry point. Added focused regression coverage for the shared navigation runtime and rebuilt the production Vite assets successfully.
+
 # 1. Plan: Release flight extractor trial
 
 Goal: release the flight extractor as a clearly labeled demo, validate usage, and then gate it behind its own Stripe subscription at $5 per year with a one-time two-month trial per user.
@@ -68,6 +74,12 @@ Simple plan:
 2. Extend schedule enrichment to include unique layover station codes and attach the city summary to layover metadata, reusing the existing cached airport-resolution flow and avoiding requests from Blade views.
 3. Expose typed city-summary data through the event and flight-card view models, then render a reusable Crew Compass city-summary component on layover cards and airport popovers.
 4. Add focused provider, enrichment, view-model, and Blade component tests for available, unavailable, zero-place, duplicate-city, and provider-failure cases.
+
+# 4. Ensure these dark mode tests are covered
+
+- it resolves system mode from the emulated operating system preference
+- it persists an explicit theme that overrides the operating system preference
+
 
 ------------------------------------------------
 

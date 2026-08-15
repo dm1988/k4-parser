@@ -10,6 +10,16 @@ class ThemeLayoutTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_application_javascript_starts_alpine_for_shared_navigation_controls(): void
+    {
+        $applicationJavascript = file_get_contents(resource_path('js/app.js'));
+
+        $this->assertIsString($applicationJavascript);
+        $this->assertStringContainsString("import Alpine from 'alpinejs';", $applicationJavascript);
+        $this->assertStringContainsString('window.Alpine = Alpine;', $applicationJavascript);
+        $this->assertStringContainsString('Alpine.start();', $applicationJavascript);
+    }
+
     public function test_guest_layout_renders_the_theme_initializer_and_selector(): void
     {
         $response = $this->get(route('login'));
