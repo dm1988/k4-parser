@@ -59,6 +59,7 @@ jobs:
       - name: Build frontend assets
         run: |
           npm ci --no-audit --no-fund
+          npm test
           npm run build
 
   tests:

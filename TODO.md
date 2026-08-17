@@ -76,15 +76,23 @@ Simple plan:
 3. Expose typed city-summary data through the event and flight-card view models, then render a reusable Crew Compass city-summary component on layover cards and airport popovers.
 4. Add focused provider, enrichment, view-model, and Blade component tests for available, unavailable, zero-place, duplicate-city, and provider-failure cases.
 
-# 4. Ensure these dark mode tests are covered
+# Buy me a coffee modal
+- If a user has more than 7 extract requests, show a pop up modal every other request with a `buy me a coffee` link. 
+- Don’t do this for users that have already bought me a coffee
+- Way to track: manually for now
 
-- it resolves system mode from the emulated operating system preference
-- it persists an explicit theme that overrides the operating system preference
-
-
+# Review welcome page for use with new features
 ------------------------------------------------
 
 # Completed
+
+## Completed: Dark mode preference behavior coverage
+
+Outcome: Added dependency-free JavaScript tests against the production theme module. The tests emulate both light and dark operating-system preferences, verify that `system` mode resolves to the matching document theme, and confirm that explicit light and dark selections persist across reloads while overriding the operating-system preference. The focused theme tests now run in the frontend CI job before the production build.
+
+Focused verification: The JavaScript theme test passes all 6 tests (2 top-level behaviors and 4 preference scenarios), the existing Theme Layout feature test passes 5 tests with 29 assertions, and Larastan passes with no errors.
+
+Commit message: `test: cover persisted dark mode preferences`
 
 ## Completed: Filament Extract Requests table source filter and columns
 
