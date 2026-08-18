@@ -109,6 +109,9 @@ Acceptance criteria:
 Commit message: `feat: add recurring buy me a coffee prompt`
 
 # Review welcome page for use with new features
+
+# Bug: k4 parser local times on small screens overflows outside div, 
+- For both: flight times and duty times
 ------------------------------------------------
 
 # Completed
