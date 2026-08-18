@@ -19,7 +19,8 @@ Commit message: `feat: release and measure flight plan demo access`
 
 ## Phase 2: Stripe and Cashier foundation
 
-1. Create a Stripe product with a recurring annual price of $5; store only its Stripe price ID in billing configuration and environment variables.
+1. Create a Stripe product with a recurring annual price of $6; store only its Stripe price ID in billing configuration and environment variables.
+- Sandbox Product ID: prod_V5e95Fh4fVJrkH
 2. Add Cashier's `Billable` trait to `User`, cast `trial_ends_at` as a datetime, and verify the existing Cashier customer/subscription migrations match Cashier v16 requirements.
 3. Use a dedicated subscription name such as `flight-release` instead of `default`, keeping this entitlement independent from future paid feature tiers.
 4. Configure test/live Stripe keys, webhook signing secrets, currency, and Cashier path without committing secrets.
@@ -76,10 +77,36 @@ Simple plan:
 3. Expose typed city-summary data through the event and flight-card view models, then render a reusable Crew Compass city-summary component on layover cards and airport popovers.
 4. Add focused provider, enrichment, view-model, and Blade component tests for available, unavailable, zero-place, duplicate-city, and provider-failure cases.
 
-# Buy me a coffee modal
-- If a user has more than 7 extract requests, show a pop up modal every other request with a `buy me a coffee` link. 
-- Don’t do this for users that have already bought me a coffee
-- Way to track: manually for now
+## Current focus: Buy me a coffee modal
+
+Goal: invite established users to support Crew Compass without interrupting early use or repeatedly prompting users who have already contributed.
+
+Proposed behavior contract:
+
+- Count only the authenticated user's successful, non-empty `extract_requests`, across both the schedule and flight-plan extractors. Failed and empty extractions do not advance the prompt cadence.
+- Show the modal immediately after the extraction that brings the qualifying count to 8, 10, 12, and each later even number. Do not show it while restoring cached results or reloading a result page.
+- Suppress the modal when an administrator has manually marked the user as having bought a coffee. The existing navigation link remains available.
+- Dismissing the modal has no persistent effect; the next prompt is determined only by the next qualifying extraction count.
+
+Implementation plan:
+
+1. Add a `has_bought_coffee` boolean to users with a database and model default of `false`, a boolean cast, and a `boughtCoffee()` factory state. Add the missing `User::extractRequests()` relationship.
+2. Centralize prompt eligibility in a small server-side action or clearly named user method. Check the manual flag first, then count only the user's `success` records with detected events and apply `count > 7 && count % 2 === 0`; never query from Blade.
+3. Move the existing Buy Me a Coffee URL into configuration and reuse it in desktop navigation, mobile navigation, and the modal. Keep the external link opening safely with `target="_blank"` and `rel="noopener noreferrer"`; no Stripe, webhook, or payment route is needed.
+4. Build a reusable, dark-mode-compatible coffee prompt around the existing modal component. Include an explicit heading, short non-coercive copy, primary coffee link, dismiss action, focus management, Escape/backdrop dismissal, and dialog ARIA attributes.
+5. Trigger the prompt only after a newly completed extraction: dispatch the modal event from the successful, non-empty Livewire schedule flow, and flash equivalent one-request state through the successful flight-plan redirect. Do not trigger it from page render or cached session state.
+6. Add an administrator toggle and boolean table column to the Filament user resource so purchases can be tracked manually without exposing the flag to users.
+7. Add focused PHPUnit coverage for counts 7, 8, 9, and 10; purchased users; isolation from other users; failed and empty requests; schedule and flight-plan success triggers; reload/cached-result suppression; modal accessibility and safe link attributes; user defaults/casts/relationship; and Filament toggle/table behavior.
+8. Run the focused tests and Pint while implementing. At the integration checkpoint, run Larastan and verify the modal visually on mobile and desktop in light and dark modes.
+
+Acceptance criteria:
+
+- An eligible user's 8th and 10th successful non-empty extractions open the modal once; their 7th and 9th do not.
+- Failed extractions, empty extractions, page reloads, and cached results never open the modal.
+- Marking `has_bought_coffee` in Filament immediately prevents all future automatic prompts for that user.
+- Both extraction workflows use the same eligibility rule, modal content, and configured external URL.
+
+Commit message: `feat: add recurring buy me a coffee prompt`
 
 # Review welcome page for use with new features
 ------------------------------------------------
