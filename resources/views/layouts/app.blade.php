@@ -15,6 +15,7 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @livewireStyles
     </head>
     <body class="font-sans text-gray-900 antialiased dark:text-gray-100">
         <div class="min-h-screen bg-gray-100 transition-colors dark:bg-gray-950">
@@ -33,6 +34,10 @@
             <main>
                 {{ $slot }}
             </main>
+
+            <x-coffee-prompt :show="(bool) session('show_coffee_prompt', false)" />
         </div>
+
+        @livewireScripts
     </body>
 </html>

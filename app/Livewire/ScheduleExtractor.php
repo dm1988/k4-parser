@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Actions\HandleExtractExecution;
+use App\Actions\ShouldPromptForCoffee;
 use App\DTOs\ExtractedResultData;
 use App\Enums\ScheduleEventType;
 use App\Exceptions\ExtractSourceResolutionException;
@@ -48,14 +49,18 @@ class ScheduleExtractor extends Component
 
     protected EngineResultCache $engineResultCache;
 
+    protected ShouldPromptForCoffee $shouldPromptForCoffee;
+
     public function boot(
         HandleExtractExecution $handleExtractExecution,
         JcaScheduleProcessor $jcaScheduleProcessor,
         EngineResultCache $engineResultCache,
+        ShouldPromptForCoffee $shouldPromptForCoffee,
     ): void {
         $this->handleExtractExecution = $handleExtractExecution;
         $this->jcaScheduleProcessor = $jcaScheduleProcessor;
         $this->engineResultCache = $engineResultCache;
+        $this->shouldPromptForCoffee = $shouldPromptForCoffee;
     }
 
     public function mount(): void
@@ -117,6 +122,10 @@ class ScheduleExtractor extends Component
         $this->reset('files');
         $this->view = self::VIEW_RESULTS;
         $this->resetValidation();
+
+        if ($this->shouldPromptForCoffee->handle($user)) {
+            $this->dispatch('open-modal', name: 'buy-me-a-coffee');
+        }
     }
 
     public function updatedFiles(): void

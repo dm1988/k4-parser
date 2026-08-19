@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Actions\ShouldPromptForCoffee;
 use App\DTOs\AirportData;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Models\ExtractRequest;
@@ -57,6 +58,7 @@ class FlightReleaseControllerTest extends TestCase
     public function test_uploaded_pdf_route_is_displayed_after_extraction(): void
     {
         Storage::fake('user_flight_releases');
+        $user = User::factory()->admin()->create();
 
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
             $mock->shouldReceive('extractFlightPlanData')
@@ -80,22 +82,26 @@ class FlightReleaseControllerTest extends TestCase
                 ->with('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A')
                 ->andReturn("OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105\n UMKAL UMKAL6A");
         });
+        $this->mock(ShouldPromptForCoffee::class, function (MockInterface $mock) use ($user): void {
+            $mock->shouldReceive('handle')
+                ->once()
+                ->withArgs(fn (User $candidate): bool => $candidate->is($user))
+                ->andReturnTrue();
+        });
 
-        $response = $this->actingAs(User::factory()->create([
-            'role' => 'admin',
-        ]))
+        $response = $this->actingAs($user)
             ->from(route('flight-release.index'))
             ->post(route('flight-release.store'), [
                 'flight_release' => UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'),
             ]);
 
         $response->assertRedirect(route('flight-release.index'));
+        $response->assertSessionHas('show_coffee_prompt', true);
         $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
 
-        $this->actingAs(User::factory()->create([
-            'role' => 'admin',
-        ]))->get(route('flight-release.index'))
+        $this->actingAs($user)->get(route('flight-release.index'))
             ->assertOk()
+            ->assertSee('style="display: block;"', escape: false)
             ->assertSeeText('Extracted flight plan')
             ->assertSeeText('Departure')
             ->assertSeeText('PANC')
@@ -124,6 +130,11 @@ class FlightReleaseControllerTest extends TestCase
             ], escape: false)
             ->assertSee('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105', escape: false)
             ->assertSee(' UMKAL UMKAL6A', escape: false);
+
+        $this->actingAs($user)
+            ->get(route('flight-release.index'))
+            ->assertOk()
+            ->assertSee('style="display: none;"', escape: false);
     }
 
     public function test_successful_extraction_records_request_metadata_and_explicit_counts(): void

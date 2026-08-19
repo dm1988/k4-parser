@@ -77,44 +77,40 @@ Simple plan:
 3. Expose typed city-summary data through the event and flight-card view models, then render a reusable Crew Compass city-summary component on layover cards and airport popovers.
 4. Add focused provider, enrichment, view-model, and Blade component tests for available, unavailable, zero-place, duplicate-city, and provider-failure cases.
 
-## Current focus: Buy me a coffee modal
-
-Goal: invite established users to support Crew Compass without interrupting early use or repeatedly prompting users who have already contributed.
-
-Proposed behavior contract:
-
-- Count only the authenticated user's successful, non-empty `extract_requests`, across both the schedule and flight-plan extractors. Failed and empty extractions do not advance the prompt cadence.
-- Show the modal immediately after the extraction that brings the qualifying count to 8, 10, 12, and each later even number. Do not show it while restoring cached results or reloading a result page.
-- Suppress the modal when an administrator has manually marked the user as having bought a coffee. The existing navigation link remains available.
-- Dismissing the modal has no persistent effect; the next prompt is determined only by the next qualifying extraction count.
-
-Implementation plan:
-
-1. Add a `has_bought_coffee` boolean to users with a database and model default of `false`, a boolean cast, and a `boughtCoffee()` factory state. Add the missing `User::extractRequests()` relationship.
-2. Centralize prompt eligibility in a small server-side action or clearly named user method. Check the manual flag first, then count only the user's `success` records with detected events and apply `count > 7 && count % 2 === 0`; never query from Blade.
-3. Move the existing Buy Me a Coffee URL into configuration and reuse it in desktop navigation, mobile navigation, and the modal. Keep the external link opening safely with `target="_blank"` and `rel="noopener noreferrer"`; no Stripe, webhook, or payment route is needed.
-4. Build a reusable, dark-mode-compatible coffee prompt around the existing modal component. Include an explicit heading, short non-coercive copy, primary coffee link, dismiss action, focus management, Escape/backdrop dismissal, and dialog ARIA attributes.
-5. Trigger the prompt only after a newly completed extraction: dispatch the modal event from the successful, non-empty Livewire schedule flow, and flash equivalent one-request state through the successful flight-plan redirect. Do not trigger it from page render or cached session state.
-6. Add an administrator toggle and boolean table column to the Filament user resource so purchases can be tracked manually without exposing the flag to users.
-7. Add focused PHPUnit coverage for counts 7, 8, 9, and 10; purchased users; isolation from other users; failed and empty requests; schedule and flight-plan success triggers; reload/cached-result suppression; modal accessibility and safe link attributes; user defaults/casts/relationship; and Filament toggle/table behavior.
-8. Run the focused tests and Pint while implementing. At the integration checkpoint, run Larastan and verify the modal visually on mobile and desktop in light and dark modes.
-
-Acceptance criteria:
-
-- An eligible user's 8th and 10th successful non-empty extractions open the modal once; their 7th and 9th do not.
-- Failed extractions, empty extractions, page reloads, and cached results never open the modal.
-- Marking `has_bought_coffee` in Filament immediately prevents all future automatic prompts for that user.
-- Both extraction workflows use the same eligibility rule, modal content, and configured external URL.
-
-Commit message: `feat: add recurring buy me a coffee prompt`
-
 # Review welcome page for use with new features
 
 # Bug: k4 parser local times on small screens overflows outside div, 
 - For both: flight times and duty times
+- Suggest: (Need to convert for blade) /* Apply to the wrapper or grid container holding the time blocks */
+.local-times-container > div,
+.time-block {
+  min-width: 0; /* Allows flex item to shrink below content size */
+}
+
+/* Apply to the element containing the text string */
+.time-text {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+# Track schedule upload count
 ------------------------------------------------
 
 # Completed
+
+## Completed: Buy me a coffee modal
+
+Outcome: Added a recurring, accessible coffee prompt after a user's 8th and each later even-numbered successful non-empty extraction. Schedule and flight-plan workflows share one eligibility action and configured support URL; cached results, reloads, failures, empty results, and users marked as purchasers are suppressed. Filament now exposes the manual purchase toggle and table status.
+
+Focused verification: 49 focused PHPUnit tests passed with 409 assertions, Pint passed, Larastan passed with no errors, and the production Vite/Tailwind build completed successfully. Browser automation was unavailable for screenshot-based viewport and theme inspection.
+
+Follow-up: Restored the modal panel's permanent transform stacking context so it remains above the backdrop after its transition and links stay clickable. Removed the standalone Alpine bootstrap in favor of Livewire 4's single bundled Alpine runtime on authenticated and guest layouts, eliminating duplicate initialization without breaking guest OTP controls.
+
+Follow-up verification: 28 focused PHPUnit tests passed with 207 assertions, all 6 JavaScript tests passed, Pint passed, Larastan passed with no errors, and the production frontend build completed successfully.
+
+Commit message: `feat: add recurring buy me a coffee prompt`
+
+Follow-up commit message: `fix: keep coffee modal interactive`
 
 ## Completed: Dark mode preference behavior coverage
 

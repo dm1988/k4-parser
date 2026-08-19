@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Livewire;
 
+use App\Actions\ShouldPromptForCoffee;
 use App\DTOs\ExtractedResultData;
 use App\Exceptions\ExtractSourceResolutionException;
 use App\Livewire\ScheduleExtractor;
@@ -79,7 +80,8 @@ class ScheduleExtractorTest extends TestCase
             ->assertSeeHtml('wire:key="schedule-extractor-results-'.$result->parseKey.'"')
             ->assertSee('Extracted Schedule')
             ->assertSee('Cached duty')
-            ->assertSee('Extract another roster');
+            ->assertSee('Extract another roster')
+            ->assertNotDispatched('open-modal');
     }
 
     public function test_it_falls_back_to_the_latest_result_when_the_component_parse_key_is_stale(): void
@@ -192,6 +194,26 @@ class ScheduleExtractorTest extends TestCase
         $latest = app(EngineResultCache::class)->latest();
         $this->assertNotNull($latest);
         $this->assertSame(['duty', 'flight'], $latest->filters);
+    }
+
+    public function test_eligible_successful_non_empty_extraction_dispatches_the_coffee_modal(): void
+    {
+        $user = User::factory()->create();
+        $this->mockResolvedSource(null, 'Roster text');
+        $this->mockParsedEvents([$this->event('Prompting duty')]);
+        $this->mock(ShouldPromptForCoffee::class, function (MockInterface $mock) use ($user): void {
+            $mock->shouldReceive('handle')
+                ->once()
+                ->withArgs(fn (User $candidate): bool => $candidate->is($user))
+                ->andReturnTrue();
+        });
+
+        Livewire::actingAs($user)
+            ->test(ScheduleExtractor::class)
+            ->set('text', 'Roster text')
+            ->call('extractRoster')
+            ->assertHasNoErrors()
+            ->assertDispatched('open-modal', name: 'buy-me-a-coffee');
     }
 
     public function test_it_parses_a_pdf_temporary_upload_with_a_local_real_path(): void
@@ -358,7 +380,8 @@ class ScheduleExtractorTest extends TestCase
             ->assertSet('parseKey', $previous->parseKey)
             ->assertHasErrors(['files'])
             ->assertSee('No calendar events were found in that schedule.')
-            ->assertDontSee('Extracted Schedule');
+            ->assertDontSee('Extracted Schedule')
+            ->assertNotDispatched('open-modal');
 
         $latest = app(EngineResultCache::class)->latest();
         $this->assertNotNull($latest);

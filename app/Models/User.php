@@ -10,12 +10,13 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 
 /** @property Carbon|null $email_verification_otp_expires_at */
-#[Fillable(['name', 'email', 'airline_iata_code', 'airline_icao_code', 'email_verified_at', 'password', 'remember_token', 'role', 'is_active', 'last_admin_login_at', 'stripe_id', 'pm_type', 'pm_last_four', 'trial_ends_at'])]
+#[Fillable(['name', 'email', 'airline_iata_code', 'airline_icao_code', 'email_verified_at', 'password', 'remember_token', 'role', 'is_active', 'has_bought_coffee', 'last_admin_login_at', 'stripe_id', 'pm_type', 'pm_last_four', 'trial_ends_at'])]
 #[Hidden(['password', 'remember_token', 'email_verification_otp_hash'])]
 class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 {
@@ -27,6 +28,7 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
     protected $attributes = [
         'airline_iata_code' => null,
         'airline_icao_code' => null,
+        'has_bought_coffee' => false,
     ];
 
     protected function casts(): array
@@ -35,6 +37,7 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
             'email_verified_at' => 'datetime',
             'email_verification_otp_expires_at' => 'datetime',
             'is_active' => 'boolean',
+            'has_bought_coffee' => 'boolean',
             'password' => 'hashed',
         ];
     }
@@ -70,6 +73,12 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
     public function isAdmin(): bool
     {
         return in_array($this->role, ['admin', 'super_admin'], true);
+    }
+
+    /** @return HasMany<ExtractRequest, $this> */
+    public function extractRequests(): HasMany
+    {
+        return $this->hasMany(ExtractRequest::class);
     }
 
     public function canUseFlightRelease(): bool

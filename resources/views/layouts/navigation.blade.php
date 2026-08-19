@@ -24,7 +24,7 @@
                         {{ __('Admin Panel') }}
                     </x-nav-link>
                     @endif
-                    <a href="https://buymeacoffee.com/crewcompass"
+                    <a href="{{ config('services.buy_me_a_coffee.url') }}"
                         class="inline-flex items-center self-center gap-2 rounded-md border border-amber-600/40 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-100 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 active:translate-y-0 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20 dark:focus:ring-amber-400 dark:focus:ring-offset-gray-900"
                         target="_blank" rel="noopener noreferrer">
                         <span class="text-base" aria-hidden="true">☕</span>
@@ -118,8 +118,8 @@
                 {{ __('Admin Panel') }}
             </x-responsive-nav-link>
             @endif
-            <x-responsive-nav-link href="https://buymeacoffee.com/crewcompass" :active="false" target="_blank"
-                rel="noopener">
+            <x-responsive-nav-link href="{{ config('services.buy_me_a_coffee.url') }}" :active="false" target="_blank"
+                rel="noopener noreferrer">
                 Buy Me a Coffee
             </x-responsive-nav-link>
         </div>

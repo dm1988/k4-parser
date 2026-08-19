@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\ShouldPromptForCoffee;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Http\Requests\StoreFlightReleaseRequest;
+use App\Models\User;
 use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use App\Services\Infrastructure\ExtractRequestLogger;
 use App\View\Models\FlightReleasePageViewModel;
@@ -26,7 +28,11 @@ class FlightReleaseController extends Controller
         StoreFlightReleaseRequest $request,
         FlightRouteExtractor $extractor,
         ExtractRequestLogger $extractRequestLogger,
+        ShouldPromptForCoffee $shouldPromptForCoffee,
     ): RedirectResponse {
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+
         $uploadedFile = $request->file('flight_release');
         $disk = Storage::disk('user_flight_releases');
         $path = $uploadedFile->store('', 'user_flight_releases');
@@ -35,7 +41,7 @@ class FlightReleaseController extends Controller
 
         try {
             $extractRequest = $extractRequestLogger->start(
-                $request->user()?->getKey(),
+                $user->getKey(),
                 'pdf',
                 'flight_plan',
                 $uploadedFile,
@@ -75,6 +81,7 @@ class FlightReleaseController extends Controller
 
         return redirect()
             ->route('flight-release.index')
-            ->with('flight_plan', $flightPlan);
+            ->with('flight_plan', $flightPlan)
+            ->with('show_coffee_prompt', $shouldPromptForCoffee->handle($user));
     }
 }

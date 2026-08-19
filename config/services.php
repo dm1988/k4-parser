@@ -17,6 +17,10 @@ return [
         'url' => env('AIRPORT_PROVIDER_URL', 'http://localhost/api/v1'),
     ],
 
+    'buy_me_a_coffee' => [
+        'url' => env('BUY_ME_A_COFFEE_URL', 'https://buymeacoffee.com/crewcompass'),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

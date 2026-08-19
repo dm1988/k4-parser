@@ -29,6 +29,11 @@ class UsersTable
                     ->label('Active')
                     ->boolean()
                     ->sortable(),
+                IconColumn::make('has_bought_coffee')
+                    ->label('Bought coffee')
+                    ->boolean()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

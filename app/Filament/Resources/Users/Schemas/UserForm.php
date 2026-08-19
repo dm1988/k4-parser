@@ -31,6 +31,9 @@ class UserForm
                     ->default(true)
                     ->required()
                     ->disabled(fn (?User $record): bool => $record?->getKey() === auth()->id()),
+                Toggle::make('has_bought_coffee')
+                    ->label('Bought a coffee')
+                    ->default(false),
                 TextInput::make('password')
                     ->password()
                     ->rule(Password::default())

@@ -45,6 +45,7 @@ class UserResourceTest extends TestCase
                 'password_confirmation' => '',
                 'role' => 'admin',
                 'is_active' => false,
+                'has_bought_coffee' => true,
             ])
             ->call('save')
             ->assertHasNoFormErrors();
@@ -57,6 +58,7 @@ class UserResourceTest extends TestCase
         $this->assertSame($originalPassword, $targetUser->password);
         $this->assertSame('user', $targetUser->role);
         $this->assertFalse((bool) $targetUser->is_active);
+        $this->assertTrue($targetUser->has_bought_coffee);
     }
 
     public function test_admins_can_reactivate_inactive_users_from_the_form(): void
@@ -74,15 +76,18 @@ class UserResourceTest extends TestCase
         $this->assertTrue((bool) $inactiveUser->fresh()->is_active);
     }
 
-    public function test_users_table_displays_active_status(): void
+    public function test_users_table_displays_active_and_coffee_statuses(): void
     {
         $this->actingAs($this->makeAdminUser());
         $activeUser = User::factory()->create();
         $inactiveUser = User::factory()->inactive()->create();
+        $purchaser = User::factory()->boughtCoffee()->create();
 
         Livewire::test(ListUsers::class)
             ->assertTableColumnStateSet('is_active', true, $activeUser)
-            ->assertTableColumnStateSet('is_active', false, $inactiveUser);
+            ->assertTableColumnStateSet('is_active', false, $inactiveUser)
+            ->assertTableColumnStateSet('has_bought_coffee', true, $purchaser)
+            ->assertTableColumnStateSet('has_bought_coffee', false, $activeUser);
     }
 
     public function test_admins_can_not_deactivate_themselves_from_the_form(): void

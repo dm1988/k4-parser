@@ -24,6 +24,7 @@ class UserModelTest extends TestCase
             'remember_token',
             'role',
             'is_active',
+            'has_bought_coffee',
             'last_admin_login_at',
             'stripe_id',
             'pm_type',

@@ -39,8 +39,8 @@ $maxWidth = [
             document.body.classList.remove('overflow-y-hidden');
         }
     })"
-    x-on:open-modal.window="$event.detail == '{{ $name }}' ? show = true : null"
-    x-on:close-modal.window="$event.detail == '{{ $name }}' ? show = false : null"
+    x-on:open-modal.window="($event.detail.name ?? $event.detail) == '{{ $name }}' ? show = true : null"
+    x-on:close-modal.window="($event.detail.name ?? $event.detail) == '{{ $name }}' ? show = false : null"
     x-on:close.stop="show = false"
     x-on:keydown.escape.window="show = false"
     x-on:keydown.tab.prevent="$event.shiftKey || nextFocusable().focus()"
@@ -65,7 +65,7 @@ $maxWidth = [
 
     <div
         x-show="show"
-        class="mb-6 overflow-hidden rounded-lg bg-white shadow-xl transition-all dark:bg-gray-900 sm:mx-auto sm:w-full {{ $maxWidth }}"
+        class="mb-6 transform overflow-hidden rounded-lg bg-white shadow-xl transition-all dark:bg-gray-900 sm:mx-auto sm:w-full {{ $maxWidth }}"
         x-transition:enter="ease-out duration-300"
         x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
         x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
