@@ -17,6 +17,14 @@ class ShouldPromptForCoffee
             ->where('detected_event_count', '>', 0)
             ->count();
 
-        return $qualifyingExtractionCount > 7 && $qualifyingExtractionCount % 2 === 0;
+        $promptAfterExtractions = (int) config('services.buy_me_a_coffee.prompt_after_extractions', 7);
+        $promptInterval = (int) config('services.buy_me_a_coffee.prompt_interval', 2);
+
+        if ($promptInterval <= 0) {
+            return false;
+        }
+
+        return $qualifyingExtractionCount > $promptAfterExtractions
+            && $qualifyingExtractionCount % $promptInterval === 0;
     }
 }

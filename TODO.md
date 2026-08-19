@@ -108,9 +108,15 @@ Follow-up: Restored the modal panel's permanent transform stacking context so it
 
 Follow-up verification: 28 focused PHPUnit tests passed with 207 assertions, all 6 JavaScript tests passed, Pint passed, Larastan passed with no errors, and the production frontend build completed successfully.
 
+Configuration follow-up: Moved the prompt threshold and recurrence interval to `services.buy_me_a_coffee`, backed by `BUY_ME_A_COFFEE_PROMPT_AFTER_EXTRACTIONS` and `BUY_ME_A_COFFEE_PROMPT_INTERVAL`. Non-positive intervals safely disable automatic prompts.
+
+Configuration verification: All 5 focused coffee prompt tests passed with 27 assertions, Pint passed, Larastan passed with no errors, and Laravel resolved the local values as 7 and 2.
+
 Commit message: `feat: add recurring buy me a coffee prompt`
 
 Follow-up commit message: `fix: keep coffee modal interactive`
+
+Configuration commit message: `refactor: configure coffee prompt cadence`
 
 ## Completed: Dark mode preference behavior coverage
 

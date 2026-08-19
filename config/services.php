@@ -19,6 +19,8 @@ return [
 
     'buy_me_a_coffee' => [
         'url' => env('BUY_ME_A_COFFEE_URL', 'https://buymeacoffee.com/crewcompass'),
+        'prompt_after_extractions' => (int) env('BUY_ME_A_COFFEE_PROMPT_AFTER_EXTRACTIONS', 7),
+        'prompt_interval' => (int) env('BUY_ME_A_COFFEE_PROMPT_INTERVAL', 2),
     ],
 
     'postmark' => [

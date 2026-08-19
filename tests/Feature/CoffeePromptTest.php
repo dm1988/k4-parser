@@ -54,6 +54,38 @@ class CoffeePromptTest extends TestCase
         $this->assertSame($user->getKey(), $user->extractRequests->first()?->user_id);
     }
 
+    public function test_prompt_cadence_uses_configured_threshold_and_interval(): void
+    {
+        Config::set('services.buy_me_a_coffee.prompt_after_extractions', 2);
+        Config::set('services.buy_me_a_coffee.prompt_interval', 3);
+
+        $user = User::factory()->create();
+        $eligibility = app(ShouldPromptForCoffee::class);
+
+        $this->createExtractRequests($user, 2);
+        $this->assertFalse($eligibility->handle($user));
+
+        $this->createExtractRequests($user, 1);
+        $this->assertTrue($eligibility->handle($user));
+
+        $this->createExtractRequests($user, 1);
+        $this->assertFalse($eligibility->handle($user));
+    }
+
+    public function test_non_positive_prompt_interval_disables_the_prompt(): void
+    {
+        Config::set('services.buy_me_a_coffee.prompt_after_extractions', 0);
+        $user = User::factory()->create();
+        $eligibility = app(ShouldPromptForCoffee::class);
+        $this->createExtractRequests($user, 1);
+
+        Config::set('services.buy_me_a_coffee.prompt_interval', 0);
+        $this->assertFalse($eligibility->handle($user));
+
+        Config::set('services.buy_me_a_coffee.prompt_interval', -1);
+        $this->assertFalse($eligibility->handle($user));
+    }
+
     public function test_shared_coffee_modal_is_accessible_uses_the_configured_safe_link_and_is_not_open_on_reload(): void
     {
         Config::set('services.buy_me_a_coffee.url', 'https://example.com/support-crew-compass');
