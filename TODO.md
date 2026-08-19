@@ -1,8 +1,16 @@
+# Current focus: Bug: k4 parser local times on small screens overflows outside div
+
+Outcome: Local flight and duty time cards now shrink within their nested grids and wrap long time labels on narrow screens instead of overflowing their container. The fix uses Tailwind utilities in the existing Blade markup without adding custom CSS.
+
+Focused verification: All 7 flight card component tests passed with 31 assertions, Pint passed, Larastan passed with no errors, and the production Vite/Tailwind build completed successfully.
+
+Commit message: `fix: prevent local times overflowing on small screens`
+
 # 1. Plan: Release flight extractor trial
 
 Goal: release the flight extractor as a clearly labeled demo, validate usage, and then gate it behind its own Stripe subscription at $5 per year with a one-time two-month trial per user.
 
-## Current focus: Phase 1: Demo release and measurement
+## Phase 1: Demo release and measurement
 
 Implementation outcome:
 
@@ -79,20 +87,6 @@ Simple plan:
 
 # Review welcome page for use with new features
 - Welcome page references only Schedule Extractor
-
-# Bug: k4 parser local times on small screens overflows outside div, 
-- For both: flight times and duty times
-- Suggest: (Need to convert for blade) /* Apply to the wrapper or grid container holding the time blocks */
-.local-times-container > div,
-.time-block {
-  min-width: 0; /* Allows flex item to shrink below content size */
-}
-
-/* Apply to the element containing the text string */
-.time-text {
-  overflow-wrap: break-word;
-  word-break: break-word;
-}
 
 # Bug: Flight Plan Extractor: Copy messages do not appear after the 3rd time copying an entitie
 - If a user clicks the copy buttons for: Departure, the Destination, then Alternate, then any other copy button, the *** Copied message does not show

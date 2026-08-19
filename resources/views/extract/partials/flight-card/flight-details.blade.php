@@ -23,22 +23,22 @@
     @if ($model->hasLegLocalTimes() || $model->hasDutyLocalTimes())
         <section
             data-local-times-group
-            class="space-y-2 rounded-xl border border-[#C5A059]/40 bg-[#F8F9FA] p-3 dark:bg-slate-900 sm:col-span-2"
+            class="min-w-0 space-y-2 rounded-xl border border-[#C5A059]/40 bg-[#F8F9FA] p-3 dark:bg-slate-900 sm:col-span-2"
             aria-labelledby="local-times-heading"
         >
             <h4 id="local-times-heading" class="text-xs font-bold uppercase tracking-wider text-[#1B365D] dark:text-slate-200">
                 Local Times
             </h4>
 
-            <div data-local-times-grid class="grid gap-2 sm:grid-cols-2">
+            <div data-local-times-grid class="grid min-w-0 gap-2 sm:grid-cols-2">
                 @if ($model->hasLegLocalTimes())
-                    <x-extract.detail-card label="Flight Times" value-class="whitespace-nowrap">
+                    <x-extract.detail-card class="min-w-0" label="Flight Times" value-class="break-words">
                         {{ $model->legLocalTimesLabel() }}
                     </x-extract.detail-card>
                 @endif
 
                 @if ($model->hasDutyLocalTimes())
-                    <x-extract.detail-card label="Duty Times" value-class="whitespace-nowrap">
+                    <x-extract.detail-card class="min-w-0" label="Duty Times" value-class="break-words">
                         {{ $model->dutyLocalTimesLabel() }}
                     </x-extract.detail-card>
                 @endif

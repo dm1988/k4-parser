@@ -153,12 +153,13 @@ class FlightCardComponentTest extends TestCase
         $html = $this->renderFlightCard();
 
         $this->assertStringContainsString('aria-labelledby="local-times-heading"', $html);
-        $this->assertStringContainsString('data-local-times-grid class="grid gap-2 sm:grid-cols-2"', $html);
-        $this->assertStringContainsString('data-local-times-group', $html);
+        $this->assertStringContainsString('data-local-times-grid class="grid min-w-0 gap-2 sm:grid-cols-2"', $html);
+        $this->assertMatchesRegularExpression('/data-local-times-group\s+class="[^"]*min-w-0/', $html);
+        $this->assertSame(2, preg_match_all('/data-detail-card\s+class="[^"]*\bmin-w-0\b/', $html));
+        $this->assertSame(2, substr_count($html, 'break-words'));
         $this->assertStringContainsString('border-[#C5A059]/40', $html);
         $this->assertStringContainsString('bg-[#F8F9FA]', $html);
         $this->assertStringNotContainsString('bg-[#C5A059]/5', $html);
-        $this->assertStringContainsString('data-detail-card', $html);
         $this->assertMatchesRegularExpression(
             '/Local Times.*Flight Times.*Duty Times/s',
             $html,
