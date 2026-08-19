@@ -1,4 +1,12 @@
-# Current focus: Bug: k4 parser local times on small screens overflows outside div
+# Current focus: Expose registration on the login page
+
+Outcome: The login page now shows a guarded, dark-mode-compatible “New user? Register” prompt that links to the named registration route and includes visible keyboard-focus styling.
+
+Focused verification: All 4 authentication tests passed with 11 assertions, Pint passed, Larastan passed with no errors, and the production Vite/Tailwind build completed successfully.
+
+Commit message: `feat: add registration link to login page`
+
+## Completed: Small-screen local times overflow
 
 Outcome: Local flight and duty time cards now shrink within their nested grids and wrap long time labels on narrow screens instead of overflowing their container. The fix uses Tailwind utilities in the existing Blade markup without adding custom CSS.
 
