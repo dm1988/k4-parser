@@ -78,6 +78,7 @@ Simple plan:
 4. Add focused provider, enrichment, view-model, and Blade component tests for available, unavailable, zero-place, duplicate-city, and provider-failure cases.
 
 # Review welcome page for use with new features
+- Welcome page references only Schedule Extractor
 
 # Bug: k4 parser local times on small screens overflows outside div, 
 - For both: flight times and duty times
@@ -93,7 +94,32 @@ Simple plan:
   word-break: break-word;
 }
 
+# Bug: Flight Plan Extractor: Copy messages do not appear after the 3rd time copying an entitie
+- If a user clicks the copy buttons for: Departure, the Destination, then Alternate, then any other copy button, the *** Copied message does not show
+
 # Track schedule upload count
+- For multiple file uploads within each user request
+
+# Feature: flight plan extractor: Extract MELs - Number and Name
+
+# Confidence score for extraction
+
+# flight plan extractor: Progress after submit
+- Parse on file select ... processing
+- with progress spinner or text
+
+# flight plan extractor: Extract new route: don't show upload again
+- Use an extractor another button, 2 page
+- Hides the upload on the results page
+- Extract new route: don't show upload again
+
+# Feat: Look into offline use
+
+# Feat: Fuel score
+
+# Feat: Crew Rest
+
+# Chore: update laravel
 ------------------------------------------------
 
 # Completed
@@ -117,51 +143,3 @@ Commit message: `feat: add recurring buy me a coffee prompt`
 Follow-up commit message: `fix: keep coffee modal interactive`
 
 Configuration commit message: `refactor: configure coffee prompt cadence`
-
-## Completed: Dark mode preference behavior coverage
-
-Outcome: Added dependency-free JavaScript tests against the production theme module. The tests emulate both light and dark operating-system preferences, verify that `system` mode resolves to the matching document theme, and confirm that explicit light and dark selections persist across reloads while overriding the operating-system preference. The focused theme tests now run in the frontend CI job before the production build.
-
-Focused verification: The JavaScript theme test passes all 6 tests (2 top-level behaviors and 4 preference scenarios), the existing Theme Layout feature test passes 5 tests with 29 assertions, and Larastan passes with no errors.
-
-Commit message: `test: cover persisted dark mode preferences`
-
-## Completed: Filament Extract Requests table source filter and columns
-
-Outcome: The Source filter now includes image-based extraction requests. Request, Status, Source, Parser, and Created remain always visible; User, Duration, Events, Flights, Hotels, and Error are toggleable and visible by default; Pages, File Size, File Hash, App Version, and Extractor Version remain toggleable and hidden by default.
-
-Focused verification: 8 Extract Requests resource tests passed with 59 assertions covering the Image filter option and behavior, required columns, visible optional columns, and hidden forensic columns. Pint completed successfully.
-
-Commit message: `Add image filtering and toggleable extract request metrics`
-
-## Completed: GitHub Actions Pint concurrency
-
-## Completed: Flight Plan extract request log to database
-
-## Completed: System alert email notifications
-
-## 1. Completed: Flight Plan extract request log to database
-
-## 2. Completed: System alert email notifications
-
-## 3. Completed: Dark Mode Implementation
-
-- Enabled Tailwind class-based dark mode with persisted `light`, `dark`, and `system` preferences.
-- Added a synchronous, reusable head initializer to prevent theme flashing and a dedicated JavaScript module for selector synchronization and live operating-system theme changes.
-- Added accessible native theme selectors to the guest layout and authenticated desktop/mobile navigation.
-- Added dark variants to shared Blade controls, layouts, auth/profile screens, schedule extraction views, flight cards, and flight-plan extraction views.
-- Updated the Welcome and Privacy Policy pages to conform to the persisted light, dark, and system preference.
-- Refined dark-mode contrast for the schedule upload surface, disabled extract action, navigation coffee link, and flight-plan header.
-- Verified that Filament v5 dark mode is enabled and uses the same `localStorage.theme` values, so preferences persist between the application and admin panel.
-- Added focused PHPUnit coverage for guest, authenticated, marketing/legal layouts, and Filament configuration.
-- Verified 22 focused view/controller tests with 227 assertions and a production Vite build. Manual cross-browser visual QA remains a release-checkpoint task.
-
-Commit message: `feat: add persistent light dark and system themes`
-
-# Completed: bug: from route http://127.0.0.1/flight-route-extractor menu drop downs do not work
-- Mobile hamburger nav doesn't open
-- Full size user profile doesn't open
-- Investigation outcome: both controls depend on Alpine directives in the shared navigation, but `resources/js/app.js` no longer imports or starts Alpine. The removal occurred in merge commit `d1fc39d`; the current Vite bundle also contains no Alpine runtime. This affects every authenticated page using the application layout, not only the flight route extractor.
-- Fixed by restoring Alpine initialization in the application JavaScript entry point. Added focused regression coverage for the shared navigation runtime and rebuilt the production Vite assets successfully.
-- Fixed unreadable flight-route tokens in dark mode by adding accessible dark variants for fixes, airways, direct markers, and speed/altitude tokens, with focused classification coverage.
-- Fixed all flight-plan section borders and column dividers in dark mode with the shared slate-700 color.
