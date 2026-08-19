@@ -1,21 +1,52 @@
-# Current focus: Expose registration on the login page
+# Identify places to incorporate Crew Compass
 
-Outcome: The login page now shows a guarded, dark-mode-compatible “New user? Register” prompt that links to the named registration route and includes visible keyboard-focus styling.
+Reference figma make plan
 
-Focused verification: All 4 authentication tests passed with 11 assertions, Pint passed, Larastan passed with no errors, and the production Vite/Tailwind build completed successfully.
+Audit outcome:
 
-Commit message: `feat: add registration link to login page`
+- Airport info is complete in flight cards and the flight-route extractor.
+- Primary placement: show Crew Compass content on each layover card, below the hotel details. Display the resolved city, whether a layover guide is available, the number of available places, and links to the guide/city when available.
+- Secondary placement: add the same compact city summary to origin and destination airport popovers. Do not duplicate it in the expanded airport-details accordion.
+- Data gap: airport enrichment currently handles flight origins and destinations only. Layover events expose a station code but are not resolved to a canonical Crew Compass city.
 
-## Completed: Small-screen local times overflow
+Simple plan:
 
-Outcome: Local flight and duty time cards now shrink within their nested grids and wrap long time labels on narrow screens instead of overflowing their container. The fix uses Tailwind utilities in the existing Blade markup without adding custom CSS.
+1. Extend the Crew Compass airport provider response with a canonical city identifier/slug, guide availability and URL, places count, and city URL. Resolve by airport/station code rather than city name.
+2. Extend schedule enrichment to include unique layover station codes and attach the city summary to layover metadata, reusing the existing cached airport-resolution flow and avoiding requests from Blade views.
+3. Expose typed city-summary data through the event and flight-card view models, then render a reusable Crew Compass city-summary component on layover cards and airport popovers.
+4. Add focused provider, enrichment, view-model, and Blade component tests for available, unavailable, zero-place, duplicate-city, and provider-failure cases.
 
-Focused verification: All 7 flight card component tests passed with 31 assertions, Pint passed, Larastan passed with no errors, and the production Vite/Tailwind build completed successfully.
+# Review welcome page for use with new features
+- Welcome page references only Schedule Extractor
 
-Commit message: `fix: prevent local times overflowing on small screens`
+# Bug: Flight Plan Extractor: Copy messages do not appear after the 3rd time copying an entitie
+- If a user clicks the copy buttons for: Departure, the Destination, then Alternate, then any other copy button, the *** Copied message does not show
 
-# 1. Plan: Release flight extractor trial
+# Track schedule upload count
+- For multiple file uploads within each user request
 
+# Feature: flight plan extractor: Extract MELs - Number and Name
+
+# Confidence score for extraction
+
+# flight plan extractor: Progress after submit
+- Parse on file select ... processing
+- with progress spinner or text
+
+# flight plan extractor: Extract new route: don't show upload again
+- Use an extractor another button, 2 page
+- Hides the upload on the results page
+- Extract new route: don't show upload again
+
+# Feat: Look into offline use
+
+# Feat: Fuel score
+
+# Feat: Crew Rest
+
+# Chore: update laravel
+
+# Plan: Release flight extractor trial
 Goal: release the flight extractor as a clearly labeled demo, validate usage, and then gate it behind its own Stripe subscription at $5 per year with a one-time two-month trial per user.
 
 ## Phase 1: Demo release and measurement
@@ -71,57 +102,6 @@ Open decisions before implementation:
 - Existing demo users receive the full trial when billing launches
 - Confirm tax handling and the customer-facing refund/cancellation policy before enabling live charges.
 
-# 2. Context engineering
-- Add CONTEXT.md
-- Identify branding
-
-# 3. Identify places to incorporate Crew Compass
-
-Reference figma make plan
-
-Audit outcome:
-
-- Airport info is complete in flight cards and the flight-route extractor.
-- Primary placement: show Crew Compass content on each layover card, below the hotel details. Display the resolved city, whether a layover guide is available, the number of available places, and links to the guide/city when available.
-- Secondary placement: add the same compact city summary to origin and destination airport popovers. Do not duplicate it in the expanded airport-details accordion.
-- Data gap: airport enrichment currently handles flight origins and destinations only. Layover events expose a station code but are not resolved to a canonical Crew Compass city.
-
-Simple plan:
-
-1. Extend the Crew Compass airport provider response with a canonical city identifier/slug, guide availability and URL, places count, and city URL. Resolve by airport/station code rather than city name.
-2. Extend schedule enrichment to include unique layover station codes and attach the city summary to layover metadata, reusing the existing cached airport-resolution flow and avoiding requests from Blade views.
-3. Expose typed city-summary data through the event and flight-card view models, then render a reusable Crew Compass city-summary component on layover cards and airport popovers.
-4. Add focused provider, enrichment, view-model, and Blade component tests for available, unavailable, zero-place, duplicate-city, and provider-failure cases.
-
-# Review welcome page for use with new features
-- Welcome page references only Schedule Extractor
-
-# Bug: Flight Plan Extractor: Copy messages do not appear after the 3rd time copying an entitie
-- If a user clicks the copy buttons for: Departure, the Destination, then Alternate, then any other copy button, the *** Copied message does not show
-
-# Track schedule upload count
-- For multiple file uploads within each user request
-
-# Feature: flight plan extractor: Extract MELs - Number and Name
-
-# Confidence score for extraction
-
-# flight plan extractor: Progress after submit
-- Parse on file select ... processing
-- with progress spinner or text
-
-# flight plan extractor: Extract new route: don't show upload again
-- Use an extractor another button, 2 page
-- Hides the upload on the results page
-- Extract new route: don't show upload again
-
-# Feat: Look into offline use
-
-# Feat: Fuel score
-
-# Feat: Crew Rest
-
-# Chore: update laravel
 ------------------------------------------------
 
 # Completed
@@ -145,3 +125,27 @@ Commit message: `feat: add recurring buy me a coffee prompt`
 Follow-up commit message: `fix: keep coffee modal interactive`
 
 Configuration commit message: `refactor: configure coffee prompt cadence`
+
+# Completed: Expose registration on the login page
+
+Outcome: The login page now shows a guarded, dark-mode-compatible “New user? Register” prompt that links to the named registration route and includes visible keyboard-focus styling.
+
+Focused verification: All 4 authentication tests passed with 11 assertions, Pint passed, Larastan passed with no errors, and the production Vite/Tailwind build completed successfully.
+
+Commit message: `feat: add registration link to login page`
+
+## Completed: Small-screen local times overflow
+
+Outcome: Local flight and duty time cards now shrink within their nested grids and wrap long time labels on narrow screens instead of overflowing their container. The fix uses Tailwind utilities in the existing Blade markup without adding custom CSS.
+
+Focused verification: All 7 flight card component tests passed with 31 assertions, Pint passed, Larastan passed with no errors, and the production Vite/Tailwind build completed successfully.
+
+Commit message: `fix: prevent local times overflowing on small screens`
+
+# Complete: Context engineering
+
+Outcome: Added a root-level `CONTEXT.md` that defines the product identity, user needs, extractor workflows, aviation vocabulary, architecture and access boundaries, Crew Compass brand system, technical baseline, and context-maintenance rules. Clarified that K4 Parser is the application while Crew Compass is the umbrella customer-facing brand.
+
+Documentation verification: Confirmed the file is non-empty, its required context sections are present, and the Markdown diff contains no whitespace errors.
+
+Commit message: `docs: add shared project context`

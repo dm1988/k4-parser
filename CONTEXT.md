@@ -1,0 +1,152 @@
+# K4 Extractor Project Context
+
+This file describes the product and codebase so contributors can make decisions with the same shared context. `AGENTS.md` remains the source of truth for working rules, and `TODO.md` remains the source of truth for current priorities and implementation outcomes.
+
+## Product identity
+
+- **Application:** K4 Extractor
+- **Umbrella brand:** Crew Compass
+- **Product category:** Aviation workflow tools for flight crews
+- **Primary promise:** Turn operational documents into useful, reviewable information without making crew members re-enter it manually
+
+Use **K4 Extractor** when referring to this repository or application. Use **Crew Compass** for the broader customer-facing brand. Do not infer an airline name or expand “K4” unless the product owner supplies approved wording.
+
+## Users and jobs to be done
+
+The primary user is a flight crew member working from schedule and flight-plan documents. They need to:
+
+- convert Jeppesen Crew Access schedule data into calendar-ready events;
+- review flights, duties, layovers, hotels, crew, aircraft, and local times;
+- export a full schedule, a single event, or an eligible flight-duty block as iCalendar data;
+- extract an operational route and related flight-plan details from a PDF;
+- complete these tasks quickly on desktop or mobile without exposing uploaded documents.
+
+Administrators also review application usage and manage reference data through Filament.
+
+## Core workflows
+
+### Schedule Extractor
+
+The authenticated Livewire workflow accepts supported documents or pasted text, parses roster data, enriches airport information, presents typed event cards, and caches the result for scoped calendar exports.
+
+Typical flow:
+
+1. Validate uploaded PDFs or images, or accept pasted schedule text.
+2. Resolve and parse the source through the schedule services.
+3. Map parsed data into DTOs and attach per-event download identifiers.
+4. Enrich supported airports outside Blade views.
+5. Cache the result under a parse key associated with the current session.
+6. Present view models for review and filtered iCalendar export.
+
+### Flight Plan Extractor
+
+The authenticated flight-plan workflow accepts a PDF, stores it temporarily, extracts structured flight-plan data, formats the ICAO route for display, records the extraction result, and deletes the uploaded file in a `finally` block.
+
+This feature has its own master flag and entitlement gate. Treat it as distinct from the Schedule Extractor when changing access, metrics, billing, or navigation.
+
+## Domain language
+
+- **Schedule / roster:** A crew member's assigned operational events over a period of time.
+- **Flight:** A flying segment with origin, destination, scheduled times, and optional aircraft and crew data.
+- **Duty:** The broader work period that may contain one or more flight segments.
+- **Deadhead:** Work-related travel as a passenger rather than operating crew.
+- **Layover:** Ground time between duty periods, potentially including hotel information.
+- **Local times:** Flight or duty boundaries shown in their relevant local time zones.
+- **Flight plan / flight release:** An operational document containing route and supporting dispatch information.
+- **ICAO route:** The normalized route string presented for operational use.
+- **iCalendar / ICS:** The downloadable calendar representation of parsed events.
+- **IATA / ICAO codes:** Airport or airline identifiers. The configured schedule defaults are `K4` and `CKS`.
+- **Parse key:** The opaque identifier used to resolve a cached extraction result.
+- **Download ID:** The opaque identifier attached to an individual parsed event.
+
+Prefer these established terms in UI copy, class names, tests, and documentation. Do not introduce near-synonyms when an existing term is accurate.
+
+## Architecture map
+
+- `app/Livewire/ScheduleExtractor.php` owns the interactive schedule extraction state and authorization boundary.
+- `app/Services/Schedule/` contains source resolution, parsing, airport resolution, and enrichment.
+- `app/Services/FlightPlan/` contains flight-plan extraction behavior.
+- `app/Services/Calendar/` and `app/Exports/` build calendar payloads and events.
+- `app/Actions/` coordinates reusable application workflows.
+- `app/DTOs/` and `app/ValueObjects/` carry parsed domain data.
+- `app/View/Models/` converts domain data into display-ready values.
+- `resources/views/components/` contains reusable Blade UI.
+- `resources/views/livewire/` contains Livewire presentation.
+- `app/Filament/` contains administrative resources and metrics.
+- `tests/Feature/` covers HTTP, Livewire, components, authorization, and integration behavior.
+- `tests/Unit/` covers parsers, services, DTOs, value objects, and view models.
+
+Keep parsing and external lookups out of Blade. Views should receive DTOs or view models with display-ready data.
+
+## Access and data boundaries
+
+- User-facing extractor routes require authentication and verified email addresses.
+- Feature flags provide a master availability boundary.
+- Gates and user entitlement methods provide the authorization boundary.
+- Navigation visibility must agree with route authorization, but hidden navigation is never a substitute for authorization.
+- Cached extraction results and exports must remain scoped to the current user or session.
+- Uploaded operational documents are sensitive. Validate type and size, store them only as long as needed, and delete temporary files on both success and failure.
+- Never expose secrets, raw storage paths, or another user's extraction identifiers.
+
+## Brand system
+
+### Color palette
+
+| Token | Hex | Intended use |
+| --- | --- | --- |
+| Aviation Blue | `#1B365D` | Primary headings, backgrounds, controls, and aviation data |
+| Compass Gold | `#C5A059` | Calls to action, highlights, focus accents, and icons |
+| Cloud White | `#F8F9FA` | Open background space and text on dark surfaces |
+| Midnight | `#0B0E14` | High-contrast text, deep surfaces, borders, and footers |
+| Steel Gray | `#4A5568` | Secondary copy, labels, and subtle dividers |
+
+The reusable `cc-*` classes in `resources/css/app.css` are preferred where they fit. Preserve equivalent dark-mode treatment whenever adding a light-mode style.
+
+### Typography
+
+- Use a clean sans-serif for interface and explanatory copy. The application currently loads Figtree.
+- Use monospace for operational values that resemble a flight board: airports, flight numbers, routes, aircraft identifiers, and times.
+- Create hierarchy through typeface, size, weight, and color.
+- Avoid long blocks of uppercase text, artificial character expansion or compression, excessive tracking, and competing emphasis.
+
+### Visual character
+
+The interface should feel operational, calm, and trustworthy rather than decorative. Use generous whitespace, clear grouping, restrained borders, strong contrast, and responsive layouts that remain usable on small screens. Gold should guide attention, not cover large portions of the interface.
+
+### Voice and copy
+
+- Be concise, direct, and specific.
+- Use crew-familiar language without unexplained software jargon.
+- State what happened and what the user can do next.
+- Keep punctuation restrained in headings and labels.
+- Never imply that extracted information replaces required operational verification.
+
+## Technical baseline
+
+- Laravel 13 on PHP 8.5 in the Sail development image
+- Livewire 4 for the schedule extraction interaction
+- Filament 5 for administration
+- Laravel Cashier 16 for Stripe billing work
+- Tailwind CSS 3, Alpine.js 3, and Vite 8 for the frontend
+- MySQL 8.4 and Redis in the default Sail stack
+- PHPUnit 12, Pint, and Larastan for verification
+
+Do not change dependencies or introduce new architectural layers without an explicit requirement.
+
+## Working conventions
+
+- Run project commands through `vendor/bin/sail`.
+- Follow existing neighboring code before introducing a new pattern.
+- Use named routes and existing gates, DTOs, view models, components, and services.
+- Add or update a focused PHPUnit test for every behavior change.
+- Run the narrowest relevant test while implementing.
+- Run Pint after changing PHP files.
+- Run Larastan once at the final integration checkpoint.
+- Preserve unrelated working-tree changes.
+- Record completed outcomes and a proposed commit message in `TODO.md`.
+
+Refer to `README.md` for setup and deployment, `AGENTS.md` for mandatory contributor instructions, and `TODO.md` for current work.
+
+## Context maintenance
+
+Update this file when stable product language, architecture boundaries, workflows, or brand decisions change. Do not add temporary plans, credentials, environment-specific URLs, release notes, or speculative features here.
