@@ -1,39 +1,17 @@
-# Branch - Flight Plan Extractor Refactor
+# Branch - Flight Plan Brief Refactor
 
 ## Setup
 
-### Completed: app/DTOs/ScheduleData.php
-Operational times: ETD, ETA, block time, report time, slot times—each with an explicit UTC/local basis.
-Remove overlap from the Flight DTO
+## Completed: Rename feature
 
-Outcome: Added an immutable `ScheduleData` DTO with explicitly named UTC/local ETD, ETA, report, duty-end, and slot fields. Existing block-time durations are represented unambiguously as `blockDuration`. `Flight` now owns one nested schedule instead of duplicating block and local operational-time fields, while `FlightMapper` preserves the existing calendar metadata contract for parsers, views, cached payloads, and exports.
+Outcome: Renamed the customer-facing feature to `Flight Plan Brief` across the page hero, desktop and mobile navigation, admin demo metrics, and current project context. Added the hook `Your flight release, distilled into the details that matter.` while preserving stable technical identifiers and accurate flight-release and flight-plan domain language.
 
-Focused verification: All 29 focused DTO, view-model, component, and calendar-export tests passed with 180 assertions. Pint passed, and final focused Larastan analysis completed with no errors.
+Focused verification: All 25 focused controller, navigation, and metrics widget tests passed with 200 assertions. Pint passed, and final Larastan analysis completed with no errors.
 
-Commit message: `refactor: extract flight schedule data`
+Commit message: `refactor: rename feature to flight plan brief`
 
-### Completed: app/ValueObjects/AirportCode.php
-Validates and represents an airport identifier. It prevents passing arbitrary strings around as “airport codes.”
+## Plan: Ensure this is a livewire page
 
-Outcome: Added an immutable `AirportCode` value object that trims and uppercases identifiers, accepts only three-letter IATA or four-letter ICAO formats, distinguishes the two formats, compares normalized values, and supports string and scalar JSON serialization. Registry/provider existence remains the responsibility of airport resolution rather than format validation.
-
-Focused verification: All 10 focused AirportCode tests passed with 22 assertions. Pint passed, and final focused Larastan analysis completed with no errors.
-
-Commit message: `feat: add airport code value object`
-
-### Completed: app/ValueObjects/FlightTime.php
-Represents a flight-related time with its timezone/context. This prevents UTC and local times from silently getting mixed.
-
-Outcome: Added an immutable `FlightTime` value object with strict ISO-8601 UTC and local construction, explicit timezone and `utc`/`local` basis context, immutable timezone conversion, context-aware equality, same-instant comparison, and object-shaped array/JSON serialization. Local wall-clock validation rejects invalid zones, fixed-offset pseudo-local contexts, and nonexistent or ambiguous daylight-saving times.
-
-Focused verification: All 15 focused FlightTime tests passed with 36 assertions. Pint passed, and final focused Larastan analysis completed with no errors.
-
-Commit message: `feat: add flight time value object`
-
-## Plan: Rename feature
-- Rename to `Flight Plan Brief`
-- Conveys “the important operational details, cleanly distilled” without promising it creates or files a flight plan.
-- Hook `Your flight release, distilled into the details that matter.`
 
 ## Views context
 | Priority | View             | Implementation focus                                                                              |
@@ -365,7 +343,7 @@ Refactor plan:
 
 1. Reframe the metadata and header around the brand hierarchy: Crew Compass as the umbrella brand, K4 Extractor as the application, and one descriptive page `h1`. Reuse the existing Crew Compass logo and theme selector, and retain login, registration, dashboard, privacy, feedback, and independence links.
 2. Replace the Schedule-only hero with concise product-level copy based on the shared promise: turn operational documents into reviewable information without manual re-entry. Keep Jeppesen Crew Access as supported Schedule Extractor context rather than the page's identity, and include the operational-verification disclaimer required by the brand voice.
-3. Add a responsive two-tool section using a reusable Blade feature-card component. Give Schedule Extractor and Flight Plan Extractor equal visual hierarchy, crew-familiar descriptions, suitable icons, and a `Demo` badge on Flight Plan Extractor while that status applies. Move the existing phone screenshot into Schedule-specific supporting content instead of using it as the product-wide hero; do not invent a Flight Plan screenshot.
+3. Add a responsive two-tool section using a reusable Blade feature-card component. Give Schedule Extractor and Flight Plan Brief equal visual hierarchy, crew-familiar descriptions, suitable icons, and a `Demo` badge on Flight Plan Brief while that status applies. Move the existing phone screenshot into Schedule-specific supporting content instead of using it as the product-wide hero; do not invent a Flight Plan screenshot.
 4. Make calls to action access-aware. Guests receive registration and login paths; authenticated users see direct links only for tools allowed by the existing entitlement methods, with a clear unavailable state otherwise. Keep hidden navigation from being treated as authorization and preserve all route middleware and gates.
 5. Restyle the page with existing `cc-*` utilities and supported Tailwind CSS 3 classes, adding narrowly scoped reusable marketing styles only where repetition warrants it. Apply Aviation Blue to structure, Compass Gold to emphasis and CTAs, Cloud White/Midnight surfaces, Steel Gray secondary copy, matching dark mode, responsive spacing, visible focus states, semantic landmarks, and specific image alternative text.
 6. Update focused PHPUnit feature coverage for Crew Compass/K4 Extractor identity, both tool summaries, guest and authenticated CTA states, feature-disabled states, the demo badge, theme controls, disclaimer/footer content, and removal of Schedule-only assumptions. During implementation, run the focused welcome/theme tests, Pint after PHP or Blade changes, a production Vite build for Tailwind validation, then Larastan once at the final integration checkpoint.
@@ -395,11 +373,11 @@ Simple plan:
 
 # Confidence score for extraction
 
-# flight plan extractor: Progress after submit
+# Flight Plan Brief: Progress after submit
 - Parse on file select ... processing
 - with progress spinner or text
 
-# flight plan extractor: Extract new route: don't show upload again
+# Flight Plan Brief: Extract new route: don't show upload again
 - Use an extractor another button, 2 page
 - Hides the upload on the results page
 - Extract new route: don't show upload again
@@ -412,8 +390,8 @@ Simple plan:
 
 # Chore: update laravel
 
-# Plan: Release flight extractor trial
-Goal: release the flight extractor as a clearly labeled demo, validate usage, and then gate it behind its own Stripe subscription at $5 per year with a one-time two-month trial per user.
+# Plan: Release Flight Plan Brief trial
+Goal: release Flight Plan Brief as a clearly labeled demo, validate usage, and then gate it behind its own Stripe subscription at $5 per year with a one-time two-month trial per user.
 
 ## Phase 1: Demo release and measurement
 
@@ -470,26 +448,30 @@ Open decisions before implementation:
 
 ------------------------------------------------
 
-# Completed
+### Completed: app/DTOs/ScheduleData.php
+Operational times: ETD, ETA, block time, report time, slot times—each with an explicit UTC/local basis.
+Remove overlap from the Flight DTO
 
-## Completed: Buy me a coffee modal
+Outcome: Added an immutable `ScheduleData` DTO with explicitly named UTC/local ETD, ETA, report, duty-end, and slot fields. Existing block-time durations are represented unambiguously as `blockDuration`. `Flight` now owns one nested schedule instead of duplicating block and local operational-time fields, while `FlightMapper` preserves the existing calendar metadata contract for parsers, views, cached payloads, and exports.
 
-# Completed: Expose registration on the login page
+Focused verification: All 29 focused DTO, view-model, component, and calendar-export tests passed with 180 assertions. Pint passed, and final focused Larastan analysis completed with no errors.
 
-## Completed: Small-screen local times overflow
+Commit message: `refactor: extract flight schedule data`
 
-# Complete: Context engineering
+### Completed: app/ValueObjects/AirportCode.php
+Validates and represents an airport identifier. It prevents passing arbitrary strings around as “airport codes.”
 
-# Completed: Flight Plan Extractor copy messages after repeated copies
+Outcome: Added an immutable `AirportCode` value object that trims and uppercases identifiers, accepts only three-letter IATA or four-letter ICAO formats, distinguishes the two formats, compares normalized values, and supports string and scalar JSON serialization. Registry/provider existence remains the responsibility of airport resolution rather than format validation.
 
-Outcome: Copy-status messages now remain fully visible for two seconds before fading over 300 milliseconds. Reusing Departure, Destination, Alternate, Route, or detail copy controls cancels their prior timers and visibly restores the status instead of immediately fading it again. Added a JavaScript regression that exercises Departure, Destination, Alternate, and a fourth copy using a previously used control, plus a focused Blade rendering assertion for the corrected transition state.
+Focused verification: All 10 focused AirportCode tests passed with 22 assertions. Pint passed, and final focused Larastan analysis completed with no errors.
 
-Focused verification: 1 focused PHPUnit test passed with 32 assertions, all 7 JavaScript tests passed, Pint passed, Larastan passed with no errors, and the production Vite/Tailwind build completed successfully.
+Commit message: `feat: add airport code value object`
 
-Commit message: `fix: keep repeated copy messages visible`
+### Completed: app/ValueObjects/FlightTime.php
+Represents a flight-related time with its timezone/context. This prevents UTC and local times from silently getting mixed.
 
-Static-analysis follow-up: Added a typed `expectOnce()` boundary for the test file's Mockery expectations, replaced the dynamically inferred log spy assertion with explicit `error` and `warning` facade expectations, and added a PHPStan stub for Mockery's runtime `CompositeExpectation` fluent methods. This preserves strict staged-test analysis without ignores, baselines, excluded tests, or a new dependency.
+Outcome: Added an immutable `FlightTime` value object with strict ISO-8601 UTC and local construction, explicit timezone and `utc`/`local` basis context, immutable timezone conversion, context-aware equality, same-instant comparison, and object-shaped array/JSON serialization. Local wall-clock validation rejects invalid zones, fixed-offset pseudo-local contexts, and nonexistent or ambiguous daylight-saving times.
 
-Follow-up verification: All 13 Flight Release controller tests passed with 147 assertions, Pint passed, the staged-file pre-commit hook passed, and direct Larastan analysis—including the registered Mockery stub—completed with no errors.
+Focused verification: All 15 focused FlightTime tests passed with 36 assertions. Pint passed, and final focused Larastan analysis completed with no errors.
 
-Follow-up commit message: `test: make flight release mocks larastan-safe`
+Commit message: `feat: add flight time value object`

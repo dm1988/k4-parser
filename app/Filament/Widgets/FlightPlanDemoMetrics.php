@@ -12,9 +12,9 @@ class FlightPlanDemoMetrics extends StatsOverviewWidget
 
     protected int|string|array $columnSpan = 'full';
 
-    protected ?string $heading = 'Flight Plan Demo';
+    protected ?string $heading = 'Flight Plan Brief Demo';
 
-    protected ?string $description = 'Lifetime usage recorded by the flight-plan extractor.';
+    protected ?string $description = 'Lifetime usage recorded by Flight Plan Brief.';
 
     protected function getStats(): array
     {

@@ -38,7 +38,7 @@ Typical flow:
 5. Cache the result under a parse key associated with the current session.
 6. Present view models for review and filtered iCalendar export.
 
-### Flight Plan Extractor
+### Flight Plan Brief
 
 The authenticated flight-plan workflow accepts a PDF, stores it temporarily, extracts structured flight-plan data, formats the ICAO route for display, records the extraction result, and deletes the uploaded file in a `finally` block.
 

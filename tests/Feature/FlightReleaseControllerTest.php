@@ -34,8 +34,8 @@ class FlightReleaseControllerTest extends TestCase
             ->get(route('flight-release.index'));
 
         $response->assertOk();
-        $response->assertSeeText('Flight Plan Extractor');
-        $response->assertSeeText('Extract Flight Plan');
+        $response->assertSee('<h1 class="mt-2 text-3xl font-bold">Flight Plan Brief</h1>', escape: false);
+        $response->assertSeeText('Your flight release, distilled into the details that matter.');
         $response->assertSee('dark:border-slate-600 dark:bg-[#1B365D]', escape: false);
     }
 
@@ -54,7 +54,8 @@ class FlightReleaseControllerTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->get(route('flight-release.index'))
             ->assertOk()
-            ->assertSeeText('Flight Plan Extractor');
+            ->assertSee('<h1 class="mt-2 text-3xl font-bold">Flight Plan Brief</h1>', escape: false)
+            ->assertSeeText('Your flight release, distilled into the details that matter.');
     }
 
     public function test_uploaded_pdf_route_is_displayed_after_extraction(): void

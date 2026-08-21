@@ -36,6 +36,25 @@ class FlightPlanDemoMetricsWidgetTest extends TestCase
         $this->assertSame(2, $stats[3]->getValue());
     }
 
+    public function test_metrics_use_the_flight_plan_brief_branding(): void
+    {
+        $widget = new class extends FlightPlanDemoMetrics
+        {
+            public function heading(): ?string
+            {
+                return $this->heading;
+            }
+
+            public function description(): ?string
+            {
+                return $this->description;
+            }
+        };
+
+        $this->assertSame('Flight Plan Brief Demo', $widget->heading());
+        $this->assertSame('Lifetime usage recorded by Flight Plan Brief.', $widget->description());
+    }
+
     public function test_metrics_show_zero_values_before_demo_adoption(): void
     {
         $stats = $this->stats();

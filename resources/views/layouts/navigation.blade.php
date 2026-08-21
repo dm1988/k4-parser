@@ -13,7 +13,7 @@
                     @if (Auth::user()?->canUseFlightRelease())
                     <x-nav-link :href="route('flight-release.index')" :active="request()->routeIs('flight-release.*')">
                         <span class="flex items-center gap-2">
-                            {{ __('Extract Flight Plan') }}
+                            {{ __('Flight Plan Brief') }}
                             <x-demo-badge data-demo-badge />
                         </span>
                     </x-nav-link>
@@ -107,7 +107,7 @@
             <x-responsive-nav-link :href="route('flight-release.index')"
                 :active="request()->routeIs('flight-release.*')">
                 <span class="flex items-center gap-2">
-                    {{ __('Extract Flight Plan') }}
+                    {{ __('Flight Plan Brief') }}
                     <x-demo-badge data-demo-badge />
                 </span>
             </x-responsive-nav-link>
