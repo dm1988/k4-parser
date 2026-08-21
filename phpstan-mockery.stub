@@ -1,0 +1,18 @@
+<?php
+
+namespace Mockery;
+
+use Closure;
+use Throwable;
+
+/**
+ * @method self andReturnTrue()
+ * @method self andReturnUsing(callable ...$callables)
+ * @method self andThrow(Throwable|string $throwable, mixed ...$arguments)
+ * @method self once()
+ * @method self with(mixed ...$arguments)
+ * @method self withArgs(array|Closure $arguments)
+ */
+class CompositeExpectation
+{
+}

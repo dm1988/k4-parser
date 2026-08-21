@@ -4,6 +4,9 @@ includes:
 
 parameters:
 
+    stubFiles:
+        - phpstan-mockery.stub
+
     paths:
         - app/
 

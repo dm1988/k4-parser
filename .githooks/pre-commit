@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+mapfile -d '' php_files < <(
+    git diff --cached \
+        --name-only \
+        --diff-filter=ACMR \
+        -z \
+        -- '*.php'
+)
+
+if (( ${#php_files[@]} == 0 )); then
+    echo "No staged PHP files—skipping PHP checks."
+    exit 0
+fi
+
+if ! ./vendor/bin/sail exec -T laravel.test true >/dev/null 2>&1; then
+    echo "Sail is not running. Start it with:"
+    echo "  ./vendor/bin/sail up -d"
+    exit 1
+fi
+
+echo "Checking formatting with Pint..."
+./vendor/bin/sail pint --test "${php_files[@]}"
+
+echo "Analyzing staged PHP files with Larastan..."
+./vendor/bin/sail bin phpstan analyse \
+    --memory-limit=1G \
+    "${php_files[@]}"
+
+echo "Pre-commit checks passed."
