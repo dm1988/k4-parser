@@ -15,6 +15,12 @@ Commit message: `refactor: extract flight schedule data`
 ### Implement: app/ValueObjects/AirportCode.php
 Validates and represents an airport identifier. It prevents passing arbitrary strings around as “airport codes.”
 
+Outcome: Added an immutable `AirportCode` value object that trims and uppercases identifiers, accepts only three-letter IATA or four-letter ICAO formats, distinguishes the two formats, compares normalized values, and supports string and scalar JSON serialization. Registry/provider existence remains the responsibility of airport resolution rather than format validation.
+
+Focused verification: All 10 focused AirportCode tests passed with 22 assertions. Pint passed, and final focused Larastan analysis completed with no errors.
+
+Commit message: `feat: add airport code value object`
+
 ### Implement:
 #### app/ValueObjects/FlightTime.php
 Represents a flight-related time with its timezone/context. This prevents UTC and local times from silently getting mixed.
