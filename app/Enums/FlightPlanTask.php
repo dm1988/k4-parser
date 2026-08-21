@@ -15,4 +15,38 @@ enum FlightPlanTask: string
     case Etops = 'etops';
     case Weather = 'weather';
     case WeightAndBalance = 'weight_and_balance';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::Overview => 'Overview',
+            self::JeppPdPro => 'Jepp PD-Pro',
+            self::MaintenanceLog => 'Maintenance Log',
+            self::Envelope => 'Envelope',
+            self::FlightInit => 'Flight Init',
+            self::Fms => 'FMS',
+            self::SlotTimes => 'Slot Times',
+            self::FuelScore => 'Fuel Score',
+            self::Etops => 'ETOPS',
+            self::Weather => 'Weather',
+            self::WeightAndBalance => 'Weight & Balance',
+        };
+    }
+
+    public function icon(): string
+    {
+        return match ($this) {
+            self::Overview => 'home',
+            self::JeppPdPro => 'paper-airplane',
+            self::MaintenanceLog => 'clipboard-document-list',
+            self::Envelope => 'document-chart-bar',
+            self::FlightInit => 'bolt',
+            self::Fms => 'calculator',
+            self::SlotTimes => 'clock',
+            self::FuelScore => 'chart-bar-square',
+            self::Etops => 'globe-alt',
+            self::Weather => 'cloud',
+            self::WeightAndBalance => 'scale',
+        };
+    }
 }

@@ -52,7 +52,7 @@ Verification: All 25 focused page-data, view-model, serializer, cache, and Livew
 
 Commit message: `refactor: add typed flight plan page data`
 
-## 2 — Build the responsive task workspace
+## 2 — Completed: Build the responsive task workspace
 
 Goal: Replace the single result card with a reusable shell for all eleven task views.
 
@@ -66,9 +66,13 @@ Goal: Replace the single result card with a reusable shell for all eleven task v
 
 Done when: all eleven destinations are reachable and accessible, with unavailable tasks clearly labeled and no layout overflow at supported breakpoints.
 
+Outcome: Replaced the single result surface with a reusable task workspace. A compact release header now presents confirmed identity, aircraft, route, UTC schedule, and optional revision data; the visibly headed eleven-task navigator scrolls horizontally on small screens and becomes a left rail on desktop. The active destination is locked Livewire state selected through an authorized, enum-validated action, so switching or rehydrating reads the existing owner-scoped cache without reparsing. Keyed panels preserve the current route view for Overview and FMS while available, absent, and unsupported destinations receive explicit task-specific states. Shared release header, section header, metric, status, empty-state, and source-evidence components provide consistent keyboard focus, active semantics, dark mode, and overflow-safe presentation.
+
+Verification: All 21 focused Livewire and view-model tests passed with 237 assertions. The production Vite build passed, Pint passed after formatting the changed PHP, and the final Larastan analysis completed with no errors.
+
 Commit message: `feat: add flight plan task workspace`
 
-## 3 — Implement Overview
+## 3 — Current focus: Implement Overview
 
 Goal: Provide the highest-value release summary without inventing operational status.
 
@@ -247,3 +251,6 @@ Goal: Finish the migration only after every active front-end consumer uses typed
 Done when: no UI depends on the flat compatibility payload, all enabled tasks have honest availability states, and the full integration checkpoint passes.
 
 Commit message: `refactor: complete flight plan workspace migration`
+
+## 15 - Remove Extract route button
+View results on PDF upload when parsing completes

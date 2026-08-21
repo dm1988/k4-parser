@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Actions\BuildFlightPlanPageData;
 use App\Actions\HandleFlightPlanExtraction;
 use App\Actions\ShouldPromptForCoffee;
+use App\Enums\FlightPlanTask;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Models\User;
 use App\Services\Infrastructure\FlightPlanResultCache;
@@ -28,6 +29,9 @@ class FlightPlanBrief extends Component
 
     #[Locked]
     public ?string $flightPlanKey = null;
+
+    #[Locked]
+    public string $activeTask = FlightPlanTask::Overview->value;
 
     protected HandleFlightPlanExtraction $handleFlightPlanExtraction;
 
@@ -62,6 +66,7 @@ class FlightPlanBrief extends Component
         try {
             $flightPlan = $this->handleFlightPlanExtraction->handle($user, $uploadedFile);
             $this->flightPlanKey = $this->flightPlanResultCache->put($user, $flightPlan);
+            $this->activeTask = FlightPlanTask::Overview->value;
         } catch (FlightRouteNotFoundException $exception) {
             $this->resetToUpload($user);
             $this->addError('flightRelease', $exception->getMessage());
@@ -94,14 +99,29 @@ class FlightPlanBrief extends Component
         $this->resetToUpload($this->authorizedUser());
     }
 
+    public function selectTask(string $task): void
+    {
+        $this->authorizedUser();
+
+        $selectedTask = FlightPlanTask::tryFrom($task);
+
+        if ($selectedTask === null || $this->flightPlanKey === null) {
+            return;
+        }
+
+        $this->activeTask = $selectedTask->value;
+    }
+
     public function render(): View
     {
         $pageData = $this->buildFlightPlanPageData->handle($this->currentFlightPlan());
         $viewModel = new FlightReleasePageViewModel($pageData);
 
         return view('livewire.flight-plan-brief', [
+            'activeTaskCase' => FlightPlanTask::from($this->activeTask),
             'model' => $viewModel,
             'isResultsView' => $viewModel->hasFlightPlan(),
+            'tasks' => FlightPlanTask::cases(),
         ]);
     }
 
@@ -123,7 +143,7 @@ class FlightPlanBrief extends Component
             $this->flightPlanResultCache->forget($user, $this->flightPlanKey);
         }
 
-        $this->reset(['flightRelease', 'flightPlanKey']);
+        $this->reset(['flightRelease', 'flightPlanKey', 'activeTask']);
         $this->resetValidation();
     }
 

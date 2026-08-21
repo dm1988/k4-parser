@@ -5,6 +5,7 @@ namespace Tests\Feature\Livewire;
 use App\Actions\ShouldPromptForCoffee;
 use App\DTOs\AirportData;
 use App\DTOs\ParsedFlightPlanData;
+use App\Enums\FlightPlanTask;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Livewire\FlightPlanBrief;
 use App\Models\ExtractRequest;
@@ -68,6 +69,16 @@ class FlightPlanBriefTest extends TestCase
         Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
             ->set('flightPlanKey', '01JTESTRESULTKEYABC1234567');
+    }
+
+    public function test_the_active_task_cannot_be_changed_directly_by_the_client(): void
+    {
+        $this->expectException(CannotUpdateLockedPropertyException::class);
+        $this->expectExceptionMessage('Cannot update locked property: [activeTask]');
+
+        Livewire::actingAs(User::factory()->admin()->create())
+            ->test(FlightPlanBrief::class)
+            ->set('activeTask', FlightPlanTask::Fms->value);
     }
 
     public function test_component_actions_enforce_authentication_verification_feature_and_gate_access(): void
@@ -206,6 +217,92 @@ class FlightPlanBriefTest extends TestCase
 
         $this->assertFalse($component->viewData('isResultsView'));
         $this->assertNull(app(FlightPlanResultCache::class)->get($user, $flightPlanKey));
+    }
+
+    public function test_the_task_workspace_is_responsive_accessible_and_rehydrates_without_reparsing(): void
+    {
+        Storage::fake('user_flight_releases');
+        $user = User::factory()->admin()->create();
+
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')
+                ->andReturn($this->parsedFlightPlan(
+                    identity: [
+                        'flight_number' => 'CKS241',
+                        'trip_number' => '1234',
+                        'recall_number' => '5678',
+                        'aircraft_type' => 'B777-200F',
+                        'tail_number' => 'N774CK',
+                        'flight_date' => '2026-05-25',
+                        'release_revision' => '3',
+                    ],
+                    schedule: [
+                        'etd_utc' => '2026-05-25T18:30:00Z',
+                        'eta_utc' => '2026-05-26T02:15:00Z',
+                        'block_duration' => null,
+                        'report_time_utc' => null,
+                        'duty_end_utc' => null,
+                        'slot_times_utc' => [],
+                    ],
+                ));
+        });
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'formatForIcaoDisplay')
+                ->with('DCT Q139 TEST')
+                ->andReturn('DCT Q139 TEST');
+        });
+
+        $component = Livewire::actingAs($user)
+            ->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->call('extractFlightPlan')
+            ->assertSet('activeTask', FlightPlanTask::Overview->value)
+            ->assertSeeInOrder(array_map(
+                static fn (FlightPlanTask $task): string => $task->label(),
+                FlightPlanTask::cases(),
+            ))
+            ->assertSeeInOrder([
+                'Task',
+                FlightPlanTask::Overview->label(),
+            ])
+            ->assertSeeHtml('aria-labelledby="flight-plan-task-navigation-heading"')
+            ->assertSeeHtml('id="flight-plan-task-navigation-heading"')
+            ->assertSeeHtml('aria-current="page"')
+            ->assertSeeHtml('focus-visible:ring-2')
+            ->assertSeeHtml('overflow-x-auto')
+            ->assertSeeHtml('lg:grid-cols-[15rem_minmax(0,1fr)]')
+            ->assertSeeHtml('wire:key="flight-plan-task-panel-overview"')
+            ->assertSeeText('CKS241')
+            ->assertSeeText('May 25, 2026')
+            ->assertSeeText('B777-200F')
+            ->assertSeeText('Tail N774CK')
+            ->assertSeeText('ETD (UTC)')
+            ->assertSeeText('ETA (UTC)')
+            ->assertSeeText('Release revision')
+            ->assertSeeText('3');
+
+        $flightPlanKey = $component->get('flightPlanKey');
+
+        $component
+            ->call('selectTask', FlightPlanTask::JeppPdPro->value)
+            ->assertSet('activeTask', FlightPlanTask::JeppPdPro->value)
+            ->assertSeeHtml('wire:key="flight-plan-task-panel-jepp_pd_pro"')
+            ->assertSeeText('Not supported yet')
+            ->assertSeeText('Jepp PD-Pro requires confirmed fixtures')
+            ->call('selectTask', FlightPlanTask::SlotTimes->value)
+            ->assertSet('activeTask', FlightPlanTask::SlotTimes->value)
+            ->assertSeeText('Not present in this release')
+            ->assertSeeText('Slot Times data was not found')
+            ->call('$refresh')
+            ->assertSet('activeTask', FlightPlanTask::SlotTimes->value)
+            ->call('selectTask', 'untrusted-task')
+            ->assertSet('activeTask', FlightPlanTask::SlotTimes->value)
+            ->call('selectTask', FlightPlanTask::Fms->value)
+            ->assertSet('activeTask', FlightPlanTask::Fms->value)
+            ->assertSeeText('Extracted flight plan')
+            ->assertSeeText('DCT Q139 TEST');
+
+        $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
     }
 
     public function test_a_missing_cached_result_derives_the_upload_view_without_mutating_component_state(): void
@@ -467,12 +564,15 @@ class FlightPlanBriefTest extends TestCase
     }
 
     /** @param array<string, mixed>|null $legacy */
-    private function parsedFlightPlan(?array $legacy = null): ParsedFlightPlanData
-    {
+    private function parsedFlightPlan(
+        ?array $legacy = null,
+        ?array $identity = null,
+        ?array $schedule = null,
+    ): ParsedFlightPlanData {
         $legacy ??= $this->flightPlan();
 
         return new ParsedFlightPlanData(
-            identity: [
+            identity: $identity ?? [
                 'flight_number' => null,
                 'trip_number' => null,
                 'recall_number' => null,
@@ -481,7 +581,7 @@ class FlightPlanBriefTest extends TestCase
                 'flight_date' => null,
                 'release_revision' => null,
             ],
-            schedule: [
+            schedule: $schedule ?? [
                 'etd_utc' => null,
                 'eta_utc' => null,
                 'block_duration' => null,

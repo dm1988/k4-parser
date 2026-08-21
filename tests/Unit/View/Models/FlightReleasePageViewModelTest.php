@@ -25,6 +25,13 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('', $viewModel->duration());
         $this->assertSame('', $viewModel->route());
         $this->assertSame([], $viewModel->taskAvailability());
+        $this->assertNull($viewModel->flightNumber());
+        $this->assertNull($viewModel->flightDate());
+        $this->assertNull($viewModel->aircraftType());
+        $this->assertNull($viewModel->tailNumber());
+        $this->assertNull($viewModel->etdUtc());
+        $this->assertNull($viewModel->etaUtc());
+        $this->assertNull($viewModel->releaseRevision());
     }
 
     #[Test]
@@ -47,6 +54,25 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('25R', $viewModel->departureRunway());
         $this->assertSame('SUMMR2', $viewModel->departureSid());
         $this->assertTrue($viewModel->hasPlannedRunways());
+    }
+
+    #[Test]
+    public function it_formats_the_compact_release_header_from_confirmed_typed_values(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['identity']['releaseRevision'] = '3';
+        $payload['flight_plan_data']['schedule']['etdUtc'] = '2026-05-25 18:30';
+        $payload['flight_plan_data']['schedule']['etaUtc'] = '2026-05-26 02:15';
+
+        $viewModel = $this->viewModel($payload);
+
+        $this->assertSame('CKS241', $viewModel->flightNumber());
+        $this->assertSame('May 25, 2026', $viewModel->flightDate());
+        $this->assertSame('B777-200F', $viewModel->aircraftType());
+        $this->assertSame('N774CK', $viewModel->tailNumber());
+        $this->assertSame('2026-05-25 18:30', $viewModel->etdUtc());
+        $this->assertSame('2026-05-26 02:15', $viewModel->etaUtc());
+        $this->assertSame('3', $viewModel->releaseRevision());
     }
 
     #[Test]

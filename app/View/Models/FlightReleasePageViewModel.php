@@ -19,6 +19,41 @@ readonly class FlightReleasePageViewModel
         return $this->pageData !== null;
     }
 
+    public function flightNumber(): ?string
+    {
+        return $this->pageData?->flightPlan->identity->flightNumber;
+    }
+
+    public function flightDate(): ?string
+    {
+        return $this->pageData?->flightPlan->identity->flightDate?->format('M j, Y');
+    }
+
+    public function aircraftType(): ?string
+    {
+        return $this->pageData?->flightPlan->identity->aircraftType;
+    }
+
+    public function tailNumber(): ?string
+    {
+        return $this->pageData?->flightPlan->identity->tailNumber;
+    }
+
+    public function etdUtc(): ?string
+    {
+        return $this->pageData?->flightPlan->schedule->etdUtc;
+    }
+
+    public function etaUtc(): ?string
+    {
+        return $this->pageData?->flightPlan->schedule->etaUtc;
+    }
+
+    public function releaseRevision(): ?string
+    {
+        return $this->pageData?->flightPlan->identity->releaseRevision;
+    }
+
     public function departure(): string
     {
         return $this->pageData?->flightPlan->route->departure->value ?? '';

@@ -67,11 +67,10 @@
                 </button>
             </div>
 
-            <x-flight-release.plan-card
+            <x-flight-release.workspace
+                :tasks="$tasks"
+                :active-task="$activeTaskCase"
                 :model="$model"
-                :departure-airport="$model->departureAirport()"
-                :destination-airport="$model->destinationAirport()"
-                :alternate-airport="$model->alternateAirport()"
             />
         </section>
     @endif
