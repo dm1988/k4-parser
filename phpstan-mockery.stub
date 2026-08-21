@@ -11,7 +11,7 @@ use Throwable;
  * @method self andThrow(Throwable|string $throwable, mixed ...$arguments)
  * @method self once()
  * @method self with(mixed ...$arguments)
- * @method self withArgs(array|Closure $arguments)
+ * @method self withArgs(array<mixed>|Closure $arguments)
  */
 class CompositeExpectation
 {

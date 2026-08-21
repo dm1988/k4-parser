@@ -46,7 +46,7 @@ Commit message: `fix: keep repeated copy messages visible`
 
 Static-analysis follow-up: Added a typed `expectOnce()` boundary for the test file's Mockery expectations, replaced the dynamically inferred log spy assertion with explicit `error` and `warning` facade expectations, and added a PHPStan stub for Mockery's runtime `CompositeExpectation` fluent methods. This preserves strict staged-test analysis without ignores, baselines, excluded tests, or a new dependency.
 
-Follow-up verification: All 13 Flight Release controller tests passed with 147 assertions, Pint passed, and the exact staged-file pre-commit hook passed Larastan with no errors.
+Follow-up verification: All 13 Flight Release controller tests passed with 147 assertions, Pint passed, the staged-file pre-commit hook passed, and direct Larastan analysis—including the registered Mockery stub—completed with no errors.
 
 Follow-up commit message: `test: make flight release mocks larastan-safe`
 
