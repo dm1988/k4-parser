@@ -2,7 +2,7 @@
 
 ## Setup
 
-### Implement: app/DTOs/ScheduleData.php
+### Completed: app/DTOs/ScheduleData.php
 Operational times: ETD, ETA, block time, report time, slot times—each with an explicit UTC/local basis.
 Remove overlap from the Flight DTO
 
@@ -12,7 +12,7 @@ Focused verification: All 29 focused DTO, view-model, component, and calendar-ex
 
 Commit message: `refactor: extract flight schedule data`
 
-### Implement: app/ValueObjects/AirportCode.php
+### Completed: app/ValueObjects/AirportCode.php
 Validates and represents an airport identifier. It prevents passing arbitrary strings around as “airport codes.”
 
 Outcome: Added an immutable `AirportCode` value object that trims and uppercases identifiers, accepts only three-letter IATA or four-letter ICAO formats, distinguishes the two formats, compares normalized values, and supports string and scalar JSON serialization. Registry/provider existence remains the responsibility of airport resolution rather than format validation.
@@ -21,11 +21,16 @@ Focused verification: All 10 focused AirportCode tests passed with 22 assertions
 
 Commit message: `feat: add airport code value object`
 
-### Implement:
-#### app/ValueObjects/FlightTime.php
+### Completed: app/ValueObjects/FlightTime.php
 Represents a flight-related time with its timezone/context. This prevents UTC and local times from silently getting mixed.
 
-## Rename feature
+Outcome: Added an immutable `FlightTime` value object with strict ISO-8601 UTC and local construction, explicit timezone and `utc`/`local` basis context, immutable timezone conversion, context-aware equality, same-instant comparison, and object-shaped array/JSON serialization. Local wall-clock validation rejects invalid zones, fixed-offset pseudo-local contexts, and nonexistent or ambiguous daylight-saving times.
+
+Focused verification: All 15 focused FlightTime tests passed with 36 assertions. Pint passed, and final focused Larastan analysis completed with no errors.
+
+Commit message: `feat: add flight time value object`
+
+## Plan: Rename feature
 - Rename to `Flight Plan Brief`
 - Conveys “the important operational details, cleanly distilled” without promising it creates or files a flight plan.
 - Hook `Your flight release, distilled into the details that matter.`
