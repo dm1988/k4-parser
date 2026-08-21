@@ -1,3 +1,346 @@
+# Branch - Flight Plan Extractor Refactor
+
+## Setup
+
+### Implement: app/DTOs/ScheduleData.php
+Operational times: ETD, ETA, block time, report time, slot times—each with an explicit UTC/local basis.
+Remove overlap from the Flight DTO
+
+Outcome: Added an immutable `ScheduleData` DTO with explicitly named UTC/local ETD, ETA, report, duty-end, and slot fields. Existing block-time durations are represented unambiguously as `blockDuration`. `Flight` now owns one nested schedule instead of duplicating block and local operational-time fields, while `FlightMapper` preserves the existing calendar metadata contract for parsers, views, cached payloads, and exports.
+
+Focused verification: All 29 focused DTO, view-model, component, and calendar-export tests passed with 180 assertions. Pint passed, and final focused Larastan analysis completed with no errors.
+
+Commit message: `refactor: extract flight schedule data`
+
+### Implement: app/ValueObjects/AirportCode.php
+Validates and represents an airport identifier. It prevents passing arbitrary strings around as “airport codes.”
+
+### Implement:
+#### app/ValueObjects/FlightTime.php
+Represents a flight-related time with its timezone/context. This prevents UTC and local times from silently getting mixed.
+
+## Rename feature
+- Rename to `Flight Plan Brief`
+- Conveys “the important operational details, cleanly distilled” without promising it creates or files a flight plan.
+- Hook `Your flight release, distilled into the details that matter.`
+
+## Views context
+| Priority | View             | Implementation focus                                                                              |
+| -------: | ---------------- | ------------------------------------------------------------------------------------------------- |
+|        1 | Overview         | Navigation shell, shared release context, high-level operational summary.                         |
+|        2 | Jepp PD-Pro      | Extract and present Jeppesen performance/planning data.                                           |
+|        3 | Maintenance Log  | Parse maintenance/MEL/CDL-style entries and related operational notes.                            |
+|        4 | Envelope         | Present performance/envelope data built from the preceding release details.                       |
+|        5 | Flight Init      | Build the quick-reference initialization section: identifiers, airports, times, alternates, crew. |
+|        6 | FMS              | Normalize route, waypoint, altitude, and FMS-entry data.                                          |
+|        7 | Slot Times       | Extract slot/CTOT-style constraints and display them in the flight timeline.                      |
+|        8 | Fuel Score       | Build fuel calculations, comparisons, and operational fuel indicators.                            |
+|        9 | ETOPS            | Add ETOPS-specific planning, alternates, and compliance information when applicable.              |
+|       10 | Weather          | Parse and organize departure, destination, alternate, and enroute weather.                        |
+|       11 | Weight & Balance | Extract final weight, balance, payload, and limit information.                                    |
+
+## Shared release context
+Here’s a planning-ready data inventory in your existing build order. I’ve separated shared fields from view-specific data so the same release facts don’t get independently re-parsed eleven times.
+
+Available to every view:
+
+* Release ID / revision number
+* Release status and authority (for example, “Released IAW OPS SPEC B044”)
+* Flight date
+* Flight number
+* Trip number
+* Aircraft type
+* Tail number
+* Departure, destination, and alternate airport(s)
+* Scheduled / estimated / actual times, with time basis clearly labeled
+* Crew list
+* Source-document metadata: parser version, imported-at time, raw-release link
+
+### 1. Overview
+
+* Release status and revision
+* Flight number, tail number, aircraft type, date
+* Departure, destination, primary alternate
+* ETD and ETA
+* Planned takeoff altitude
+* Estimated ramp fuel
+* Operational-status indicators:
+
+  * GENDEC status
+  * Flight plan filing status
+  * Slot-time status
+  * ETOPS applicability/status
+  * Weather / RAIM availability
+* MEL/CDL summary:
+
+  * Count
+  * MEL or CDL type
+  * Item number
+  * DMI number
+  * Description
+  * Operational notes / limitations
+* Links or summary status for each detailed view
+
+### 2. Jepp PD-Pro
+
+This one should mirror the actual PD-Pro data rather than guess at fields. Likely candidates:
+
+* Flight / trip number
+* Tail number and aircraft type
+* Departure, destination, alternate(s)
+* Performance planning assumptions
+* Runway / runway condition
+* Takeoff and landing performance results
+* Takeoff weight limits
+* Thrust / assumed-temperature details
+* V-speeds
+* Climb, cruise, or landing performance constraints
+* Required remarks, warnings, and dispatch notes
+* PD-Pro document revision / generated time
+
+### 3. Maintenance Log
+
+* Date
+* Aircraft type
+* Tail number
+* Trip number
+* Flight number
+* Departure and destination
+* Estimated ramp fuel
+* ETOPS flight indicator
+* Crew list
+* MEL / CDL / DMI items:
+
+  * Type
+  * Item number
+  * DMI number
+  * Description
+  * Maintenance status
+  * Operational limitations
+  * Required procedures or notes
+* Maintenance control / log reference, when available
+
+### 4. Envelope
+
+* Trip number
+* Tail number
+* Aircraft type
+* Flight number
+* Departure and destination
+* Crew list
+* Applicable performance envelope or configuration data
+* Weight / CG constraints
+* Takeoff and landing limitations
+* Temperature, runway, obstacle, or contaminated-runway constraints
+* Warnings, exceedances, and dispatch remarks
+* Reference to the source performance document
+
+### 5. Flight Init
+
+Designed as the fast ACARS/FMS initialization reference:
+
+* Tail number
+* Aircraft type
+* Flight number
+* ACARS initialization date
+* Departure date
+* ETD
+* Estimated ramp fuel
+* Departure and destination
+* Primary alternate(s)
+* Crew list
+* Dispatch / release number
+* Flight-plan revision
+* Operational remarks needed before departure
+
+### 6. FMS
+
+* Flight number
+* Aircraft type
+* Recall number
+* Departure, destination, and alternate
+* Departure runway
+* Arrival runway
+* SID
+* STAR
+* Route string
+* Total route distance
+* Initial cruise altitude
+* Step climbs / planned altitude profile
+* Cost index
+* Alternate reserves
+* Route constraints
+* FMS remarks or special entries
+
+### 7. Slot Times
+
+* Slot airport
+* Slot type: departure, arrival, overflight, etc.
+* Approved time
+* Time tolerance/window, such as ±30 minutes
+* Time basis: UTC/local
+* Permit country / authority
+* Landing or overflight permit number
+* Permit status
+* Validity period
+* Slot revision / last update
+* Dispatch notes or coordination instructions
+
+### 8. Fuel Score
+
+This should be a structured waypoint fuel-monitoring table plus a concise summary.
+
+* Waypoint name
+* ETA at waypoint
+* Planned fuel remaining
+* Planned flight level
+* Flight phase
+* Forecast wind
+* Temperature
+* Planned Mach / speed
+* Time or leg duration
+* Fuel-burn delta versus plan, if actual data becomes available
+* Fuel-status indicators:
+
+  * On plan
+  * Caution
+  * Below target
+* Summary values:
+
+  * Ramp fuel
+  * Taxi fuel
+  * Takeoff fuel
+  * Trip fuel
+  * Contingency fuel
+  * Alternate fuel
+  * Final reserve
+  * Estimated landing fuel
+  * Minimum landing fuel
+
+### 9. ETOPS
+
+* ETOPS applicability and approval status
+* ETOPS entry and exit time
+* ETP / critical points:
+
+  * Sequence number
+  * Coordinates
+  * Point type, such as EENT or EEXP
+  * Time
+  * Heading
+  * Altitude
+  * Wind
+* ETOPS alternates:
+
+  * Airport
+  * Weather suitability
+  * Runway / facility status
+  * Diversion time
+  * Fuel required
+* Critical fuel scenario(s)
+* ETOPS remarks, restrictions, and required checks
+
+### 10. Weather
+
+Organize this by airport and route rather than as one undifferentiated text block.
+
+* RAIM prediction / availability
+* METAR:
+
+  * Airport
+  * Observation time
+  * Raw report
+  * Parsed wind, visibility, ceiling, temperature/dew point, altimeter
+* TAF:
+
+  * Airport
+  * Valid period
+  * Raw forecast
+  * Parsed prevailing and temporary conditions
+* Departure, destination, and alternate weather
+* Enroute / significant weather, if present
+* NOTAM-derived weather or runway impacts
+* Weather warnings:
+
+  * Below approach minimums
+  * Crosswind concerns
+  * Thunderstorm / convective risk
+  * Icing
+  * Low visibility
+
+### 11. Weight & Balance
+
+* Tail number and aircraft type
+* Basic operating weight
+* Index / CG data
+* Payload
+* Taxi fuel
+* Zero fuel weight and index
+* Ramp fuel and index
+* Takeoff fuel
+* Takeoff gross weight and index
+* Estimated fuel burn
+* Estimated landing fuel
+* Estimated landing weight and index
+* Maximum permitted values:
+
+  * Maximum zero fuel weight
+  * Maximum takeoff weight
+  * Maximum landing weight
+  * CG / index envelope limits
+* Status for each limiting value: within limits, caution, exceeded
+* Cargo / compartment distribution, if the release provides it
+
+The big implementation boundary: **Weight & Balance, Fuel Score, ETOPS, and Weather should store both raw source text and normalized fields.** Those are the sections where users will most want to verify that the tidy presentation still matches the actual release.
+
+## Create Flight Plan DTO
+- Use immutable readonly DTOs and typed value objects for airports, times, fuel, and weights.
+- Parse once, normalize once, render many times.
+### DTO Ownership
+| DTO                  | Owns                                                |
+| -------------------- | --------------------------------------------------- |
+| `FlightIdentityData` | Flight/trip, tail, aircraft, date, release revision |
+| `ScheduleData`       | All operational times and their time basis          |
+| `RouteData`          | Airports, route, runways, SID/STAR, distance        |
+| `FuelPlanData`       | Release-level fuel figures                          |
+| View DTOs            | Only fields unique to that view                     |
+
+
+## Initial files
+app/DTOs/FlightPlanData.php
+app/DTOs/FlightIdentityData.php
+app/DTOs/ScheduleData.php
+app/DTOs/RouteData.php
+app/DTOs/FuelPlanData.php
+app/Actions/BuildFlightPlanData.php
+app/ValueObjects/AirportCode.php
+app/ValueObjects/FlightTime.php
+app/ValueObjects/FuelQuantity.php
+app/Enums/TimeBasis.php
+
+### app/Actions/BuildFlightPlanData.php
+- The orchestrator. It receives a parsed flight release/model, pulls from its existing parser output, creates the nested DTOs, and returns one FlightPlanData. 
+- No rendering logic.
+- BuildFlightPlanData should map existing parsed output only. 
+- If a field does not exist yet, create a focused parser enhancement for that field—don’t parse raw release text in a component.
+### app/DTOs/FlightPlanData.php
+The top-level immutable object for one normalized release. Contains shared data plus optional section DTOs: overview, FMS, ETOPS, weather, etc.
+### app/DTOs/FlightIdentityData.php
+Basic identity: flight number, trip number, aircraft type, tail number, flight date, release revision.
+### app/DTOs/ScheduleData.php
+Operational times: ETD, ETA, block time, report time, slot times—each with an explicit UTC/local basis.
+### app/DTOs/FuelPlanData.php
+Fuel figures and units: ramp, taxi, takeoff, trip, contingency, alternate, final reserve, estimated landing fuel.
+### app/Enums/TimeBasis.php
+??
+### app/ValueObjects/FuelQuantity.php
+Stores an amount plus unit, converts safely when necessary, and formats consistently. Avoid raw 216.8k strings in DTOs.
+### app/View/FlightPlan/OverviewViewData.php
+Optional adapter specifically for the rendered Overview. Use it only if the Livewire/Blade layout needs display-friendly values, badges, or labels that should not live in the core DTO.
+
+## Create tests
+------------
+
 # Review welcome page for use with new features
 
 Audit outcome:
@@ -36,24 +379,8 @@ Simple plan:
 3. Expose typed city-summary data through the event and flight-card view models, then render a reusable Crew Compass city-summary component on layover cards and airport popovers.
 4. Add focused provider, enrichment, view-model, and Blade component tests for available, unavailable, zero-place, duplicate-city, and provider-failure cases.
 
-# Completed: Flight Plan Extractor copy messages after repeated copies
-
-Outcome: Copy-status messages now remain fully visible for two seconds before fading over 300 milliseconds. Reusing Departure, Destination, Alternate, Route, or detail copy controls cancels their prior timers and visibly restores the status instead of immediately fading it again. Added a JavaScript regression that exercises Departure, Destination, Alternate, and a fourth copy using a previously used control, plus a focused Blade rendering assertion for the corrected transition state.
-
-Focused verification: 1 focused PHPUnit test passed with 32 assertions, all 7 JavaScript tests passed, Pint passed, Larastan passed with no errors, and the production Vite/Tailwind build completed successfully.
-
-Commit message: `fix: keep repeated copy messages visible`
-
-Static-analysis follow-up: Added a typed `expectOnce()` boundary for the test file's Mockery expectations, replaced the dynamically inferred log spy assertion with explicit `error` and `warning` facade expectations, and added a PHPStan stub for Mockery's runtime `CompositeExpectation` fluent methods. This preserves strict staged-test analysis without ignores, baselines, excluded tests, or a new dependency.
-
-Follow-up verification: All 13 Flight Release controller tests passed with 147 assertions, Pint passed, the staged-file pre-commit hook passed, and direct Larastan analysis—including the registered Mockery stub—completed with no errors.
-
-Follow-up commit message: `test: make flight release mocks larastan-safe`
-
 # Track schedule upload count
 - For multiple file uploads within each user request
-
-# Feature: flight plan extractor: Extract MELs - Number and Name
 
 # Confidence score for extraction
 
@@ -136,44 +463,22 @@ Open decisions before implementation:
 
 ## Completed: Buy me a coffee modal
 
-Outcome: Added a recurring, accessible coffee prompt after a user's 8th and each later even-numbered successful non-empty extraction. Schedule and flight-plan workflows share one eligibility action and configured support URL; cached results, reloads, failures, empty results, and users marked as purchasers are suppressed. Filament now exposes the manual purchase toggle and table status.
-
-Focused verification: 49 focused PHPUnit tests passed with 409 assertions, Pint passed, Larastan passed with no errors, and the production Vite/Tailwind build completed successfully. Browser automation was unavailable for screenshot-based viewport and theme inspection.
-
-Follow-up: Restored the modal panel's permanent transform stacking context so it remains above the backdrop after its transition and links stay clickable. Removed the standalone Alpine bootstrap in favor of Livewire 4's single bundled Alpine runtime on authenticated and guest layouts, eliminating duplicate initialization without breaking guest OTP controls.
-
-Follow-up verification: 28 focused PHPUnit tests passed with 207 assertions, all 6 JavaScript tests passed, Pint passed, Larastan passed with no errors, and the production frontend build completed successfully.
-
-Configuration follow-up: Moved the prompt threshold and recurrence interval to `services.buy_me_a_coffee`, backed by `BUY_ME_A_COFFEE_PROMPT_AFTER_EXTRACTIONS` and `BUY_ME_A_COFFEE_PROMPT_INTERVAL`. Non-positive intervals safely disable automatic prompts.
-
-Configuration verification: All 5 focused coffee prompt tests passed with 27 assertions, Pint passed, Larastan passed with no errors, and Laravel resolved the local values as 7 and 2.
-
-Commit message: `feat: add recurring buy me a coffee prompt`
-
-Follow-up commit message: `fix: keep coffee modal interactive`
-
-Configuration commit message: `refactor: configure coffee prompt cadence`
-
 # Completed: Expose registration on the login page
-
-Outcome: The login page now shows a guarded, dark-mode-compatible “New user? Register” prompt that links to the named registration route and includes visible keyboard-focus styling.
-
-Focused verification: All 4 authentication tests passed with 11 assertions, Pint passed, Larastan passed with no errors, and the production Vite/Tailwind build completed successfully.
-
-Commit message: `feat: add registration link to login page`
 
 ## Completed: Small-screen local times overflow
 
-Outcome: Local flight and duty time cards now shrink within their nested grids and wrap long time labels on narrow screens instead of overflowing their container. The fix uses Tailwind utilities in the existing Blade markup without adding custom CSS.
-
-Focused verification: All 7 flight card component tests passed with 31 assertions, Pint passed, Larastan passed with no errors, and the production Vite/Tailwind build completed successfully.
-
-Commit message: `fix: prevent local times overflowing on small screens`
-
 # Complete: Context engineering
 
-Outcome: Added a root-level `CONTEXT.md` that defines the product identity, user needs, extractor workflows, aviation vocabulary, architecture and access boundaries, Crew Compass brand system, technical baseline, and context-maintenance rules. Clarified that K4 Parser is the application while Crew Compass is the umbrella customer-facing brand.
+# Completed: Flight Plan Extractor copy messages after repeated copies
 
-Documentation verification: Confirmed the file is non-empty, its required context sections are present, and the Markdown diff contains no whitespace errors.
+Outcome: Copy-status messages now remain fully visible for two seconds before fading over 300 milliseconds. Reusing Departure, Destination, Alternate, Route, or detail copy controls cancels their prior timers and visibly restores the status instead of immediately fading it again. Added a JavaScript regression that exercises Departure, Destination, Alternate, and a fourth copy using a previously used control, plus a focused Blade rendering assertion for the corrected transition state.
 
-Commit message: `docs: add shared project context`
+Focused verification: 1 focused PHPUnit test passed with 32 assertions, all 7 JavaScript tests passed, Pint passed, Larastan passed with no errors, and the production Vite/Tailwind build completed successfully.
+
+Commit message: `fix: keep repeated copy messages visible`
+
+Static-analysis follow-up: Added a typed `expectOnce()` boundary for the test file's Mockery expectations, replaced the dynamically inferred log spy assertion with explicit `error` and `warning` facade expectations, and added a PHPStan stub for Mockery's runtime `CompositeExpectation` fluent methods. This preserves strict staged-test analysis without ignores, baselines, excluded tests, or a new dependency.
+
+Follow-up verification: All 13 Flight Release controller tests passed with 147 assertions, Pint passed, the staged-file pre-commit hook passed, and direct Larastan analysis—including the registered Mockery stub—completed with no errors.
+
+Follow-up commit message: `test: make flight release mocks larastan-safe`

@@ -118,12 +118,12 @@ readonly class FlightCardViewModel
 
     public function legLocalStartLabel(): string
     {
-        return $this->flight->legLocalStart ?: '—';
+        return $this->flight->schedule->etdLocal ?: '—';
     }
 
     public function legLocalEndLabel(): string
     {
-        return $this->flight->legLocalEnd ?: '—';
+        return $this->flight->schedule->etaLocal ?: '—';
     }
 
     public function legLocalTimesLabel(): string
@@ -142,12 +142,12 @@ readonly class FlightCardViewModel
 
     public function dutyLocalStartLabel(): string
     {
-        return $this->flight->dutyLocalStart ?: '—';
+        return $this->flight->schedule->reportTimeLocal ?: '—';
     }
 
     public function dutyLocalEndLabel(): string
     {
-        return $this->flight->dutyLocalEnd ?: '—';
+        return $this->flight->schedule->dutyEndLocal ?: '—';
     }
 
     public function dutyLocalTimesLabel(): string
