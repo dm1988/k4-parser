@@ -36,7 +36,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware(['feature:flight_release', 'can:use-flight-release'])->group(function () {
         Route::get('/flight-route-extractor', [FlightReleaseController::class, 'index'])->name('flight-release.index');
-        Route::post('/flight-route-extractor', [FlightReleaseController::class, 'store'])->name('flight-release.store');
     });
 });
 

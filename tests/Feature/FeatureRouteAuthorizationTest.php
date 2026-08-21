@@ -58,18 +58,18 @@ class FeatureRouteAuthorizationTest extends TestCase
             ->assertSeeText('Schedule extractor access is currently unavailable.');
     }
 
-    public function test_flight_release_routes_enforce_feature_and_capability_before_validation(): void
+    public function test_flight_release_page_enforces_feature_and_capability_middleware(): void
     {
         $user = User::factory()->create();
 
         $this->actingAs($user)
-            ->post(route('flight-release.store'))
+            ->get(route('flight-release.index'))
             ->assertForbidden();
 
         Config::set('features.flight_release.enabled', false);
 
         $this->actingAs(User::factory()->admin()->create())
-            ->post(route('flight-release.store'))
+            ->get(route('flight-release.index'))
             ->assertNotFound();
     }
 

@@ -19,11 +19,10 @@ readonly class FlightReleasePageViewModel
         public ?FlightPlan $flightPlan,
     ) {}
 
-    public static function fromCurrentSession(): self
+    /** @param array<string, mixed>|null $flightPlan */
+    public static function fromArray(?array $flightPlan): self
     {
-        $flightPlan = session('flight_plan');
-
-        return new self(is_array($flightPlan) ? self::flightPlanFromArray($flightPlan) : null);
+        return new self($flightPlan === null ? null : self::flightPlanFromArray($flightPlan));
     }
 
     public function hasFlightPlan(): bool

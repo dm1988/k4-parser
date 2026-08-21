@@ -10,45 +10,7 @@
                     </p>
                 </div>
 
-                <div class="space-y-6 p-4 sm:p-6">
-                    <form method="POST" action="{{ route('flight-release.store') }}" enctype="multipart/form-data" class="space-y-4">
-                        @csrf
-
-                        <div>
-                            <label for="flight_release" class="mb-2 block text-sm font-semibold text-[#1B365D] dark:text-slate-200">
-                                Flight release PDF
-                            </label>
-                            <input
-                                id="flight_release"
-                                type="file"
-                                name="flight_release"
-                                accept="application/pdf,.pdf"
-                                class="cc-file-input"
-                            >
-                            @error('flight_release')
-                                <p class="mt-2 text-sm font-medium text-red-700 dark:text-red-400">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div class="flex justify-end">
-                            <button
-                                type="submit"
-                                class="inline-flex items-center justify-center rounded-md bg-[#C5A059] px-5 py-3 text-sm font-semibold text-[#0B0E14] transition hover:bg-[#b6914b]"
-                            >
-                                Extract route
-                            </button>
-                        </div>
-                    </form>
-
-                    @if ($model->hasFlightPlan())
-                        <x-flight-release.plan-card
-                            :model="$model"
-                            :departure-airport="$model->departureAirport()"
-                            :destination-airport="$model->destinationAirport()"
-                            :alternate-airport="$model->alternateAirport()"
-                        />
-                    @endif
-                </div>
+                <livewire:flight-plan-brief />
             </div>
         </div>
     </div>

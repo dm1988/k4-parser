@@ -2,514 +2,59 @@
 
 namespace Tests\Feature;
 
-use App\Actions\ShouldPromptForCoffee;
-use App\DTOs\AirportData;
-use App\Exceptions\FlightRouteNotFoundException;
-use App\Models\ExtractRequest;
 use App\Models\User;
-use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
-use App\Services\Infrastructure\ExtractRequestLogger;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use LogicException;
-use Mockery\CompositeExpectation;
-use Mockery\MockInterface;
-use RuntimeException;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class FlightReleaseControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admins_can_view_the_flight_release_extractor_page(): void
+    public function test_admins_can_view_the_flight_plan_brief_page(): void
     {
-        $admin = User::factory()->create([
-            'role' => 'admin',
-        ]);
-
-        $response = $this->actingAs($admin)
+        $response = $this->actingAs(User::factory()->admin()->create())
             ->get(route('flight-release.index'));
 
         $response->assertOk();
         $response->assertSee('<h1 class="mt-2 text-3xl font-bold">Flight Plan Brief</h1>', escape: false);
         $response->assertSeeText('Your flight release, distilled into the details that matter.');
-        $response->assertSee('dark:border-slate-600 dark:bg-[#1B365D]', escape: false);
+        $response->assertSeeHtml('wire:id=');
+        $response->assertSeeText('Flight release PDF');
+        $response->assertSeeText('Extract route');
+        $response->assertDontSeeText('Extracted flight plan');
     }
 
-    public function test_non_admin_users_can_not_view_the_flight_release_extractor_page(): void
+    public function test_non_admin_users_can_not_view_the_flight_plan_brief_page(): void
     {
-        $response = $this->actingAs(User::factory()->create())
-            ->get(route('flight-release.index'));
-
-        $response->assertForbidden();
+        $this->actingAs(User::factory()->create())
+            ->get(route('flight-release.index'))
+            ->assertForbidden();
     }
 
-    public function test_verified_non_admin_users_can_view_the_extractor_during_the_demo(): void
+    public function test_verified_non_admin_users_can_view_the_page_during_the_demo(): void
     {
         Config::set('features.flight_release.for_all_users', true);
 
         $this->actingAs(User::factory()->create())
             ->get(route('flight-release.index'))
             ->assertOk()
-            ->assertSee('<h1 class="mt-2 text-3xl font-bold">Flight Plan Brief</h1>', escape: false)
-            ->assertSeeText('Your flight release, distilled into the details that matter.');
+            ->assertSeeText('Flight Plan Brief')
+            ->assertSeeText('Flight release PDF');
     }
 
-    public function test_uploaded_pdf_route_is_displayed_after_extraction(): void
-    {
-        Storage::fake('user_flight_releases');
-        $user = User::factory()->admin()->create();
-
-        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
-            $this->expectOnce($mock, 'extractFlightPlanData')
-                ->withArgs(function (string $path): bool {
-                    return str_contains($path, 'framework/testing/disks/user_flight_releases');
-                })
-                ->andReturn([
-                    'departure' => 'PANC',
-                    'destination' => 'KMIA',
-                    'alternate' => 'KRSW',
-                    'departure_airport' => new AirportData('PANC', 'ANC', 'Ted Stevens Anchorage International Airport', 'Anchorage', 'Alaska', 'United States'),
-                    'destination_airport' => new AirportData('KMIA', 'MIA', 'Miami International Airport', 'Miami', 'Florida', 'United States'),
-                    'alternate_airport' => new AirportData('KRSW', 'RSW', 'Southwest Florida International Airport', 'Fort Myers', 'Florida', 'United States'),
-                    'initial_altitude' => 'FL 330',
-                    'duration' => '07h12m',
-                    'route' => 'OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A',
-                ]);
-            $this->expectOnce($mock, 'formatForIcaoDisplay')
-                ->with('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A')
-                ->andReturn("OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105\n UMKAL UMKAL6A");
-        });
-        $this->mock(ShouldPromptForCoffee::class, function (MockInterface $mock) use ($user): void {
-            $this->expectOnce($mock, 'handle')
-                ->withArgs(fn (User $candidate): bool => $candidate->is($user))
-                ->andReturnTrue();
-        });
-
-        $response = $this->actingAs($user)
-            ->from(route('flight-release.index'))
-            ->post(route('flight-release.store'), [
-                'flight_release' => UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'),
-            ]);
-
-        $response->assertRedirect(route('flight-release.index'));
-        $response->assertSessionHas('show_coffee_prompt', true);
-        $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
-
-        $this->actingAs($user)->get(route('flight-release.index'))
-            ->assertOk()
-            ->assertSee('style="display: block;"', escape: false)
-            ->assertSeeText('Extracted flight plan')
-            ->assertSeeText('Departure')
-            ->assertSeeText('PANC')
-            ->assertSeeText('Destination')
-            ->assertSeeText('KMIA')
-            ->assertSeeText('Miami International Airport')
-            ->assertSeeText('Alternate')
-            ->assertSeeText('KRSW')
-            ->assertSeeText('Southwest Florida International Airport')
-            ->assertSeeText('FL 330')
-            ->assertSeeText('07h12m')
-            ->assertSeeText('Airport details')
-            ->assertSeeText('Route')
-            ->assertSeeText('Copy route')
-            ->assertSee('data-copy-target=', escape: false)
-            ->assertSee('opacity-0 transition-opacity duration-300', escape: false)
-            ->assertDontSee('navigator.clipboard', escape: false)
-            ->assertSeeInOrder([
-                '<div class="flex items-center gap-2">',
-                'Airport details',
-                '</div>',
-            ], escape: false)
-            ->assertSeeInOrder([
-                '<div class="flex items-center gap-2">',
-                'Route',
-                '</div>',
-            ], escape: false)
-            ->assertSee('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105', escape: false)
-            ->assertSee(' UMKAL UMKAL6A', escape: false);
-
-        $this->actingAs($user)
-            ->get(route('flight-release.index'))
-            ->assertOk()
-            ->assertSee('style="display: none;"', escape: false);
-    }
-
-    public function test_successful_extraction_records_request_metadata_and_explicit_counts(): void
-    {
-        Storage::fake('user_flight_releases');
-        Config::set('features.flight_release.for_all_users', true);
-        Config::set('app.version', '1.2.3');
-        Config::set('app.extractor_version', '2026.08');
-
-        $demoUser = User::factory()->create();
-        $file = UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf');
-        $expectedHash = hash('sha256', (string) hash_file('sha256', $file->getRealPath()));
-
-        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock) use ($demoUser, $expectedHash, $file): void {
-            $this->expectOnce($mock, 'extractFlightPlanData')
-                ->andReturnUsing(function () use ($demoUser, $expectedHash, $file): array {
-                    $extractRequest = ExtractRequest::query()->sole();
-
-                    $this->assertSame($demoUser->getKey(), $extractRequest->user_id);
-                    $this->assertSame('pdf', $extractRequest->source_type);
-                    $this->assertSame('flight_plan', $extractRequest->parser_type);
-                    $this->assertSame('partial', $extractRequest->status);
-                    $this->assertSame($expectedHash, $extractRequest->file_hash);
-                    $this->assertSame($file->getSize(), $extractRequest->file_size_bytes);
-
-                    return [
-                        'route' => 'DCT TEST',
-                    ];
-                });
-            $this->expectOnce($mock, 'formatForIcaoDisplay')
-                ->with('DCT TEST')
-                ->andReturn('DCT TEST');
-        });
-
-        $this->actingAs($demoUser)
-            ->post(route('flight-release.store'), ['flight_release' => $file])
-            ->assertRedirect(route('flight-release.index'));
-
-        $extractRequest = ExtractRequest::query()->sole();
-
-        $this->assertSame('success', $extractRequest->status);
-        $this->assertNull($extractRequest->error_code);
-        $this->assertSame(1, $extractRequest->detected_event_count);
-        $this->assertSame(1, $extractRequest->detected_flight_count);
-        $this->assertSame(0, $extractRequest->detected_hotel_count);
-        $this->assertNull($extractRequest->page_count);
-        $this->assertSame('1.2.3', $extractRequest->app_version);
-        $this->assertSame('2026.08', $extractRequest->extractor_version);
-        $this->assertNotEmpty($extractRequest->request_uuid);
-        $this->assertGreaterThanOrEqual(0, $extractRequest->extraction_duration_ms);
-        $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
-    }
-
-    public function test_uploaded_pdf_route_page_handles_missing_airport_details(): void
-    {
-        Storage::fake('user_flight_releases');
-
-        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
-            $this->expectOnce($mock, 'extractFlightPlanData')
-                ->withArgs(function (string $path): bool {
-                    return str_contains($path, 'framework/testing/disks/user_flight_releases');
-                })
-                ->andReturn([
-                    'departure' => 'PANC',
-                    'destination' => 'KMIA',
-                    'alternate' => null,
-                    'departure_airport' => null,
-                    'destination_airport' => null,
-                    'alternate_airport' => null,
-                    'initial_altitude' => 'FL 330',
-                    'duration' => '07h12m',
-                    'route' => 'DCT TEST',
-                ]);
-            $this->expectOnce($mock, 'formatForIcaoDisplay')
-                ->with('DCT TEST')
-                ->andReturn('DCT TEST');
-        });
-
-        $response = $this->actingAs(User::factory()->create([
-            'role' => 'admin',
-        ]))
-            ->from(route('flight-release.index'))
-            ->post(route('flight-release.store'), [
-                'flight_release' => UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'),
-            ]);
-
-        $response->assertRedirect(route('flight-release.index'));
-
-        $this->actingAs(User::factory()->create([
-            'role' => 'admin',
-        ]))->get(route('flight-release.index'))
-            ->assertOk()
-            ->assertSeeText('Airport details unavailable.')
-            ->assertSeeText('No alternate airport listed.');
-    }
-
-    public function test_flight_release_page_displays_array_backed_airport_details_from_session(): void
-    {
-        $flightPlan = [
-            'departure' => 'PANC',
-            'destination' => 'KMIA',
-            'alternate' => 'KRSW',
-            'departure_airport' => [
-                'icao' => 'PANC',
-                'iata' => 'ANC',
-                'name' => 'Ted Stevens Anchorage International Airport',
-                'city' => 'Anchorage',
-                'state' => 'Alaska',
-                'country' => 'United States',
-            ],
-            'destination_airport' => [
-                'icao' => 'KMIA',
-                'iata' => 'MIA',
-                'name' => 'Miami International Airport',
-                'city' => 'Miami',
-                'state' => 'Florida',
-                'country' => 'United States',
-            ],
-            'alternate_airport' => [
-                'icao' => 'KRSW',
-                'iata' => 'RSW',
-                'name' => 'Southwest Florida International Airport',
-                'city' => 'Fort Myers',
-                'state' => 'Florida',
-                'country' => 'United States',
-            ],
-            'departure_runway' => '25R',
-            'arrival_runway' => '33R',
-            'departure_sid' => 'SUMMR2 SCTRR',
-            'arrival_star' => 'GUKDO GUKD2E',
-            'etps' => [
-                [
-                    'label' => 'ETP1',
-                    'airports' => 'KSFO-PACD',
-                    'coordinates' => 'N45 43.7 W143 53.1',
-                    'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
-                ],
-                [
-                    'label' => 'ETP2',
-                    'airports' => 'PACD-RJSS',
-                    'coordinates' => 'N51 48.6 E164 12.8',
-                    'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
-                ],
-            ],
-            'eent_coordinates' => 'N40 31.1 W131 22.6',
-            'eexp_coordinates' => 'N45 19.3 E151 36.4',
-            'initial_altitude' => 'FL 330',
-            'duration' => '07h12m',
-            'route' => 'DCT TEST',
-        ];
-
-        $response = $this->actingAs(User::factory()->create([
-            'role' => 'admin',
-        ]))
-            ->withSession(['flight_plan' => $flightPlan])
-            ->get(route('flight-release.index'))
-            ->assertOk()
-            ->assertSeeText('Ted Stevens Anchorage International Airport')
-            ->assertSeeText('Miami International Airport')
-            ->assertSeeText('Southwest Florida International Airport')
-            ->assertSeeText('Departure runway')
-            ->assertSeeText('25R')
-            ->assertSeeText('SID')
-            ->assertSeeText('SUMMR2 SCTRR')
-            ->assertSeeText('Arrival runway')
-            ->assertSeeText('33R')
-            ->assertSeeText('STAR')
-            ->assertSeeText('GUKDO GUKD2E')
-            ->assertSee('grid grid-cols-2 divide-x divide-[#1B365D]/6', false)
-            ->assertSeeText('ETOPS critical points')
-            ->assertSee('value="KSFO"', false)
-            ->assertSee('value="PACD"', false)
-            ->assertSee('value="N45 43.7 W143 53.1"', false)
-            ->assertSee('value="RJSS"', false)
-            ->assertSee('value="N51 48.6 E164 12.8"', false)
-            ->assertSeeText('ALL ENGINE/DECOMPRESSION/LRC')
-            ->assertSeeText('EENT coordinates')
-            ->assertSee('value="N40 31.1 W131 22.6"', false)
-            ->assertSeeText('EEXP coordinates')
-            ->assertSee('value="N45 19.3 E151 36.4"', false)
-            ->assertSee('data-copy-target="etp-0-airport-0"', false)
-            ->assertSee('data-copy-target="etp-0-airport-1"', false)
-            ->assertSee('data-copy-target="etp-0-coordinates"', false)
-            ->assertSee('data-copy-target="eent-coordinates"', false)
-            ->assertSee('data-copy-target="eexp-coordinates"', false)
-            ->assertDontSee('data-copy-target="etp-0-label"', false)
-            ->assertDontSee('value="KSFO-PACD"', false)
-            ->assertDontSee('data-copy-target="etp-0-airports"', false);
-
-        $borderClassCount = preg_match_all(
-            '/class="([^"]*border-\[\#1B365D\]\/8[^"]*)"/',
-            $response->getContent(),
-            $borderClassMatches,
-        );
-
-        $this->assertSame(8, $borderClassCount);
-
-        foreach ($borderClassMatches[1] as $borderClasses) {
-            $this->assertStringContainsString('dark:border-slate-700', $borderClasses);
-        }
-
-        $dividerClassCount = preg_match_all(
-            '/class="([^"]*divide-\[\#1B365D\]\/6[^"]*)"/',
-            $response->getContent(),
-            $dividerClassMatches,
-        );
-
-        $this->assertSame(3, $dividerClassCount);
-
-        foreach ($dividerClassMatches[1] as $dividerClasses) {
-            $this->assertStringContainsString('dark:divide-slate-700', $dividerClasses);
-        }
-    }
-
-    public function test_flight_release_results_use_mobile_first_layout_and_wrap_long_content(): void
-    {
-        $longAirportName = 'São Paulo–Guarulhos International Airport Cargo Operations Annex';
-        $flightPlan = [
-            'departure' => 'SBGR',
-            'destination' => 'PANC',
-            'alternate' => null,
-            'departure_airport' => [
-                'icao' => 'SBGR',
-                'iata' => 'GRU',
-                'name' => $longAirportName,
-                'city' => 'Guarulhos',
-                'state' => 'São Paulo',
-                'country' => 'Brazil',
-            ],
-            'destination_airport' => null,
-            'alternate_airport' => null,
-            'initial_altitude' => 'FL 350',
-            'duration' => '11h45m',
-            'route' => str_repeat('DCT LONGROUTE ', 20),
-        ];
-
-        $response = $this->actingAs(User::factory()->create(['role' => 'admin']))
-            ->withSession(['flight_plan' => $flightPlan])
-            ->get(route('flight-release.index'));
-
-        $response->assertOk();
-        $response->assertSeeText($longAirportName);
-        $response->assertSee('grid divide-y divide-[#1B365D]/6 dark:divide-slate-700 md:grid-cols-3 md:divide-x md:divide-y-0', false);
-        $response->assertSee('flex min-w-0 flex-col gap-1 px-4 py-3', false);
-        $response->assertSee('break-words text-xs font-semibold leading-snug', false);
-        $response->assertSee('break-words text-[11px] leading-relaxed', false);
-        $response->assertSee('break-words font-mono text-xs leading-relaxed', false);
-    }
-
-    public function test_only_pdf_uploads_are_allowed(): void
-    {
-        $response = $this->actingAs(User::factory()->create([
-            'role' => 'admin',
-        ]))
-            ->from(route('flight-release.index'))
-            ->post(route('flight-release.store'), [
-                'flight_release' => UploadedFile::fake()->create('flight-release.txt', 8, 'text/plain'),
-            ]);
-
-        $response->assertRedirect(route('flight-release.index'));
-        $response->assertSessionHasErrors([
-            'flight_release' => 'Only PDF flight release uploads are supported.',
-        ]);
-        $this->assertSame(0, ExtractRequest::query()->count());
-    }
-
-    public function test_route_not_found_error_is_returned_when_extractor_cannot_match_route(): void
-    {
-        Storage::fake('user_flight_releases');
-        Log::shouldReceive('error')->once();
-        Log::shouldReceive('warning')->once();
-
-        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
-            $this->expectOnce($mock, 'extractFlightPlanData')
-                ->withArgs(function (string $path): bool {
-                    return str_contains($path, 'framework/testing/disks/user_flight_releases');
-                })
-                ->andThrow(FlightRouteNotFoundException::routeSegmentMissing());
-        });
-
-        $response = $this->actingAs(User::factory()->create([
-            'role' => 'admin',
-        ]))
-            ->from(route('flight-release.index'))
-            ->post(route('flight-release.store'), [
-                'flight_release' => UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'),
-            ]);
-
-        $response->assertRedirect(route('flight-release.index'));
-        $response->assertSessionHasErrors([
-            'flight_release' => 'A flight plan block was found, but the route segment could not be identified between the speed/level and destination lines.',
-        ]);
-
-        $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
-        $extractRequest = ExtractRequest::query()->sole();
-        $this->assertSame('failed', $extractRequest->status);
-        $this->assertSame(class_basename(FlightRouteNotFoundException::class), $extractRequest->error_code);
-    }
-
-    public function test_unexpected_extraction_exception_is_recorded_rethrown_and_cleans_up_the_file(): void
-    {
-        Storage::fake('user_flight_releases');
-
-        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
-            $this->expectOnce($mock, 'extractFlightPlanData')
-                ->andThrow(new RuntimeException('Unexpected extractor failure'));
-        });
-
-        try {
-            $this->withoutExceptionHandling()
-                ->actingAs(User::factory()->create(['role' => 'admin']))
-                ->post(route('flight-release.store'), [
-                    'flight_release' => UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'),
-                ]);
-
-            $this->fail('Expected the extractor exception to be rethrown.');
-        } catch (RuntimeException $exception) {
-            $this->assertSame('Unexpected extractor failure', $exception->getMessage());
-        }
-
-        $extractRequest = ExtractRequest::query()->sole();
-        $this->assertSame('failed', $extractRequest->status);
-        $this->assertSame(RuntimeException::class, $extractRequest->error_code);
-        $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
-    }
-
-    public function test_extract_request_logging_exception_is_rethrown_and_cleans_up_the_file(): void
-    {
-        Storage::fake('user_flight_releases');
-
-        $this->mock(ExtractRequestLogger::class, function (MockInterface $mock): void {
-            $this->expectOnce($mock, 'start')
-                ->andThrow(new RuntimeException('Unable to record extraction'));
-            $mock->shouldNotReceive('error');
-        });
-        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
-            $mock->shouldNotReceive('extractFlightPlanData');
-        });
-
-        try {
-            $this->withoutExceptionHandling()
-                ->actingAs(User::factory()->create(['role' => 'admin']))
-                ->post(route('flight-release.store'), [
-                    'flight_release' => UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'),
-                ]);
-
-            $this->fail('Expected the logging exception to be rethrown.');
-        } catch (RuntimeException $exception) {
-            $this->assertSame('Unable to record extraction', $exception->getMessage());
-        }
-
-        $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
-        $this->assertSame(0, ExtractRequest::query()->count());
-    }
-
-    public function test_flight_release_returns_not_found_when_the_feature_is_disabled(): void
+    public function test_flight_plan_brief_returns_not_found_when_the_feature_is_disabled(): void
     {
         Config::set('features.flight_release.enabled', false);
 
-        $response = $this->actingAs(User::factory()->create([
-            'role' => 'admin',
-        ]))->get(route('flight-release.index'));
-
-        $response->assertNotFound();
+        $this->actingAs(User::factory()->admin()->create())
+            ->get(route('flight-release.index'))
+            ->assertNotFound();
     }
 
-    private function expectOnce(MockInterface $mock, string $method): CompositeExpectation
+    public function test_the_obsolete_post_route_is_removed(): void
     {
-        $expectation = $mock->shouldReceive($method);
-
-        if (! $expectation instanceof CompositeExpectation) {
-            throw new LogicException("Expected a composite Mockery expectation for [{$method}].");
-        }
-
-        return $expectation->once();
+        $this->assertFalse(Route::has('flight-release.store'));
     }
 }

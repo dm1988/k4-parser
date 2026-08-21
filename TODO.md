@@ -10,8 +10,33 @@ Focused verification: All 25 focused controller, navigation, and metrics widget 
 
 Commit message: `refactor: rename feature to flight plan brief`
 
-## Plan: Ensure this is a livewire page
+## Completed: Convert Flight Plan Brief to a Livewire single page
 
+Outcome: Replaced the POST/redirect/flash extraction flow with a class-based `FlightPlanBrief` Livewire component that owns upload and locked result-key state, inline PDF validation, accessible upload and processing feedback, result-only display, and an authorized `Extract another flight plan` transition. The page retains its existing URL, feature middleware, result components, coffee prompt, and customer-facing copy while the obsolete POST route and form request were removed.
+
+Extraction now runs through a single-purpose action that preserves private-disk staging, request metrics, ICAO route formatting, structured route-failure logging, unexpected-exception reporting, recoverable user feedback, and copied-file deletion on success and every failure path. Airport DTOs are normalized and result fields are allowlisted before entering the user-scoped server-side cache; the view model resolves that cached payload from an opaque locked key instead of exposing raw results in Livewire's browser snapshot. Every mutating action independently enforces authentication, verification, the feature flag, and the flight-release gate.
+
+The clipboard initializer now uses one idempotent delegated listener, so copy controls added by Livewire work after DOM morphs without duplicate handlers. Focused coverage includes direct-action authorization, locked-state tampering, validation/error clearing, no-redirect success, airport/runway/ETOPS rendering, result reset, request metadata, cleanup, structured recoverable failures, unexpected failures, dynamic copy controls, route middleware, and removal of the POST route.
+
+Focused verification: All 29 focused PHPUnit tests passed with 177 assertions, all 8 JavaScript tests passed, Pint passed, the production Vite/Tailwind build completed successfully, and final Larastan analysis completed with no errors.
+
+Cleanup hardening follow-up: Moved high-resolution timing initialization inside the extraction `try` block and made failure recording require both a created request and initialized timestamp. A timing-initialization failure now reaches the existing `finally` cleanup without replacing the original failure with a nullable timestamp type error.
+
+Follow-up verification: The focused logger-start cleanup test passed with 6 assertions, Pint passed, and Larastan completed with no errors.
+
+State and error hardening follow-up: Added an owner-scoped, expiring `FlightPlanResultCache`, removed the raw public result array from serialized Livewire state, verified cached results survive rehydration and are deleted on reset, and rejected cross-user and malformed-key lookups. Unexpected extraction and request-logging failures are now reported to Laravel, reset upload/result state, retain action-level metrics and file cleanup, and present a generic non-sensitive validation error instead of a 500 response.
+
+Hardening verification: All 12 focused cache and Livewire tests passed with 143 assertions. Pint passed, and final Larastan analysis completed with no errors.
+
+Hardening commit message: `fix: secure flight plan livewire state`
+
+Pure-render follow-up: Removed the redundant locked `$view` property and its upload/results constants. `render()` now resolves one view model and derives `isResultsView` from `hasFlightPlan()`, while Blade uses that derived value as its only display-state source. An expired or evicted cached result now renders the upload form without mutating component state, and focused coverage verifies that derived view state is absent from the Livewire snapshot and cache loss remains recoverable.
+
+Pure-render verification: All 13 focused cache and Livewire tests passed with 149 assertions. Pint passed, and final Larastan analysis completed with no errors.
+
+Pure-render commit message: `refactor: derive flight plan brief view state`
+
+Commit message: `refactor: make flight plan brief a livewire page`
 
 ## Views context
 | Priority | View             | Implementation focus                                                                              |
@@ -28,21 +53,61 @@ Commit message: `refactor: rename feature to flight plan brief`
 |       10 | Weather          | Parse and organize departure, destination, alternate, and enroute weather.                        |
 |       11 | Weight & Balance | Extract final weight, balance, payload, and limit information.                                    |
 
+## Task navigator
+- Left of main content
+- Controls views
+- Header: Tasks (caps)
+  1:  "Overview",           icon: LayoutDashboard or Home
+  2:  "Jepp PD-Pro",        icon: PlaneTakeoff   
+  3:  "Maintenance Log",    icon: ClipboardList  
+  4:  "Envelope",           icon: FileText       
+  5:  "Flight Init",        icon: Zap            
+  6:  "FMS",                icon: Calculator or CPU            
+  7:  "Slot Times",         icon: Clock          
+  8:  "Fuel Score",         icon: Gauge          
+  9:  "ETOPS",              icon: Globe          
+  10: "Weather",            icon: Cloud          
+  11: "Weight & Balance", icon: Scale          
+
+  Sample:
+  function Nav({ active, onSelect }: { active: number; onSelect: (id: number) => void }) {
+  return (
+    <nav className="flex w-48 shrink-0 flex-col overflow-hidden rounded-xl border border-[#1B365D]/10 bg-white shadow-sm">
+      <div className="border-b border-[#1B365D]/8 bg-[#F8F9FA] px-3 py-2">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-[#4A5568]">Tasks</p>
+      </div>
+      <ul className="flex flex-col divide-y divide-[#1B365D]/6">
+        {TASKS.map(({ id, label, icon: Icon }) => {
+          const on = id === active;
+          return (
+            <li key={id}>
+              <button
+                type="button"
+                onClick={() => onSelect(id)}
+                className={`flex w-full items-center gap-2 px-3 py-2 text-left transition-colors
+                  ${on ? "bg-[#1B365D] text-white" : "hover:bg-[#F8F9FA]"}`}
+              >
+                <Icon className={`h-3.5 w-3.5 shrink-0 ${on ? "text-white/70" : "text-[#4A5568]"}`} />
+                <span className={`text-xs font-medium leading-tight ${on ? "text-white" : "text-[#0B0E14]"}`}>{label}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
 ## Shared release context
 Here’s a planning-ready data inventory in your existing build order. I’ve separated shared fields from view-specific data so the same release facts don’t get independently re-parsed eleven times.
 
 Available to every view:
 
 * Release ID / revision number
-* Release status and authority (for example, “Released IAW OPS SPEC B044”)
 * Flight date
 * Flight number
-* Trip number
-* Aircraft type
-* Tail number
 * Departure, destination, and alternate airport(s)
 * Scheduled / estimated / actual times, with time basis clearly labeled
-* Crew list
 * Source-document metadata: parser version, imported-at time, raw-release link
 
 ### 1. Overview
@@ -282,7 +347,8 @@ Organize this by airport and route rather than as one undifferentiated text bloc
 
 The big implementation boundary: **Weight & Balance, Fuel Score, ETOPS, and Weather should store both raw source text and normalized fields.** Those are the sections where users will most want to verify that the tidy presentation still matches the actual release.
 
-## Create Flight Plan DTO
+## Current focus: Create Flight Plan DTO
+- In preperation for front end changes, implement required DTOs, then services
 - Use immutable readonly DTOs and typed value objects for airports, times, fuel, and weights.
 - Parse once, normalize once, render many times.
 ### DTO Ownership
@@ -321,7 +387,7 @@ Operational times: ETD, ETA, block time, report time, slot times—each with an 
 ### app/DTOs/FuelPlanData.php
 Fuel figures and units: ramp, taxi, takeoff, trip, contingency, alternate, final reserve, estimated landing fuel.
 ### app/Enums/TimeBasis.php
-??
+Local or UTC
 ### app/ValueObjects/FuelQuantity.php
 Stores an amount plus unit, converts safely when necessary, and formats consistently. Avoid raw 216.8k strings in DTOs.
 ### app/View/FlightPlan/OverviewViewData.php
@@ -372,15 +438,6 @@ Simple plan:
 - For multiple file uploads within each user request
 
 # Confidence score for extraction
-
-# Flight Plan Brief: Progress after submit
-- Parse on file select ... processing
-- with progress spinner or text
-
-# Flight Plan Brief: Extract new route: don't show upload again
-- Use an extractor another button, 2 page
-- Hides the upload on the results page
-- Extract new route: don't show upload again
 
 # Feat: Look into offline use
 
