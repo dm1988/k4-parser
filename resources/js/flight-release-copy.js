@@ -1,4 +1,6 @@
 const copyStatusTimeouts = new WeakMap();
+const copyStatusVisibleMilliseconds = 2000;
+const copyStatusFadeMilliseconds = 300;
 
 const showCopyStatus = (status, message) => {
     const existingTimeouts = copyStatusTimeouts.get(status);
@@ -15,11 +17,11 @@ const showCopyStatus = (status, message) => {
     const fadeTimeout = window.setTimeout(() => {
         status.classList.remove('opacity-100');
         status.classList.add('opacity-0');
-    }, 50);
+    }, copyStatusVisibleMilliseconds);
 
     const clearTimeout = window.setTimeout(() => {
         status.textContent = '';
-    }, 3050);
+    }, copyStatusVisibleMilliseconds + copyStatusFadeMilliseconds);
 
     copyStatusTimeouts.set(status, { fadeTimeout, clearTimeout });
 };

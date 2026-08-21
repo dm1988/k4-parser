@@ -14,6 +14,8 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use LogicException;
+use Mockery\CompositeExpectation;
 use Mockery\MockInterface;
 use RuntimeException;
 use Tests\TestCase;
@@ -61,8 +63,7 @@ class FlightReleaseControllerTest extends TestCase
         $user = User::factory()->admin()->create();
 
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('extractFlightPlanData')
-                ->once()
+            $this->expectOnce($mock, 'extractFlightPlanData')
                 ->withArgs(function (string $path): bool {
                     return str_contains($path, 'framework/testing/disks/user_flight_releases');
                 })
@@ -77,14 +78,12 @@ class FlightReleaseControllerTest extends TestCase
                     'duration' => '07h12m',
                     'route' => 'OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A',
                 ]);
-            $mock->shouldReceive('formatForIcaoDisplay')
-                ->once()
+            $this->expectOnce($mock, 'formatForIcaoDisplay')
                 ->with('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A')
                 ->andReturn("OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105\n UMKAL UMKAL6A");
         });
         $this->mock(ShouldPromptForCoffee::class, function (MockInterface $mock) use ($user): void {
-            $mock->shouldReceive('handle')
-                ->once()
+            $this->expectOnce($mock, 'handle')
                 ->withArgs(fn (User $candidate): bool => $candidate->is($user))
                 ->andReturnTrue();
         });
@@ -117,6 +116,7 @@ class FlightReleaseControllerTest extends TestCase
             ->assertSeeText('Route')
             ->assertSeeText('Copy route')
             ->assertSee('data-copy-target=', escape: false)
+            ->assertSee('opacity-0 transition-opacity duration-300', escape: false)
             ->assertDontSee('navigator.clipboard', escape: false)
             ->assertSeeInOrder([
                 '<div class="flex items-center gap-2">',
@@ -149,8 +149,7 @@ class FlightReleaseControllerTest extends TestCase
         $expectedHash = hash('sha256', (string) hash_file('sha256', $file->getRealPath()));
 
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock) use ($demoUser, $expectedHash, $file): void {
-            $mock->shouldReceive('extractFlightPlanData')
-                ->once()
+            $this->expectOnce($mock, 'extractFlightPlanData')
                 ->andReturnUsing(function () use ($demoUser, $expectedHash, $file): array {
                     $extractRequest = ExtractRequest::query()->sole();
 
@@ -165,8 +164,7 @@ class FlightReleaseControllerTest extends TestCase
                         'route' => 'DCT TEST',
                     ];
                 });
-            $mock->shouldReceive('formatForIcaoDisplay')
-                ->once()
+            $this->expectOnce($mock, 'formatForIcaoDisplay')
                 ->with('DCT TEST')
                 ->andReturn('DCT TEST');
         });
@@ -195,8 +193,7 @@ class FlightReleaseControllerTest extends TestCase
         Storage::fake('user_flight_releases');
 
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('extractFlightPlanData')
-                ->once()
+            $this->expectOnce($mock, 'extractFlightPlanData')
                 ->withArgs(function (string $path): bool {
                     return str_contains($path, 'framework/testing/disks/user_flight_releases');
                 })
@@ -211,8 +208,7 @@ class FlightReleaseControllerTest extends TestCase
                     'duration' => '07h12m',
                     'route' => 'DCT TEST',
                 ]);
-            $mock->shouldReceive('formatForIcaoDisplay')
-                ->once()
+            $this->expectOnce($mock, 'formatForIcaoDisplay')
                 ->with('DCT TEST')
                 ->andReturn('DCT TEST');
         });
@@ -408,11 +404,11 @@ class FlightReleaseControllerTest extends TestCase
     public function test_route_not_found_error_is_returned_when_extractor_cannot_match_route(): void
     {
         Storage::fake('user_flight_releases');
-        Log::spy();
+        Log::shouldReceive('error')->once();
+        Log::shouldReceive('warning')->once();
 
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('extractFlightPlanData')
-                ->once()
+            $this->expectOnce($mock, 'extractFlightPlanData')
                 ->withArgs(function (string $path): bool {
                     return str_contains($path, 'framework/testing/disks/user_flight_releases');
                 })
@@ -436,7 +432,6 @@ class FlightReleaseControllerTest extends TestCase
         $extractRequest = ExtractRequest::query()->sole();
         $this->assertSame('failed', $extractRequest->status);
         $this->assertSame(class_basename(FlightRouteNotFoundException::class), $extractRequest->error_code);
-        Log::shouldHaveReceived('warning')->once();
     }
 
     public function test_unexpected_extraction_exception_is_recorded_rethrown_and_cleans_up_the_file(): void
@@ -444,8 +439,7 @@ class FlightReleaseControllerTest extends TestCase
         Storage::fake('user_flight_releases');
 
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('extractFlightPlanData')
-                ->once()
+            $this->expectOnce($mock, 'extractFlightPlanData')
                 ->andThrow(new RuntimeException('Unexpected extractor failure'));
         });
 
@@ -472,8 +466,7 @@ class FlightReleaseControllerTest extends TestCase
         Storage::fake('user_flight_releases');
 
         $this->mock(ExtractRequestLogger::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('start')
-                ->once()
+            $this->expectOnce($mock, 'start')
                 ->andThrow(new RuntimeException('Unable to record extraction'));
             $mock->shouldNotReceive('error');
         });
@@ -506,5 +499,16 @@ class FlightReleaseControllerTest extends TestCase
         ]))->get(route('flight-release.index'));
 
         $response->assertNotFound();
+    }
+
+    private function expectOnce(MockInterface $mock, string $method): CompositeExpectation
+    {
+        $expectation = $mock->shouldReceive($method);
+
+        if (! $expectation instanceof CompositeExpectation) {
+            throw new LogicException("Expected a composite Mockery expectation for [{$method}].");
+        }
+
+        return $expectation->once();
     }
 }

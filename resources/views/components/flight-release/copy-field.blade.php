@@ -30,6 +30,6 @@
         id="{{ $id }}-status"
         role="status"
         aria-live="polite"
-        class="min-h-4 text-[11px] text-[#4A5568] transition-opacity duration-[3000ms] dark:text-slate-400"
+        class="min-h-4 text-[11px] text-[#4A5568] opacity-0 transition-opacity duration-300 dark:text-slate-400"
     ></p>
 </div>
