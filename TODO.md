@@ -1,43 +1,5 @@
 # Branch - Flight Plan Brief Refactor
 
-## Setup
-
-## Completed: Rename feature
-
-Outcome: Renamed the customer-facing feature to `Flight Plan Brief` across the page hero, desktop and mobile navigation, admin demo metrics, and current project context. Added the hook `Your flight release, distilled into the details that matter.` while preserving stable technical identifiers and accurate flight-release and flight-plan domain language.
-
-Focused verification: All 25 focused controller, navigation, and metrics widget tests passed with 200 assertions. Pint passed, and final Larastan analysis completed with no errors.
-
-Commit message: `refactor: rename feature to flight plan brief`
-
-## Completed: Convert Flight Plan Brief to a Livewire single page
-
-Outcome: Replaced the POST/redirect/flash extraction flow with a class-based `FlightPlanBrief` Livewire component that owns upload and locked result-key state, inline PDF validation, accessible upload and processing feedback, result-only display, and an authorized `Extract another flight plan` transition. The page retains its existing URL, feature middleware, result components, coffee prompt, and customer-facing copy while the obsolete POST route and form request were removed.
-
-Extraction now runs through a single-purpose action that preserves private-disk staging, request metrics, ICAO route formatting, structured route-failure logging, unexpected-exception reporting, recoverable user feedback, and copied-file deletion on success and every failure path. Airport DTOs are normalized and result fields are allowlisted before entering the user-scoped server-side cache; the view model resolves that cached payload from an opaque locked key instead of exposing raw results in Livewire's browser snapshot. Every mutating action independently enforces authentication, verification, the feature flag, and the flight-release gate.
-
-The clipboard initializer now uses one idempotent delegated listener, so copy controls added by Livewire work after DOM morphs without duplicate handlers. Focused coverage includes direct-action authorization, locked-state tampering, validation/error clearing, no-redirect success, airport/runway/ETOPS rendering, result reset, request metadata, cleanup, structured recoverable failures, unexpected failures, dynamic copy controls, route middleware, and removal of the POST route.
-
-Focused verification: All 29 focused PHPUnit tests passed with 177 assertions, all 8 JavaScript tests passed, Pint passed, the production Vite/Tailwind build completed successfully, and final Larastan analysis completed with no errors.
-
-Cleanup hardening follow-up: Moved high-resolution timing initialization inside the extraction `try` block and made failure recording require both a created request and initialized timestamp. A timing-initialization failure now reaches the existing `finally` cleanup without replacing the original failure with a nullable timestamp type error.
-
-Follow-up verification: The focused logger-start cleanup test passed with 6 assertions, Pint passed, and Larastan completed with no errors.
-
-State and error hardening follow-up: Added an owner-scoped, expiring `FlightPlanResultCache`, removed the raw public result array from serialized Livewire state, verified cached results survive rehydration and are deleted on reset, and rejected cross-user and malformed-key lookups. Unexpected extraction and request-logging failures are now reported to Laravel, reset upload/result state, retain action-level metrics and file cleanup, and present a generic non-sensitive validation error instead of a 500 response.
-
-Hardening verification: All 12 focused cache and Livewire tests passed with 143 assertions. Pint passed, and final Larastan analysis completed with no errors.
-
-Hardening commit message: `fix: secure flight plan livewire state`
-
-Pure-render follow-up: Removed the redundant locked `$view` property and its upload/results constants. `render()` now resolves one view model and derives `isResultsView` from `hasFlightPlan()`, while Blade uses that derived value as its only display-state source. An expired or evicted cached result now renders the upload form without mutating component state, and focused coverage verifies that derived view state is absent from the Livewire snapshot and cache loss remains recoverable.
-
-Pure-render verification: All 13 focused cache and Livewire tests passed with 149 assertions. Pint passed, and final Larastan analysis completed with no errors.
-
-Pure-render commit message: `refactor: derive flight plan brief view state`
-
-Commit message: `refactor: make flight plan brief a livewire page`
-
 ## Views context
 | Priority | View             | Implementation focus                                                                              |
 | -------: | ---------------- | ------------------------------------------------------------------------------------------------- |
@@ -347,8 +309,91 @@ Organize this by airport and route rather than as one undifferentiated text bloc
 
 The big implementation boundary: **Weight & Balance, Fuel Score, ETOPS, and Weather should store both raw source text and normalized fields.** Those are the sections where users will most want to verify that the tidy presentation still matches the actual release.
 
-## Current focus: Create Flight Plan DTO
-- In preperation for front end changes, implement required DTOs, then services
+## Completed: Create Flight Plan DTO
+
+Outcome: Added the immutable `FlightPlanData` aggregate with focused identity, route, schedule, and release-level fuel DTOs. Route data uses validated `AirportCode` values, fuel figures use a normalized `FuelQuantity` value object with safe pound/kilogram conversion, flight dates use `CarbonImmutable`, and `FlightTime` now exposes the typed `TimeBasis` enum while preserving its serialized contract. Missing parser fields remain nullable rather than being inferred or parsed in presentation code, and the existing schedule-extractor DTO contract remains backward compatible.
+
+The `BuildFlightPlanData` mapping action remains the next service-layer task so it can map existing parser output without adding rendering logic or speculative parsing.
+
+Focused verification: All 56 focused DTO, value-object, and enum tests passed with 194 assertions. Pint passed, and the final Larastan analysis completed with no errors.
+
+Larastan maintenance follow-up: Kept invalid `TimeBasis::tryFrom()` behavior covered through a typed data provider and replaced redundant enum case type/membership assertions with one exact case-list assertion.
+
+Follow-up verification: All 5 focused `TimeBasis` tests passed with 7 assertions. Pint passed, and focused Larastan analysis completed with no errors.
+
+Follow-up commit message: `test: fix time basis larastan assertions`
+
+Commit message: `feat: add normalized flight plan data objects`
+
+## Current focus: Extract normalized data for `BuildFlightPlanData`
+
+Goal: Parse the additional identity, schedule, route, and fuel facts once from one flight-release text payload, retain source evidence where later verification matters, and pass a stable parsed contract to `app/Actions/BuildFlightPlanData.php`. The builder will normalize values and construct `FlightPlanData`; it will not read PDFs, run regexes, call external services, or format UI labels.
+
+### Existing service review
+
+| Component | Keep | Change before builder integration |
+| --- | --- | --- |
+| `HandleFlightPlanExtraction` | Private upload staging, request metrics, failure reporting, and guaranteed cleanup | Replace the route-only call with `text reader -> extraction coordinator -> BuildFlightPlanData`; keep lifecycle concerns here |
+| `FlightRouteExtractor` | Tested ICAO FPL, runway, SID/STAR, ETPS, EENT/EEXP, route normalization, and airport lookup behavior | Move its private PDF parsing/cache behind one reusable flight-release text reader; let route parsing consume text and add labeled total distance |
+| `Schedule\Extractor\PdfTextExtractor` | Existing Smalot PDF parsing precedent | Do not inject this schedule-specific service directly into flight-plan parsing; it constructs its own parser and does not share the route extractor's content-hash cache |
+| `AirportLookupClient` | Existing resilient airport enrichment with timeouts/retries | Keep enrichment outside `BuildFlightPlanData`; `RouteData` owns validated airport codes, while rich `AirportData` remains compatibility/view data |
+| `BuildScheduleResult` | Precedent for a small mapping action | Follow its single-purpose shape, but return `FlightPlanData` instead of a generic result wrapper |
+| `FlightPlanResultCache` | Opaque, owner-scoped result storage | Cache a serializable result adapter; do not cache raw PDF text or typed PHP objects because cache object unserialization is disabled |
+
+The current view still rebuilds the legacy `App\ValueObjects\FlightPlan` from a flat array. During migration, preserve its ETPS, coordinates, initial altitude, airport details, and flat route keys through a compatibility serializer. Do not force those fields into unrelated core DTO properties or remove them when the new builder is introduced.
+
+### Source-to-builder contract
+
+Create a small parsed input contract, preferably `app/DTOs/ParsedFlightPlanData.php`, containing nested scalar shapes for `identity`, `schedule`, `route`, and `fuel`, plus narrowly scoped raw source fragments. Focused extractors populate this contract; `BuildFlightPlanData` is the only layer that creates `CarbonImmutable`, `AirportCode`, `FlightTime`, and `FuelQuantity` values.
+
+| Target | Confirmed source in the current sample | Extraction and normalization rule |
+| --- | --- | --- |
+| `identity.flightNumber` | `CKS256` and `(FPL-CKS256-...)` | Prefer the labeled header value and corroborate it with the FPL identifier; reject conflicting non-empty values |
+| `identity.tripNumber` | `TRIP 109546` | Capture only the labeled trip value; do not treat `RECALL 62930` as a trip or revision |
+| `identity.aircraftType` | `B777-200F`; FPL equipment type `B77L` | Prefer the release header's operational aircraft type; retain the FPL equipment type only as parser evidence/fallback after fixtures confirm the policy |
+| `identity.tailNumber` | `N774CK`; `REG/N774CK` | Prefer the labeled header registration and corroborate it with FPL `REG/`; reject conflicts |
+| `identity.flightDate` | `05/25/26`; `DOF/260525` | Parse the header date and corroborate it with FPL DOF before creating `CarbonImmutable`; never use the upload date |
+| `identity.releaseRevision` | No reliable labeled value confirmed | Keep `null` until another fixture or format specification identifies revision semantics; do not use recall number, release time, or `FLIGHT RELEASE I.F.R 3739` speculatively |
+| `schedule.etdUtc` | `SH ETD 02.20Z/25`; FPL departure time `0220` | Parse a complete UTC instant using the confirmed flight date/day marker; corroborate the FPL time |
+| `schedule.etaUtc` | `ETA 14.50Z` | Parse the labeled ETA independently; do not derive it from FPL elapsed time |
+| `schedule.slotTimesUtc` | `APPROVED SLOT TIMES: ARR RKSI @ 1520Z` | Capture every labeled slot with airport/direction evidence, then serialize the canonical UTC instant expected by the current DTO |
+| Remaining schedule fields | No reliable local/report/duty-end/block source confirmed | Leave local, report, duty-end, and block values `null`; the FPL destination value is estimated elapsed time, not automatically block time |
+| `route` core fields | Existing ICAO FPL and planned-runway extraction | Reuse current tested text parsing for airport codes, route, runways, SID, and STAR |
+| `route.distanceNauticalMiles` | `TOTAL DIST/DEST 5549`; fuel summary destination distance `5549` | Parse the explicitly labeled total-to-destination distance and corroborate duplicate summary values |
+| `fuel.ramp` | `TTL RMP 216.8` | Interpret table scaling only after detecting the release's fuel unit/scale; preserve the matched raw fragment |
+| `fuel.taxi` | `TAXI 002.0` | Apply the same detected unit/scale as the fuel summary |
+| `fuel.takeoff` | `TAKEOFF FUEL 214829` | Prefer the exact labeled weight over a rounded derived value |
+| `fuel.trip` | `DEST ... 195.1`; `EST FUEL BURN 195116` | Prefer the exact labeled estimated burn and use the rounded destination burn only as corroboration |
+| `fuel.alternate` | `ALTN RKTU 005.6` | Map only the primary planned alternate row, using the detected unit/scale |
+| `fuel.finalReserve` | `RESERVE 006.9` | Map the labeled release reserve; preserve the raw row for future Fuel Score verification |
+| `fuel.estimatedLanding` | `EST LANDING FUEL: 019713` | Use the exact labeled value |
+| `fuel.contingency` | No confirmed one-to-one label | Keep `null`; do not reinterpret holding, additional, ballast, or reclear pad fuel as contingency without a documented rule |
+
+Fuel extraction must detect the document's mass unit and table scale from source context. The current sample contains pound-based evidence such as `INC BURN/1000 LBS`, but the parser must not assume every release is pounds. If unit or scale is ambiguous, retain the raw fragment and leave the normalized `FuelQuantity` null.
+
+### Implementation sequence
+
+1. Add sanitized multiline and flattened text fixtures for the confirmed header, FPL, schedule, distance, and fuel-summary formats. Keep the private sample-PDF test as characterization coverage, not the only CI source of truth.
+2. Extract the PDF reading, null-byte cleanup, content-hash cache, and parser exception translation from `FlightRouteExtractor` into one injected `FlightPlanTextExtractor`. Every downstream extractor must receive the same text string so the document is parsed once.
+3. Add focused `FlightIdentityExtractor`, `FlightScheduleExtractor`, and `FlightFuelExtractor` services under `app/Services/FlightPlan/Extractor`. Keep `FlightRouteExtractor` route-focused and extend its text result only for confirmed distance. Each service returns parsed scalars plus source fragments, uses `null` for absent optional fields, and never formats display text.
+4. Add an `ExtractFlightPlanData` coordinator that accepts the single text payload, invokes the focused extractors, and returns `ParsedFlightPlanData`. It must not perform upload storage, caching, authorization, logging, or DTO presentation.
+5. Implement `BuildFlightPlanData` as a pure mapping action from `ParsedFlightPlanData` to `FlightPlanData`. It validates required departure/destination codes, creates typed date/time/fuel values, preserves null optional fields, and contains no regex or source-format knowledge.
+6. Add a compatibility serializer for the current flat Livewire/view payload. Merge serialized core DTO data with existing airport enrichment and legacy ETPS/EENT/EEXP/initial-altitude fields until the frontend is migrated deliberately; move ICAO line wrapping to the view boundary when that migration occurs.
+7. Wire `HandleFlightPlanExtraction` to the new pipeline without changing its authorization, metrics, structured failures, user-scoped caching, or `finally` cleanup behavior. Update the result allowlist for the compatibility payload only after all existing rendering tests remain green.
+
+### Focused verification plan
+
+- Text reader: parses once, reuses and invalidates the content-hash cache correctly, removes null bytes, and translates unreadable-PDF failures.
+- Identity extractor: multiline/flattened input, header/FPL corroboration, missing optional values, conflicting flight/date/tail values, and no speculative release revision.
+- Schedule extractor: UTC date composition, midnight rollover only when unambiguous, multiple slots, malformed times, and absent local/report/duty/block values.
+- Route extractor: retain every current test and add labeled distance, missing distance, duplicate agreement, and conflicting-distance cases.
+- Fuel extractor: all eight target buckets, exact-over-rounded precedence, comma/decimal/leading-zero formats, pounds/kilograms, scale detection, ambiguous unit/scale, missing rows, and protection against similarly named holding/additional/reclear values.
+- Builder: full and partial parsed inputs, value-object construction, deterministic serialization, invalid required airport codes, invalid fuel values, and proof that raw document text is not an input.
+- Lifecycle integration: one PDF parse, cached compatibility payload, unchanged airport/ETPS rendering, metrics, recoverable failures, unexpected-error reporting, and upload deletion on success and every failure path.
+
+Planning commit message: `docs: plan flight release data extraction`
+
+- In preparation for front end changes, implement required DTOs, then services
 - Use immutable readonly DTOs and typed value objects for airports, times, fuel, and weights.
 - Parse once, normalize once, render many times.
 ### DTO Ownership
@@ -532,3 +577,41 @@ Outcome: Added an immutable `FlightTime` value object with strict ISO-8601 UTC a
 Focused verification: All 15 focused FlightTime tests passed with 36 assertions. Pint passed, and final focused Larastan analysis completed with no errors.
 
 Commit message: `feat: add flight time value object`
+
+## Completed: Rename feature
+
+Outcome: Renamed the customer-facing feature to `Flight Plan Brief` across the page hero, desktop and mobile navigation, admin demo metrics, and current project context. Added the hook `Your flight release, distilled into the details that matter.` while preserving stable technical identifiers and accurate flight-release and flight-plan domain language.
+
+Focused verification: All 25 focused controller, navigation, and metrics widget tests passed with 200 assertions. Pint passed, and final Larastan analysis completed with no errors.
+
+Commit message: `refactor: rename feature to flight plan brief`
+
+## Completed: Convert Flight Plan Brief to a Livewire single page
+
+Outcome: Replaced the POST/redirect/flash extraction flow with a class-based `FlightPlanBrief` Livewire component that owns upload and locked result-key state, inline PDF validation, accessible upload and processing feedback, result-only display, and an authorized `Extract another flight plan` transition. The page retains its existing URL, feature middleware, result components, coffee prompt, and customer-facing copy while the obsolete POST route and form request were removed.
+
+Extraction now runs through a single-purpose action that preserves private-disk staging, request metrics, ICAO route formatting, structured route-failure logging, unexpected-exception reporting, recoverable user feedback, and copied-file deletion on success and every failure path. Airport DTOs are normalized and result fields are allowlisted before entering the user-scoped server-side cache; the view model resolves that cached payload from an opaque locked key instead of exposing raw results in Livewire's browser snapshot. Every mutating action independently enforces authentication, verification, the feature flag, and the flight-release gate.
+
+The clipboard initializer now uses one idempotent delegated listener, so copy controls added by Livewire work after DOM morphs without duplicate handlers. Focused coverage includes direct-action authorization, locked-state tampering, validation/error clearing, no-redirect success, airport/runway/ETOPS rendering, result reset, request metadata, cleanup, structured recoverable failures, unexpected failures, dynamic copy controls, route middleware, and removal of the POST route.
+
+Focused verification: All 29 focused PHPUnit tests passed with 177 assertions, all 8 JavaScript tests passed, Pint passed, the production Vite/Tailwind build completed successfully, and final Larastan analysis completed with no errors.
+
+Cleanup hardening follow-up: Moved high-resolution timing initialization inside the extraction `try` block and made failure recording require both a created request and initialized timestamp. A timing-initialization failure now reaches the existing `finally` cleanup without replacing the original failure with a nullable timestamp type error.
+
+Follow-up verification: The focused logger-start cleanup test passed with 6 assertions, Pint passed, and Larastan completed with no errors.
+
+State and error hardening follow-up: Added an owner-scoped, expiring `FlightPlanResultCache`, removed the raw public result array from serialized Livewire state, verified cached results survive rehydration and are deleted on reset, and rejected cross-user and malformed-key lookups. Unexpected extraction and request-logging failures are now reported to Laravel, reset upload/result state, retain action-level metrics and file cleanup, and present a generic non-sensitive validation error instead of a 500 response.
+
+Hardening verification: All 12 focused cache and Livewire tests passed with 143 assertions. Pint passed, and final Larastan analysis completed with no errors.
+
+Hardening commit message: `fix: secure flight plan livewire state`
+
+Pure-render follow-up: Removed the redundant locked `$view` property and its upload/results constants. `render()` now resolves one view model and derives `isResultsView` from `hasFlightPlan()`, while Blade uses that derived value as its only display-state source. An expired or evicted cached result now renders the upload form without mutating component state, and focused coverage verifies that derived view state is absent from the Livewire snapshot and cache loss remains recoverable.
+
+Pure-render verification: All 13 focused cache and Livewire tests passed with 149 assertions. Pint passed, and final Larastan analysis completed with no errors.
+
+Larastan maintenance: Replaced boolean-specific Mockery return shorthands with `andReturn(bool)` so the expectations match the helper's declared `CompositeExpectation` API. Commit message: `test: satisfy larastan for flight plan mocks`
+
+Pure-render commit message: `refactor: derive flight plan brief view state`
+
+Commit message: `refactor: make flight plan brief a livewire page`

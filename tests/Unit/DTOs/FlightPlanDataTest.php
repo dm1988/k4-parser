@@ -1,0 +1,49 @@
+<?php
+
+namespace Tests\Unit\DTOs;
+
+use App\DTOs\FlightIdentityData;
+use App\DTOs\FlightPlanData;
+use App\DTOs\FuelPlanData;
+use App\DTOs\RouteData;
+use App\DTOs\ScheduleData;
+use App\ValueObjects\AirportCode;
+use App\ValueObjects\FuelQuantity;
+use PHPUnit\Framework\TestCase;
+
+class FlightPlanDataTest extends TestCase
+{
+    public function test_it_composes_one_immutable_normalized_release(): void
+    {
+        $flightPlan = new FlightPlanData(
+            identity: new FlightIdentityData(flightNumber: 'K4198'),
+            schedule: new ScheduleData(etdUtc: '2026-08-21T12:00:00+00:00'),
+            route: new RouteData(
+                departure: new AirportCode('KJFK'),
+                destination: new AirportCode('KLAX'),
+            ),
+            fuelPlan: new FuelPlanData(ramp: FuelQuantity::pounds(216800)),
+        );
+
+        $this->assertSame('K4198', $flightPlan->identity->flightNumber);
+        $this->assertSame('KJFK', $flightPlan->route->departure->value);
+        $this->assertSame(216800.0, $flightPlan->fuelPlan?->ramp?->amount);
+        $this->assertSame('2026-08-21T12:00:00+00:00', $flightPlan->toArray()['schedule']['etdUtc']);
+        $this->assertTrue((new \ReflectionClass($flightPlan))->isReadOnly());
+    }
+
+    public function test_it_allows_optional_section_data_to_be_absent(): void
+    {
+        $flightPlan = new FlightPlanData(
+            identity: new FlightIdentityData,
+            schedule: new ScheduleData,
+            route: new RouteData(
+                departure: new AirportCode('KJFK'),
+                destination: new AirportCode('KLAX'),
+            ),
+        );
+
+        $this->assertNull($flightPlan->fuelPlan);
+        $this->assertNull($flightPlan->toArray()['fuelPlan']);
+    }
+}

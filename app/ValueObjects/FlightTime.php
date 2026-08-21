@@ -2,6 +2,7 @@
 
 namespace App\ValueObjects;
 
+use App\Enums\TimeBasis;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use DateTimeZone;
@@ -95,9 +96,9 @@ final readonly class FlightTime implements JsonSerializable
         return in_array($this->timezone, self::UTC_TIMEZONES, true);
     }
 
-    public function basis(): string
+    public function basis(): TimeBasis
     {
-        return $this->isUtc() ? 'utc' : 'local';
+        return $this->isUtc() ? TimeBasis::Utc : TimeBasis::Local;
     }
 
     public function toUtc(): self
@@ -132,7 +133,7 @@ final readonly class FlightTime implements JsonSerializable
         return [
             'instant' => $this->toUtc()->toIso8601String(),
             'value' => $this->toIso8601String(),
-            'basis' => $this->basis(),
+            'basis' => $this->basis()->value,
             'timezone' => $this->timezone,
         ];
     }

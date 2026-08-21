@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\ValueObjects;
 
+use App\Enums\TimeBasis;
 use App\ValueObjects\FlightTime;
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;
@@ -15,6 +16,7 @@ class FlightTimeTest extends TestCase
 
         $this->assertSame('America/Anchorage', $time->timezone);
         $this->assertSame('2026-06-15T19:45:00-08:00', $time->toIso8601String());
+        $this->assertSame(TimeBasis::Local, $time->basis());
         $this->assertFalse($time->isUtc());
     }
 
@@ -24,6 +26,7 @@ class FlightTimeTest extends TestCase
 
         $this->assertSame('UTC', $time->timezone);
         $this->assertSame('2026-06-16T03:45:00+00:00', $time->toIso8601String());
+        $this->assertSame(TimeBasis::Utc, $time->basis());
         $this->assertTrue($time->isUtc());
     }
 
