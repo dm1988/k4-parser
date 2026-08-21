@@ -1,0 +1,1 @@
+MAINTENANCE LOG ITEM MEL 34-61-01 DMI: 8814 STATUS: OPEN DESCRIPTION: Right weather radar channel inoperative. LIMITATION: Dispatch only under the source-listed weather radar restriction. PROCEDURE: Accomplish the source-listed operations procedure before departure. END MAINTENANCE LOG

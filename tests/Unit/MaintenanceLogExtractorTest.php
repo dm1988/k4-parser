@@ -1,0 +1,163 @@
+<?php
+
+namespace Tests\Unit;
+
+use App\Enums\EtopsApplicability;
+use App\Exceptions\FlightPlanDataConflictException;
+use App\Services\FlightPlan\Extractor\MaintenanceLogExtractor;
+use PHPUnit\Framework\TestCase;
+
+class MaintenanceLogExtractorTest extends TestCase
+{
+    public function test_it_distinguishes_an_explicit_empty_log_from_an_absent_section(): void
+    {
+        $empty = $this->extractor()->extract($this->fixture('no-items'));
+        $absent = $this->extractor()->extract('ROUTE KLAX DCT RKSI');
+
+        $this->assertTrue($empty['data']['section_present']);
+        $this->assertSame([], $empty['data']['items']);
+        $this->assertSame(EtopsApplicability::ConfirmedNonEtops->value, $empty['data']['etops_applicability']);
+        $this->assertArrayHasKey('maintenance_log', $empty['source_fragments']);
+
+        $this->assertFalse($absent['data']['section_present']);
+        $this->assertSame([], $absent['data']['items']);
+        $this->assertSame(EtopsApplicability::Unknown->value, $absent['data']['etops_applicability']);
+        $this->assertSame([], $absent['source_fragments']);
+    }
+
+    public function test_it_extracts_one_item_without_owning_shared_crew_data(): void
+    {
+        $result = $this->extractor()->extract($this->fixture('one-item'));
+
+        $this->assertSame([
+            [
+                'type' => 'MEL',
+                'number' => '28-22-01',
+                'description' => 'Center tank override pump inoperative.',
+                'reference' => '1042',
+                'status' => 'OPEN',
+                'limitations' => null,
+                'procedures' => null,
+            ],
+        ], $result['data']['items']);
+        $this->assertArrayNotHasKey('crew_members', $result['data']);
+        $this->assertArrayHasKey('maintenance_item_1', $result['source_fragments']);
+    }
+
+    public function test_it_extracts_multiple_item_types_and_numeric_etops_evidence(): void
+    {
+        $result = $this->extractor()->extract($this->fixture('multiple-items'));
+
+        $this->assertSame(EtopsApplicability::ConfirmedEtops->value, $result['data']['etops_applicability']);
+        $this->assertCount(3, $result['data']['items']);
+        $this->assertSame(['MEL', 'CDL', 'DMI'], array_column($result['data']['items'], 'type'));
+        $this->assertSame('MC-771', $result['data']['items'][2]['reference']);
+        $this->assertSame('MONITOR', $result['data']['items'][2]['status']);
+    }
+
+    public function test_it_normalizes_wrapped_descriptions_without_inventing_optional_notes(): void
+    {
+        $item = $this->extractor()->extract($this->fixture('wrapped-description'))['data']['items'][0];
+
+        $this->assertSame(
+            'Left main landing gear brake temperature sensor indication is intermittent during taxi operations.',
+            $item['description'],
+        );
+        $this->assertSame('DMI-2099', $item['reference']);
+        $this->assertNull($item['limitations']);
+        $this->assertNull($item['procedures']);
+    }
+
+    public function test_it_extracts_flattened_operational_limitations_and_procedures(): void
+    {
+        $item = $this->extractor()->extract($this->fixture('operational-limitations'))['data']['items'][0];
+
+        $this->assertSame('Right weather radar channel inoperative.', $item['description']);
+        $this->assertSame('Dispatch only under the source-listed weather radar restriction.', $item['limitations']);
+        $this->assertSame('Accomplish the source-listed operations procedure before departure.', $item['procedures']);
+    }
+
+    public function test_it_extracts_operational_mel_cdl_records_with_single_letter_markers_and_unlabelled_descriptions(): void
+    {
+        $result = $this->extractor()->extract($this->fixture('operational-mel-cdl'));
+        $items = $result['data']['items'];
+
+        $this->assertTrue($result['data']['section_present']);
+        $this->assertCount(8, $items);
+        $this->assertSame(
+            ['MEL', 'MEL', 'MEL', 'MEL', 'MEL', 'CDL', 'CDL', 'CDL'],
+            array_column($items, 'type'),
+        );
+        $this->assertSame(
+            ['100172093', '100172116', '100172117', '100289476', '100312468', '100316318', '100316338', '100316345'],
+            array_column($items, 'reference'),
+        );
+        $this->assertSame('33-21-01-02', $items[0]['number']);
+        $this->assertSame('33-21-01-02', $items[2]['number']);
+        $this->assertSame(
+            'CABIN INTERIOR ILLUMINATION-SUPERNUMERARY COMPARTMENT LIGHTS 777F/777ERSF',
+            $items[0]['description'],
+        );
+        $this->assertSame(
+            'POTABLE WATER SYSTEMS INOPERATIVE COMPONENTS DEACTIVATED (M)',
+            $items[1]['description'],
+        );
+        $this->assertSame(
+            'INBOARD FLAP TRACK FLAPERON FAIRING SEALS (PERF)',
+            $items[7]['description'],
+        );
+        $this->assertStringNotContainsString('PAGE 2 OF 197', $items[6]['description']);
+        $this->assertStringNotContainsString('PASSED RAIM', $items[7]['description']);
+    }
+
+    public function test_it_ignores_malformed_numbers_and_deduplicates_identical_items(): void
+    {
+        $result = $this->extractor()->extract(<<<'TEXT'
+MAINTENANCE LOG
+MEL ??? | DESCRIPTION: Invalid item.
+MEL 28-22-01 | STATUS: OPEN | DESCRIPTION: Center tank override pump inoperative.
+MEL 28-22-01 | STATUS: OPEN | DESCRIPTION: Center tank override pump inoperative.
+END MAINTENANCE LOG
+TEXT);
+
+        $this->assertCount(1, $result['data']['items']);
+        $this->assertSame('28-22-01', $result['data']['items'][0]['number']);
+    }
+
+    public function test_it_rejects_conflicting_duplicate_items(): void
+    {
+        $this->expectException(FlightPlanDataConflictException::class);
+        $this->expectExceptionMessage('Conflicting flight release values were found for maintenance item MEL 28-22-01.');
+
+        $this->extractor()->extract(<<<'TEXT'
+MAINTENANCE LOG
+MEL 28-22-01 | STATUS: OPEN | DESCRIPTION: First description.
+MEL 28-22-01 | STATUS: OPEN | DESCRIPTION: Conflicting description.
+END MAINTENANCE LOG
+TEXT);
+    }
+
+    public function test_etops_applicability_requires_explicit_or_operational_evidence(): void
+    {
+        $extractor = $this->extractor();
+
+        $this->assertSame(EtopsApplicability::ConfirmedEtops, $extractor->etopsApplicability('ETOPS FLIGHT: YES'));
+        $this->assertSame(EtopsApplicability::ConfirmedNonEtops, $extractor->etopsApplicability('ETOPS FLIGHT: NO'));
+        $this->assertSame(EtopsApplicability::ConfirmedEtops, $extractor->etopsApplicability('ETOPS 180'));
+        $this->assertSame(EtopsApplicability::Unknown, $extractor->etopsApplicability('ETOPS information unavailable'));
+    }
+
+    private function extractor(): MaintenanceLogExtractor
+    {
+        return new MaintenanceLogExtractor;
+    }
+
+    private function fixture(string $name): string
+    {
+        $contents = file_get_contents(__DIR__."/../Fixtures/FlightPlan/maintenance-log/{$name}.txt");
+
+        $this->assertIsString($contents);
+
+        return $contents;
+    }
+}

@@ -5,11 +5,14 @@ namespace Tests\Unit;
 use App\DTOs\ParsedFlightPlanData;
 use App\Services\Clients\AirportLookupClient;
 use App\Services\FlightPlan\Extractor\ExtractFlightPlanData;
+use App\Services\FlightPlan\Extractor\FlightCrewExtractor;
 use App\Services\FlightPlan\Extractor\FlightFuelExtractor;
 use App\Services\FlightPlan\Extractor\FlightIdentityExtractor;
 use App\Services\FlightPlan\Extractor\FlightPlanTextExtractor;
 use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use App\Services\FlightPlan\Extractor\FlightScheduleExtractor;
+use App\Services\FlightPlan\Extractor\MaintenanceLogExtractor;
+use App\Services\Schedule\Extractor\CrewListParser;
 use Illuminate\Contracts\Cache\Repository;
 use Smalot\PdfParser\Parser;
 use Tests\TestCase;
@@ -38,6 +41,16 @@ class ExtractFlightPlanDataTest extends TestCase
             'data' => $this->fuel(),
             'source_fragments' => ['fuel_unit' => 'lb'],
         ]);
+        $crewExtractor = $this->createMock(FlightCrewExtractor::class);
+        $crewExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
+            'data' => $this->crewMembers(),
+            'source_fragments' => ['flight_crew' => 'Alex Morgan CP YIP'],
+        ]);
+        $maintenanceLogExtractor = $this->createMock(MaintenanceLogExtractor::class);
+        $maintenanceLogExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
+            'data' => $this->maintenance(),
+            'source_fragments' => ['maintenance_log' => 'MEL 28-22-01'],
+        ]);
 
         $parsed = (new ExtractFlightPlanData(
             $textExtractor,
@@ -45,12 +58,18 @@ class ExtractFlightPlanDataTest extends TestCase
             $scheduleExtractor,
             $routeExtractor,
             $fuelExtractor,
+            $crewExtractor,
+            $maintenanceLogExtractor,
         ))->extractFile('/tmp/release.pdf');
 
         $this->assertInstanceOf(ParsedFlightPlanData::class, $parsed);
         $this->assertSame('CKS256', $parsed->identity['flight_number']);
         $this->assertSame(5549, $parsed->route['distance_nautical_miles']);
         $this->assertSame('lb', $parsed->sourceFragments['fuel_unit']);
+        $this->assertTrue($parsed->maintenance['section_present']);
+        $this->assertSame('Alex Morgan', $parsed->crewMembers[0]['name']);
+        $this->assertSame('Alex Morgan CP YIP', $parsed->sourceFragments['flight_crew']);
+        $this->assertSame('MEL 28-22-01', $parsed->sourceFragments['maintenance_log']);
         $this->assertSame('FL 340', $parsed->legacy['initial_altitude']);
     }
 
@@ -71,6 +90,8 @@ class ExtractFlightPlanDataTest extends TestCase
             new FlightScheduleExtractor,
             new FlightRouteExtractor($textExtractor, $airportLookupClient),
             new FlightFuelExtractor,
+            new FlightCrewExtractor(new CrewListParser),
+            new MaintenanceLogExtractor,
         );
 
         $parsed = $extractor->extractFile($samplePath);
@@ -85,6 +106,10 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame(['amount' => 216800.0, 'unit' => 'lb'], $parsed->fuel['ramp']);
         $this->assertSame(['amount' => 195116.0, 'unit' => 'lb'], $parsed->fuel['trip']);
         $this->assertNull($parsed->fuel['contingency']);
+        $this->assertContains(
+            $parsed->maintenance['etops_applicability'],
+            ['confirmed_etops', 'confirmed_non_etops', 'unknown'],
+        );
     }
 
     /** @return array{flight_number: string, trip_number: string, recall_number: string, aircraft_type: string, tail_number: string, flight_date: string, release_revision: null} */
@@ -144,5 +169,33 @@ class ExtractFlightPlanDataTest extends TestCase
         return array_fill_keys([
             'ramp', 'taxi', 'takeoff', 'trip', 'contingency', 'alternate', 'final_reserve', 'estimated_landing',
         ], null);
+    }
+
+    /** @return list<array{name: string, role: string, base: string}> */
+    private function crewMembers(): array
+    {
+        return [[
+            'name' => 'Alex Morgan',
+            'role' => 'CP',
+            'base' => 'YIP',
+        ]];
+    }
+
+    /** @return array{section_present: true, etops_applicability: string, items: list<array{type: string, number: string, description: string, reference: string, status: string, limitations: null, procedures: null}>} */
+    private function maintenance(): array
+    {
+        return [
+            'section_present' => true,
+            'etops_applicability' => 'confirmed_etops',
+            'items' => [[
+                'type' => 'MEL',
+                'number' => '28-22-01',
+                'description' => 'Center tank override pump inoperative.',
+                'reference' => '1042',
+                'status' => 'OPEN',
+                'limitations' => null,
+                'procedures' => null,
+            ]],
+        ];
     }
 }

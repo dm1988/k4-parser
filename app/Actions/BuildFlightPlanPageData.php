@@ -3,11 +3,16 @@
 namespace App\Actions;
 
 use App\DTOs\AirportData;
+use App\DTOs\CrewMemberData;
 use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightPlanData;
 use App\DTOs\FuelPlanData;
+use App\DTOs\MaintenanceItemData;
+use App\DTOs\MaintenanceLogData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
+use App\Enums\EtopsApplicability;
+use App\Enums\MaintenanceItemType;
 use App\ValueObjects\AirportCode;
 use App\ValueObjects\FuelQuantity;
 use App\View\Models\FlightPlanPageData;
@@ -78,6 +83,8 @@ class BuildFlightPlanPageData
                     : null,
             ),
             fuelPlan: is_array($fuelPlan) ? $this->fuelPlan($fuelPlan) : null,
+            maintenanceLog: $this->maintenanceLog($data['maintenanceLog'] ?? null),
+            crewMembers: $this->crewMembers($data['crewMembers'] ?? null),
         );
     }
 
@@ -140,6 +147,91 @@ class BuildFlightPlanPageData
     private function airportCode(mixed $value): ?AirportCode
     {
         return is_string($value) && $value !== '' ? new AirportCode($value) : null;
+    }
+
+    private function maintenanceLog(mixed $value): ?MaintenanceLogData
+    {
+        if (! is_array($value)) {
+            return null;
+        }
+
+        $applicability = is_string($value['etopsApplicability'] ?? null)
+            ? EtopsApplicability::tryFrom($value['etopsApplicability'])
+            : null;
+
+        return new MaintenanceLogData(
+            sectionPresent: ($value['sectionPresent'] ?? false) === true,
+            etopsApplicability: $applicability ?? EtopsApplicability::Unknown,
+            items: $this->maintenanceItems($value['items'] ?? null),
+        );
+    }
+
+    /** @return list<MaintenanceItemData> */
+    private function maintenanceItems(mixed $items): array
+    {
+        if (! is_array($items)) {
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ($items as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $type = is_string($item['type'] ?? null)
+                ? MaintenanceItemType::tryFrom($item['type'])
+                : null;
+            $number = $this->nullableString($item['number'] ?? null);
+            $description = $this->nullableString($item['description'] ?? null);
+
+            if ($type === null || $number === null || $description === null) {
+                continue;
+            }
+
+            $normalized[] = new MaintenanceItemData(
+                type: $type,
+                number: $number,
+                description: $description,
+                reference: $this->nullableString($item['reference'] ?? null),
+                status: $this->nullableString($item['status'] ?? null),
+                limitations: $this->nullableString($item['limitations'] ?? null),
+                procedures: $this->nullableString($item['procedures'] ?? null),
+            );
+        }
+
+        return $normalized;
+    }
+
+    /** @return list<CrewMemberData> */
+    private function crewMembers(mixed $members): array
+    {
+        if (! is_array($members)) {
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ($members as $member) {
+            if (! is_array($member)) {
+                continue;
+            }
+
+            $name = $this->nullableString($member['name'] ?? null);
+
+            if ($name === null) {
+                continue;
+            }
+
+            $normalized[] = new CrewMemberData(
+                name: $name,
+                role: $this->nullableString($member['role'] ?? null),
+                base: $this->nullableString($member['base'] ?? null),
+            );
+        }
+
+        return $normalized;
     }
 
     private function airport(mixed $value): ?AirportData

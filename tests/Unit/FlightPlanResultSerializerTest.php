@@ -3,11 +3,16 @@
 namespace Tests\Unit;
 
 use App\DTOs\AirportData;
+use App\DTOs\CrewMemberData;
 use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightPlanData;
+use App\DTOs\MaintenanceItemData;
+use App\DTOs\MaintenanceLogData;
 use App\DTOs\ParsedFlightPlanData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
+use App\Enums\EtopsApplicability;
+use App\Enums\MaintenanceItemType;
 use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use App\Services\FlightPlan\FlightPlanResultSerializer;
 use App\ValueObjects\AirportCode;
@@ -30,6 +35,18 @@ class FlightPlanResultSerializerTest extends TestCase
                 destination: new AirportCode('RKSI'),
                 route: 'DCT TEST',
             ),
+            maintenanceLog: new MaintenanceLogData(
+                sectionPresent: true,
+                etopsApplicability: EtopsApplicability::ConfirmedEtops,
+                items: [
+                    new MaintenanceItemData(
+                        type: MaintenanceItemType::Mel,
+                        number: '28-22-01',
+                        description: 'Center tank override pump inoperative.',
+                    ),
+                ],
+            ),
+            crewMembers: [new CrewMemberData('Alex Morgan', 'CP', 'YIP')],
         );
         $parsed = new ParsedFlightPlanData(
             identity: [
@@ -63,7 +80,10 @@ class FlightPlanResultSerializerTest extends TestCase
             fuel: array_fill_keys([
                 'ramp', 'taxi', 'takeoff', 'trip', 'contingency', 'alternate', 'final_reserve', 'estimated_landing',
             ], null),
-            sourceFragments: ['fuel_summary' => 'must not leak'],
+            sourceFragments: [
+                'fuel_summary' => 'must not leak',
+                'maintenance_log' => 'private maintenance evidence',
+            ],
             legacy: [
                 'departure_airport' => new AirportData('KLAX', 'LAX', 'Los Angeles International', 'Los Angeles', 'California', 'United States'),
                 'destination_airport' => null,
@@ -82,7 +102,11 @@ class FlightPlanResultSerializerTest extends TestCase
         $this->assertSame('Los Angeles International', $result['departure_airport']['name']);
         $this->assertSame("DCT\n TEST", $result['route']);
         $this->assertSame('CKS256', $result['flight_plan_data']['identity']['flightNumber']);
+        $this->assertSame('28-22-01', $result['flight_plan_data']['maintenanceLog']['items'][0]['number']);
+        $this->assertSame('Alex Morgan', $result['flight_plan_data']['crewMembers'][0]['name']);
+        $this->assertArrayNotHasKey('crewMembers', $result['flight_plan_data']['maintenanceLog']);
         $this->assertArrayNotHasKey('source_fragments', $result);
         $this->assertStringNotContainsString('must not leak', json_encode($result, JSON_THROW_ON_ERROR));
+        $this->assertStringNotContainsString('private maintenance evidence', json_encode($result, JSON_THROW_ON_ERROR));
     }
 }

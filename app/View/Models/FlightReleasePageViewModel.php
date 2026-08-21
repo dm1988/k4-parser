@@ -3,11 +3,14 @@
 namespace App\View\Models;
 
 use App\DTOs\AirportData;
+use App\DTOs\CrewMemberData;
+use App\DTOs\MaintenanceItemData;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
 use App\Enums\RouteTokenType;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Number;
+use Illuminate\Support\Str;
 use Locale;
 use Throwable;
 
@@ -40,6 +43,11 @@ readonly class FlightReleasePageViewModel
     public function tailNumber(): ?string
     {
         return $this->pageData?->flightPlan->identity->tailNumber;
+    }
+
+    public function tripNumber(): ?string
+    {
+        return $this->pageData?->flightPlan->identity->tripNumber;
     }
 
     public function etdUtc(): ?string
@@ -128,8 +136,105 @@ readonly class FlightReleasePageViewModel
             ['label' => 'GENDEC', 'availability' => FlightPlanTaskAvailability::NotSupported],
             ['label' => 'Flight plan filing', 'availability' => FlightPlanTaskAvailability::NotSupported],
             ['label' => 'Weather / RAIM', 'availability' => FlightPlanTaskAvailability::NotSupported],
-            ['label' => 'Maintenance', 'availability' => FlightPlanTaskAvailability::NotSupported],
+            [
+                'label' => 'Maintenance',
+                'availability' => $this->hasMaintenanceSection()
+                    ? FlightPlanTaskAvailability::Available
+                    : FlightPlanTaskAvailability::NotPresent,
+            ],
         ];
+    }
+
+    public function maintenanceEtopsLabel(): string
+    {
+        return $this->pageData?->flightPlan->maintenanceLog?->etopsApplicability->label() ?? 'Not confirmed';
+    }
+
+    public function hasMaintenanceSection(): bool
+    {
+        return $this->pageData?->flightPlan->maintenanceLog?->sectionPresent === true;
+    }
+
+    public function maintenanceRampFuel(): ?string
+    {
+        return $this->overviewRampFuel();
+    }
+
+    public function maintenanceItemCountLabel(): string
+    {
+        $count = count($this->pageData?->flightPlan->maintenanceLog->items ?? []);
+
+        return $count.' source-listed '.($count === 1 ? 'item' : 'items');
+    }
+
+    public function maintenanceTypeSummary(): ?string
+    {
+        $counts = [];
+
+        foreach ($this->pageData?->flightPlan->maintenanceLog->items ?? [] as $item) {
+            $counts[$item->type->value] = ($counts[$item->type->value] ?? 0) + 1;
+        }
+
+        return $this->maintenanceCountSummary($counts);
+    }
+
+    public function maintenanceStatusSummary(): ?string
+    {
+        $counts = [];
+
+        foreach ($this->pageData?->flightPlan->maintenanceLog->items ?? [] as $item) {
+            if ($item->status !== null) {
+                $counts[$item->status] = ($counts[$item->status] ?? 0) + 1;
+            }
+        }
+
+        return $this->maintenanceCountSummary($counts);
+    }
+
+    /** @return list<array{name: string, details: ?string}> */
+    public function crewMembers(): array
+    {
+        return array_map(static function (CrewMemberData $member): array {
+            $details = array_values(array_filter([
+                $member->role,
+                $member->base,
+            ], static fn (?string $value): bool => $value !== null));
+
+            return [
+                'name' => $member->name,
+                'details' => $details === [] ? null : implode(' · ', $details),
+            ];
+        }, $this->pageData?->flightPlan->crewMembers ?? []);
+    }
+
+    /**
+     * @return list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string}>
+     */
+    public function maintenanceItems(): array
+    {
+        return array_map(static fn (MaintenanceItemData $item): array => [
+            'type' => $item->type->value,
+            'number' => $item->number,
+            'description' => $item->description,
+            'reference' => $item->reference,
+            'status' => $item->status,
+            'limitations' => $item->limitations,
+            'procedures' => $item->procedures,
+        ], $this->pageData?->flightPlan->maintenanceLog->items ?? []);
+    }
+
+    /** @param array<string, int> $counts */
+    private function maintenanceCountSummary(array $counts): ?string
+    {
+        if ($counts === []) {
+            return null;
+        }
+
+        return implode(' · ', array_map(
+            static fn (string $label, int $count): string => $count.' '.Str::upper($label),
+            array_keys($counts),
+            array_values($counts),
+        ));
     }
 
     public function departure(): string

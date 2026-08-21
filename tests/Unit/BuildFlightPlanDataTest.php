@@ -49,6 +49,24 @@ class BuildFlightPlanDataTest extends TestCase
                 'final_reserve' => ['amount' => 6900.0, 'unit' => 'lb'],
                 'estimated_landing' => ['amount' => 19713.0, 'unit' => 'lb'],
             ],
+            crewMembers: [[
+                'name' => 'Alex Morgan',
+                'role' => 'CP',
+                'base' => 'YIP',
+            ]],
+            maintenance: [
+                'section_present' => true,
+                'etops_applicability' => 'confirmed_etops',
+                'items' => [[
+                    'type' => 'MEL',
+                    'number' => '28-22-01',
+                    'description' => 'Center tank override pump inoperative.',
+                    'reference' => '1042',
+                    'status' => 'OPEN',
+                    'limitations' => null,
+                    'procedures' => null,
+                ]],
+            ],
         );
 
         $flightPlan = (new BuildFlightPlanData)->handle($parsed);
@@ -60,6 +78,9 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame('KLAX', $flightPlan->route->departure->value);
         $this->assertSame(5549, $flightPlan->route->distanceNauticalMiles);
         $this->assertSame(216800.0, $flightPlan->fuelPlan?->ramp?->amount);
+        $this->assertTrue($flightPlan->maintenanceLog?->sectionPresent);
+        $this->assertSame('28-22-01', $flightPlan->maintenanceLog->items[0]->number);
+        $this->assertSame('Alex Morgan', $flightPlan->crewMembers[0]->name);
     }
 
     public function test_it_omits_the_fuel_plan_when_no_fuel_was_normalized(): void
@@ -135,6 +156,7 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertNull($flightPlan->route->alternate);
         $this->assertNull($flightPlan->route->distanceNauticalMiles);
         $this->assertNull($flightPlan->fuelPlan);
+        $this->assertFalse($flightPlan->maintenanceLog?->sectionPresent);
     }
 
     public function test_it_preserves_an_explicit_zero_fuel_quantity(): void

@@ -2,17 +2,23 @@
 
 namespace App\Actions;
 
+use App\DTOs\CrewMemberData;
 use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightPlanData;
 use App\DTOs\FuelPlanData;
+use App\DTOs\MaintenanceItemData;
+use App\DTOs\MaintenanceLogData;
 use App\DTOs\ParsedFlightPlanData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
+use App\Enums\EtopsApplicability;
+use App\Enums\MaintenanceItemType;
 use App\ValueObjects\AirportCode;
 use App\ValueObjects\FlightTime;
 use App\ValueObjects\FuelQuantity;
 use Carbon\CarbonImmutable;
 use Carbon\Exceptions\InvalidFormatException;
+use Illuminate\Support\Str;
 
 class BuildFlightPlanData
 {
@@ -51,6 +57,8 @@ class BuildFlightPlanData
                 distanceNauticalMiles: $parsed->route['distance_nautical_miles'] ?? null,
             ),
             fuelPlan: $this->fuelPlan($parsed),
+            maintenanceLog: $this->maintenanceLog($parsed),
+            crewMembers: $this->crewMembers($parsed->crewMembers),
         );
     }
 
@@ -107,5 +115,98 @@ class BuildFlightPlanData
     private function fuelQuantity(?array $fuel): ?FuelQuantity
     {
         return $fuel === null ? null : new FuelQuantity($fuel['amount'], $fuel['unit']);
+    }
+
+    private function maintenanceLog(ParsedFlightPlanData $parsed): MaintenanceLogData
+    {
+        $maintenance = $parsed->maintenance;
+        $applicability = is_string($maintenance['etops_applicability'] ?? null)
+            ? EtopsApplicability::tryFrom($maintenance['etops_applicability'])
+            : null;
+
+        return new MaintenanceLogData(
+            sectionPresent: ($maintenance['section_present'] ?? false) === true,
+            etopsApplicability: $applicability ?? EtopsApplicability::Unknown,
+            items: $this->maintenanceItems($maintenance['items'] ?? null),
+        );
+    }
+
+    /** @return list<MaintenanceItemData> */
+    private function maintenanceItems(mixed $items): array
+    {
+        if (! is_array($items)) {
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ($items as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $type = is_string($item['type'] ?? null)
+                ? MaintenanceItemType::tryFrom(Str::upper($item['type']))
+                : null;
+            $number = $this->nullableString($item['number'] ?? null);
+            $description = $this->nullableString($item['description'] ?? null);
+
+            if ($type === null || $number === null || $description === null) {
+                continue;
+            }
+
+            $normalized[] = new MaintenanceItemData(
+                type: $type,
+                number: Str::upper($number),
+                description: $description,
+                reference: $this->nullableString($item['reference'] ?? null),
+                status: $this->nullableString($item['status'] ?? null),
+                limitations: $this->nullableString($item['limitations'] ?? null),
+                procedures: $this->nullableString($item['procedures'] ?? null),
+            );
+        }
+
+        return $normalized;
+    }
+
+    /** @return list<CrewMemberData> */
+    private function crewMembers(mixed $members): array
+    {
+        if (! is_array($members)) {
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ($members as $member) {
+            if (! is_array($member)) {
+                continue;
+            }
+
+            $name = $this->nullableString($member['name'] ?? null);
+
+            if ($name === null) {
+                continue;
+            }
+
+            $normalized[] = new CrewMemberData(
+                name: $name,
+                role: $this->nullableString($member['role'] ?? null),
+                base: $this->nullableString($member['base'] ?? null),
+            );
+        }
+
+        return $normalized;
+    }
+
+    private function nullableString(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        return $value !== '' ? $value : null;
     }
 }

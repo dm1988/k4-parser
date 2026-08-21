@@ -29,6 +29,7 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertNull($viewModel->flightDate());
         $this->assertNull($viewModel->aircraftType());
         $this->assertNull($viewModel->tailNumber());
+        $this->assertNull($viewModel->tripNumber());
         $this->assertNull($viewModel->etdUtc());
         $this->assertNull($viewModel->etaUtc());
         $this->assertNull($viewModel->releaseRevision());
@@ -39,6 +40,13 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertNull($viewModel->overviewRampFuel());
         $this->assertNull($viewModel->overviewSlotSummary());
         $this->assertNull($viewModel->overviewEtopsSummary());
+        $this->assertSame('Not confirmed', $viewModel->maintenanceEtopsLabel());
+        $this->assertNull($viewModel->maintenanceRampFuel());
+        $this->assertSame('0 source-listed items', $viewModel->maintenanceItemCountLabel());
+        $this->assertNull($viewModel->maintenanceTypeSummary());
+        $this->assertNull($viewModel->maintenanceStatusSummary());
+        $this->assertSame([], $viewModel->maintenanceItems());
+        $this->assertSame([], $viewModel->crewMembers());
     }
 
     #[Test]
@@ -116,8 +124,36 @@ class FlightReleasePageViewModelTest extends TestCase
             ['label' => 'GENDEC', 'availability' => FlightPlanTaskAvailability::NotSupported],
             ['label' => 'Flight plan filing', 'availability' => FlightPlanTaskAvailability::NotSupported],
             ['label' => 'Weather / RAIM', 'availability' => FlightPlanTaskAvailability::NotSupported],
-            ['label' => 'Maintenance', 'availability' => FlightPlanTaskAvailability::NotSupported],
+            ['label' => 'Maintenance', 'availability' => FlightPlanTaskAvailability::Available],
         ], $viewModel->overviewUnsupportedIndicators());
+    }
+
+    #[Test]
+    public function it_formats_maintenance_context_items_statuses_and_crew_from_typed_data(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['identity']['tripNumber'] = '109546';
+        $payload['flight_plan_data']['fuelPlan'] = [
+            'ramp' => ['amount' => 216800.0, 'unit' => 'lb'],
+            'taxi' => null,
+            'takeoff' => null,
+            'trip' => null,
+            'contingency' => null,
+            'alternate' => null,
+            'finalReserve' => null,
+            'estimatedLanding' => null,
+        ];
+
+        $viewModel = $this->viewModel($payload);
+
+        $this->assertSame('109546', $viewModel->tripNumber());
+        $this->assertSame('Yes', $viewModel->maintenanceEtopsLabel());
+        $this->assertSame('216,800 LB', $viewModel->maintenanceRampFuel());
+        $this->assertSame('2 source-listed items', $viewModel->maintenanceItemCountLabel());
+        $this->assertSame('1 MEL · 1 CDL', $viewModel->maintenanceTypeSummary());
+        $this->assertSame('1 OPEN · 1 DEFERRED', $viewModel->maintenanceStatusSummary());
+        $this->assertSame('28-22-01', $viewModel->maintenanceItems()[0]['number']);
+        $this->assertSame('CP · YIP', $viewModel->crewMembers()[0]['details']);
     }
 
     #[Test]
@@ -279,6 +315,35 @@ class FlightReleasePageViewModelTest extends TestCase
                     'distanceNauticalMiles' => 4000,
                 ],
                 'fuelPlan' => null,
+                'maintenanceLog' => [
+                    'sectionPresent' => true,
+                    'etopsApplicability' => 'confirmed_etops',
+                    'items' => [
+                        [
+                            'type' => 'MEL',
+                            'number' => '28-22-01',
+                            'description' => 'Center tank override pump inoperative.',
+                            'reference' => '1042',
+                            'status' => 'OPEN',
+                            'limitations' => null,
+                            'procedures' => null,
+                        ],
+                        [
+                            'type' => 'CDL',
+                            'number' => '52-10-02',
+                            'description' => 'Forward cargo door fairing segment missing.',
+                            'reference' => null,
+                            'status' => 'DEFERRED',
+                            'limitations' => 'Source-listed limitation.',
+                            'procedures' => 'Source-listed procedure.',
+                        ],
+                    ],
+                ],
+                'crewMembers' => [[
+                    'name' => 'Alex Morgan',
+                    'role' => 'CP',
+                    'base' => 'YIP',
+                ]],
             ],
         ];
     }

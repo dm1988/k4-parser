@@ -26,6 +26,9 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame('12h10m', $pageData->duration);
         $this->assertSame('ETP1', $pageData->etps[0]['label']);
         $this->assertSame('N40 31.1 W131 22.6', $pageData->eentCoordinates);
+        $this->assertTrue($pageData->flightPlan->maintenanceLog?->sectionPresent);
+        $this->assertSame('28-22-01', $pageData->flightPlan->maintenanceLog->items[0]->number);
+        $this->assertSame('Alex Morgan', $pageData->flightPlan->crewMembers[0]->name);
     }
 
     public function test_normalized_core_values_take_precedence_over_conflicting_flat_compatibility_values(): void
@@ -55,7 +58,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame([
             FlightPlanTask::Overview->value => FlightPlanTaskAvailability::Available,
             FlightPlanTask::JeppPdPro->value => FlightPlanTaskAvailability::Available,
-            FlightPlanTask::MaintenanceLog->value => FlightPlanTaskAvailability::NotSupported,
+            FlightPlanTask::MaintenanceLog->value => FlightPlanTaskAvailability::Available,
             FlightPlanTask::Envelope->value => FlightPlanTaskAvailability::NotSupported,
             FlightPlanTask::FlightInit->value => FlightPlanTaskAvailability::Available,
             FlightPlanTask::Fms->value => FlightPlanTaskAvailability::Available,
@@ -72,6 +75,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $payload = $this->resultPayload();
         $payload['flight_plan_data']['schedule']['slotTimesUtc'] = [];
         $payload['flight_plan_data']['fuelPlan'] = null;
+        $payload['flight_plan_data']['maintenanceLog'] = null;
         $payload['departure_airport'] = 'invalid';
         $payload['initial_altitude'] = [];
         $payload['etps'] = [['label' => 'incomplete']];
@@ -89,6 +93,19 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::SlotTimes));
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::FuelScore));
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::Etops));
+        $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::MaintenanceLog));
+    }
+
+    public function test_it_keeps_maintenance_context_available_without_a_dedicated_item_section(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['maintenanceLog']['sectionPresent'] = false;
+        $payload['flight_plan_data']['maintenanceLog']['items'] = [];
+
+        $pageData = (new BuildFlightPlanPageData)->handle($payload);
+
+        $this->assertNotNull($pageData);
+        $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::MaintenanceLog));
     }
 
     public function test_it_fails_closed_for_missing_or_malformed_normalized_payloads(): void
@@ -181,6 +198,24 @@ class BuildFlightPlanPageDataTest extends TestCase
                     'finalReserve' => ['amount' => 6900.0, 'unit' => 'lb'],
                     'estimatedLanding' => ['amount' => 19700.0, 'unit' => 'lb'],
                 ],
+                'maintenanceLog' => [
+                    'sectionPresent' => true,
+                    'etopsApplicability' => 'confirmed_etops',
+                    'items' => [[
+                        'type' => 'MEL',
+                        'number' => '28-22-01',
+                        'description' => 'Center tank override pump inoperative.',
+                        'reference' => '1042',
+                        'status' => 'OPEN',
+                        'limitations' => null,
+                        'procedures' => null,
+                    ]],
+                ],
+                'crewMembers' => [[
+                    'name' => 'Alex Morgan',
+                    'role' => 'CP',
+                    'base' => 'YIP',
+                ]],
             ],
         ];
     }

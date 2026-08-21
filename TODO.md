@@ -40,7 +40,7 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 | 10 | Weather | `cloud` | Requires confirmed fixtures |
 | 11 | Weight & Balance | `scale` | Requires confirmed fixtures |
 
-- Icons: use hero icons returned in FlightPlanTask enum
+Icons  use hero icons returned in FlightPlanTask enum
 
 ## 1 — Completed: Stabilize the result and view-data contract
 
@@ -113,9 +113,21 @@ Verification: All 22 focused page-data and Livewire tests passed with 330 assert
 
 Commit message: `feat: add jepp pd pro task`
 
-## 5 — Implement Maintenance Log
+## 5 — Completed: Implement Maintenance Log
+- Create a function to determine if a flight is an etops flight from extracted flight release text.
+Extracted fields:
+- Date
+- AC Type: B777-200F
+- Tail Number: N774CK
+- Trip Number
+- CREW LIST
+- Departure
+- Destination
+- ETOPS Flight y/n?
+- Est. Ramp Fuel
 
-Goal: Turn confirmed MEL/CDL/DMI content into a reviewable operational list.
+Goal: Expose items that get written on a maintenance log sheet
+
 
 - Add sanitized fixtures covering no items, one item, multiple items, wrapped descriptions, and operational limitations.
 - Model item type, number, DMI/reference, description, status, limitations, procedures, and source evidence only when confirmed.
@@ -126,14 +138,30 @@ Goal: Turn confirmed MEL/CDL/DMI content into a reviewable operational list.
 
 Done when: maintenance entries are faithful to their source text and the UI makes no airworthiness decision.
 
+Outcome: Added a focused Maintenance Log extractor with sanitized fixtures for absent and explicitly empty sections, one and multiple MEL/CDL/DMI items, wrapped descriptions, and operational limitations and procedures. The parser validates item numbers, deduplicates matching records, rejects conflicting duplicates, and retains raw source fragments only in the transient parsed result. A dedicated reusable flight crew extractor now isolates confirmed crew sections, reuses the existing crew parser, and stores typed crew members on the shared flight-plan aggregate rather than the Maintenance Log DTO, without crew employee identifiers; its fixtures use randomized four- and five-digit identifiers. ETOPS applicability requires explicit yes/no or numeric operational evidence and otherwise remains `not confirmed` rather than inferring a non-ETOPS flight. Typed maintenance DTOs flow through the normalized cache contract without raw evidence, while shared date, aircraft, tail, trip, airports, ramp fuel, and crew remain available to later tasks without reparsing.
+
+Operational-format follow-up: The extractor now supports flattened release sections headed `MEL/CDL`, maps single-letter `M` and `C` records to MEL and CDL, captures unlabelled DMI references and descriptions, removes embedded page headers from descriptions, and stops before the following RAIM section. Duplicate ATA numbers remain separate when their DMI references differ. The supplied CKS052411KDFW release was verified directly with all 8 expected records: 5 MELs and 3 CDLs.
+
+The responsive Maintenance Log task presents confirmed flight context, crew, item/type/status counts, and source-listed descriptions, DMI references, limitations, and procedures. It remains available from the shared normalized flight context even without a dedicated maintenance-item section or a maintenance object in an older cached payload; the item area reports that narrower absence without hiding confirmed fields. An explicitly empty log retains its dedicated no-items state, and the view includes a clear warning that it makes no airworthiness or dispatchability determination. The Overview maintenance indicator continues to describe dedicated section presence separately from task availability.
+
+Verification: All 56 focused extractor, DTO, builder, serializer, page-data, view-model, and Livewire tests passed with 600 assertions. Pint passed, the production Vite build completed successfully, and the final Larastan analysis reported no errors. Follow-up: removed redundant nullsafe maintenance-item access after non-null assertions; both focused builder suites and targeted Larastan analysis pass. The context-availability correction passed 5 maintenance-focused tests with 64 assertions, all 6 page-data tests with 40 assertions, all 10 view-model tests with 95 assertions, Pint, the production Vite build, and targeted Larastan analysis.
+
 Commit message: `feat: add maintenance log task`
 
-## 6 — Implement Envelope
+## 6 — Current focus: Implement Envelope
+Extracted fields:
+
+Trip Number
+Tail Number: N774CK
+AC Type: B777-200F
+Flight Number: CKS256
+Departure
+Destination
+CREW LIST
 
 Goal: Present confirmed performance-envelope constraints with clear provenance.
 
 - Start with sanitized fixtures and define whether the source is PD-Pro, weight-and-balance, or another release section.
-- Model configuration, weight/CG constraints, runway/temperature/obstacle assumptions, takeoff/landing limitations, and warnings only after confirmation.
 - Reuse typed aircraft, route, crew, and performance data rather than duplicating extraction.
 - Separate assumptions, permitted envelope, calculated result, and source warnings visually.
 - Do not calculate an envelope in the browser or label a condition safe solely from partial data.
@@ -145,19 +173,48 @@ Commit message: `feat: add flight envelope task`
 
 ## 7 — Implement Flight Init
 
-Goal: Provide a fast, copy-friendly initialization reference from existing normalized data.
+Goal: Provide a fast, ACARS flight initialization reference from existing normalized data.
 
-- Show tail, aircraft type, flight number, flight date, ETD, ramp fuel, departure, destination, alternate, trip/recall numbers, and confirmed revision.
-- Add crew and operational remarks only after their own fixtures and typed extraction exist.
-- Reuse accessible copy controls with live-region feedback.
-- Label unavailable ACARS-specific values rather than deriving them from unrelated release timestamps.
-- Test copy payloads, missing alternate/revision/fuel, unit labels, and mobile layout.
+Fields:
+Tail Number: N774CK
+ETD
+Est. Ramp Fuel
+Flight Number: CKS256
+Departure
+Destination
+CREW LIST
+ACARS INIT DATE 25
+- ACARS INIT DATE must be taken from the TLR page not the flight date
+Sample data:
+TAKEOFF AND LANDING REPORT CKS 0524 KDFW-RKSI 11MAY26
+TLR-30 SEQ-93651152 11MAY26 1355Z
+A/C N770CK B777-300ER GE90-115BL
+ACARS INIT DATE 11
 
-Done when: supported initialization values can be reviewed and copied without returning to the PDF.
+Should return 11
+- Create tests for a flight data that is different from an ARARS INIT DATE. It should return the ACARS date
+
+Done when: supported initialization values can be reviewed without returning to the PDF.
 
 Commit message: `feat: add flight init task`
 
 ## 8 — Implement FMS
+Extracted Fields
+
+- FMS View
+- Flight Number: CKS256
+- AC Type: B777-200F
+- RECALL Number - 5 digit
+- Departure
+- Destination
+- Alternate
+- Planned Departure / Arrival Runway, SID, and STAR
+- Distance to Destination: 5549
+- Initial Altitude
+- Cost Index
+- Alternate Airport Reserves
+
+- No copyable fields
 
 Goal: Move the current route-oriented UI into a dedicated FMS task and extend it safely.
 
@@ -265,3 +322,8 @@ Commit message: `refactor: complete flight plan workspace migration`
 
 ## 15 - Remove Extract route button
 View results on PDF upload when parsing completes
+
+## Add task: review MEL / CDL
+- Use counter badge
+- Show task at top if items exist
+- Have task at bottom if 0

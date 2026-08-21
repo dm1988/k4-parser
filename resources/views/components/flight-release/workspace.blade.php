@@ -52,6 +52,8 @@
                         :alternate-airport="$model->alternateAirport()"
                     />
                 </div>
+            @elseif ($activeTask === \App\Enums\FlightPlanTask::MaintenanceLog)
+                <x-flight-release.maintenance-log :model="$model" />
             @elseif ($activeTask === \App\Enums\FlightPlanTask::Fms)
                 <div class="p-3 sm:p-4">
                     <x-flight-release.plan-card

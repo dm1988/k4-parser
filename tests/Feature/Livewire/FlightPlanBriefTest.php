@@ -375,6 +375,208 @@ class FlightPlanBriefTest extends TestCase
         $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
     }
 
+    public function test_maintenance_log_renders_source_backed_context_items_limitations_and_crew_without_reparsing(): void
+    {
+        Storage::fake('user_flight_releases');
+        $user = User::factory()->admin()->create();
+
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')
+                ->andReturn($this->parsedFlightPlan(
+                    identity: [
+                        'flight_number' => 'CKS241',
+                        'trip_number' => '109546',
+                        'recall_number' => '62930',
+                        'aircraft_type' => 'B777-200F',
+                        'tail_number' => 'N774CK',
+                        'flight_date' => '2026-05-25',
+                        'release_revision' => null,
+                    ],
+                    fuel: [
+                        'ramp' => ['amount' => 216800.0, 'unit' => 'lb'],
+                        'taxi' => null,
+                        'takeoff' => null,
+                        'trip' => null,
+                        'contingency' => null,
+                        'alternate' => null,
+                        'final_reserve' => null,
+                        'estimated_landing' => null,
+                    ],
+                    crewMembers: [[
+                        'name' => 'Alex Morgan',
+                        'role' => 'CP',
+                        'base' => 'YIP',
+                    ]],
+                    maintenance: [
+                        'section_present' => true,
+                        'etops_applicability' => 'confirmed_etops',
+                        'items' => [
+                            [
+                                'type' => 'MEL',
+                                'number' => '28-22-01',
+                                'description' => 'Center tank override pump inoperative.',
+                                'reference' => '1042',
+                                'status' => 'OPEN',
+                                'limitations' => null,
+                                'procedures' => null,
+                            ],
+                            [
+                                'type' => 'CDL',
+                                'number' => '52-10-02',
+                                'description' => 'Forward cargo door fairing segment missing.',
+                                'reference' => null,
+                                'status' => 'DEFERRED',
+                                'limitations' => 'Source-listed operational limitation.',
+                                'procedures' => 'Source-listed operations procedure.',
+                            ],
+                        ],
+                    ],
+                ));
+        });
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'formatForIcaoDisplay')
+                ->with('DCT Q139 TEST')
+                ->andReturn('DCT Q139 TEST');
+        });
+
+        $component = Livewire::actingAs($user)
+            ->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->call('extractFlightPlan');
+
+        $flightPlanKey = $component->get('flightPlanKey');
+
+        $component
+            ->call('selectTask', FlightPlanTask::MaintenanceLog->value)
+            ->assertSet('activeTask', FlightPlanTask::MaintenanceLog->value)
+            ->assertSeeHtml('wire:key="flight-plan-task-panel-maintenance_log"')
+            ->assertSeeText('Flight details')
+            ->assertSeeText('May 25, 2026')
+            ->assertSeeText('B777-200F')
+            ->assertSeeText('N774CK')
+            ->assertSeeText('109546')
+            ->assertSeeText('PANC')
+            ->assertSeeText('KMIA')
+            ->assertSeeText('ETOPS flight')
+            ->assertSeeText('Yes')
+            ->assertSeeText('216,800 LB')
+            ->assertSeeText('2 source-listed items')
+            ->assertSeeText('1 MEL · 1 CDL')
+            ->assertSeeText('1 OPEN · 1 DEFERRED')
+            ->assertSeeText('28-22-01')
+            ->assertSeeText('1042')
+            ->assertSeeText('Forward cargo door fairing segment missing.')
+            ->assertSeeText('Source-listed operational limitation.')
+            ->assertSeeText('Source-listed operations procedure.')
+            ->assertSeeText('Alex Morgan')
+            ->assertSeeText('CP · YIP')
+            ->assertSeeText('No airworthiness determination')
+            ->assertSeeText('does not determine dispatchability')
+            ->assertDontSeeText('Approved for dispatch')
+            ->call('$refresh')
+            ->assertSet('activeTask', FlightPlanTask::MaintenanceLog->value)
+            ->assertSeeText('28-22-01');
+
+        $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
+    }
+
+    public function test_an_explicit_empty_maintenance_section_is_available_and_reports_no_items(): void
+    {
+        Storage::fake('user_flight_releases');
+
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')
+                ->andReturn($this->parsedFlightPlan(
+                    maintenance: [
+                        'section_present' => true,
+                        'etops_applicability' => 'confirmed_non_etops',
+                        'items' => [],
+                    ],
+                ));
+        });
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'formatForIcaoDisplay')
+                ->with('DCT Q139 TEST')
+                ->andReturn('DCT Q139 TEST');
+        });
+
+        Livewire::actingAs(User::factory()->admin()->create())
+            ->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->call('extractFlightPlan')
+            ->call('selectTask', FlightPlanTask::MaintenanceLog->value)
+            ->assertSeeText('No maintenance items listed')
+            ->assertSeeText('0 source-listed items')
+            ->assertSeeText('ETOPS flight')
+            ->assertSeeText('No')
+            ->assertDontSeeText('Maintenance Log data was not found');
+    }
+
+    public function test_maintenance_log_exposes_shared_context_when_the_item_section_is_absent(): void
+    {
+        Storage::fake('user_flight_releases');
+
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')
+                ->andReturn($this->parsedFlightPlan(
+                    identity: [
+                        'flight_number' => 'CKS256',
+                        'trip_number' => '109546',
+                        'recall_number' => null,
+                        'aircraft_type' => 'B777-200F',
+                        'tail_number' => 'N774CK',
+                        'flight_date' => '2026-05-25',
+                        'release_revision' => null,
+                    ],
+                    fuel: [
+                        'ramp' => ['amount' => 216800.0, 'unit' => 'lb'],
+                        'taxi' => null,
+                        'takeoff' => null,
+                        'trip' => null,
+                        'contingency' => null,
+                        'alternate' => null,
+                        'final_reserve' => null,
+                        'estimated_landing' => null,
+                    ],
+                    crewMembers: [[
+                        'name' => 'Alex Morgan',
+                        'role' => 'CP',
+                        'base' => 'YIP',
+                    ]],
+                    maintenance: [
+                        'section_present' => false,
+                        'etops_applicability' => 'confirmed_etops',
+                        'items' => [],
+                    ],
+                ));
+        });
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'formatForIcaoDisplay')
+                ->with('DCT Q139 TEST')
+                ->andReturn('DCT Q139 TEST');
+        });
+
+        Livewire::actingAs(User::factory()->admin()->create())
+            ->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->call('extractFlightPlan')
+            ->call('selectTask', FlightPlanTask::MaintenanceLog->value)
+            ->assertSeeText('Flight details')
+            ->assertSeeText('May 25, 2026')
+            ->assertSeeText('B777-200F')
+            ->assertSeeText('N774CK')
+            ->assertSeeText('109546')
+            ->assertSeeText('PANC')
+            ->assertSeeText('KMIA')
+            ->assertSeeText('ETOPS flight')
+            ->assertSeeText('Yes')
+            ->assertSeeText('216,800 LB')
+            ->assertSeeText('Alex Morgan')
+            ->assertSeeText('No maintenance section found')
+            ->assertDontSeeText('Maintenance Log data was not found')
+            ->assertDontSeeText('No maintenance items listed');
+    }
+
     public function test_overview_presents_complete_source_backed_values_and_links_to_detail_tasks_without_reparsing(): void
     {
         Storage::fake('user_flight_releases');
@@ -779,6 +981,8 @@ class FlightPlanBriefTest extends TestCase
         ?array $schedule = null,
         ?array $route = null,
         ?array $fuel = null,
+        ?array $crewMembers = null,
+        ?array $maintenance = null,
     ): ParsedFlightPlanData {
         $legacy ??= $this->flightPlan();
 
@@ -816,6 +1020,12 @@ class FlightPlanBriefTest extends TestCase
             fuel: $fuel ?? array_fill_keys([
                 'ramp', 'taxi', 'takeoff', 'trip', 'contingency', 'alternate', 'final_reserve', 'estimated_landing',
             ], null),
+            crewMembers: $crewMembers ?? [],
+            maintenance: $maintenance ?? [
+                'section_present' => false,
+                'etops_applicability' => 'unknown',
+                'items' => [],
+            ],
             legacy: $legacy,
         );
     }

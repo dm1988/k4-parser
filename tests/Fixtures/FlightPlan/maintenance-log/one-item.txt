@@ -1,0 +1,7 @@
+CREW LIST
+Name Crew Pos Base
+Alex Morgan 71022 CP YIP
+Jordan Lee 71559 FO YIP
+MAINTENANCE LOG
+MEL 28-22-01 | DMI: 1042 | STATUS: OPEN | DESCRIPTION: Center tank override pump inoperative.
+END MAINTENANCE LOG

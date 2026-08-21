@@ -1,0 +1,6 @@
+ETOPS 60/180
+MAINTENANCE ITEMS
+MEL 28-22-01 | DMI: 1042 | STATUS: OPEN | DESCRIPTION: Center tank override pump inoperative.
+CDL 52-10-02 | STATUS: DEFERRED | DESCRIPTION: Forward cargo door fairing segment missing.
+ITEM DMI MX-2048 | REFERENCE: MC-771 | STATUS: MONITOR | DESCRIPTION: Engine oil servicing trend observation.
+END MAINTENANCE LOG
