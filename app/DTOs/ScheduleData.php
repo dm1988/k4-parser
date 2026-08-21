@@ -37,7 +37,7 @@ final readonly class ScheduleData
     }
 
     /**
-     * @return array{etdUtc: string|null, etdLocal: string|null, etaUtc: string|null, etaLocal: string|null, blockDuration: string|null, reportTimeUtc: string|null, reportTimeLocal: string|null, dutyEndUtc: string|null, dutyEndLocal: string|null, slotTimesUtc: list<string>, slotTimesLocal: list<string>}
+     * @return array{etdUtc: string|null, etdLocal: string|null, etaUtc: string|null, etaLocal: string|null, blockDuration: string|null, reportTimeUtc: string|null, reportTimeLocal: string|null, dutyEndUtc: string|null, dutyEndLocal: string|null, slotTimesUtc: list<string|null>, slotTimesLocal: list<string>}
      */
     public function toArray(): array
     {

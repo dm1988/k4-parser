@@ -4,10 +4,12 @@ namespace Tests\Feature\Livewire;
 
 use App\Actions\ShouldPromptForCoffee;
 use App\DTOs\AirportData;
+use App\DTOs\ParsedFlightPlanData;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Livewire\FlightPlanBrief;
 use App\Models\ExtractRequest;
 use App\Models\User;
+use App\Services\FlightPlan\Extractor\ExtractFlightPlanData;
 use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use App\Services\Infrastructure\ExtractRequestLogger;
 use App\Services\Infrastructure\FlightPlanResultCache;
@@ -117,13 +119,15 @@ class FlightPlanBriefTest extends TestCase
         Storage::fake('user_flight_releases');
         $user = User::factory()->admin()->create();
 
-        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
-            $this->expectOnce($mock, 'extractFlightPlanData')
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')
                 ->withArgs(fn (string $path): bool => str_contains($path, 'framework/testing/disks/user_flight_releases'))
-                ->andReturn([
+                ->andReturn($this->parsedFlightPlan([
                     ...$this->flightPlan(),
                     'sensitive_internal_marker' => 'must-not-reach-livewire',
-                ]);
+                ]));
+        });
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
             $this->expectOnce($mock, 'formatForIcaoDisplay')
                 ->with('DCT Q139 TEST')
                 ->andReturn("DCT Q139\n TEST");
@@ -176,6 +180,8 @@ class FlightPlanBriefTest extends TestCase
 
         $this->assertIsArray($cachedFlightPlan);
         $this->assertArrayNotHasKey('sensitive_internal_marker', $cachedFlightPlan);
+        $this->assertSame('PANC', $cachedFlightPlan['flight_plan_data']['route']['departure']);
+        $this->assertArrayNotHasKey('sourceFragments', $cachedFlightPlan['flight_plan_data']);
         $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
 
         $component
@@ -201,9 +207,11 @@ class FlightPlanBriefTest extends TestCase
         Storage::fake('user_flight_releases');
         $user = User::factory()->admin()->create();
 
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')
+                ->andReturn($this->parsedFlightPlan());
+        });
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
-            $this->expectOnce($mock, 'extractFlightPlanData')
-                ->andReturn($this->flightPlan());
             $this->expectOnce($mock, 'formatForIcaoDisplay')
                 ->with('DCT Q139 TEST')
                 ->andReturn('DCT Q139 TEST');
@@ -238,9 +246,9 @@ class FlightPlanBriefTest extends TestCase
     {
         Storage::fake('user_flight_releases');
 
-        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
-            $this->expectOnce($mock, 'extractFlightPlanData')
-                ->andReturn([
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')
+                ->andReturn($this->parsedFlightPlan([
                     'departure' => 'PANC',
                     'destination' => 'KMIA',
                     'alternate' => null,
@@ -257,7 +265,9 @@ class FlightPlanBriefTest extends TestCase
                     'initial_altitude' => 'FL 330',
                     'duration' => '07h12m',
                     'route' => 'DCT TEST',
-                ]);
+                ]));
+        });
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
             $this->expectOnce($mock, 'formatForIcaoDisplay')
                 ->with('DCT TEST')
                 ->andReturn('DCT TEST');
@@ -285,9 +295,9 @@ class FlightPlanBriefTest extends TestCase
         $user = User::factory()->create();
         $file = UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf');
 
-        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock) use ($user): void {
-            $this->expectOnce($mock, 'extractFlightPlanData')
-                ->andReturnUsing(function () use ($user): array {
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock) use ($user): void {
+            $this->expectOnce($mock, 'extractFile')
+                ->andReturnUsing(function () use ($user): ParsedFlightPlanData {
                     $extractRequest = ExtractRequest::query()->sole();
 
                     $this->assertSame($user->getKey(), $extractRequest->user_id);
@@ -295,8 +305,10 @@ class FlightPlanBriefTest extends TestCase
                     $this->assertSame('flight_plan', $extractRequest->parser_type);
                     $this->assertSame('partial', $extractRequest->status);
 
-                    return [...$this->flightPlan(), 'route' => 'DCT TEST'];
+                    return $this->parsedFlightPlan([...$this->flightPlan(), 'route' => 'DCT TEST']);
                 });
+        });
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
             $this->expectOnce($mock, 'formatForIcaoDisplay')
                 ->with('DCT TEST')
                 ->andReturn('DCT TEST');
@@ -337,8 +349,8 @@ class FlightPlanBriefTest extends TestCase
                     && str_contains($context['message'], 'route segment could not be identified');
             });
 
-        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
-            $this->expectOnce($mock, 'extractFlightPlanData')
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')
                 ->andThrow(FlightRouteNotFoundException::routeSegmentMissing());
         });
 
@@ -363,8 +375,8 @@ class FlightPlanBriefTest extends TestCase
         Storage::fake('user_flight_releases');
         Exceptions::fake();
 
-        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
-            $this->expectOnce($mock, 'extractFlightPlanData')
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')
                 ->andThrow(new RuntimeException('Unexpected extractor failure'));
         });
 
@@ -398,8 +410,8 @@ class FlightPlanBriefTest extends TestCase
                 ->andThrow(new RuntimeException('Unable to record extraction'));
             $mock->shouldNotReceive('error');
         });
-        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
-            $mock->shouldNotReceive('extractFlightPlanData');
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $mock->shouldNotReceive('extractFile');
         });
 
         Livewire::actingAs(User::factory()->admin()->create())
@@ -446,6 +458,47 @@ class FlightPlanBriefTest extends TestCase
             'duration' => '07h12m',
             'route' => 'DCT Q139 TEST',
         ];
+    }
+
+    /** @param array<string, mixed>|null $legacy */
+    private function parsedFlightPlan(?array $legacy = null): ParsedFlightPlanData
+    {
+        $legacy ??= $this->flightPlan();
+
+        return new ParsedFlightPlanData(
+            identity: [
+                'flight_number' => null,
+                'trip_number' => null,
+                'recall_number' => null,
+                'aircraft_type' => null,
+                'tail_number' => null,
+                'flight_date' => null,
+                'release_revision' => null,
+            ],
+            schedule: [
+                'etd_utc' => null,
+                'eta_utc' => null,
+                'block_duration' => null,
+                'report_time_utc' => null,
+                'duty_end_utc' => null,
+                'slot_times_utc' => [],
+            ],
+            route: [
+                'departure' => (string) $legacy['departure'],
+                'destination' => (string) $legacy['destination'],
+                'alternate' => is_string($legacy['alternate'] ?? null) ? $legacy['alternate'] : null,
+                'route' => is_string($legacy['route'] ?? null) ? $legacy['route'] : null,
+                'departure_runway' => is_string($legacy['departure_runway'] ?? null) ? $legacy['departure_runway'] : null,
+                'arrival_runway' => is_string($legacy['arrival_runway'] ?? null) ? $legacy['arrival_runway'] : null,
+                'departure_sid' => is_string($legacy['departure_sid'] ?? null) ? $legacy['departure_sid'] : null,
+                'arrival_star' => is_string($legacy['arrival_star'] ?? null) ? $legacy['arrival_star'] : null,
+                'distance_nautical_miles' => null,
+            ],
+            fuel: array_fill_keys([
+                'ramp', 'taxi', 'takeoff', 'trip', 'contingency', 'alternate', 'final_reserve', 'estimated_landing',
+            ], null),
+            legacy: $legacy,
+        );
     }
 
     private function expectOnce(MockInterface $mock, string $method): CompositeExpectation

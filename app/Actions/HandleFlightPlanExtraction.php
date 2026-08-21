@@ -2,11 +2,11 @@
 
 namespace App\Actions;
 
-use App\DTOs\AirportData;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Models\ExtractRequest;
 use App\Models\User;
-use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
+use App\Services\FlightPlan\Extractor\ExtractFlightPlanData;
+use App\Services\FlightPlan\FlightPlanResultSerializer;
 use App\Services\Infrastructure\ExtractRequestLogger;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -33,10 +33,13 @@ class HandleFlightPlanExtraction
         'initial_altitude',
         'duration',
         'route',
+        'flight_plan_data',
     ];
 
     public function __construct(
-        private readonly FlightRouteExtractor $extractor,
+        private readonly ExtractFlightPlanData $extractor,
+        private readonly BuildFlightPlanData $builder,
+        private readonly FlightPlanResultSerializer $serializer,
         private readonly ExtractRequestLogger $extractRequestLogger,
     ) {}
 
@@ -61,8 +64,11 @@ class HandleFlightPlanExtraction
                 'flight_plan',
                 $uploadedFile,
             );
-            $flightPlan = $this->extractor->extractFlightPlanData($disk->path($path));
-            $flightPlan['route'] = $this->extractor->formatForIcaoDisplay($flightPlan['route']);
+            $parsedFlightPlan = $this->extractor->extractFile($disk->path($path));
+            $flightPlan = $this->serializer->serialize(
+                $this->builder->handle($parsedFlightPlan),
+                $parsedFlightPlan,
+            );
 
             $this->extractRequestLogger->complete(
                 $extractRequest,
@@ -106,12 +112,6 @@ class HandleFlightPlanExtraction
      */
     private function normalizeFlightPlan(array $flightPlan): array
     {
-        foreach (['departure_airport', 'destination_airport', 'alternate_airport'] as $key) {
-            if (($flightPlan[$key] ?? null) instanceof AirportData) {
-                $flightPlan[$key] = $flightPlan[$key]->toArray();
-            }
-        }
-
         return array_intersect_key($flightPlan, array_flip(self::RESULT_KEYS));
     }
 }

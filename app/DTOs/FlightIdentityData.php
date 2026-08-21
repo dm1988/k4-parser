@@ -10,6 +10,7 @@ final readonly class FlightIdentityData implements JsonSerializable
     public function __construct(
         public ?string $flightNumber = null,
         public ?string $tripNumber = null,
+        public ?string $recallNumber = null,
         public ?string $aircraftType = null,
         public ?string $tailNumber = null,
         public ?CarbonImmutable $flightDate = null,
@@ -17,13 +18,14 @@ final readonly class FlightIdentityData implements JsonSerializable
     ) {}
 
     /**
-     * @return array{flightNumber: string|null, tripNumber: string|null, aircraftType: string|null, tailNumber: string|null, flightDate: string|null, releaseRevision: string|null}
+     * @return array{flightNumber: string|null, tripNumber: string|null, recallNumber: string|null, aircraftType: string|null, tailNumber: string|null, flightDate: string|null, releaseRevision: string|null}
      */
     public function toArray(): array
     {
         return [
             'flightNumber' => $this->flightNumber,
             'tripNumber' => $this->tripNumber,
+            'recallNumber' => $this->recallNumber,
             'aircraftType' => $this->aircraftType,
             'tailNumber' => $this->tailNumber,
             'flightDate' => $this->flightDate?->toDateString(),
@@ -32,7 +34,7 @@ final readonly class FlightIdentityData implements JsonSerializable
     }
 
     /**
-     * @return array{flightNumber: string|null, tripNumber: string|null, aircraftType: string|null, tailNumber: string|null, flightDate: string|null, releaseRevision: string|null}
+     * @return array{flightNumber: string|null, tripNumber: string|null, recallNumber: string|null, aircraftType: string|null, tailNumber: string|null, flightDate: string|null, releaseRevision: string|null}
      */
     public function jsonSerialize(): array
     {

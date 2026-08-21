@@ -305,7 +305,6 @@ Organize this by airport and route rather than as one undifferentiated text bloc
   * Maximum landing weight
   * CG / index envelope limits
 * Status for each limiting value: within limits, caution, exceeded
-* Cargo / compartment distribution, if the release provides it
 
 The big implementation boundary: **Weight & Balance, Fuel Score, ETOPS, and Weather should store both raw source text and normalized fields.** Those are the sections where users will most want to verify that the tidy presentation still matches the actual release.
 
@@ -325,7 +324,13 @@ Follow-up commit message: `test: fix time basis larastan assertions`
 
 Commit message: `feat: add normalized flight plan data objects`
 
-## Current focus: Extract normalized data for `BuildFlightPlanData`
+## Completed: Extract normalized data for `BuildFlightPlanData`
+
+Outcome: Added a parse-once flight-release pipeline with a content-hash-cached text reader, focused identity, schedule, route-distance, and fuel extractors, an immutable parsed-data contract, and a pure `BuildFlightPlanData` mapper. `HandleFlightPlanExtraction` now builds and caches the nested normalized aggregate while a compatibility serializer preserves the existing airport, route, ETPS, coordinate, altitude, and duration payload used by the current views. Source evidence stays internal and is not exposed in cached UI data. Unconfirmed release revision, block/report/duty times, local times, and contingency fuel remain `null` rather than being inferred.
+
+Focused verification: All 62 focused extraction, DTO, serializer, route-regression, cache, controller, and Livewire tests passed with 341 assertions. Pint passed, and final Larastan analysis completed with no errors. The private sample release PDF also passed characterization coverage.
+
+Commit message: `feat: extract normalized flight plan data`
 
 Goal: Parse the additional identity, schedule, route, and fuel facts once from one flight-release text payload, retain source evidence where later verification matters, and pass a stable parsed contract to `app/Actions/BuildFlightPlanData.php`. The builder will normalize values and construct `FlightPlanData`; it will not read PDFs, run regexes, call external services, or format UI labels.
 
@@ -350,6 +355,7 @@ Create a small parsed input contract, preferably `app/DTOs/ParsedFlightPlanData.
 | --- | --- | --- |
 | `identity.flightNumber` | `CKS256` and `(FPL-CKS256-...)` | Prefer the labeled header value and corroborate it with the FPL identifier; reject conflicting non-empty values |
 | `identity.tripNumber` | `TRIP 109546` | Capture only the labeled trip value; do not treat `RECALL 62930` as a trip or revision |
+| `identity.recallNumber` | `RECALL 62930` | Capture only the labeled recall value |
 | `identity.aircraftType` | `B777-200F`; FPL equipment type `B77L` | Prefer the release header's operational aircraft type; retain the FPL equipment type only as parser evidence/fallback after fixtures confirm the policy |
 | `identity.tailNumber` | `N774CK`; `REG/N774CK` | Prefer the labeled header registration and corroborate it with FPL `REG/`; reject conflicts |
 | `identity.flightDate` | `05/25/26`; `DOF/260525` | Parse the header date and corroborate it with FPL DOF before creating `CarbonImmutable`; never use the upload date |
@@ -391,11 +397,6 @@ Fuel extraction must detect the document's mass unit and table scale from source
 - Builder: full and partial parsed inputs, value-object construction, deterministic serialization, invalid required airport codes, invalid fuel values, and proof that raw document text is not an input.
 - Lifecycle integration: one PDF parse, cached compatibility payload, unchanged airport/ETPS rendering, metrics, recoverable failures, unexpected-error reporting, and upload deletion on success and every failure path.
 
-Planning commit message: `docs: plan flight release data extraction`
-
-- In preparation for front end changes, implement required DTOs, then services
-- Use immutable readonly DTOs and typed value objects for airports, times, fuel, and weights.
-- Parse once, normalize once, render many times.
 ### DTO Ownership
 | DTO                  | Owns                                                |
 | -------------------- | --------------------------------------------------- |
@@ -440,178 +441,15 @@ Optional adapter specifically for the rendered Overview. Use it only if the Live
 
 ## Create tests
 ------------
-
-# Review welcome page for use with new features
-
-Audit outcome:
-
-- The page is positioned as a Jeppesen Crew Access Schedule Extractor rather than Crew Compass's K4 Extractor product entry point. Its title, header, hero, benefits, screenshot, primary CTA, and account-security copy all describe only the Schedule Extractor.
-- The visual treatment relies on indigo, emerald, and amber accents instead of the documented Aviation Blue, Compass Gold, Cloud White, Midnight, and Steel Gray palette, despite reusable `cc-*` styles and the Crew Compass logo already existing.
-- The header and hero each use an `h1`, the screenshot has generic alternative text, and interactive elements need consistent keyboard-focus treatment.
-- The public route is static, while authenticated feature access is already centralized in `User::canUseScheduleExtractor()` and `User::canUseFlightRelease()`. The welcome page can remain presentation-only and use those existing decisions for authenticated CTAs without adding a new backend layer or querying from Blade.
-
-Refactor plan:
-
-1. Reframe the metadata and header around the brand hierarchy: Crew Compass as the umbrella brand, K4 Extractor as the application, and one descriptive page `h1`. Reuse the existing Crew Compass logo and theme selector, and retain login, registration, dashboard, privacy, feedback, and independence links.
-2. Replace the Schedule-only hero with concise product-level copy based on the shared promise: turn operational documents into reviewable information without manual re-entry. Keep Jeppesen Crew Access as supported Schedule Extractor context rather than the page's identity, and include the operational-verification disclaimer required by the brand voice.
-3. Add a responsive two-tool section using a reusable Blade feature-card component. Give Schedule Extractor and Flight Plan Brief equal visual hierarchy, crew-familiar descriptions, suitable icons, and a `Demo` badge on Flight Plan Brief while that status applies. Move the existing phone screenshot into Schedule-specific supporting content instead of using it as the product-wide hero; do not invent a Flight Plan screenshot.
-4. Make calls to action access-aware. Guests receive registration and login paths; authenticated users see direct links only for tools allowed by the existing entitlement methods, with a clear unavailable state otherwise. Keep hidden navigation from being treated as authorization and preserve all route middleware and gates.
-5. Restyle the page with existing `cc-*` utilities and supported Tailwind CSS 3 classes, adding narrowly scoped reusable marketing styles only where repetition warrants it. Apply Aviation Blue to structure, Compass Gold to emphasis and CTAs, Cloud White/Midnight surfaces, Steel Gray secondary copy, matching dark mode, responsive spacing, visible focus states, semantic landmarks, and specific image alternative text.
-6. Update focused PHPUnit feature coverage for Crew Compass/K4 Extractor identity, both tool summaries, guest and authenticated CTA states, feature-disabled states, the demo badge, theme controls, disclaimer/footer content, and removal of Schedule-only assumptions. During implementation, run the focused welcome/theme tests, Pint after PHP or Blade changes, a production Vite build for Tailwind validation, then Larastan once at the final integration checkpoint.
-
-Proposed commit message: `refactor: make welcome page a branded product hub`
-
-# Identify places to incorporate Crew Compass
-
-Reference figma make plan
-
-Audit outcome:
-
-- Airport info is complete in flight cards and the flight-route extractor.
-- Primary placement: show Crew Compass content on each layover card, below the hotel details. Display the resolved city, whether a layover guide is available, the number of available places, and links to the guide/city when available.
-- Secondary placement: add the same compact city summary to origin and destination airport popovers. Do not duplicate it in the expanded airport-details accordion.
-- Data gap: airport enrichment currently handles flight origins and destinations only. Layover events expose a station code but are not resolved to a canonical Crew Compass city.
-
-Simple plan:
-
-1. Extend the Crew Compass airport provider response with a canonical city identifier/slug, guide availability and URL, places count, and city URL. Resolve by airport/station code rather than city name.
-2. Extend schedule enrichment to include unique layover station codes and attach the city summary to layover metadata, reusing the existing cached airport-resolution flow and avoiding requests from Blade views.
-3. Expose typed city-summary data through the event and flight-card view models, then render a reusable Crew Compass city-summary component on layover cards and airport popovers.
-4. Add focused provider, enrichment, view-model, and Blade component tests for available, unavailable, zero-place, duplicate-city, and provider-failure cases.
-
-# Track schedule upload count
-- For multiple file uploads within each user request
-
-# Confidence score for extraction
-
-# Feat: Look into offline use
-
-# Feat: Fuel score
-
-# Feat: Crew Rest
-
-# Chore: update laravel
-
-# Plan: Release Flight Plan Brief trial
-Goal: release Flight Plan Brief as a clearly labeled demo, validate usage, and then gate it behind its own Stripe subscription at $5 per year with a one-time two-month trial per user.
-
-## Phase 1: Demo release and measurement
-
-Implementation outcome:
-
-- Added a reusable, dark-mode-compatible `Demo` badge with default, info, and success variants, custom slot content, and safe fallback styling to both flight-plan navigation links without changing their existing feature gate.
-- Demo access now explicitly requires a verified email. Verified non-admin users receive access when the environment-specific demo override is enabled; admins retain access; unverified users remain blocked.
-- The disabled master feature continues to return 404 and hide navigation access for every user.
-- Added a flight-plan-specific Filament dashboard widget for request volume, failure count and rate, average processing time, and distinct-user adoption using existing `extract_requests` data.
-- Added focused navigation, authorization, extraction logging, model entitlement, dashboard layout, and metric tests covering enabled, disabled, admin, verified-user, and unverified-user behavior.
-- Kept `.env.example` defaulted to `FEATURES_FLIGHT_RELEASE_FOR_ALL_USERS=false`. Deployment action remaining: set this value to `true` in the target environment and refresh cached configuration when the demo is released.
-
-Focused verification: 34 tests passed with 226 assertions. Pint and Larastan completed successfully.
-
-Commit message: `feat: release and measure flight plan demo access`
-
-## Phase 2: Stripe and Cashier foundation
-
-1. Create a Stripe product with a recurring annual price of $6; store only its Stripe price ID in billing configuration and environment variables.
-- Sandbox Product ID: prod_V5e95Fh4fVJrkH
-2. Add Cashier's `Billable` trait to `User`, cast `trial_ends_at` as a datetime, and verify the existing Cashier customer/subscription migrations match Cashier v16 requirements.
-3. Use a dedicated subscription name such as `flight-release` instead of `default`, keeping this entitlement independent from future paid feature tiers.
-4. Configure test/live Stripe keys, webhook signing secrets, currency, and Cashier path without committing secrets.
-
-## Phase 3: Checkout and one-time trial
-
-1. Add an authenticated billing page showing the annual price, trial terms, current subscription state, renewal date, and cancellation or grace-period state.
-2. Start the `flight-release` subscription through Stripe Checkout with `trialUntil(now()->addMonths(2))`, collecting a payment method so billing can begin automatically after the trial.
-3. Prevent repeat trials by checking retained subscription history before offering trial terms; returning subscribers start paid access immediately.
-4. Add named routes and thin controllers for checkout, success, cancellation, and Stripe's billing portal. Handle incomplete/SCA payments through Cashier's payment-confirmation flow.
-5. Make checkout creation idempotent so repeated submissions cannot create duplicate subscriptions.
-
-## Phase 4: Entitlement and lifecycle handling
-
-1. Centralize flight-extractor entitlement in `User::canUseFlightRelease()`: the master feature must be enabled, admins retain access, the demo override grants temporary access, and regular users otherwise need an active, trialing, or grace-period `flight-release` subscription.
-2. Keep the existing gate and route middleware as the single authorization boundary, and use the same method to decide whether navigation is rendered.
-3. Configure Cashier's signed webhook endpoint and CSRF exclusion, then verify subscription creation, updates, cancellation, payment failure, and deletion synchronize locally.
-4. Show actionable billing states for trialing, active, incomplete, past-due, canceled-on-grace-period, and ended subscriptions; never grant access to incomplete or past-due subscriptions.
-5. Turn `FEATURES_FLIGHT_RELEASE_FOR_ALL_USERS` back to `false` only after checkout, webhooks, and entitlement behavior are verified in production test mode.
-
-## Phase 5: Verification and launch
-
-1. Add PHPUnit coverage for configuration, gates, middleware, checkout authorization, one-time trial eligibility, subscription states, admin bypass, demo override, and canceled/grace-period access.
-2. Test webhook signature rejection and representative Stripe lifecycle payloads without making normal unit and feature tests depend on live Stripe network access.
-3. Complete Stripe test-mode smoke tests for successful checkout, 3DS/SCA, declined payment, trial conversion, cancellation, portal return, and webhook replay.
-4. Run focused tests and Pint during implementation, then run the full PHPUnit suite, Larastan, and a production Vite build at the final integration checkpoint.
-5. Document the production rollout checklist in this section: Stripe product/price IDs, webhook URL and events, secrets, demo-flag cutoff, monitoring window, and rollback by restoring the demo override.
-
-Open decisions before implementation:
-
-- “two months” means two calendar months
-- Existing demo users receive the full trial when billing launches
-- Confirm tax handling and the customer-facing refund/cancellation policy before enabling live charges.
-
+*** Completed ***
 ------------------------------------------------
 
 ### Completed: app/DTOs/ScheduleData.php
-Operational times: ETD, ETA, block time, report time, slot times—each with an explicit UTC/local basis.
-Remove overlap from the Flight DTO
-
-Outcome: Added an immutable `ScheduleData` DTO with explicitly named UTC/local ETD, ETA, report, duty-end, and slot fields. Existing block-time durations are represented unambiguously as `blockDuration`. `Flight` now owns one nested schedule instead of duplicating block and local operational-time fields, while `FlightMapper` preserves the existing calendar metadata contract for parsers, views, cached payloads, and exports.
-
-Focused verification: All 29 focused DTO, view-model, component, and calendar-export tests passed with 180 assertions. Pint passed, and final focused Larastan analysis completed with no errors.
-
-Commit message: `refactor: extract flight schedule data`
 
 ### Completed: app/ValueObjects/AirportCode.php
-Validates and represents an airport identifier. It prevents passing arbitrary strings around as “airport codes.”
-
-Outcome: Added an immutable `AirportCode` value object that trims and uppercases identifiers, accepts only three-letter IATA or four-letter ICAO formats, distinguishes the two formats, compares normalized values, and supports string and scalar JSON serialization. Registry/provider existence remains the responsibility of airport resolution rather than format validation.
-
-Focused verification: All 10 focused AirportCode tests passed with 22 assertions. Pint passed, and final focused Larastan analysis completed with no errors.
-
-Commit message: `feat: add airport code value object`
 
 ### Completed: app/ValueObjects/FlightTime.php
-Represents a flight-related time with its timezone/context. This prevents UTC and local times from silently getting mixed.
-
-Outcome: Added an immutable `FlightTime` value object with strict ISO-8601 UTC and local construction, explicit timezone and `utc`/`local` basis context, immutable timezone conversion, context-aware equality, same-instant comparison, and object-shaped array/JSON serialization. Local wall-clock validation rejects invalid zones, fixed-offset pseudo-local contexts, and nonexistent or ambiguous daylight-saving times.
-
-Focused verification: All 15 focused FlightTime tests passed with 36 assertions. Pint passed, and final focused Larastan analysis completed with no errors.
-
-Commit message: `feat: add flight time value object`
 
 ## Completed: Rename feature
 
-Outcome: Renamed the customer-facing feature to `Flight Plan Brief` across the page hero, desktop and mobile navigation, admin demo metrics, and current project context. Added the hook `Your flight release, distilled into the details that matter.` while preserving stable technical identifiers and accurate flight-release and flight-plan domain language.
-
-Focused verification: All 25 focused controller, navigation, and metrics widget tests passed with 200 assertions. Pint passed, and final Larastan analysis completed with no errors.
-
-Commit message: `refactor: rename feature to flight plan brief`
-
 ## Completed: Convert Flight Plan Brief to a Livewire single page
-
-Outcome: Replaced the POST/redirect/flash extraction flow with a class-based `FlightPlanBrief` Livewire component that owns upload and locked result-key state, inline PDF validation, accessible upload and processing feedback, result-only display, and an authorized `Extract another flight plan` transition. The page retains its existing URL, feature middleware, result components, coffee prompt, and customer-facing copy while the obsolete POST route and form request were removed.
-
-Extraction now runs through a single-purpose action that preserves private-disk staging, request metrics, ICAO route formatting, structured route-failure logging, unexpected-exception reporting, recoverable user feedback, and copied-file deletion on success and every failure path. Airport DTOs are normalized and result fields are allowlisted before entering the user-scoped server-side cache; the view model resolves that cached payload from an opaque locked key instead of exposing raw results in Livewire's browser snapshot. Every mutating action independently enforces authentication, verification, the feature flag, and the flight-release gate.
-
-The clipboard initializer now uses one idempotent delegated listener, so copy controls added by Livewire work after DOM morphs without duplicate handlers. Focused coverage includes direct-action authorization, locked-state tampering, validation/error clearing, no-redirect success, airport/runway/ETOPS rendering, result reset, request metadata, cleanup, structured recoverable failures, unexpected failures, dynamic copy controls, route middleware, and removal of the POST route.
-
-Focused verification: All 29 focused PHPUnit tests passed with 177 assertions, all 8 JavaScript tests passed, Pint passed, the production Vite/Tailwind build completed successfully, and final Larastan analysis completed with no errors.
-
-Cleanup hardening follow-up: Moved high-resolution timing initialization inside the extraction `try` block and made failure recording require both a created request and initialized timestamp. A timing-initialization failure now reaches the existing `finally` cleanup without replacing the original failure with a nullable timestamp type error.
-
-Follow-up verification: The focused logger-start cleanup test passed with 6 assertions, Pint passed, and Larastan completed with no errors.
-
-State and error hardening follow-up: Added an owner-scoped, expiring `FlightPlanResultCache`, removed the raw public result array from serialized Livewire state, verified cached results survive rehydration and are deleted on reset, and rejected cross-user and malformed-key lookups. Unexpected extraction and request-logging failures are now reported to Laravel, reset upload/result state, retain action-level metrics and file cleanup, and present a generic non-sensitive validation error instead of a 500 response.
-
-Hardening verification: All 12 focused cache and Livewire tests passed with 143 assertions. Pint passed, and final Larastan analysis completed with no errors.
-
-Hardening commit message: `fix: secure flight plan livewire state`
-
-Pure-render follow-up: Removed the redundant locked `$view` property and its upload/results constants. `render()` now resolves one view model and derives `isResultsView` from `hasFlightPlan()`, while Blade uses that derived value as its only display-state source. An expired or evicted cached result now renders the upload form without mutating component state, and focused coverage verifies that derived view state is absent from the Livewire snapshot and cache loss remains recoverable.
-
-Pure-render verification: All 13 focused cache and Livewire tests passed with 149 assertions. Pint passed, and final Larastan analysis completed with no errors.
-
-Larastan maintenance: Replaced boolean-specific Mockery return shorthands with `andReturn(bool)` so the expectations match the helper's declared `CompositeExpectation` API. Commit message: `test: satisfy larastan for flight plan mocks`
-
-Pure-render commit message: `refactor: derive flight plan brief view state`
-
-Commit message: `refactor: make flight plan brief a livewire page`

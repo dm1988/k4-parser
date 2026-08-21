@@ -13,6 +13,7 @@ class FlightIdentityDataTest extends TestCase
         $identity = new FlightIdentityData(
             flightNumber: 'K4198',
             tripNumber: '0042',
+            recallNumber: '62930',
             aircraftType: 'B77W',
             tailNumber: 'N12345',
             flightDate: CarbonImmutable::parse('2026-08-21'),
@@ -22,6 +23,7 @@ class FlightIdentityDataTest extends TestCase
         $this->assertSame([
             'flightNumber' => 'K4198',
             'tripNumber' => '0042',
+            'recallNumber' => '62930',
             'aircraftType' => 'B77W',
             'tailNumber' => 'N12345',
             'flightDate' => '2026-08-21',

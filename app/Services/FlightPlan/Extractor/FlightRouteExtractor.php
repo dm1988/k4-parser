@@ -3,12 +3,9 @@
 namespace App\Services\FlightPlan\Extractor;
 
 use App\DTOs\AirportData;
+use App\Exceptions\FlightPlanDataConflictException;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Services\Clients\AirportLookupClient;
-use Illuminate\Contracts\Cache\Repository;
-use Illuminate\Support\Facades\Log;
-use Smalot\PdfParser\Parser;
-use Throwable;
 
 class FlightRouteExtractor
 {
@@ -17,9 +14,8 @@ class FlightRouteExtractor
     private const FLIGHT_PLAN_DETAILS_PATTERN = '/\(FPL-[^-]+-[^-]+\s*-[^\r\n]*\s*-([A-Z]{4})\d{4}\s*-(?:N\d{4}|K\d{4}|M\d{3})([A-Z]\d{3,4})\h+(.+?)\s*-([A-Z]{4})(\d{4})(?:\h+([A-Z]{4}))?\b/s';
 
     public function __construct(
-        private readonly Parser $parser,
+        private readonly FlightPlanTextExtractor $textExtractor,
         private readonly AirportLookupClient $airportLookupClient,
-        private readonly Repository $cache,
     ) {}
 
     /**
@@ -27,7 +23,7 @@ class FlightRouteExtractor
      */
     public function extractRoute(string $filePath): string
     {
-        return $this->extractRouteFromText($this->parsePdf($filePath));
+        return $this->extractRouteFromText($this->textExtractor->extract($filePath));
     }
 
     /**
@@ -42,6 +38,7 @@ class FlightRouteExtractor
      *     arrival_runway: ?string,
      *     departure_sid: ?string,
      *     arrival_star: ?string,
+     *     distance_nautical_miles: ?int,
      *     etps: list<array{label: string, airports: string, coordinates: string, scenario: string}>,
      *     eent_coordinates: ?string,
      *     eexp_coordinates: ?string,
@@ -54,7 +51,7 @@ class FlightRouteExtractor
      */
     public function extractFlightPlanData(string $filePath): array
     {
-        return $this->extractFlightPlanDataFromText($this->parsePdf($filePath));
+        return $this->extractFlightPlanDataFromText($this->textExtractor->extract($filePath));
     }
 
     /**
@@ -84,6 +81,7 @@ class FlightRouteExtractor
      *     arrival_runway: ?string,
      *     departure_sid: ?string,
      *     arrival_star: ?string,
+     *     distance_nautical_miles: ?int,
      *     etps: list<array{label: string, airports: string, coordinates: string, scenario: string}>,
      *     eent_coordinates: ?string,
      *     eexp_coordinates: ?string,
@@ -120,6 +118,7 @@ class FlightRouteExtractor
             'arrival_runway' => $plannedRunways['arrival_runway'],
             'departure_sid' => $plannedRunways['departure_sid'],
             'arrival_star' => $plannedRunways['arrival_star'],
+            'distance_nautical_miles' => $this->extractDistanceNauticalMiles($text),
             'etps' => $this->extractEtps($text),
             'eent_coordinates' => $this->extractMarkerCoordinates($text, 'EENT'),
             'eexp_coordinates' => $this->extractMarkerCoordinates($text, 'EEXP'),
@@ -242,51 +241,26 @@ class FlightRouteExtractor
         return $matches[0];
     }
 
-    /**
-     * @throws FlightRouteNotFoundException
-     */
-    private function parsePdf(string $filePath): string
+    public function extractDistanceNauticalMiles(string $text): ?int
     {
-        $cacheKey = $this->pdfCacheKey($filePath);
+        $distances = [];
+        $headerMatches = [];
 
-        if ($cacheKey !== null) {
-            return $this->cache->remember($cacheKey, now()->addDays(7), fn (): string => $this->readPdfText($filePath));
+        if (preg_match('/\bTOTAL\s+DIST\/DEST\s+(\d{1,5})\b/i', $text, $headerMatches) === 1) {
+            $distances[] = (int) $headerMatches[1];
         }
 
-        return $this->readPdfText($filePath);
-    }
+        $summaryMatches = [];
 
-    private function pdfCacheKey(string $filePath): ?string
-    {
-        if (! is_file($filePath)) {
-            return null;
+        if (preg_match('/\bDEST\s+[A-Z]{4}\s+[\d.]+\s+[\d.]+\s+\d{2,3}\s+(\d{1,5})\b/i', $text, $summaryMatches) === 1) {
+            $distances[] = (int) $summaryMatches[1];
         }
 
-        $fileHash = hash_file('sha256', $filePath);
-
-        if ($fileHash === false) {
-            return null;
+        if (count(array_unique($distances)) > 1) {
+            throw FlightPlanDataConflictException::forField('route distance');
         }
 
-        return 'flight-route-extractor:pdf-text:'.$fileHash;
-    }
-
-    /**
-     * @throws FlightRouteNotFoundException
-     */
-    private function readPdfText(string $filePath): string
-    {
-        try {
-            return $this->parser->parseFile($filePath)->getText();
-        } catch (Throwable $e) {
-            try {
-                Log::error('PDF parsing failed', ['file' => $filePath, 'error' => $e->getMessage()]);
-            } catch (Throwable) {
-                // Logging is best-effort here because some unit tests do not boot Laravel's container.
-            }
-
-            throw FlightRouteNotFoundException::pdfCouldNotBeRead($e->getMessage());
-        }
+        return $distances[0] ?? null;
     }
 
     private static function normalizeRouteLine(string $line): string

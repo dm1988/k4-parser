@@ -3,8 +3,10 @@
 namespace Tests\Unit;
 
 use App\DTOs\AirportData;
+use App\Exceptions\FlightPlanDataConflictException;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Services\Clients\AirportLookupClient;
+use App\Services\FlightPlan\Extractor\FlightPlanTextExtractor;
 use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository as CacheRepository;
@@ -84,6 +86,7 @@ TEXT;
             'arrival_runway' => null,
             'departure_sid' => null,
             'arrival_star' => null,
+            'distance_nautical_miles' => null,
             'etps' => [],
             'eent_coordinates' => null,
             'eexp_coordinates' => null,
@@ -266,6 +269,7 @@ TEXT);
             'arrival_runway' => null,
             'departure_sid' => null,
             'arrival_star' => null,
+            'distance_nautical_miles' => null,
             'etps' => [],
             'eent_coordinates' => null,
             'eexp_coordinates' => null,
@@ -290,7 +294,7 @@ TEXT);
             ->willReturn($document);
 
         $cache = app(Repository::class);
-        $cacheKey = 'flight-route-extractor:pdf-text:'.hash_file('sha256', __FILE__);
+        $cacheKey = 'flight-plan-extractor:pdf-text:'.hash_file('sha256', __FILE__);
         $cache->forget($cacheKey);
         $firstExtractor = $this->makeExtractor($parser, cache: $cache);
         $secondExtractor = $this->makeExtractor($parser, cache: $cache);
@@ -307,6 +311,7 @@ TEXT);
             'arrival_runway' => null,
             'departure_sid' => null,
             'arrival_star' => null,
+            'distance_nautical_miles' => null,
             'etps' => [],
             'eent_coordinates' => null,
             'eexp_coordinates' => null,
@@ -463,6 +468,27 @@ TEXT;
         $extractor->extractRoute('/tmp/flight-release.pdf');
     }
 
+    public function test_it_extracts_and_corroborates_total_route_distance(): void
+    {
+        $extractor = $this->makeExtractor();
+        $text = 'TOTAL DIST/DEST 5549 DEST RKSI 195.1 12.10 340 5549 M025';
+
+        $this->assertSame(5549, $extractor->extractDistanceNauticalMiles($text));
+        $this->assertNull($extractor->extractDistanceNauticalMiles('No distance listed'));
+    }
+
+    public function test_it_rejects_conflicting_total_route_distances(): void
+    {
+        $extractor = $this->makeExtractor();
+
+        $this->expectException(FlightPlanDataConflictException::class);
+        $this->expectExceptionMessage('Conflicting flight release values were found for route distance.');
+
+        $extractor->extractDistanceNauticalMiles(
+            'TOTAL DIST/DEST 5549 DEST RKSI 195.1 12.10 340 5550 M025',
+        );
+    }
+
     public function test_format_for_icao_display_wraps_route_on_token_boundaries(): void
     {
         $extractor = $this->makeExtractor();
@@ -500,9 +526,11 @@ TEXT;
         ?Repository $cache = null,
     ): FlightRouteExtractor {
         return new FlightRouteExtractor(
-            $parser ?? new Parser,
+            new FlightPlanTextExtractor(
+                $parser ?? new Parser,
+                $cache ?? new CacheRepository(new ArrayStore),
+            ),
             $airportLookupClient ?? $this->fakeAirportLookupClient(),
-            $cache ?? new CacheRepository(new ArrayStore),
         );
     }
 
