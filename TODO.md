@@ -68,6 +68,8 @@ Done when: all eleven destinations are reachable and accessible, with unavailabl
 
 Outcome: Replaced the single result surface with a reusable task workspace. A compact release header now presents confirmed identity, aircraft, route, UTC schedule, and optional revision data; the visibly headed eleven-task navigator scrolls horizontally on small screens and becomes a left rail on desktop. The active destination is locked Livewire state selected through an authorized, enum-validated action, so switching or rehydrating reads the existing owner-scoped cache without reparsing. Keyed panels preserve the current route view for Overview and FMS while available, absent, and unsupported destinations receive explicit task-specific states. Shared release header, section header, metric, status, empty-state, and source-evidence components provide consistent keyboard focus, active semantics, dark mode, and overflow-safe presentation.
 
+Follow-up outcome: Task navigation and Overview cards now use accessible green, yellow, and gray status circles without visible status text; descriptive status pills remain in section headers and support details.
+
 Verification: All 21 focused Livewire and view-model tests passed with 237 assertions. The production Vite build passed, Pint passed after formatting the changed PHP, and the final Larastan analysis completed with no errors.
 
 Commit message: `feat: add flight plan task workspace`
@@ -91,7 +93,7 @@ Verification: All 25 focused Livewire and view-model tests passed with 318 asser
 
 Commit message: `feat: add flight plan overview`
 
-## 4 — Current focus: Implement Jepp PD Pro
+## 4 — Completed: Implement Jepp PD Pro
 
 Context: Tool for copying and pasting flight release data into an EFB app such as Jeppesen PD Pro
 Goal: Present only confirmed performance-planning data from representative PD Pro sections.
@@ -104,6 +106,10 @@ Goal: Present only confirmed performance-planning data from representative PD Pr
 - Runways, SID, and STAR are not copyable
 
 Done when: every displayed PD-Pro value is traceable to a sanitized fixture and has an explicit unit or context.
+
+Outcome: Implemented the requested Jepp PD-Pro view as an independent snapshot of the current FMS task rather than a wrapper around the FMS component. Jepp PD-Pro is now available for every valid page result and preserves the current departure, destination, alternate, planned runways and procedures, ETOPS critical points and airports, ETP/EENT/EEXP coordinates, airport detail disclosure, route display, and existing copy controls. Runway, SID, and STAR values remain non-copyable. The separate Blade file intentionally duplicates today’s FMS markup so future FMS changes do not alter the retained PD-Pro implementation; no speculative PD-Pro parser fields or new source evidence were introduced.
+
+Verification: All 22 focused page-data and Livewire tests passed with 330 assertions, covering complete and sparse availability, current Jepp/FMS presentation parity, copyable fields, non-copyable runways and procedures, task switching, and cache reuse without reparsing. The Jepp and FMS templates were confirmed byte-for-byte identical at this checkpoint. Pint passed, the production Vite build completed successfully, and the final Larastan analysis reported no errors.
 
 Commit message: `feat: add jepp pd pro task`
 

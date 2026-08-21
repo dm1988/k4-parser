@@ -18,7 +18,7 @@
             </span>
             <span class="min-w-0 text-sm font-bold text-[#1B365D] dark:text-slate-100">{{ $title }}</span>
         </span>
-        <x-flight-release.status :availability="$availability" :compact="true" />
+        <x-flight-release.status :availability="$availability" dot />
     </div>
 
     <div class="w-full flex-1">

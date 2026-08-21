@@ -54,7 +54,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertNotNull($pageData);
         $this->assertSame([
             FlightPlanTask::Overview->value => FlightPlanTaskAvailability::Available,
-            FlightPlanTask::JeppPdPro->value => FlightPlanTaskAvailability::NotSupported,
+            FlightPlanTask::JeppPdPro->value => FlightPlanTaskAvailability::Available,
             FlightPlanTask::MaintenanceLog->value => FlightPlanTaskAvailability::NotSupported,
             FlightPlanTask::Envelope->value => FlightPlanTaskAvailability::NotSupported,
             FlightPlanTask::FlightInit->value => FlightPlanTaskAvailability::Available,
@@ -85,6 +85,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertNull($pageData->departureAirport);
         $this->assertNull($pageData->initialAltitude);
         $this->assertSame([], $pageData->etps);
+        $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::JeppPdPro));
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::SlotTimes));
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::FuelScore));
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::Etops));

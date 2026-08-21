@@ -163,6 +163,10 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('Extract another flight plan')
             ->assertSeeText('Operational support status')
             ->assertSeeHtml('wire:key="flight-plan-overview-card-flight_init"')
+            ->assertSeeHtml('aria-label="Available"')
+            ->assertSeeHtml('aria-label="Not present"')
+            ->assertSeeHtml('aria-label="Not supported"')
+            ->assertSeeHtml('h-2.5 w-2.5 ring-1 ring-inset ring-black/10 dark:ring-white/10')
             ->assertDispatched('open-modal', name: 'buy-me-a-coffee')
             ->call('selectTask', FlightPlanTask::Fms->value)
             ->assertSeeText('Extracted flight plan')
@@ -296,8 +300,11 @@ class FlightPlanBriefTest extends TestCase
             ->call('selectTask', FlightPlanTask::JeppPdPro->value)
             ->assertSet('activeTask', FlightPlanTask::JeppPdPro->value)
             ->assertSeeHtml('wire:key="flight-plan-task-panel-jepp_pd_pro"')
-            ->assertSeeText('Not supported yet')
-            ->assertSeeText('Jepp PD-Pro requires confirmed fixtures')
+            ->assertSeeText('Extracted flight plan')
+            ->assertSeeText('Departure runway')
+            ->assertSeeText('ETOPS critical points')
+            ->assertSeeText('DCT Q139 TEST')
+            ->assertDontSeeText('Not supported yet')
             ->call('selectTask', FlightPlanTask::SlotTimes->value)
             ->assertSet('activeTask', FlightPlanTask::SlotTimes->value)
             ->assertSeeText('Not present in this release')
@@ -310,6 +317,60 @@ class FlightPlanBriefTest extends TestCase
             ->assertSet('activeTask', FlightPlanTask::Fms->value)
             ->assertSeeText('Extracted flight plan')
             ->assertSeeText('DCT Q139 TEST');
+
+        $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
+    }
+
+    public function test_jepp_pd_pro_preserves_the_current_fms_task_presentation_in_its_own_panel(): void
+    {
+        Storage::fake('user_flight_releases');
+
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')
+                ->andReturn($this->parsedFlightPlan());
+        });
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'formatForIcaoDisplay')
+                ->with('DCT Q139 TEST')
+                ->andReturn("DCT Q139\n TEST");
+        });
+
+        $component = Livewire::actingAs(User::factory()->admin()->create())
+            ->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->call('extractFlightPlan');
+
+        $flightPlanKey = $component->get('flightPlanKey');
+
+        foreach ([FlightPlanTask::JeppPdPro, FlightPlanTask::Fms] as $task) {
+            $component
+                ->call('selectTask', $task->value)
+                ->assertSet('activeTask', $task->value)
+                ->assertSeeHtml('wire:key="flight-plan-task-panel-'.$task->value.'"')
+                ->assertSeeText('Extracted flight plan')
+                ->assertSeeText('PANC')
+                ->assertSeeText('KMIA')
+                ->assertSeeText('KRSW')
+                ->assertSeeText('Departure runway')
+                ->assertSeeText('25R')
+                ->assertSeeText('SUMMR2 SCTRR')
+                ->assertSeeText('Arrival runway')
+                ->assertSeeText('33R')
+                ->assertSeeText('GUKDO GUKD2E')
+                ->assertSeeText('ETOPS critical points')
+                ->assertSee('value="KSFO"', escape: false)
+                ->assertSee('value="PACD"', escape: false)
+                ->assertSee('value="N45 43.7 W143 53.1"', escape: false)
+                ->assertSeeText('EENT coordinates')
+                ->assertSeeText('EEXP coordinates')
+                ->assertSee('data-copy-target="flight-route-output"', escape: false)
+                ->assertDontSee('data-copy-label="Departure runway"', escape: false)
+                ->assertDontSee('data-copy-label="Arrival runway"', escape: false)
+                ->assertDontSee('data-copy-label="SID"', escape: false)
+                ->assertDontSee('data-copy-label="STAR"', escape: false)
+                ->assertSee('DCT Q139', escape: false)
+                ->assertSee(' TEST', escape: false);
+        }
 
         $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
     }

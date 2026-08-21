@@ -40,6 +40,7 @@ final readonly class FlightPlanPageData
     {
         return match ($task) {
             FlightPlanTask::Overview,
+            FlightPlanTask::JeppPdPro,
             FlightPlanTask::FlightInit,
             FlightPlanTask::Fms => FlightPlanTaskAvailability::Available,
             FlightPlanTask::SlotTimes => $this->flightPlan->schedule->slotTimesUtc === []
@@ -51,7 +52,6 @@ final readonly class FlightPlanPageData
             FlightPlanTask::Etops => $this->hasEtopsData()
                 ? FlightPlanTaskAvailability::Available
                 : FlightPlanTaskAvailability::NotPresent,
-            FlightPlanTask::JeppPdPro,
             FlightPlanTask::MaintenanceLog,
             FlightPlanTask::Envelope,
             FlightPlanTask::Weather,

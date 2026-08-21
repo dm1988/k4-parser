@@ -43,6 +43,15 @@
                 />
             @elseif ($activeTask === \App\Enums\FlightPlanTask::Overview)
                 <x-flight-release.overview :model="$model" />
+            @elseif ($activeTask === \App\Enums\FlightPlanTask::JeppPdPro)
+                <div class="p-3 sm:p-4">
+                    <x-flight-release.jepp-pd-pro
+                        :model="$model"
+                        :departure-airport="$model->departureAirport()"
+                        :destination-airport="$model->destinationAirport()"
+                        :alternate-airport="$model->alternateAirport()"
+                    />
+                </div>
             @elseif ($activeTask === \App\Enums\FlightPlanTask::Fms)
                 <div class="p-3 sm:p-4">
                     <x-flight-release.plan-card

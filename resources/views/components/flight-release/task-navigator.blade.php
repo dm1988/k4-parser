@@ -45,7 +45,7 @@
                 <span class="whitespace-nowrap lg:min-w-0 lg:flex-1 lg:whitespace-normal">{{ $task->label() }}</span>
                 <x-flight-release.status
                     :availability="$model->availabilityFor($task)"
-                    :compact="true"
+                    dot
                 />
             </button>
         @endforeach
