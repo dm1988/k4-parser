@@ -161,6 +161,10 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeHtml('wire:key="flight-plan-brief-results"')
             ->assertDontSeeText('Flight release PDF')
             ->assertSeeText('Extract another flight plan')
+            ->assertSeeText('Operational support status')
+            ->assertSeeHtml('wire:key="flight-plan-overview-card-flight_init"')
+            ->assertDispatched('open-modal', name: 'buy-me-a-coffee')
+            ->call('selectTask', FlightPlanTask::Fms->value)
             ->assertSeeText('Extracted flight plan')
             ->assertSeeText('PANC')
             ->assertSeeText('KMIA')
@@ -176,8 +180,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertSee('grid divide-y divide-[#1B365D]/6 dark:divide-slate-700 md:grid-cols-3 md:divide-x md:divide-y-0', escape: false)
             ->assertSee('break-words font-mono text-xs leading-relaxed', escape: false)
             ->assertSee('DCT Q139', escape: false)
-            ->assertSee(' TEST', escape: false)
-            ->assertDispatched('open-modal', name: 'buy-me-a-coffee');
+            ->assertSee(' TEST', escape: false);
 
         $this->assertTrue($component->viewData('isResultsView'));
         $viewModel = $component->viewData('model');
@@ -253,8 +256,14 @@ class FlightPlanBriefTest extends TestCase
         });
 
         $component = Livewire::actingAs($user)
-            ->test(FlightPlanBrief::class)
-            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->test(FlightPlanBrief::class);
+
+        $component
+            ->set('flightRelease', UploadedFile::fake()->create(
+                'flight-release.pdf',
+                120,
+                'application/pdf',
+            ))
             ->call('extractFlightPlan')
             ->assertSet('activeTask', FlightPlanTask::Overview->value)
             ->assertSeeInOrder(array_map(
@@ -305,6 +314,145 @@ class FlightPlanBriefTest extends TestCase
         $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
     }
 
+    public function test_overview_presents_complete_source_backed_values_and_links_to_detail_tasks_without_reparsing(): void
+    {
+        Storage::fake('user_flight_releases');
+        $user = User::factory()->admin()->create();
+
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')
+                ->andReturn($this->parsedFlightPlan(
+                    identity: [
+                        'flight_number' => 'CKS241',
+                        'trip_number' => '1234',
+                        'recall_number' => '5678',
+                        'aircraft_type' => 'B777-200F',
+                        'tail_number' => 'N774CK',
+                        'flight_date' => '2026-05-25',
+                        'release_revision' => '3',
+                    ],
+                    schedule: [
+                        'etd_utc' => '2026-05-25T18:30:00Z',
+                        'eta_utc' => '2026-05-26T02:15:00Z',
+                        'block_duration' => null,
+                        'report_time_utc' => null,
+                        'duty_end_utc' => null,
+                        'slot_times_utc' => ['2026-05-25T18:45:00Z'],
+                    ],
+                    route: ['distance_nautical_miles' => 4000],
+                    fuel: [
+                        'ramp' => ['amount' => 120000.0, 'unit' => 'lb'],
+                        'taxi' => null,
+                        'takeoff' => null,
+                        'trip' => null,
+                        'contingency' => null,
+                        'alternate' => null,
+                        'final_reserve' => null,
+                        'estimated_landing' => null,
+                    ],
+                ));
+        });
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'formatForIcaoDisplay')
+                ->with('DCT Q139 TEST')
+                ->andReturn('DCT Q139 TEST');
+        });
+
+        $component = Livewire::actingAs($user)
+            ->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->call('extractFlightPlan')
+            ->assertSet('activeTask', FlightPlanTask::Overview->value)
+            ->assertSeeText('Flight and aircraft')
+            ->assertSeeText('CKS241')
+            ->assertSeeText('May 25, 2026')
+            ->assertSeeText('B777-200F')
+            ->assertSeeText('N774CK')
+            ->assertSeeText('PANC')
+            ->assertSeeText('KMIA')
+            ->assertSeeText('KRSW')
+            ->assertSeeText('May 25, 2026 · 1830Z')
+            ->assertSeeText('May 26, 2026 · 0215Z')
+            ->assertSeeText('FL 330')
+            ->assertSeeText('4,000 NM')
+            ->assertSeeText('120,000 LB')
+            ->assertSeeText('1 approved UTC slot')
+            ->assertSeeText('1 critical point · EENT · EEXP')
+            ->assertSeeText('Operational support status')
+            ->assertSeeText('GENDEC')
+            ->assertSeeText('Flight plan filing')
+            ->assertSeeText('Weather / RAIM')
+            ->assertSeeText('Maintenance')
+            ->assertDontSeeText('On plan')
+            ->assertDontSeeText('Dispatchable');
+
+        $flightPlanKey = $component->get('flightPlanKey');
+        $detailTasks = [
+            FlightPlanTask::FlightInit,
+            FlightPlanTask::Fms,
+            FlightPlanTask::SlotTimes,
+            FlightPlanTask::FuelScore,
+            FlightPlanTask::Etops,
+        ];
+
+        foreach ($detailTasks as $task) {
+            $component
+                ->call('selectTask', FlightPlanTask::Overview->value)
+                ->assertSeeHtml('wire:key="flight-plan-overview-card-'.$task->value.'"')
+                ->assertSeeHtml('aria-label="Open '.$task->label().' task"')
+                ->call('selectTask', $task->value)
+                ->assertSet('activeTask', $task->value);
+        }
+
+        $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
+    }
+
+    public function test_overview_labels_sparse_values_without_inventing_zero_or_supported_statuses(): void
+    {
+        Storage::fake('user_flight_releases');
+
+        $legacy = [
+            ...$this->flightPlan(),
+            'alternate' => null,
+            'departure_airport' => null,
+            'destination_airport' => null,
+            'alternate_airport' => null,
+            'etps' => [],
+            'eent_coordinates' => null,
+            'eexp_coordinates' => null,
+            'initial_altitude' => '',
+        ];
+
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock) use ($legacy): void {
+            $this->expectOnce($mock, 'extractFile')
+                ->andReturn($this->parsedFlightPlan($legacy));
+        });
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'formatForIcaoDisplay')
+                ->with('DCT Q139 TEST')
+                ->andReturn('DCT Q139 TEST');
+        });
+
+        $component = Livewire::actingAs(User::factory()->admin()->create())
+            ->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->call('extractFlightPlan')
+            ->assertSet('activeTask', FlightPlanTask::Overview->value)
+            ->assertSeeText('Not present in this release')
+            ->assertSeeText('No alternate airport listed.')
+            ->assertSeeText('GENDEC')
+            ->assertSeeText('Weather / RAIM')
+            ->assertDontSeeText('0 LB')
+            ->assertDontSeeText('0 KG')
+            ->assertDontSeeText('On plan')
+            ->assertDontSeeText('Dispatchable');
+
+        $this->assertGreaterThanOrEqual(
+            9,
+            substr_count($component->html(), 'Not present in this release'),
+        );
+    }
+
     public function test_a_missing_cached_result_derives_the_upload_view_without_mutating_component_state(): void
     {
         Storage::fake('user_flight_releases');
@@ -329,7 +477,7 @@ class FlightPlanBriefTest extends TestCase
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
             ->call('extractFlightPlan')
-            ->assertSeeText('Extracted flight plan');
+            ->assertSeeText('Operational support status');
 
         $flightPlanKey = $component->get('flightPlanKey');
         $this->assertIsString($flightPlanKey);
@@ -422,7 +570,7 @@ class FlightPlanBriefTest extends TestCase
             ->set('flightRelease', $file)
             ->call('extractFlightPlan')
             ->assertHasNoErrors()
-            ->assertSeeText('Extracted flight plan');
+            ->assertSeeText('Operational support status');
 
         $extractRequest = ExtractRequest::query()->sole();
 
@@ -568,8 +716,22 @@ class FlightPlanBriefTest extends TestCase
         ?array $legacy = null,
         ?array $identity = null,
         ?array $schedule = null,
+        ?array $route = null,
+        ?array $fuel = null,
     ): ParsedFlightPlanData {
         $legacy ??= $this->flightPlan();
+
+        $routeData = [
+            'departure' => (string) $legacy['departure'],
+            'destination' => (string) $legacy['destination'],
+            'alternate' => is_string($legacy['alternate'] ?? null) ? $legacy['alternate'] : null,
+            'route' => is_string($legacy['route'] ?? null) ? $legacy['route'] : null,
+            'departure_runway' => is_string($legacy['departure_runway'] ?? null) ? $legacy['departure_runway'] : null,
+            'arrival_runway' => is_string($legacy['arrival_runway'] ?? null) ? $legacy['arrival_runway'] : null,
+            'departure_sid' => is_string($legacy['departure_sid'] ?? null) ? $legacy['departure_sid'] : null,
+            'arrival_star' => is_string($legacy['arrival_star'] ?? null) ? $legacy['arrival_star'] : null,
+            'distance_nautical_miles' => null,
+        ];
 
         return new ParsedFlightPlanData(
             identity: $identity ?? [
@@ -589,18 +751,8 @@ class FlightPlanBriefTest extends TestCase
                 'duty_end_utc' => null,
                 'slot_times_utc' => [],
             ],
-            route: [
-                'departure' => (string) $legacy['departure'],
-                'destination' => (string) $legacy['destination'],
-                'alternate' => is_string($legacy['alternate'] ?? null) ? $legacy['alternate'] : null,
-                'route' => is_string($legacy['route'] ?? null) ? $legacy['route'] : null,
-                'departure_runway' => is_string($legacy['departure_runway'] ?? null) ? $legacy['departure_runway'] : null,
-                'arrival_runway' => is_string($legacy['arrival_runway'] ?? null) ? $legacy['arrival_runway'] : null,
-                'departure_sid' => is_string($legacy['departure_sid'] ?? null) ? $legacy['departure_sid'] : null,
-                'arrival_star' => is_string($legacy['arrival_star'] ?? null) ? $legacy['arrival_star'] : null,
-                'distance_nautical_miles' => null,
-            ],
-            fuel: array_fill_keys([
+            route: [...$routeData, ...($route ?? [])],
+            fuel: $fuel ?? array_fill_keys([
                 'ramp', 'taxi', 'takeoff', 'trip', 'contingency', 'alternate', 'final_reserve', 'estimated_landing',
             ], null),
             legacy: $legacy,

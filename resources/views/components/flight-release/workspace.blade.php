@@ -41,7 +41,9 @@
                     :message="$activeTask->label().' requires confirmed fixtures and typed extraction before it can be displayed safely.'"
                     icon="wrench-screwdriver"
                 />
-            @elseif ($activeTask === \App\Enums\FlightPlanTask::Overview || $activeTask === \App\Enums\FlightPlanTask::Fms)
+            @elseif ($activeTask === \App\Enums\FlightPlanTask::Overview)
+                <x-flight-release.overview :model="$model" />
+            @elseif ($activeTask === \App\Enums\FlightPlanTask::Fms)
                 <div class="p-3 sm:p-4">
                     <x-flight-release.plan-card
                         :model="$model"

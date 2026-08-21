@@ -72,7 +72,7 @@ Verification: All 21 focused Livewire and view-model tests passed with 237 asser
 
 Commit message: `feat: add flight plan task workspace`
 
-## 3 — Current focus: Implement Overview
+## 3 — Completed: Implement Overview
 
 Goal: Provide the highest-value release summary without inventing operational status.
 
@@ -85,18 +85,23 @@ Goal: Provide the highest-value release summary without inventing operational st
 
 Done when: a crew member can identify the flight and spot which detailed sections contain data without opening every task.
 
+Outcome: Replaced the route-heavy Overview placeholder with a responsive, source-backed operational summary. Linked cards now present confirmed flight/aircraft identity, airport codes and alternate, UTC schedule and approved-slot availability, initial altitude and route distance in nautical miles, ramp fuel with its source unit, and ETOPS evidence without implying approval or suitability. Each card opens its corresponding Flight Init, FMS, Slot Times, Fuel Score, or ETOPS task through the existing authorized Livewire action without reparsing or changing the cached result. GENDEC, filing, Weather/RAIM, and maintenance remain explicitly not supported, while enriched airport names and locations stay in a secondary disclosure.
+
+Verification: All 25 focused Livewire and view-model tests passed with 318 assertions, covering complete and sparse releases, missing alternate/fuel/times, legitimate zero fuel, LB/KG units, unsupported indicators, detail-task links, rehydration, and cache reuse. Pint passed, the production Vite build completed successfully, and the final Larastan analysis reported no errors.
+
 Commit message: `feat: add flight plan overview`
 
-## 4 — Implement Jepp PD Pro
+## 4 — Current focus: Implement Jepp PD Pro
 
+Context: Tool for copying and pasting flight release data into an EFB app such as Jeppesen PD Pro
 Goal: Present only confirmed performance-planning data from representative PD Pro sections.
 
+- Retain previous copyable field buttons
 - Add sanitized multiline and flattened fixtures before defining the schema.
-- Confirm document revision, runway/condition, performance assumptions, limits, thrust or assumed-temperature data, V-speeds, warnings, and remarks.
 - Add focused parsed data, DTO/value objects, source fragments, builder mapping, and section view data.
-- Group inputs, computed results, limits, and warnings; keep raw evidence available for verification without exposing the full PDF.
-- Render `not present` when a release lacks PD-Pro and `not supported` for fields that remain unconfirmed.
 - Test alternate formats, missing fields, invalid values, duplicate agreement, and conflicts.
+- Fields: Departure, destination, alternate, planned departure runway and SID, Planned arrival runway, etops critical points, etops airpots, ETP coordinate, eent, eexp, and route
+- Runways, SID, and STAR are not copyable
 
 Done when: every displayed PD-Pro value is traceable to a sanitized fixture and has an explicit unit or context.
 

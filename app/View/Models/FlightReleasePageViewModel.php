@@ -6,7 +6,10 @@ use App\DTOs\AirportData;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
 use App\Enums\RouteTokenType;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Number;
 use Locale;
+use Throwable;
 
 readonly class FlightReleasePageViewModel
 {
@@ -52,6 +55,81 @@ readonly class FlightReleasePageViewModel
     public function releaseRevision(): ?string
     {
         return $this->pageData?->flightPlan->identity->releaseRevision;
+    }
+
+    public function overviewEtdUtc(): ?string
+    {
+        return $this->formatUtcTime($this->etdUtc());
+    }
+
+    public function overviewEtaUtc(): ?string
+    {
+        return $this->formatUtcTime($this->etaUtc());
+    }
+
+    public function overviewInitialAltitude(): ?string
+    {
+        return $this->pageData?->initialAltitude;
+    }
+
+    public function overviewRouteDistance(): ?string
+    {
+        $distance = $this->pageData?->flightPlan->route->distanceNauticalMiles;
+
+        return $distance === null ? null : Number::format($distance).' NM';
+    }
+
+    public function overviewRampFuel(): ?string
+    {
+        return $this->pageData?->flightPlan->fuelPlan?->ramp?->format();
+    }
+
+    public function overviewSlotSummary(): ?string
+    {
+        $slotCount = count($this->pageData?->flightPlan->schedule->slotTimesUtc ?? []);
+
+        if ($slotCount === 0) {
+            return null;
+        }
+
+        return $slotCount.' approved UTC '.($slotCount === 1 ? 'slot' : 'slots');
+    }
+
+    public function overviewEtopsSummary(): ?string
+    {
+        if (! $this->hasEtopsData()) {
+            return null;
+        }
+
+        $summary = [];
+        $criticalPointCount = count($this->etps());
+
+        if ($criticalPointCount > 0) {
+            $summary[] = $criticalPointCount.' critical '.($criticalPointCount === 1 ? 'point' : 'points');
+        }
+
+        if ($this->eentCoordinates() !== null) {
+            $summary[] = 'EENT';
+        }
+
+        if ($this->eexpCoordinates() !== null) {
+            $summary[] = 'EEXP';
+        }
+
+        return implode(' · ', $summary);
+    }
+
+    /**
+     * @return list<array{label: string, availability: FlightPlanTaskAvailability}>
+     */
+    public function overviewUnsupportedIndicators(): array
+    {
+        return [
+            ['label' => 'GENDEC', 'availability' => FlightPlanTaskAvailability::NotSupported],
+            ['label' => 'Flight plan filing', 'availability' => FlightPlanTaskAvailability::NotSupported],
+            ['label' => 'Weather / RAIM', 'availability' => FlightPlanTaskAvailability::NotSupported],
+            ['label' => 'Maintenance', 'availability' => FlightPlanTaskAvailability::NotSupported],
+        ];
     }
 
     public function departure(): string
@@ -275,5 +353,20 @@ readonly class FlightReleasePageViewModel
         $countryName = Locale::getDisplayRegion('-'.$countryCode, 'en');
 
         return $countryName !== '' ? $countryName : $country;
+    }
+
+    private function formatUtcTime(?string $value): ?string
+    {
+        if ($value === null || preg_match('/(?:Z|\+00:00)\z/', $value) !== 1) {
+            return null;
+        }
+
+        try {
+            return CarbonImmutable::parse($value)
+                ->utc()
+                ->format('M j, Y · Hi\Z');
+        } catch (Throwable) {
+            return null;
+        }
     }
 }

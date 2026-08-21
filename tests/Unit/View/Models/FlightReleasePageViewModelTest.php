@@ -32,6 +32,13 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertNull($viewModel->etdUtc());
         $this->assertNull($viewModel->etaUtc());
         $this->assertNull($viewModel->releaseRevision());
+        $this->assertNull($viewModel->overviewEtdUtc());
+        $this->assertNull($viewModel->overviewEtaUtc());
+        $this->assertNull($viewModel->overviewInitialAltitude());
+        $this->assertNull($viewModel->overviewRouteDistance());
+        $this->assertNull($viewModel->overviewRampFuel());
+        $this->assertNull($viewModel->overviewSlotSummary());
+        $this->assertNull($viewModel->overviewEtopsSummary());
     }
 
     #[Test]
@@ -73,6 +80,78 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('2026-05-25 18:30', $viewModel->etdUtc());
         $this->assertSame('2026-05-26 02:15', $viewModel->etaUtc());
         $this->assertSame('3', $viewModel->releaseRevision());
+    }
+
+    #[Test]
+    public function it_builds_complete_source_backed_overview_values_with_units(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['schedule']['etdUtc'] = '2026-05-25T18:30:00+00:00';
+        $payload['flight_plan_data']['schedule']['etaUtc'] = '2026-05-26T02:15:00Z';
+        $payload['flight_plan_data']['schedule']['slotTimesUtc'] = [
+            '2026-05-25T18:45:00+00:00',
+            '2026-05-26T02:30:00+00:00',
+        ];
+        $payload['flight_plan_data']['fuelPlan'] = [
+            'ramp' => ['amount' => 120000.0, 'unit' => 'lb'],
+            'taxi' => null,
+            'takeoff' => null,
+            'trip' => null,
+            'contingency' => null,
+            'alternate' => null,
+            'finalReserve' => null,
+            'estimatedLanding' => null,
+        ];
+
+        $viewModel = $this->viewModel($payload);
+
+        $this->assertSame('May 25, 2026 · 1830Z', $viewModel->overviewEtdUtc());
+        $this->assertSame('May 26, 2026 · 0215Z', $viewModel->overviewEtaUtc());
+        $this->assertSame('FL 330', $viewModel->overviewInitialAltitude());
+        $this->assertSame('4,000 NM', $viewModel->overviewRouteDistance());
+        $this->assertSame('120,000 LB', $viewModel->overviewRampFuel());
+        $this->assertSame('2 approved UTC slots', $viewModel->overviewSlotSummary());
+        $this->assertSame('1 critical point · EENT · EEXP', $viewModel->overviewEtopsSummary());
+        $this->assertSame([
+            ['label' => 'GENDEC', 'availability' => FlightPlanTaskAvailability::NotSupported],
+            ['label' => 'Flight plan filing', 'availability' => FlightPlanTaskAvailability::NotSupported],
+            ['label' => 'Weather / RAIM', 'availability' => FlightPlanTaskAvailability::NotSupported],
+            ['label' => 'Maintenance', 'availability' => FlightPlanTaskAvailability::NotSupported],
+        ], $viewModel->overviewUnsupportedIndicators());
+    }
+
+    #[Test]
+    public function it_keeps_legitimate_zero_kilogram_ramp_fuel_distinct_from_sparse_overview_values(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['initial_altitude'] = null;
+        $payload['etps'] = [];
+        $payload['eent_coordinates'] = null;
+        $payload['eexp_coordinates'] = null;
+        $payload['flight_plan_data']['schedule']['etdUtc'] = 'not-a-confirmed-utc-instant';
+        $payload['flight_plan_data']['route']['alternate'] = null;
+        $payload['flight_plan_data']['route']['distanceNauticalMiles'] = null;
+        $payload['flight_plan_data']['fuelPlan'] = [
+            'ramp' => ['amount' => 0.0, 'unit' => 'kg'],
+            'taxi' => null,
+            'takeoff' => null,
+            'trip' => null,
+            'contingency' => null,
+            'alternate' => null,
+            'finalReserve' => null,
+            'estimatedLanding' => null,
+        ];
+
+        $viewModel = $this->viewModel($payload);
+
+        $this->assertNull($viewModel->alternate());
+        $this->assertNull($viewModel->overviewEtdUtc());
+        $this->assertNull($viewModel->overviewEtaUtc());
+        $this->assertNull($viewModel->overviewInitialAltitude());
+        $this->assertNull($viewModel->overviewRouteDistance());
+        $this->assertSame('0 KG', $viewModel->overviewRampFuel());
+        $this->assertNull($viewModel->overviewSlotSummary());
+        $this->assertNull($viewModel->overviewEtopsSummary());
     }
 
     #[Test]
