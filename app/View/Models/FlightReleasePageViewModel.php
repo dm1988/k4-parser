@@ -3,46 +3,35 @@
 namespace App\View\Models;
 
 use App\DTOs\AirportData;
+use App\Enums\FlightPlanTask;
+use App\Enums\FlightPlanTaskAvailability;
 use App\Enums\RouteTokenType;
-use App\ValueObjects\FlightPlan;
 use Locale;
 
 readonly class FlightReleasePageViewModel
 {
-    private const AIRPORT_KEYS = [
-        'departure_airport',
-        'destination_airport',
-        'alternate_airport',
-    ];
-
     public function __construct(
-        public ?FlightPlan $flightPlan,
+        public ?FlightPlanPageData $pageData,
     ) {}
-
-    /** @param array<string, mixed>|null $flightPlan */
-    public static function fromArray(?array $flightPlan): self
-    {
-        return new self($flightPlan === null ? null : self::flightPlanFromArray($flightPlan));
-    }
 
     public function hasFlightPlan(): bool
     {
-        return $this->flightPlan !== null;
+        return $this->pageData !== null;
     }
 
     public function departure(): string
     {
-        return $this->flightPlan === null ? '' : $this->flightPlan->departure;
+        return $this->pageData?->flightPlan->route->departure->value ?? '';
     }
 
     public function destination(): string
     {
-        return $this->flightPlan === null ? '' : $this->flightPlan->destination;
+        return $this->pageData?->flightPlan->route->destination->value ?? '';
     }
 
     public function alternate(): ?string
     {
-        return $this->flightPlan?->alternate;
+        return $this->pageData?->flightPlan->route->alternate?->value;
     }
 
     public function alternateLabel(): string
@@ -55,7 +44,7 @@ readonly class FlightReleasePageViewModel
      */
     public function departureAirport(): ?array
     {
-        return $this->airportDetails('departure_airport');
+        return $this->airportDetails($this->pageData?->departureAirport);
     }
 
     /**
@@ -63,7 +52,7 @@ readonly class FlightReleasePageViewModel
      */
     public function destinationAirport(): ?array
     {
-        return $this->airportDetails('destination_airport');
+        return $this->airportDetails($this->pageData?->destinationAirport);
     }
 
     /**
@@ -71,7 +60,7 @@ readonly class FlightReleasePageViewModel
      */
     public function alternateAirport(): ?array
     {
-        return $this->airportDetails('alternate_airport');
+        return $this->airportDetails($this->pageData?->alternateAirport);
     }
 
     public function alternateAirportFallback(): string
@@ -85,27 +74,27 @@ readonly class FlightReleasePageViewModel
 
     public function initialAltitude(): string
     {
-        return $this->flightPlan === null ? '' : $this->flightPlan->initialAltitude;
+        return $this->pageData->initialAltitude ?? '';
     }
 
     public function departureRunway(): ?string
     {
-        return $this->flightPlan?->departureRunway;
+        return $this->pageData?->flightPlan->route->departureRunway;
     }
 
     public function arrivalRunway(): ?string
     {
-        return $this->flightPlan?->arrivalRunway;
+        return $this->pageData?->flightPlan->route->arrivalRunway;
     }
 
     public function departureSid(): ?string
     {
-        return $this->flightPlan?->departureSid;
+        return $this->pageData?->flightPlan->route->departureSid;
     }
 
     public function arrivalStar(): ?string
     {
-        return $this->flightPlan?->arrivalStar;
+        return $this->pageData?->flightPlan->route->arrivalStar;
     }
 
     public function hasPlannedRunways(): bool
@@ -118,7 +107,7 @@ readonly class FlightReleasePageViewModel
      */
     public function etps(): array
     {
-        return $this->flightPlan === null ? [] : $this->flightPlan->etps;
+        return $this->pageData->etps ?? [];
     }
 
     /**
@@ -135,29 +124,38 @@ readonly class FlightReleasePageViewModel
 
     public function eentCoordinates(): ?string
     {
-        return $this->flightPlan?->eentCoordinates;
+        return $this->pageData?->eentCoordinates;
     }
 
     public function eexpCoordinates(): ?string
     {
-        return $this->flightPlan?->eexpCoordinates;
+        return $this->pageData?->eexpCoordinates;
     }
 
     public function hasEtopsData(): bool
     {
-        return $this->etps() !== []
-            || $this->eentCoordinates() !== null
-            || $this->eexpCoordinates() !== null;
+        return $this->pageData?->hasEtopsData() ?? false;
     }
 
     public function duration(): string
     {
-        return $this->flightPlan === null ? '' : $this->flightPlan->duration;
+        return $this->pageData->duration ?? '';
     }
 
     public function route(): string
     {
-        return $this->flightPlan === null ? '' : $this->flightPlan->route;
+        return $this->pageData?->flightPlan->route->route ?? '';
+    }
+
+    public function availabilityFor(FlightPlanTask $task): FlightPlanTaskAvailability
+    {
+        return $this->pageData?->availabilityFor($task) ?? FlightPlanTaskAvailability::NotPresent;
+    }
+
+    /** @return array<string, FlightPlanTaskAvailability> */
+    public function taskAvailability(): array
+    {
+        return $this->pageData?->taskAvailability() ?? [];
     }
 
     /**
@@ -197,20 +195,9 @@ readonly class FlightReleasePageViewModel
     /**
      * @return array{name: string, location: string, iata: string, icao: string}|null
      */
-    private function airportDetails(string $key): ?array
+    private function airportDetails(?AirportData $airport): ?array
     {
-        $airport = match ($key) {
-            'departure_airport' => $this->flightPlan?->departureAirport,
-            'destination_airport' => $this->flightPlan?->destinationAirport,
-            'alternate_airport' => $this->flightPlan?->alternateAirport,
-            default => null,
-        };
-
-        if (! $airport instanceof AirportData) {
-            return null;
-        }
-
-        if ($airport->name === '') {
+        if ($airport === null || $airport->name === '') {
             return null;
         }
 
@@ -253,82 +240,5 @@ readonly class FlightReleasePageViewModel
         $countryName = Locale::getDisplayRegion('-'.$countryCode, 'en');
 
         return $countryName !== '' ? $countryName : $country;
-    }
-
-    /**
-     * @param  array<string, mixed>  $flightPlan
-     */
-    private static function flightPlanFromArray(array $flightPlan): FlightPlan
-    {
-        foreach (self::AIRPORT_KEYS as $key) {
-            $airport = $flightPlan[$key] ?? null;
-
-            if (is_array($airport)) {
-                $flightPlan[$key] = AirportData::fromApi($airport);
-            }
-        }
-
-        return new FlightPlan(
-            departure: is_string($flightPlan['departure'] ?? null) ? $flightPlan['departure'] : '',
-            destination: is_string($flightPlan['destination'] ?? null) ? $flightPlan['destination'] : '',
-            alternate: is_string($flightPlan['alternate'] ?? null) && $flightPlan['alternate'] !== '' ? $flightPlan['alternate'] : null,
-            departureAirport: ($flightPlan['departure_airport'] ?? null) instanceof AirportData ? $flightPlan['departure_airport'] : null,
-            destinationAirport: ($flightPlan['destination_airport'] ?? null) instanceof AirportData ? $flightPlan['destination_airport'] : null,
-            alternateAirport: ($flightPlan['alternate_airport'] ?? null) instanceof AirportData ? $flightPlan['alternate_airport'] : null,
-            departureRunway: self::nullableString($flightPlan, 'departure_runway'),
-            arrivalRunway: self::nullableString($flightPlan, 'arrival_runway'),
-            departureSid: self::nullableString($flightPlan, 'departure_sid'),
-            arrivalStar: self::nullableString($flightPlan, 'arrival_star'),
-            etps: self::etpsFromArray($flightPlan['etps'] ?? null),
-            eentCoordinates: self::nullableString($flightPlan, 'eent_coordinates'),
-            eexpCoordinates: self::nullableString($flightPlan, 'eexp_coordinates'),
-            initialAltitude: is_string($flightPlan['initial_altitude'] ?? null) ? $flightPlan['initial_altitude'] : '',
-            duration: is_string($flightPlan['duration'] ?? null) ? $flightPlan['duration'] : '',
-            route: is_string($flightPlan['route'] ?? null) ? $flightPlan['route'] : '',
-        );
-    }
-
-    /**
-     * @param  array<string, mixed>  $flightPlan
-     */
-    private static function nullableString(array $flightPlan, string $key): ?string
-    {
-        $value = $flightPlan[$key] ?? null;
-
-        return is_string($value) && $value !== '' ? $value : null;
-    }
-
-    /**
-     * @return list<array{label: string, airports: string, coordinates: string, scenario: string}>
-     */
-    private static function etpsFromArray(mixed $value): array
-    {
-        if (! is_array($value)) {
-            return [];
-        }
-
-        $etps = [];
-
-        foreach ($value as $etp) {
-            if (! is_array($etp)) {
-                continue;
-            }
-
-            $label = $etp['label'] ?? null;
-            $airports = $etp['airports'] ?? null;
-            $coordinates = $etp['coordinates'] ?? null;
-            $scenario = $etp['scenario'] ?? null;
-
-            if (! is_string($label)
-                || ! is_string($airports)
-                || ! is_string($coordinates)
-                || ! is_string($scenario)) {
-                continue;
-            }
-
-            $etps[] = compact('label', 'airports', 'coordinates', 'scenario');
-        }
-
-        return $etps;
     }
 }

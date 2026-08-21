@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Actions\BuildFlightPlanPageData;
 use App\Actions\HandleFlightPlanExtraction;
 use App\Actions\ShouldPromptForCoffee;
 use App\Exceptions\FlightRouteNotFoundException;
@@ -34,14 +35,18 @@ class FlightPlanBrief extends Component
 
     protected FlightPlanResultCache $flightPlanResultCache;
 
+    protected BuildFlightPlanPageData $buildFlightPlanPageData;
+
     public function boot(
         HandleFlightPlanExtraction $handleFlightPlanExtraction,
         ShouldPromptForCoffee $shouldPromptForCoffee,
         FlightPlanResultCache $flightPlanResultCache,
+        BuildFlightPlanPageData $buildFlightPlanPageData,
     ): void {
         $this->handleFlightPlanExtraction = $handleFlightPlanExtraction;
         $this->shouldPromptForCoffee = $shouldPromptForCoffee;
         $this->flightPlanResultCache = $flightPlanResultCache;
+        $this->buildFlightPlanPageData = $buildFlightPlanPageData;
     }
 
     public function extractFlightPlan(): void
@@ -91,7 +96,8 @@ class FlightPlanBrief extends Component
 
     public function render(): View
     {
-        $viewModel = FlightReleasePageViewModel::fromArray($this->currentFlightPlan());
+        $pageData = $this->buildFlightPlanPageData->handle($this->currentFlightPlan());
+        $viewModel = new FlightReleasePageViewModel($pageData);
 
         return view('livewire.flight-plan-brief', [
             'model' => $viewModel,

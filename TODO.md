@@ -40,18 +40,15 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 | 10 | Weather | `cloud` | Requires confirmed fixtures |
 | 11 | Weight & Balance | `scale` | Requires confirmed fixtures |
 
-## 1 Current focus: — Stabilize the result and view-data contract
+- Icons: use hero icons returned in FlightPlanTask enum
 
-Goal: Make nested normalized data the primary input to the front end before adding more screens.
+## 1 — Completed: Stabilize the result and view-data contract
 
-- Add a typed page-level view-data layer for shared identity, schedule, route, fuel, airport enrichment, and section availability.
-- Read `flight_plan_data` directly and adapt the remaining legacy fields explicitly; do not rebuild the normalized aggregate from flat keys.
-- Define one availability state per task: `available`, `not_present`, or `not_supported`.
-- Keep the compatibility serializer until every current consumer has migrated.
-- Preserve the result cache’s owner scoping, expiry, scalar serialization, and allowlist.
-- Add focused tests for complete, partial, malformed, expired, and legacy-compatible payloads.
+Outcome: Added a typed `FlightPlanPageData` layer and dedicated builder that hydrate shared identity, schedule, route, and fuel from nested `flight_plan_data`. The builder explicitly adapts only legacy airport enrichment, altitude, duration, and ETOPS fields, fails closed for missing or malformed normalized payloads, and preserves legitimate zero fuel values. The Livewire page now passes typed page data to `FlightReleasePageViewModel`; Blade continues to receive only presentation methods, while the dual-shape compatibility serializer and owner-scoped result cache remain unchanged.
 
-Done when: the current route card renders from the new page view data with no visual regression and no Blade access to raw cached arrays.
+Added typed task and availability enums covering all eleven views. Overview, Flight Init, and FMS are available for every valid normalized result; supported Slot Times, Fuel Score, and ETOPS tasks distinguish available data from data not present; unimplemented tasks report not supported.
+
+Verification: All 25 focused page-data, view-model, serializer, cache, and Livewire tests passed with 233 assertions. Pint passed, and the final Larastan analysis completed with no errors.
 
 Commit message: `refactor: add typed flight plan page data`
 
@@ -86,9 +83,9 @@ Done when: a crew member can identify the flight and spot which detailed section
 
 Commit message: `feat: add flight plan overview`
 
-## 4 — Implement Jepp PD-Pro
+## 4 — Implement Jepp PD Pro
 
-Goal: Present only confirmed performance-planning data from representative PD-Pro sections.
+Goal: Present only confirmed performance-planning data from representative PD Pro sections.
 
 - Add sanitized multiline and flattened fixtures before defining the schema.
 - Confirm document revision, runway/condition, performance assumptions, limits, thrust or assumed-temperature data, V-speeds, warnings, and remarks.

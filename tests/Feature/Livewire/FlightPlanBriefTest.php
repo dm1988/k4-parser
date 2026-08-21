@@ -13,6 +13,8 @@ use App\Services\FlightPlan\Extractor\ExtractFlightPlanData;
 use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use App\Services\Infrastructure\ExtractRequestLogger;
 use App\Services\Infrastructure\FlightPlanResultCache;
+use App\View\Models\FlightPlanPageData;
+use App\View\Models\FlightReleasePageViewModel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
@@ -167,6 +169,10 @@ class FlightPlanBriefTest extends TestCase
             ->assertDispatched('open-modal', name: 'buy-me-a-coffee');
 
         $this->assertTrue($component->viewData('isResultsView'));
+        $viewModel = $component->viewData('model');
+        $this->assertInstanceOf(FlightReleasePageViewModel::class, $viewModel);
+        $this->assertInstanceOf(FlightPlanPageData::class, $viewModel->pageData);
+        $this->assertSame('PANC', $viewModel->pageData->flightPlan->route->departure->value);
 
         $snapshotData = $component->getData();
         $flightPlanKey = $component->get('flightPlanKey');

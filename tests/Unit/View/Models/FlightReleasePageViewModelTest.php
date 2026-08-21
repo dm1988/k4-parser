@@ -2,9 +2,10 @@
 
 namespace Tests\Unit\View\Models;
 
-use App\DTOs\AirportData;
+use App\Actions\BuildFlightPlanPageData;
+use App\Enums\FlightPlanTask;
+use App\Enums\FlightPlanTaskAvailability;
 use App\Enums\RouteTokenType;
-use App\ValueObjects\FlightPlan;
 use App\View\Models\FlightReleasePageViewModel;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -12,7 +13,7 @@ use Tests\TestCase;
 class FlightReleasePageViewModelTest extends TestCase
 {
     #[Test]
-    public function it_returns_empty_display_values_without_a_flight_plan(): void
+    public function it_returns_empty_display_values_without_page_data(): void
     {
         $viewModel = new FlightReleasePageViewModel(null);
 
@@ -23,22 +24,13 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('', $viewModel->initialAltitude());
         $this->assertSame('', $viewModel->duration());
         $this->assertSame('', $viewModel->route());
+        $this->assertSame([], $viewModel->taskAvailability());
     }
 
     #[Test]
-    public function it_builds_airport_display_fields_from_dtos(): void
+    public function it_builds_route_and_airport_display_values_from_typed_page_data(): void
     {
-        $viewModel = new FlightReleasePageViewModel(new FlightPlan(
-            departure: 'PANC',
-            destination: 'KMIA',
-            alternate: 'KRSW',
-            departureAirport: new AirportData('PANC', 'ANC', 'Ted Stevens Anchorage International Airport', 'Anchorage', 'Alaska', 'United States'),
-            destinationAirport: new AirportData('KMIA', 'MIA', 'Miami International Airport', 'Miami', 'Florida', 'United States'),
-            alternateAirport: new AirportData('KRSW', 'RSW', 'Southwest Florida International Airport', 'Fort Myers', 'Florida', 'United States'),
-            initialAltitude: 'FL 330',
-            duration: '07h12m',
-            route: 'DCT TEST',
-        ));
+        $viewModel = $this->viewModel($this->resultPayload());
 
         $this->assertTrue($viewModel->hasFlightPlan());
         $this->assertSame('PANC', $viewModel->departure());
@@ -52,78 +44,85 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('FL 330', $viewModel->initialAltitude());
         $this->assertSame('07h12m', $viewModel->duration());
         $this->assertSame('DCT TEST', $viewModel->route());
+        $this->assertSame('25R', $viewModel->departureRunway());
+        $this->assertSame('SUMMR2', $viewModel->departureSid());
+        $this->assertTrue($viewModel->hasPlannedRunways());
     }
 
     #[Test]
     public function it_normalizes_numeric_regions_and_iso_country_codes_for_airport_display(): void
     {
-        $viewModel = new FlightReleasePageViewModel(new FlightPlan(
-            departure: 'KLAX',
-            destination: 'RKSI',
-            alternate: 'RKTU',
-            departureAirport: null,
-            destinationAirport: new AirportData('RKSI', 'ICN', 'Incheon International Airport', 'Seoul', '28', 'KR'),
-            alternateAirport: new AirportData('RKTU', 'CJJ', 'Cheongju International Airport', 'Cheongju', '43', 'KR'),
-            initialAltitude: '',
-            duration: '',
-            route: '',
-        ));
+        $payload = $this->resultPayload();
+        $payload['destination_airport'] = [
+            'icao' => 'KMIA',
+            'iata' => 'MIA',
+            'name' => 'Miami International Airport',
+            'city' => 'Miami',
+            'state' => '12',
+            'country' => 'US',
+        ];
 
-        $this->assertSame('Seoul, South Korea', $viewModel->destinationAirport()['location']);
-        $this->assertSame('Cheongju, South Korea', $viewModel->alternateAirport()['location']);
+        $viewModel = $this->viewModel($payload);
+
+        $this->assertSame('Miami, United States', $viewModel->destinationAirport()['location']);
     }
 
     #[Test]
-    public function it_classifies_route_tokens_for_display(): void
+    public function it_classifies_normalized_route_tokens_for_display(): void
     {
-        $viewModel = new FlightReleasePageViewModel(new FlightPlan(
-            departure: '',
-            destination: '',
-            alternate: null,
-            departureAirport: null,
-            destinationAirport: null,
-            alternateAirport: null,
-            initialAltitude: '',
-            duration: '',
-            route: 'DCT OSUDO4A Q139 DSM/N0486F350 GETME',
-        ));
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['route']['route'] = 'DCT OSUDO4A Q139 DSM/N0486F350 GETME';
+        $payload['route'] = 'CONFLICTING LEGACY ROUTE';
+
+        $viewModel = $this->viewModel($payload);
 
         $this->assertSame([
-            [
-                'value' => 'DCT',
-                'type' => RouteTokenType::DIRECT,
-                'class' => 'text-[#4A5568]/50 dark:text-slate-400',
-            ],
-            [
-                'value' => 'OSUDO4A',
-                'type' => RouteTokenType::FIX,
-                'class' => 'text-[#0B0E14] dark:text-slate-100',
-            ],
-            [
-                'value' => 'Q139',
-                'type' => RouteTokenType::AIRWAY,
-                'class' => 'font-bold text-[#1B365D] dark:text-sky-300',
-            ],
-            [
-                'value' => 'DSM/N0486F350',
-                'type' => RouteTokenType::SPEED,
-                'class' => 'text-amber-700 dark:text-amber-300',
-            ],
-            [
-                'value' => 'GETME',
-                'type' => RouteTokenType::FIX,
-                'class' => 'text-[#0B0E14] dark:text-slate-100',
-            ],
+            ['value' => 'DCT', 'type' => RouteTokenType::DIRECT, 'class' => 'text-[#4A5568]/50 dark:text-slate-400'],
+            ['value' => 'OSUDO4A', 'type' => RouteTokenType::FIX, 'class' => 'text-[#0B0E14] dark:text-slate-100'],
+            ['value' => 'Q139', 'type' => RouteTokenType::AIRWAY, 'class' => 'font-bold text-[#1B365D] dark:text-sky-300'],
+            ['value' => 'DSM/N0486F350', 'type' => RouteTokenType::SPEED, 'class' => 'text-amber-700 dark:text-amber-300'],
+            ['value' => 'GETME', 'type' => RouteTokenType::FIX, 'class' => 'text-[#0B0E14] dark:text-slate-100'],
         ], $viewModel->routeTokens());
     }
 
     #[Test]
-    public function it_builds_airport_display_fields_from_normalized_arrays(): void
+    public function it_adapts_legacy_etops_fields_without_exposing_raw_arrays_to_blade(): void
     {
-        $viewModel = FlightReleasePageViewModel::fromArray([
-            'departure' => 'PANC',
-            'destination' => 'KMIA',
-            'alternate' => null,
+        $viewModel = $this->viewModel($this->resultPayload());
+
+        $this->assertTrue($viewModel->hasEtopsData());
+        $this->assertSame('KSFO-PACD', $viewModel->etps()[0]['airports']);
+        $this->assertSame(['KSFO', 'PACD'], $viewModel->etpAirports($viewModel->etps()[0]));
+        $this->assertSame('N40 31.1 W131 22.6', $viewModel->eentCoordinates());
+        $this->assertSame(FlightPlanTaskAvailability::Available, $viewModel->availabilityFor(FlightPlanTask::Etops));
+    }
+
+    #[Test]
+    public function it_reports_missing_alternate_airport_details_without_losing_the_normalized_code(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['alternate_airport'] = null;
+
+        $viewModel = $this->viewModel($payload);
+
+        $this->assertSame('KRSW', $viewModel->alternate());
+        $this->assertNull($viewModel->alternateAirport());
+        $this->assertSame('Airport details unavailable.', $viewModel->alternateAirportFallback());
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function viewModel(array $payload): FlightReleasePageViewModel
+    {
+        $pageData = (new BuildFlightPlanPageData)->handle($payload);
+        $this->assertNotNull($pageData);
+
+        return new FlightReleasePageViewModel($pageData);
+    }
+
+    /** @return array<string, mixed> */
+    private function resultPayload(): array
+    {
+        return [
             'departure_airport' => [
                 'icao' => 'PANC',
                 'iata' => 'ANC',
@@ -134,76 +133,48 @@ class FlightReleasePageViewModelTest extends TestCase
             ],
             'destination_airport' => null,
             'alternate_airport' => null,
-            'etps' => [
-                [
-                    'label' => 'ETP1',
-                    'airports' => 'KSFO-PACD',
-                    'coordinates' => 'N45 43.7 W143 53.1',
-                    'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
-                ],
-            ],
+            'initial_altitude' => 'FL 330',
+            'duration' => '07h12m',
+            'route' => "DCT\n TEST",
+            'etps' => [[
+                'label' => 'ETP1',
+                'airports' => 'KSFO-PACD',
+                'coordinates' => 'N45 43.7 W143 53.1',
+                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
+            ]],
             'eent_coordinates' => 'N40 31.1 W131 22.6',
             'eexp_coordinates' => 'N45 19.3 E151 36.4',
-            'initial_altitude' => 'FL 330',
-            'duration' => '07h12m',
-            'route' => 'DCT TEST',
-        ]);
-
-        $this->assertSame('None listed', $viewModel->alternateLabel());
-        $this->assertNull($viewModel->destinationAirport());
-        $this->assertNull($viewModel->alternateAirport());
-        $this->assertSame('No alternate airport listed.', $viewModel->alternateAirportFallback());
-        $this->assertSame('Ted Stevens Anchorage International Airport', $viewModel->departureAirport()['name']);
-        $this->assertSame('ANC', $viewModel->departureAirport()['iata']);
-        $this->assertSame('PANC', $viewModel->departureAirport()['icao']);
-        $this->assertTrue($viewModel->hasEtopsData());
-        $this->assertSame('KSFO-PACD', $viewModel->etps()[0]['airports']);
-        $this->assertSame(['KSFO', 'PACD'], $viewModel->etpAirports($viewModel->etps()[0]));
-        $this->assertSame('N40 31.1 W131 22.6', $viewModel->eentCoordinates());
-        $this->assertSame('N45 19.3 E151 36.4', $viewModel->eexpCoordinates());
-    }
-
-    #[Test]
-    public function it_builds_the_flight_plan_from_normalized_component_state(): void
-    {
-        $viewModel = FlightReleasePageViewModel::fromArray([
-            'departure' => 'PANC',
-            'destination' => 'KMIA',
-            'alternate' => 'KRSW',
-            'departure_airport' => [
-                'icao' => 'PANC',
-                'iata' => 'ANC',
-                'name' => 'Ted Stevens Anchorage International Airport',
-                'city' => 'Anchorage',
-                'state' => 'Alaska',
-                'country' => 'United States',
+            'flight_plan_data' => [
+                'identity' => [
+                    'flightNumber' => 'CKS241',
+                    'tripNumber' => null,
+                    'recallNumber' => null,
+                    'aircraftType' => 'B777-200F',
+                    'tailNumber' => 'N774CK',
+                    'flightDate' => '2026-05-25',
+                    'releaseRevision' => null,
+                ],
+                'schedule' => [
+                    'etdUtc' => null,
+                    'etaUtc' => null,
+                    'blockDuration' => null,
+                    'reportTimeUtc' => null,
+                    'dutyEndUtc' => null,
+                    'slotTimesUtc' => [],
+                ],
+                'route' => [
+                    'departure' => 'PANC',
+                    'destination' => 'KMIA',
+                    'alternate' => 'KRSW',
+                    'route' => 'DCT TEST',
+                    'departureRunway' => '25R',
+                    'arrivalRunway' => '27',
+                    'departureSid' => 'SUMMR2',
+                    'arrivalStar' => 'FROGZ5',
+                    'distanceNauticalMiles' => 4000,
+                ],
+                'fuelPlan' => null,
             ],
-            'initial_altitude' => 'FL 330',
-            'duration' => '07h12m',
-            'route' => 'DCT TEST',
-        ]);
-
-        $this->assertTrue($viewModel->hasFlightPlan());
-        $this->assertSame('PANC', $viewModel->departure());
-        $this->assertSame('KRSW', $viewModel->alternate());
-        $this->assertSame('Ted Stevens Anchorage International Airport', $viewModel->departureAirport()['name']);
-    }
-
-    #[Test]
-    public function it_reports_missing_alternate_airport_details_when_an_alternate_code_exists(): void
-    {
-        $viewModel = new FlightReleasePageViewModel(new FlightPlan(
-            departure: '',
-            destination: '',
-            alternate: 'KRSW',
-            departureAirport: null,
-            destinationAirport: null,
-            alternateAirport: null,
-            initialAltitude: '',
-            duration: '',
-            route: '',
-        ));
-
-        $this->assertSame('Airport details unavailable.', $viewModel->alternateAirportFallback());
+        ];
     }
 }
