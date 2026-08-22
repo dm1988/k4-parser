@@ -13,7 +13,7 @@ class FlightCrewExtractor
 
     /**
      * @return array{
-     *     data: list<array{name: string, role: ?string, base: ?string}>,
+     *     data: list<array{name: string, role: ?string, base: ?string, employee_number: string}>,
      *     source_fragments: array<string, string>
      * }
      */
@@ -31,12 +31,17 @@ class FlightCrewExtractor
         $members = [];
 
         foreach ($this->crewListParser->parse($section['body']) as $member) {
-            $key = $member['name'].'|'.($member['role'] ?? '').'|'.($member['base'] ?? '');
-            $members[$key] = [
+            $normalized = [
                 'name' => $member['name'],
                 'role' => $member['role'],
                 'base' => $member['base'],
+                'employee_number' => $member['employee_id'],
             ];
+            $key = implode('|', array_map(
+                static fn (?string $value): string => $value ?? '',
+                $normalized,
+            ));
+            $members[$key] = $normalized;
         }
 
         return [

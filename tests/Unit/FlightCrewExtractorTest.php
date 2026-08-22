@@ -21,15 +21,11 @@ MEL 28-22-01 | DESCRIPTION: Center tank override pump inoperative.
 TEXT);
 
         $this->assertSame([
-            ['name' => 'Alex Morgan', 'role' => 'CP', 'base' => 'YIP'],
-            ['name' => 'Jordan Lee', 'role' => 'FO', 'base' => 'YIP'],
+            ['name' => 'Alex Morgan', 'role' => 'CP', 'base' => 'YIP', 'employee_number' => '4827'],
+            ['name' => 'Jordan Lee', 'role' => 'FO', 'base' => 'YIP', 'employee_number' => '93614'],
         ], $result['data']);
         $this->assertArrayHasKey('flight_crew', $result['source_fragments']);
         $this->assertStringNotContainsString('28-22-01', $result['source_fragments']['flight_crew']);
-        $encodedData = json_encode($result['data'], JSON_THROW_ON_ERROR);
-
-        $this->assertStringNotContainsString('4827', $encodedData);
-        $this->assertStringNotContainsString('93614', $encodedData);
     }
 
     public function test_it_supports_the_short_crew_heading_and_returns_empty_data_when_absent(): void
@@ -52,20 +48,16 @@ TEXT);
         $result = $this->extractor()->extract($this->fixture('release-manifest'));
 
         $this->assertSame([
-            ['name' => 'MORGAN A', 'role' => 'PIC', 'base' => null],
-            ['name' => 'RIVERA D', 'role' => 'SIC/FO', 'base' => null],
-            ['name' => 'FOSTER B', 'role' => 'IRP', 'base' => null],
-            ['name' => 'MCCULLOUGH M', 'role' => 'IRP', 'base' => null],
-            ['name' => 'BENNETT B', 'role' => 'MX', 'base' => null],
-            ['name' => 'GARCIA T', 'role' => 'LM', 'base' => null],
+            ['name' => 'MORGAN A', 'role' => 'PIC', 'base' => null, 'employee_number' => '4387'],
+            ['name' => 'RIVERA D', 'role' => 'SIC/FO', 'base' => null, 'employee_number' => '72914'],
+            ['name' => 'FOSTER B', 'role' => 'IRP', 'base' => null, 'employee_number' => '73521'],
+            ['name' => 'MCCULLOUGH M', 'role' => 'IRP', 'base' => null, 'employee_number' => '73642'],
+            ['name' => 'BENNETT B', 'role' => 'MX', 'base' => null, 'employee_number' => '5826'],
+            ['name' => 'GARCIA T', 'role' => 'LM', 'base' => null, 'employee_number' => '1957'],
         ], $result['data']);
         $this->assertArrayHasKey('flight_crew', $result['source_fragments']);
         $this->assertStringNotContainsString('FUEL SUMMARY', $result['source_fragments']['flight_crew']);
 
-        $encodedData = json_encode($result['data'], JSON_THROW_ON_ERROR);
-
-        $this->assertStringNotContainsString('4387', $encodedData);
-        $this->assertStringNotContainsString('72914', $encodedData);
     }
 
     private function extractor(): FlightCrewExtractor

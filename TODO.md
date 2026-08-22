@@ -205,7 +205,8 @@ Test-analysis follow-up commit message: `test: preserve Livewire type across ref
 3. Provide copy buttons for MEL / CDL numbers
 4. Field order should be date, Aircraft type, aircraft number, trip number
 
-## 7 — Implement Flight Init
+## 7 — Completed: Implement Flight Init
+Crew list follow up change: Add employee numbers to each crew member
 
 Goal: Provide a fast, ACARS flight initialization reference from existing normalized data.
 
@@ -216,7 +217,7 @@ Est. Ramp Fuel
 Flight Number: CKS256
 Departure
 Destination
-CREW LIST
+CREW LIST including employee numbers
 ACARS INIT DATE 25
 - ACARS INIT DATE must be taken from the TLR page not the flight date
 Sample data:
@@ -226,9 +227,13 @@ A/C N770CK B777-300ER GE90-115BL
 ACARS INIT DATE 11
 
 Should return 11
-- Create tests for a flight data that is different from an ARARS INIT DATE. It should return the ACARS date
+- Create tests for flight data that differs from an ACARS INIT DATE. It should return the ACARS date.
 
 Done when: supported initialization values can be reviewed without returning to the PDF.
+
+Outcome: Added a dedicated Flight Init workspace with copyable tail, UTC ETD, ramp fuel, flight, route, explicit TLR ACARS INIT DATE, and crew employee numbers. ACARS dates and employee numbers are normalized by a dedicated service; the ACARS date never falls back to the release flight date. Employee numbers are retained in the owner-scoped normalized result for this task, while raw crew and TLR source fragments remain private.
+
+Verification: Focused extractor, normalization, DTO, builder, serializer, view-model, Livewire rendering, adjacent task, and delegated copy-control tests pass. Pint, the production asset build, and final Larastan analysis were run successfully.
 
 Commit message: `feat: add flight init task`
 

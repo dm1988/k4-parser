@@ -560,6 +560,114 @@ class FlightPlanBriefTest extends TestCase
             ->assertDontSeeText('Maintenance Log data was not found');
     }
 
+    public function test_flight_init_renders_acars_values_and_crew_employee_numbers_without_reparsing(): void
+    {
+        Storage::fake('user_flight_releases');
+        $user = User::factory()->admin()->create();
+
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')
+                ->andReturn($this->parsedFlightPlan(
+                    identity: [
+                        'flight_number' => 'CKS256',
+                        'trip_number' => '109546',
+                        'recall_number' => null,
+                        'aircraft_type' => 'B777-300ER',
+                        'tail_number' => 'N770CK',
+                        'flight_date' => '2026-05-25',
+                        'release_revision' => null,
+                    ],
+                    schedule: [
+                        'etd_utc' => '2026-05-25T13:55:00Z',
+                        'eta_utc' => null,
+                        'block_duration' => null,
+                        'report_time_utc' => null,
+                        'duty_end_utc' => null,
+                        'slot_times_utc' => [],
+                    ],
+                    fuel: [
+                        'ramp' => ['amount' => 225500.0, 'unit' => 'lb'],
+                        'taxi' => null,
+                        'takeoff' => null,
+                        'trip' => null,
+                        'contingency' => null,
+                        'alternate' => null,
+                        'final_reserve' => null,
+                        'estimated_landing' => null,
+                    ],
+                    crewMembers: [
+                        ['name' => 'MORGAN A', 'role' => 'PIC', 'base' => null, 'employee_number' => '4387'],
+                        ['name' => 'GONZALEZ D', 'role' => 'SIC/FO', 'base' => null, 'employee_number' => '72914'],
+                        ['name' => 'FOSTER B', 'role' => 'IRP', 'base' => null, 'employee_number' => '73521'],
+                        ['name' => 'MCCULLOUGH M', 'role' => 'IRP', 'base' => null, 'employee_number' => '73642'],
+                        ['name' => 'BENNETT B', 'role' => 'MX', 'base' => null, 'employee_number' => '5826'],
+                        ['name' => 'GARCIA T', 'role' => 'LM', 'base' => null, 'employee_number' => '1957'],
+                    ],
+                    flightInit: [
+                        'section_present' => true,
+                        'acars_init_date' => '11',
+                    ],
+                ));
+        });
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'formatForIcaoDisplay')
+                ->with('DCT Q139 TEST')
+                ->andReturn('DCT Q139 TEST');
+        });
+
+        $component = Livewire::actingAs($user)
+            ->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->call('extractFlightPlan');
+
+        $flightPlanKey = $component->get('flightPlanKey');
+
+        $component
+            ->call('selectTask', FlightPlanTask::FlightInit->value)
+            ->assertSet('activeTask', FlightPlanTask::FlightInit->value)
+            ->assertSeeHtml('wire:key="flight-plan-task-panel-flight_init"')
+            ->assertSeeText('Initialization fields')
+            ->assertSeeText('Tail number')
+            ->assertSeeText('N770CK')
+            ->assertSeeText('ETD (UTC)')
+            ->assertSeeHtml('id="flight-init-etd"')
+            ->assertSeeHtml('value="1355Z"')
+            ->assertSeeText('Estimated ramp fuel')
+            ->assertSeeHtml('value="225,500 LB"')
+            ->assertSeeText('Flight number')
+            ->assertSeeText('CKS256')
+            ->assertSeeText('PANC')
+            ->assertSeeText('KMIA')
+            ->assertSeeText('ACARS INIT DATE')
+            ->assertSeeHtml('id="flight-init-acars-init-date"')
+            ->assertSeeHtml('value="11"')
+            ->assertSeeText('not derived from the release flight date')
+            ->assertSeeText('MORGAN A')
+            ->assertSeeText('4387')
+            ->assertSeeText('GONZALEZ D')
+            ->assertSeeText('72914')
+            ->assertSeeText('FOSTER B')
+            ->assertSeeText('73521')
+            ->assertSeeText('MCCULLOUGH M')
+            ->assertSeeText('73642')
+            ->assertSeeText('BENNETT B')
+            ->assertSeeText('5826')
+            ->assertSeeText('GARCIA T')
+            ->assertSeeText('1957')
+            ->assertSeeHtml('data-copy-target="flight-init-acars-init-date"')
+            ->assertSeeHtml('data-copy-target="flight-init-crew-employee-1"')
+            ->assertSeeHtml('data-copy-label="MORGAN A employee number"')
+            ->assertSeeText('Flight Init source fragments remain private');
+
+        $component
+            ->call('$refresh')
+            ->assertSet('activeTask', FlightPlanTask::FlightInit->value)
+            ->assertSeeText('GONZALEZ D')
+            ->assertSeeHtml('value="11"');
+
+        $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
+    }
+
     public function test_envelope_hides_the_confirmed_tlr_presentation_and_keeps_shared_context_without_reparsing(): void
     {
         Storage::fake('user_flight_releases');
@@ -1179,6 +1287,7 @@ class FlightPlanBriefTest extends TestCase
         ?array $crewMembers = null,
         ?array $maintenance = null,
         ?array $envelope = null,
+        ?array $flightInit = null,
     ): ParsedFlightPlanData {
         $legacy ??= $this->flightPlan();
 
@@ -1223,6 +1332,7 @@ class FlightPlanBriefTest extends TestCase
                 'items' => [],
             ],
             envelope: $envelope ?? [],
+            flightInit: $flightInit ?? [],
             legacy: $legacy,
         );
     }

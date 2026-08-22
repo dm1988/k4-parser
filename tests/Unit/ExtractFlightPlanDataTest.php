@@ -9,6 +9,7 @@ use App\Services\FlightPlan\Extractor\ExtractFlightPlanData;
 use App\Services\FlightPlan\Extractor\FlightCrewExtractor;
 use App\Services\FlightPlan\Extractor\FlightFuelExtractor;
 use App\Services\FlightPlan\Extractor\FlightIdentityExtractor;
+use App\Services\FlightPlan\Extractor\FlightInitExtractor;
 use App\Services\FlightPlan\Extractor\FlightPlanTextExtractor;
 use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use App\Services\FlightPlan\Extractor\FlightScheduleExtractor;
@@ -57,6 +58,11 @@ class ExtractFlightPlanDataTest extends TestCase
             'data' => $this->envelope(),
             'source_fragments' => ['envelope_takeoff_landing_report' => 'private TLR evidence'],
         ]);
+        $flightInitExtractor = $this->createMock(FlightInitExtractor::class);
+        $flightInitExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
+            'data' => ['section_present' => true, 'acars_init_date' => '11'],
+            'source_fragments' => ['flight_init_takeoff_landing_report' => 'private ACARS init evidence'],
+        ]);
 
         $parsed = (new ExtractFlightPlanData(
             $textExtractor,
@@ -67,6 +73,7 @@ class ExtractFlightPlanDataTest extends TestCase
             $crewExtractor,
             $maintenanceLogExtractor,
             $envelopeExtractor,
+            $flightInitExtractor,
         ))->extractFile('/tmp/release.pdf');
 
         $this->assertInstanceOf(ParsedFlightPlanData::class, $parsed);
@@ -79,6 +86,8 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame('MEL 28-22-01', $parsed->sourceFragments['maintenance_log']);
         $this->assertSame(612400, $parsed->envelope['planned_takeoff_weight']['amount']);
         $this->assertSame('private TLR evidence', $parsed->sourceFragments['envelope_takeoff_landing_report']);
+        $this->assertSame('11', $parsed->flightInit['acars_init_date']);
+        $this->assertSame('private ACARS init evidence', $parsed->sourceFragments['flight_init_takeoff_landing_report']);
         $this->assertSame('FL 340', $parsed->legacy['initial_altitude']);
     }
 
@@ -102,6 +111,7 @@ class ExtractFlightPlanDataTest extends TestCase
             new FlightCrewExtractor(new CrewListParser),
             new MaintenanceLogExtractor,
             new EnvelopeExtractor,
+            new FlightInitExtractor,
         );
 
         $parsed = $extractor->extractFile($samplePath);
@@ -185,13 +195,14 @@ class ExtractFlightPlanDataTest extends TestCase
         ], null);
     }
 
-    /** @return list<array{name: string, role: string, base: string}> */
+    /** @return list<array{name: string, role: string, base: string, employee_number: string}> */
     private function crewMembers(): array
     {
         return [[
             'name' => 'Alex Morgan',
             'role' => 'CP',
             'base' => 'YIP',
+            'employee_number' => '4827',
         ]];
     }
 

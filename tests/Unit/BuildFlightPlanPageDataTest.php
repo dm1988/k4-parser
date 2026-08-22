@@ -29,6 +29,8 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertTrue($pageData->flightPlan->maintenanceLog?->sectionPresent);
         $this->assertSame('28-22-01', $pageData->flightPlan->maintenanceLog->items[0]->number);
         $this->assertSame('Alex Morgan', $pageData->flightPlan->crewMembers[0]->name);
+        $this->assertSame('4827', $pageData->flightPlan->crewMembers[0]->employeeNumber);
+        $this->assertSame('11', $pageData->flightPlan->flightInit?->acarsInitDate);
         $this->assertSame(612400, $pageData->flightPlan->envelope?->plannedTakeoffWeight?->amount);
     }
 
@@ -78,6 +80,8 @@ class BuildFlightPlanPageDataTest extends TestCase
         $payload['flight_plan_data']['fuelPlan'] = null;
         $payload['flight_plan_data']['maintenanceLog'] = null;
         $payload['flight_plan_data']['envelope'] = null;
+        unset($payload['flight_plan_data']['flightInit']);
+        unset($payload['flight_plan_data']['crewMembers'][0]['employeeNumber']);
         $payload['departure_airport'] = 'invalid';
         $payload['initial_altitude'] = [];
         $payload['etps'] = [['label' => 'incomplete']];
@@ -88,6 +92,8 @@ class BuildFlightPlanPageDataTest extends TestCase
 
         $this->assertNotNull($pageData);
         $this->assertNull($pageData->flightPlan->fuelPlan);
+        $this->assertNull($pageData->flightPlan->flightInit);
+        $this->assertNull($pageData->flightPlan->crewMembers[0]->employeeNumber);
         $this->assertNull($pageData->departureAirport);
         $this->assertNull($pageData->initialAltitude);
         $this->assertSame([], $pageData->etps);
@@ -233,10 +239,15 @@ class BuildFlightPlanPageDataTest extends TestCase
                     'maximumFieldTakeoffWeight' => ['amount' => 766000, 'unit' => 'lb'],
                     'sourceWarnings' => ['Source warning'],
                 ],
+                'flightInit' => [
+                    'sectionPresent' => true,
+                    'acarsInitDate' => '11',
+                ],
                 'crewMembers' => [[
                     'name' => 'Alex Morgan',
                     'role' => 'CP',
                     'base' => 'YIP',
+                    'employeeNumber' => '4827',
                 ]],
             ],
         ];

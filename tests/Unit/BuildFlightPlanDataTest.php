@@ -53,6 +53,7 @@ class BuildFlightPlanDataTest extends TestCase
                 'name' => 'Alex Morgan',
                 'role' => 'CP',
                 'base' => 'YIP',
+                'employee_number' => '4827',
             ]],
             maintenance: [
                 'section_present' => true,
@@ -86,6 +87,10 @@ class BuildFlightPlanDataTest extends TestCase
                 'maximum_field_takeoff_weight' => ['amount' => 766000, 'unit' => 'lb'],
                 'source_warnings' => ['Source warning'],
             ],
+            flightInit: [
+                'section_present' => true,
+                'acars_init_date' => '11',
+            ],
         );
 
         $flightPlan = (new BuildFlightPlanData)->handle($parsed);
@@ -100,6 +105,8 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertTrue($flightPlan->maintenanceLog?->sectionPresent);
         $this->assertSame('28-22-01', $flightPlan->maintenanceLog->items[0]->number);
         $this->assertSame('Alex Morgan', $flightPlan->crewMembers[0]->name);
+        $this->assertSame('4827', $flightPlan->crewMembers[0]->employeeNumber);
+        $this->assertSame('11', $flightPlan->flightInit?->acarsInitDate);
         $this->assertSame(612400, $flightPlan->envelope->plannedTakeoffWeight?->amount);
         $this->assertFalse($flightPlan->envelope->antiIce);
         $this->assertSame(['Source warning'], $flightPlan->envelope?->sourceWarnings);

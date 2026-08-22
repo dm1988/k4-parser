@@ -14,6 +14,7 @@ final readonly class FlightPlanData implements JsonSerializable
         public ?FuelPlanData $fuelPlan = null,
         public ?MaintenanceLogData $maintenanceLog = null,
         public ?EnvelopeData $envelope = null,
+        public ?FlightInitData $flightInit = null,
         public array $crewMembers = [],
     ) {}
 
@@ -25,7 +26,8 @@ final readonly class FlightPlanData implements JsonSerializable
      *     fuelPlan: array<string, array{amount: float, unit: 'kg'|'lb'}|null>|null,
      *     maintenanceLog: array{sectionPresent: bool, etopsApplicability: string, items: list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string}>}|null,
      *     envelope: array<string, mixed>|null,
-     *     crewMembers: list<array{name: string, role: ?string, base: ?string}>
+     *     flightInit: array{sectionPresent: bool, acarsInitDate: ?string}|null,
+     *     crewMembers: list<array{name: string, role: ?string, base: ?string, employeeNumber: ?string}>
      * }
      */
     public function toArray(): array
@@ -37,6 +39,7 @@ final readonly class FlightPlanData implements JsonSerializable
             'fuelPlan' => $this->fuelPlan?->toArray(),
             'maintenanceLog' => $this->maintenanceLog?->toArray(),
             'envelope' => $this->envelope?->toArray(),
+            'flightInit' => $this->flightInit?->toArray(),
             'crewMembers' => array_map(
                 static fn (CrewMemberData $member): array => $member->toArray(),
                 $this->crewMembers,
@@ -52,7 +55,8 @@ final readonly class FlightPlanData implements JsonSerializable
      *     fuelPlan: array<string, array{amount: float, unit: 'kg'|'lb'}|null>|null,
      *     maintenanceLog: array{sectionPresent: bool, etopsApplicability: string, items: list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string}>}|null,
      *     envelope: array<string, mixed>|null,
-     *     crewMembers: list<array{name: string, role: ?string, base: ?string}>
+     *     flightInit: array{sectionPresent: bool, acarsInitDate: ?string}|null,
+     *     crewMembers: list<array{name: string, role: ?string, base: ?string, employeeNumber: ?string}>
      * }
      */
     public function jsonSerialize(): array

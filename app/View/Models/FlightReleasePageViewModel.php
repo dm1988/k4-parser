@@ -228,6 +228,62 @@ readonly class FlightReleasePageViewModel
         }, $this->pageData?->flightPlan->crewMembers ?? []);
     }
 
+    public function flightInitEtdUtc(): ?string
+    {
+        $etdUtc = $this->etdUtc();
+
+        if ($etdUtc === null || preg_match('/(?:Z|\+00:00)\z/', $etdUtc) !== 1) {
+            return null;
+        }
+
+        try {
+            return CarbonImmutable::parse($etdUtc)->utc()->format('Hi\Z');
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    public function flightInitRampFuel(): ?string
+    {
+        return $this->pageData?->flightPlan->fuelPlan?->ramp?->format();
+    }
+
+    public function flightInitAcarsDate(): ?string
+    {
+        return $this->pageData?->flightPlan->flightInit?->acarsInitDate;
+    }
+
+    /** @return list<array{id: string, label: string, value: ?string}> */
+    public function flightInitFields(): array
+    {
+        return [
+            ['id' => 'flight-init-tail-number', 'label' => 'Tail number', 'value' => $this->tailNumber()],
+            ['id' => 'flight-init-etd', 'label' => 'ETD (UTC)', 'value' => $this->flightInitEtdUtc()],
+            ['id' => 'flight-init-ramp-fuel', 'label' => 'Estimated ramp fuel', 'value' => $this->flightInitRampFuel()],
+            ['id' => 'flight-init-flight-number', 'label' => 'Flight number', 'value' => $this->flightNumber()],
+            ['id' => 'flight-init-departure', 'label' => 'Departure', 'value' => $this->departure()],
+            ['id' => 'flight-init-destination', 'label' => 'Destination', 'value' => $this->destination()],
+            ['id' => 'flight-init-acars-init-date', 'label' => 'ACARS INIT DATE', 'value' => $this->flightInitAcarsDate()],
+        ];
+    }
+
+    /** @return list<array{name: string, details: ?string, employeeNumber: ?string}> */
+    public function flightInitCrewMembers(): array
+    {
+        return array_map(static function (CrewMemberData $member): array {
+            $details = array_values(array_filter([
+                $member->role,
+                $member->base,
+            ], static fn (?string $value): bool => $value !== null));
+
+            return [
+                'name' => $member->name,
+                'details' => $details === [] ? null : implode(' · ', $details),
+                'employeeNumber' => $member->employeeNumber,
+            ];
+        }, $this->pageData?->flightPlan->crewMembers ?? []);
+    }
+
     /**
      * @return list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string, copyable: bool}>
      */

@@ -15,6 +15,7 @@ class ExtractFlightPlanData
         private readonly FlightCrewExtractor $crewExtractor,
         private readonly MaintenanceLogExtractor $maintenanceLogExtractor,
         private readonly EnvelopeExtractor $envelopeExtractor,
+        private readonly FlightInitExtractor $flightInitExtractor,
     ) {}
 
     public function extractFile(string $filePath): ParsedFlightPlanData
@@ -31,6 +32,7 @@ class ExtractFlightPlanData
         $crew = $this->crewExtractor->extract($text);
         $maintenance = $this->maintenanceLogExtractor->extract($text);
         $envelope = $this->envelopeExtractor->extract($text);
+        $flightInit = $this->flightInitExtractor->extract($text);
 
         return new ParsedFlightPlanData(
             identity: $identity['data'],
@@ -50,6 +52,7 @@ class ExtractFlightPlanData
             crewMembers: $crew['data'],
             maintenance: $maintenance['data'],
             envelope: $envelope['data'],
+            flightInit: $flightInit['data'],
             sourceFragments: [
                 ...$identity['source_fragments'],
                 ...$schedule['source_fragments'],
@@ -57,6 +60,7 @@ class ExtractFlightPlanData
                 ...$crew['source_fragments'],
                 ...$maintenance['source_fragments'],
                 ...$envelope['source_fragments'],
+                ...$flightInit['source_fragments'],
             ],
             legacy: $route,
         );

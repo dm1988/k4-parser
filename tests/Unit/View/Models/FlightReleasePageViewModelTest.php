@@ -49,6 +49,10 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertNull($viewModel->maintenanceStatusSummary());
         $this->assertSame([], $viewModel->maintenanceItems());
         $this->assertSame([], $viewModel->crewMembers());
+        $this->assertNull($viewModel->flightInitEtdUtc());
+        $this->assertNull($viewModel->flightInitRampFuel());
+        $this->assertNull($viewModel->flightInitAcarsDate());
+        $this->assertSame([], $viewModel->flightInitCrewMembers());
         $this->assertSame('Confirmed release section', $viewModel->envelopeSourceLabel());
         $this->assertNull($viewModel->envelopePlannedTakeoffWeight());
         $this->assertSame([], $viewModel->envelopeWarnings());
@@ -182,6 +186,45 @@ class FlightReleasePageViewModelTest extends TestCase
         $items = $this->viewModel($payload)->maintenanceItems();
 
         $this->assertFalse($items[2]['copyable']);
+    }
+
+    #[Test]
+    public function it_formats_flight_init_fields_and_employee_numbers_from_typed_data(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['schedule']['etdUtc'] = '2026-05-25T02:20:00+00:00';
+        $payload['flight_plan_data']['fuelPlan'] = [
+            'ramp' => ['amount' => 225500.0, 'unit' => 'lb'],
+            'taxi' => null,
+            'takeoff' => null,
+            'trip' => null,
+            'contingency' => null,
+            'alternate' => null,
+            'finalReserve' => null,
+            'estimatedLanding' => null,
+        ];
+        $payload['flight_plan_data']['flightInit'] = [
+            'sectionPresent' => true,
+            'acarsInitDate' => '11',
+        ];
+        $payload['flight_plan_data']['crewMembers'][0]['employeeNumber'] = '4827';
+
+        $viewModel = $this->viewModel($payload);
+
+        $this->assertSame('0220Z', $viewModel->flightInitEtdUtc());
+        $this->assertSame('225,500 LB', $viewModel->flightInitRampFuel());
+        $this->assertSame('11', $viewModel->flightInitAcarsDate());
+        $this->assertSame('4827', $viewModel->flightInitCrewMembers()[0]['employeeNumber']);
+        $this->assertSame('CP · YIP', $viewModel->flightInitCrewMembers()[0]['details']);
+        $this->assertSame([
+            'flight-init-tail-number',
+            'flight-init-etd',
+            'flight-init-ramp-fuel',
+            'flight-init-flight-number',
+            'flight-init-departure',
+            'flight-init-destination',
+            'flight-init-acars-init-date',
+        ], array_column($viewModel->flightInitFields(), 'id'));
     }
 
     #[Test]

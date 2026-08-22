@@ -6,6 +6,7 @@ use App\DTOs\AirportData;
 use App\DTOs\CrewMemberData;
 use App\DTOs\EnvelopeData;
 use App\DTOs\FlightIdentityData;
+use App\DTOs\FlightInitData;
 use App\DTOs\FlightPlanData;
 use App\DTOs\MaintenanceItemData;
 use App\DTOs\MaintenanceLogData;
@@ -53,7 +54,8 @@ class FlightPlanResultSerializerTest extends TestCase
                 sourceType: 'takeoff_landing_report',
                 plannedTakeoffWeight: new WeightQuantity(612400, 'lb'),
             ),
-            crewMembers: [new CrewMemberData('Alex Morgan', 'CP', 'YIP')],
+            flightInit: new FlightInitData(sectionPresent: true, acarsInitDate: '11'),
+            crewMembers: [new CrewMemberData('Alex Morgan', 'CP', 'YIP', '4827')],
         );
         $parsed = new ParsedFlightPlanData(
             identity: [
@@ -112,6 +114,8 @@ class FlightPlanResultSerializerTest extends TestCase
         $this->assertSame('CKS256', $result['flight_plan_data']['identity']['flightNumber']);
         $this->assertSame('28-22-01', $result['flight_plan_data']['maintenanceLog']['items'][0]['number']);
         $this->assertSame('Alex Morgan', $result['flight_plan_data']['crewMembers'][0]['name']);
+        $this->assertSame('4827', $result['flight_plan_data']['crewMembers'][0]['employeeNumber']);
+        $this->assertSame('11', $result['flight_plan_data']['flightInit']['acarsInitDate']);
         $this->assertSame(612400, $result['flight_plan_data']['envelope']['plannedTakeoffWeight']['amount']);
         $this->assertArrayNotHasKey('crewMembers', $result['flight_plan_data']['maintenanceLog']);
         $this->assertArrayNotHasKey('source_fragments', $result);

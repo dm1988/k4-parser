@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\DTOs\CrewMemberData;
 use App\DTOs\EnvelopeData;
 use App\DTOs\FlightIdentityData;
+use App\DTOs\FlightInitData;
 use App\DTOs\FlightPlanData;
 use App\DTOs\FuelPlanData;
 use App\DTOs\MaintenanceItemData;
@@ -14,6 +15,7 @@ use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
 use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
+use App\Services\FlightPlan\FlightInitFieldNormalizer;
 use App\ValueObjects\AirportCode;
 use App\ValueObjects\FlightTime;
 use App\ValueObjects\FuelQuantity;
@@ -25,6 +27,10 @@ use InvalidArgumentException;
 
 class BuildFlightPlanData
 {
+    public function __construct(
+        private readonly FlightInitFieldNormalizer $flightInitFieldNormalizer = new FlightInitFieldNormalizer,
+    ) {}
+
     public function handle(ParsedFlightPlanData $parsed): FlightPlanData
     {
         return new FlightPlanData(
@@ -62,6 +68,7 @@ class BuildFlightPlanData
             fuelPlan: $this->fuelPlan($parsed),
             maintenanceLog: $this->maintenanceLog($parsed),
             envelope: $this->envelope($parsed),
+            flightInit: $this->flightInit($parsed),
             crewMembers: $this->crewMembers($parsed->crewMembers),
         );
     }
@@ -177,6 +184,20 @@ class BuildFlightPlanData
         }
     }
 
+    private function flightInit(ParsedFlightPlanData $parsed): ?FlightInitData
+    {
+        $flightInit = $parsed->flightInit;
+
+        if (($flightInit['section_present'] ?? false) !== true) {
+            return null;
+        }
+
+        return new FlightInitData(
+            sectionPresent: true,
+            acarsInitDate: $this->flightInitFieldNormalizer->acarsInitDate($flightInit['acars_init_date'] ?? null),
+        );
+    }
+
     private function nullableFloat(mixed $value): ?float
     {
         return is_float($value) || is_int($value) ? (float) $value : null;
@@ -262,6 +283,7 @@ class BuildFlightPlanData
                 name: $name,
                 role: $this->nullableString($member['role'] ?? null),
                 base: $this->nullableString($member['base'] ?? null),
+                employeeNumber: $this->flightInitFieldNormalizer->employeeNumber($member['employee_number'] ?? null),
             );
         }
 

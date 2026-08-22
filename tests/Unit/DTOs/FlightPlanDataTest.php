@@ -44,6 +44,8 @@ class FlightPlanDataTest extends TestCase
         );
 
         $this->assertNull($flightPlan->fuelPlan);
+        $this->assertNull($flightPlan->flightInit);
         $this->assertNull($flightPlan->toArray()['fuelPlan']);
+        $this->assertNull($flightPlan->toArray()['flightInit']);
     }
 }

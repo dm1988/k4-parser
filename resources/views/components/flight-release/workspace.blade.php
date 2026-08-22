@@ -56,6 +56,8 @@
                 <x-flight-release.maintenance-log :model="$model" />
             @elseif ($activeTask === \App\Enums\FlightPlanTask::Envelope)
                 <x-flight-release.envelope :model="$model" />
+            @elseif ($activeTask === \App\Enums\FlightPlanTask::FlightInit)
+                <x-flight-release.flight-init :model="$model" />
             @elseif ($activeTask === \App\Enums\FlightPlanTask::Fms)
                 <div class="p-3 sm:p-4">
                     <x-flight-release.plan-card
