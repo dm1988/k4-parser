@@ -57,7 +57,41 @@ TEXT);
         ], $result['data']);
         $this->assertArrayHasKey('flight_crew', $result['source_fragments']);
         $this->assertStringNotContainsString('FUEL SUMMARY', $result['source_fragments']['flight_crew']);
+    }
 
+    public function test_it_ignores_a_solar_forecast_inside_the_crew_section(): void
+    {
+        $result = $this->extractor()->extract(<<<'TEXT'
+CREW LIST
+:Product: 3-Day Forecast
+:Issued: 2026 May 19 1230 UTC
+A. NOAA Geomagnetic Activity Observation and Forecast
+The greatest expected 3 hr Kp for May 19-May 21 2026 is 4.67 (NOAA Scale G1).
+NOAA Kp index breakdown May 19-May 21 2026
+Solar Radiation Storm Forecast for May 19-May 21 2026
+Radio Blackout Forecast for May 19-May 21 2026
+MAINTENANCE LOG
+ETOPS 180 ETOPS ALTERNATE AIRPORTS
+SFO/KSFO SAN FRANCISCO INTL N37371W122225
+121-91 FLIGHT RELEASE I.F.R
+4387 PIC MORGAN A
+72914 SIC/FO RIVERA D
+ADDNTL
+CAPT
+73521 IRP FOSTER B
+73642 IRP MCCULLOUGH M
+MX LM
+ACM ACM
+TEXT);
+
+        $this->assertSame([
+            ['name' => 'MORGAN A', 'role' => 'PIC', 'base' => null, 'employee_number' => '4387'],
+            ['name' => 'RIVERA D', 'role' => 'SIC/FO', 'base' => null, 'employee_number' => '72914'],
+            ['name' => 'FOSTER B', 'role' => 'IRP', 'base' => null, 'employee_number' => '73521'],
+            ['name' => 'MCCULLOUGH M', 'role' => 'IRP', 'base' => null, 'employee_number' => '73642'],
+        ], $result['data']);
+        $this->assertStringNotContainsString('Solar Radiation', $result['source_fragments']['flight_crew']);
+        $this->assertStringContainsString('4387 PIC MORGAN A', $result['source_fragments']['flight_crew']);
     }
 
     private function extractor(): FlightCrewExtractor

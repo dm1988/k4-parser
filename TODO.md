@@ -566,3 +566,11 @@ Outcome: Replaced the generic route card with a dedicated, responsive FMS worksp
 Verification: Focused identity, route, fuel, page-data compatibility, view-model, complete and sparse Livewire FMS, Jepp regression, and workspace rehydration tests pass. Pint, the production asset build, and final Larastan analysis were run successfully.
 
 Commit message: `feat: add fms task`
+
+## 9 — Completed: Reject solar forecasts from flight crew
+
+Outcome: Flight-release crew extraction now requires a recognized crew role before accepting a parsed member. If a `CREW LIST` span contains unrelated numbered text such as a NOAA solar forecast and yields no valid crew, extraction falls back to the ID-first release manifest elsewhere in the PDF text. The regression fixture confirms the NOAA issue date and forecast headings are excluded while the actual PIC, SIC/FO, and IRP records are returned.
+
+Verification: The 14 focused flight crew extractor, shared crew parser, and aggregate extractor tests pass with 128 assertions. Pint passed, and targeted Larastan analysis of the modified extractor and regression test reported no errors.
+
+Commit message: `fix: reject solar forecast crew entries`

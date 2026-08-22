@@ -19,34 +19,47 @@ class FlightCrewExtractor
      */
     public function extract(string $text): array
     {
-        $section = $this->crewSection($text) ?? $this->releaseManifestSection($text);
+        $sections = [
+            $this->crewSection($text),
+            $this->releaseManifestSection($text),
+        ];
 
-        if ($section === null) {
-            return [
-                'data' => [],
-                'source_fragments' => [],
-            ];
-        }
+        foreach ($sections as $section) {
+            if ($section === null) {
+                continue;
+            }
 
-        $members = [];
+            $members = [];
 
-        foreach ($this->crewListParser->parse($section['body']) as $member) {
-            $normalized = [
-                'name' => $member['name'],
-                'role' => $member['role'],
-                'base' => $member['base'],
-                'employee_number' => $member['employee_id'],
-            ];
-            $key = implode('|', array_map(
-                static fn (?string $value): string => $value ?? '',
-                $normalized,
-            ));
-            $members[$key] = $normalized;
+            foreach ($this->crewListParser->parse($section['body']) as $member) {
+                if ($member['role'] === null) {
+                    continue;
+                }
+
+                $normalized = [
+                    'name' => $member['name'],
+                    'role' => $member['role'],
+                    'base' => $member['base'],
+                    'employee_number' => $member['employee_id'],
+                ];
+                $key = implode('|', array_map(
+                    static fn (?string $value): string => $value ?? '',
+                    $normalized,
+                ));
+                $members[$key] = $normalized;
+            }
+
+            if ($members !== []) {
+                return [
+                    'data' => array_values($members),
+                    'source_fragments' => ['flight_crew' => $section['source']],
+                ];
+            }
         }
 
         return [
-            'data' => array_values($members),
-            'source_fragments' => ['flight_crew' => $section['source']],
+            'data' => [],
+            'source_fragments' => [],
         ];
     }
 
