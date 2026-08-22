@@ -213,6 +213,11 @@ class BuildFlightPlanDataTest extends TestCase
                     'airports' => 'KSFO-PACD',
                     'coordinates' => 'N45 43.7 W143 53.1',
                     'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
+                ], [
+                    'label' => 'ETP1',
+                    'airports' => 'PACD-RJSS',
+                    'coordinates' => 'N47 02.0 W145 36.5',
+                    'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
                 ]],
                 'eent_coordinates' => 'N40 31.1 W131 22.6',
                 'eexp_coordinates' => 'N45 19.3 E151 36.4',
@@ -227,6 +232,9 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame('N45 19.3', $flightPlan->etops->exitPoint?->coordinate->latitude);
         $this->assertSame('E151 36.4', $flightPlan->etops->exitPoint->coordinate->longitude);
         $this->assertSame('ETP1', $flightPlan->etops->equalTimePoints[0]->label);
+        $this->assertSame('ETP1', $flightPlan->etops->equalTimePoints[1]->label);
+        $this->assertSame([1, 2], array_column($flightPlan->etops->equalTimePoints, 'sequence'));
+        $this->assertSame('N47 02.0', $flightPlan->etops->equalTimePoints[1]->coordinate->latitude);
         $this->assertSame('KSFO', $flightPlan->etops->equalTimePoints[0]->firstAlternate?->value);
         $this->assertSame('PACD', $flightPlan->etops->equalTimePoints[0]->secondAlternate?->value);
         $this->assertSame('ALL ENGINE/DECOMPRESSION/LRC', $flightPlan->etops->scenarios[0]->name);

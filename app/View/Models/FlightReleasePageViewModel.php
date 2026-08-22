@@ -6,6 +6,7 @@ use App\DTOs\AirportData;
 use App\DTOs\CrewMemberData;
 use App\DTOs\EnvelopeData;
 use App\DTOs\Etops\EtopsEqualTimePointData;
+use App\DTOs\Etops\EtopsScenarioData;
 use App\DTOs\MaintenanceItemData;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
@@ -576,6 +577,71 @@ readonly class FlightReleasePageViewModel
             },
             $etops->equalTimePoints,
             array_keys($etops->equalTimePoints),
+        );
+    }
+
+    public function etopsApplicabilityLabel(): string
+    {
+        return $this->pageData?->flightPlan->etops?->applicability->label() ?? 'Not confirmed';
+    }
+
+    /** @return list<array{label: string, coordinates: string}> */
+    public function etopsBoundaryPoints(): array
+    {
+        $etops = $this->pageData?->flightPlan->etops;
+        $points = [];
+
+        foreach ([$etops?->entryPoint, $etops?->exitPoint] as $point) {
+            if ($point === null) {
+                continue;
+            }
+
+            $points[] = [
+                'label' => $point->label,
+                'coordinates' => $point->coordinate->latitude.' '.$point->coordinate->longitude,
+            ];
+        }
+
+        return $points;
+    }
+
+    /** @return list<string> */
+    public function etopsAlternates(): array
+    {
+        $etops = $this->pageData?->flightPlan->etops;
+
+        if ($etops === null) {
+            return [];
+        }
+
+        $alternates = [];
+
+        foreach ($etops->equalTimePoints as $point) {
+            foreach ([$point->firstAlternate, $point->secondAlternate] as $alternate) {
+                if ($alternate !== null) {
+                    $alternates[$alternate->value] = $alternate->value;
+                }
+            }
+        }
+
+        return array_values($alternates);
+    }
+
+    /** @return list<array{name: string, equalTimePointLabel: ?string}> */
+    public function etopsScenarios(): array
+    {
+        $etops = $this->pageData?->flightPlan->etops;
+
+        if ($etops === null) {
+            return [];
+        }
+
+        return array_map(
+            static fn (EtopsScenarioData $scenario): array => [
+                'name' => $scenario->name,
+                'equalTimePointLabel' => $scenario->equalTimePointLabel,
+            ],
+            $etops->scenarios,
         );
     }
 

@@ -412,6 +412,47 @@ class FlightPlanBriefTest extends TestCase
         $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
     }
 
+    public function test_etops_uses_a_dedicated_typed_layout_without_inferring_approval(): void
+    {
+        Storage::fake('user_flight_releases');
+
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')->andReturn($this->parsedFlightPlan());
+        });
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'formatForIcaoDisplay')
+                ->with('DCT Q139 TEST')
+                ->andReturn('DCT Q139 TEST');
+        });
+
+        Livewire::actingAs(User::factory()->admin()->create())
+            ->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->call('extractFlightPlan')
+            ->call('selectTask', FlightPlanTask::Etops->value)
+            ->assertSet('activeTask', FlightPlanTask::Etops->value)
+            ->assertSeeHtml('wire:key="flight-plan-task-panel-etops"')
+            ->assertSeeText('ETOPS source data')
+            ->assertSeeText('Not confirmed')
+            ->assertSeeText('Boundary points')
+            ->assertSeeText('EENT')
+            ->assertSee('value="N40 31.1 W131 22.6"', escape: false)
+            ->assertSeeText('EEXP')
+            ->assertSee('value="N45 19.3 E151 36.4"', escape: false)
+            ->assertSeeText('Equal-time points')
+            ->assertSeeText('ETP1')
+            ->assertSee('value="N45 43.7 W143 53.1"', escape: false)
+            ->assertSeeText('ETOPS alternates')
+            ->assertSeeText('KSFO')
+            ->assertSeeText('PACD')
+            ->assertSeeText('Source scenarios')
+            ->assertSeeText('ALL ENGINE/DECOMPRESSION/LRC')
+            ->assertSeeText('No approval or suitability determination')
+            ->assertDontSeeText('Its dedicated operational layout is scheduled in the next focused task.');
+
+        $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
+    }
+
     public function test_fms_renders_honest_missing_states_without_copy_controls(): void
     {
         Storage::fake('user_flight_releases');
@@ -1109,6 +1150,12 @@ class FlightPlanBriefTest extends TestCase
             9,
             substr_count($component->html(), 'Not present in this release'),
         );
+
+        $component
+            ->call('selectTask', FlightPlanTask::Etops->value)
+            ->assertSet('activeTask', FlightPlanTask::Etops->value)
+            ->assertSeeText('Not present in this release')
+            ->assertDontSeeText('ETOPS source data');
     }
 
     public function test_a_missing_cached_result_derives_the_upload_view_without_mutating_component_state(): void

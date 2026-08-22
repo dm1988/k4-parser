@@ -409,8 +409,18 @@ class FlightReleasePageViewModelTest extends TestCase
         $viewModel = $this->viewModel($this->resultPayload());
 
         $this->assertTrue($viewModel->hasEtopsData());
+        $this->assertSame('Not confirmed', $viewModel->etopsApplicabilityLabel());
+        $this->assertSame([
+            ['label' => 'EENT', 'coordinates' => 'N40 31.1 W131 22.6'],
+            ['label' => 'EEXP', 'coordinates' => 'N45 19.3 E151 36.4'],
+        ], $viewModel->etopsBoundaryPoints());
         $this->assertSame('KSFO-PACD', $viewModel->etps()[0]['airports']);
         $this->assertSame(['KSFO', 'PACD'], $viewModel->etpAirports($viewModel->etps()[0]));
+        $this->assertSame(['KSFO', 'PACD'], $viewModel->etopsAlternates());
+        $this->assertSame([[
+            'name' => 'ALL ENGINE/DECOMPRESSION/LRC',
+            'equalTimePointLabel' => 'ETP1',
+        ]], $viewModel->etopsScenarios());
         $this->assertSame('N40 31.1 W131 22.6', $viewModel->eentCoordinates());
         $this->assertSame(FlightPlanTaskAvailability::Available, $viewModel->availabilityFor(FlightPlanTask::Etops));
     }

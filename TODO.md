@@ -26,8 +26,8 @@ Commit message: `feat: add typed etops data objects`
 - `FlightPlanTextExtractor` reads each PDF once, removes null bytes, caches by content hash, and translates parser failures.
 - Focused identity, schedule, route, and fuel extractors feed `ParsedFlightPlanData`; `BuildFlightPlanData` creates the typed aggregate.
 - The cached compatibility payload contains both the existing flat route fields and nested `flight_plan_data`.
-- The current results UI renders airports, runways, procedures, route tokens, and basic ETOPS data through the legacy `FlightReleasePageViewModel`.
-- Normalized today: flight/trip/recall identity, aircraft and tail, flight date, airports, route, runways, SID/STAR, distance, ETD/ETA, approved slot instants, and release-level fuel.
+- The current results UI renders airports, runways, procedures, route tokens, and typed ETOPS data through `FlightReleasePageViewModel`.
+- Normalized today: flight/trip/recall identity, aircraft and tail, flight date, airports, route, runways, SID/STAR, distance, ETD/ETA, approved slot instants, release-level fuel, and current ETOPS boundary/equal-time points and scenario text.
 - Still legacy-only: airport enrichment, initial altitude, and duration.
 - Not yet confirmed from fixtures: release revision, report/duty times, block duration, local times, contingency fuel, and most fields for Jepp PD-Pro, Maintenance Log, Envelope, Fuel Score, Weather, and Weight & Balance.
 
@@ -54,7 +54,7 @@ Commit message: `feat: add typed etops data objects`
 |     6 | FMS              | `calculator`                | Core route data ready                            |
 |     7 | Slot Times       | `clock`                     | Basic approved slots ready                       |
 |     8 | Fuel Score       | `gauge` or closest Heroicon | Release summary ready; waypoint score pending    |
-|     9 | ETOPS            | `globe-alt`                 | Current critical points typed; deeper scenarios pending |
+|     9 | ETOPS            | `globe-alt`                 | Current source-backed task view ready             |
 |    10 | Weather          | `cloud`                     | Requires confirmed fixtures                      |
 |    11 | Weight & Balance | `scale`                     | Requires confirmed fixtures                      |
 
@@ -90,7 +90,7 @@ Done when: summary values are reliable and no status badge appears without a doc
 
 Commit message: `feat: add fuel score task`
 
-## 11 — Current focus: Implement ETOPS
+## 11 — Completed: Implement ETOPS
 
 Goal: Replace legacy ETOPS arrays with typed, source-backed operational data.
 
@@ -103,9 +103,9 @@ Goal: Replace legacy ETOPS arrays with typed, source-backed operational data.
 
 Done when: the compatibility ETOPS fields are no longer needed by the front end.
 
-Outcome: Promoted the existing ETP, EENT, and EEXP extraction results into the normalized parsed contract and existing typed ETOPS DTOs. The normalized builder now validates coordinates, retains point ordering, keeps alternate airport order and scenario text, carries explicit applicability without inferring ETOPS approval, and omits malformed optional points without failing the release. Cached page data reconstructs ETOPS exclusively from `flight_plan_data.etops`; the page model and view model no longer consume the flat ETOPS compatibility fields. Jepp PD-Pro retains the existing airport, coordinate, scenario, EENT, and EEXP display strings, while the serializer continues emitting flat keys only for compatibility consumers outside the front end.
+Outcome: Promoted the existing ETP, EENT, and EEXP extraction results into the normalized parsed contract and existing typed ETOPS DTOs. The normalized builder validates coordinates, retains point ordering, keeps alternate airport order and scenario text, carries explicit applicability without inferring ETOPS approval, and omits malformed optional points without failing the release. Exact repeated rows from duplicated PDF sections are collapsed while distinct points with duplicate labels remain in source order. Cached page data reconstructs ETOPS exclusively from `flight_plan_data.etops`; the page model and view model no longer consume the flat ETOPS compatibility fields. The dedicated responsive ETOPS task view separates applicability, boundary points, equal-time points, alternate pairings, and current source scenario text, labels unavailable diversion/critical-fuel/remark details honestly, protects source evidence, and states that no approval, suitability, compliance, or dispatchability determination is made. Jepp PD-Pro retains its existing displayed meaning, while the serializer continues emitting flat keys only for compatibility consumers outside the front end.
 
-Verification: Pint passed. The 41 focused DTO, extraction, builder, serializer, page-data, and view-model tests passed with 350 assertions. The focused Livewire ETOPS display-parity and missing-data tests passed, and the maintenance shared-context regression now asserts its established `1,000 LB` label with the displayed `216.8` value. Focused Larastan analysis of `BuildFlightPlanData` passed with zero errors after aligning its ETOPS loop with the declared parsed-data shape.
+Verification: Pint passed. The 55 focused extractor, builder, page-data, and view-model tests passed with 336 assertions, covering no ETOPS data, partial entry-only data, multiple points, duplicate labels, exact repeated rows, malformed coordinates, ordering, typed reconstruction, and legacy display parity. The 3 focused Livewire ETOPS task, absent-state, and Jepp parity tests passed with 81 assertions. Focused Larastan analysis of the modified extractor and view model passed with zero errors.
 
 Commit message: `feat: add etops task`
 
@@ -320,6 +320,10 @@ The following changes were identified as a potential fix for the live page to re
 
 *Note: The code fixes and findings above were identified on a live page in DevTools. When applying them to your codebase, please adapt them to your project's specific technical stack (e.g., Tailwind CSS classes, CSS modules, framework components) rather than applying them as literal CSS overrides.*
 
+# Create a way to turn tasks on or off
+- in ENV and config files
+- in coordination with enum
+- 
 -------------------------------------------------------
 
 **Completed**

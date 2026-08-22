@@ -119,6 +119,32 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::MaintenanceLog));
     }
 
+    public function test_it_keeps_a_partial_entry_only_etops_section_available(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['etops'] = [
+            'sectionPresent' => true,
+            'applicability' => 'unknown',
+            'entryPoint' => [
+                'label' => 'EENT',
+                'coordinate' => ['latitude' => 'N40 31.1', 'longitude' => 'W131 22.6'],
+                'sequence' => 0,
+            ],
+            'exitPoint' => null,
+            'equalTimePoints' => [],
+            'alternates' => [],
+            'scenarios' => [],
+        ];
+
+        $pageData = (new BuildFlightPlanPageData)->handle($payload);
+
+        $this->assertNotNull($pageData);
+        $this->assertSame([], $pageData->flightPlan->etops?->equalTimePoints);
+        $this->assertNotNull($pageData->flightPlan->etops->entryPoint);
+        $this->assertTrue($pageData->hasEtopsData());
+        $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::Etops));
+    }
+
     public function test_it_distinguishes_an_unsupported_envelope_result_from_an_absent_section(): void
     {
         $payload = $this->resultPayload();

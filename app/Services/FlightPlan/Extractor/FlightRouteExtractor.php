@@ -196,6 +196,7 @@ class FlightRouteExtractor
         }
 
         $etps = [];
+        $seenEtps = [];
 
         foreach ($matches as $match) {
             $coordinates = preg_replace('/\s+/', ' ', trim($match[3]));
@@ -204,7 +205,15 @@ class FlightRouteExtractor
                 continue;
             }
 
-            $etps[$match[1]] = [
+            $signature = implode('|', [$match[1], $match[2], $coordinates, $match[4]]);
+
+            if (isset($seenEtps[$signature])) {
+                continue;
+            }
+
+            $seenEtps[$signature] = true;
+
+            $etps[] = [
                 'label' => $match[1],
                 'airports' => $match[2],
                 'coordinates' => $coordinates,
@@ -212,7 +221,7 @@ class FlightRouteExtractor
             ];
         }
 
-        return array_values($etps);
+        return $etps;
     }
 
     private function extractMarkerCoordinates(string $text, string $marker): ?string

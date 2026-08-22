@@ -125,6 +125,7 @@ TEXT);
 KALITTA AIR RELEASE TIME 2154     ********************************************************************* BASED ON FORECAST WINDS:          PLANNED TO DEPT RUNWAY: 25R   SUMMR2 SCTRR          PLANNED TO ARRV RUNWAY: 33R   GUKDO GUKD2E.     ******************************************************************     * REFER TO FSA PRIOR TO DEPARTURE
 ETOPS 60/180ETP1  KSFO-PACD  N45  43.7  W143  53.1  ALL ENGINE/DECOMPRESSION/LRC TIME TO ETP: 03:09
 ETP1  KSFO-PACD  N46 01.0  W144 35.5  1EO/DRIFTDOWN/84M/320KIAS
+ETP1  PACD-RJSS  N47 02.0  W145 36.5  ALL ENGINE/DECOMPRESSION/LRC
 ETP2  PACD-RJSS  N51  48.6  E164  12.8  ALL ENGINE/DECOMPRESSION/LRC TIME TO ETP: 07:42
 N40 31.1 W131 22.6(EENT) 0238 288 340
 N45 19.3 E151 36.4(EEXP)
@@ -141,6 +142,12 @@ TEXT);
                 'label' => 'ETP1',
                 'airports' => 'KSFO-PACD',
                 'coordinates' => 'N45 43.7 W143 53.1',
+                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
+            ],
+            [
+                'label' => 'ETP1',
+                'airports' => 'PACD-RJSS',
+                'coordinates' => 'N47 02.0 W145 36.5',
                 'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
             ],
             [
