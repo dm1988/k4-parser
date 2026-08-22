@@ -14,6 +14,7 @@ use App\Services\FlightPlan\Extractor\FlightPlanTextExtractor;
 use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use App\Services\FlightPlan\Extractor\FlightScheduleExtractor;
 use App\Services\FlightPlan\Extractor\MaintenanceLogExtractor;
+use App\Services\FlightPlan\Extractor\WaypointExtractor;
 use App\Services\Schedule\Extractor\CrewListParser;
 use Illuminate\Contracts\Cache\Repository;
 use Smalot\PdfParser\Parser;
@@ -63,6 +64,16 @@ class ExtractFlightPlanDataTest extends TestCase
             'data' => ['section_present' => true, 'acars_init_date' => '11'],
             'source_fragments' => ['flight_init_takeoff_landing_report' => 'private ACARS init evidence'],
         ]);
+        $waypointExtractor = $this->createMock(WaypointExtractor::class);
+        $waypointExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
+            'data' => [[
+                'coordinate' => 'N51 36.5 E012 11.5',
+                'identifier' => 'DP550',
+                'time' => '002',
+                'total_time' => '00.03',
+            ]],
+            'source_fragments' => ['computed_flight_plan_waypoints' => 'bounded waypoint evidence'],
+        ]);
 
         $parsed = (new ExtractFlightPlanData(
             $textExtractor,
@@ -74,6 +85,7 @@ class ExtractFlightPlanDataTest extends TestCase
             $maintenanceLogExtractor,
             $envelopeExtractor,
             $flightInitExtractor,
+            $waypointExtractor,
         ))->extractFile('/tmp/release.pdf');
 
         $this->assertInstanceOf(ParsedFlightPlanData::class, $parsed);
@@ -88,6 +100,8 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame('private TLR evidence', $parsed->sourceFragments['envelope_takeoff_landing_report']);
         $this->assertSame('11', $parsed->flightInit['acars_init_date']);
         $this->assertSame('private ACARS init evidence', $parsed->sourceFragments['flight_init_takeoff_landing_report']);
+        $this->assertSame('DP550', $parsed->waypoints[0]['identifier']);
+        $this->assertSame('bounded waypoint evidence', $parsed->sourceFragments['computed_flight_plan_waypoints']);
         $this->assertSame('FL 340', $parsed->legacy['initial_altitude']);
     }
 
@@ -112,6 +126,7 @@ class ExtractFlightPlanDataTest extends TestCase
             new MaintenanceLogExtractor,
             new EnvelopeExtractor,
             new FlightInitExtractor,
+            new WaypointExtractor,
         );
 
         $parsed = $extractor->extractFile($samplePath);

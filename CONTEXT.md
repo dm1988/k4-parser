@@ -64,6 +64,8 @@ This feature has its own master flag and entitlement gate. Treat it as distinct 
 - **ACARS INIT DATE:** — The exact UTC date when Takeoff and Landing Performance Report (TLR) calculations were computed and initialized via datalink.
 - **Recall Number:** **Release Index / Flight Plan Amendment Number / Dispatch Release Revision** — The sequential version number assigned by Flight Dispatch to pull down and verify a specific iteration of the operational flight plan (OFP).
 - **Envelope** - The physical file envenlope that gets mailed to company HQ. Documents included are flight release, fuel slips, w&b, notoc, security sheets. Flight info must be written on the face of the envelope.
+- **Route** - The complete defined trajectory or flight path connecting an origin to a destination. Composed of SIDs, airways (Victor/Jet routes), Area Navigation (RNAV) legs, and STARs.
+- **Waypoint** - A specific 2D/3D geographical coordinate point (latitude/longitude) used for navigation. Identified by a 5-letter name (e.g., KORD, FIXIT), RNAV fix, VOR/NDB, or lat/long coordinates. Serves as a reporting point, turn point, altitude/speed constraint marker, or leg transition.
 
 Prefer these established terms in UI copy, class names, tests, and documentation. Do not introduce near-synonyms when an existing term is accurate.
 

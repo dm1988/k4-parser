@@ -4,10 +4,13 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 ## Setup needed prior to creating new tasks and views
 
-### Waypoints extraction service
+### Completed: Waypoints extraction service
 
-- Verify no existing service exists
-- Extract waypoints from the computed flight plan section of a flight release
+Outcome: Confirmed no existing waypoint extractor and added a focused computed-flight-plan service with a sanitized fixture. It requires the paired table headers, preserves source order and duplicate identifiers, and extracts canonical coordinates, identifiers, optional source `TIME`, and optional source `T/TME` values without stripping leading zeroes or inventing units. Coordinate-backed FIR crossing rows remain represented with a missing leg time, coordinate-less markers such as TOC are not assigned a nearby coordinate, and bounded source evidence contains only the extracted waypoint rows. The normalized extraction orchestrator now invokes the service once per release and retains its raw normalized records and private evidence in `ParsedFlightPlanData` for later DTO mapping.
+
+Verification: All 5 focused waypoint extractor tests and both normalized extraction-orchestrator tests passed with 66 assertions, covering the representative 10-record table, missing headers, duplicate identifiers, leading zeroes, FIR placeholders, TOC coordinate isolation, CRLF, horizontal whitespace, bounded evidence, single-pass invocation, and parsed-data retention.
+
+Commit message: `feat: add waypoint extraction service`
 
 ### Completed: ETOPS DTO foundation
 
@@ -204,11 +207,114 @@ This view repeats the confirmed source result. It does not calculate an envelope
 - Create distinction between Alternate airport burn and Reserve fuel calculation. 
 
 # Action oriented labels on Overview
+- Flight and aircraft card footer: ACARS Initialize Flight ->
+- Route card: Program FMS ->
+- Schedule and slots -> review slot times
+- Fuel card: Score fuel ->
+- ETOPs evidence card: Review ETOPs ->
+
+# Create maintenance overview card
+- Show's MEL status
+- Action oriented footer: Review MELs ->
 
 # Large upload button
 - Similar to extract schedule upload button
 
 # Move 2 maintenance DTOs into Maintenance DTO subfolder
+
+# ACARS INIT Date Not confirmed
+- Investigate
+- 
+# GENDEC
+- Define General Declaration in CONTEXT.md
+- **General Declaration / GENDEC** - A General Declaration (GENDEC) is an official international aviation and customs document required by border control, immigration, custom, and public health authorities when an aircraft arrives in or departs from a foreign country.
+- Create service to determine gendec availablity
+- Search for General Declaration page
+- Sample text:
+General Declaration
+(Outward/Inward)
+Owner or Operator:
+K4
+Marks of Nationality and Registration:
+N774CK
+Departure from:
+Los Angeles
+United States
+Flight No:
+K4256
+Date:
+24May2026
+Arrival At:
+
+## UI Redesign: Flight Plan Brief Header Component
+
+**Context**
+Redesign of a data-heavy flight information section (originally a standard description list) into a visual "Flight Strip" for a more intuitive dashboard experience.
+
+**Diagnostics**
+The original layout utilized a Tailwind-styled `dl` (description list) with the following technical characteristics:
+*   **Structure:** A grid-based layout (`grid-cols-2` scaling to `xl:grid-cols-6`).
+*   **Styling:** Contained within a `section` element featuring `bg-[#F8F9FA]` (light) or `bg-slate-800/70` (dark) with a subtle border and shadow.
+*   **Data Points:** Flight callsign, date, aircraft type, tail number, route (origin/destination), and UTC timestamps (ETD/ETA).
+
+**Visual Layout Improvements**
+The information was restructured to prioritize aviation-specific hierarchy:
+
+| Feature                 | Change Implementation                                                                  |
+| :---------------------- | :------------------------------------------------------------------------------------- |
+| **Callsign & Aircraft** | Grouped with a flight icon; increased font size to `text-lg`.                          |
+| **Route Visualization** | Implemented a horizontal journey flow (Origin → Destination) using a progress line.    |
+| **Temporal Data**       | Paired ETD/ETA directly with their respective airport codes; centered flight duration. |
+| **Status Indication**   | Added a color-coded status badge (`emerald-500/10`) for immediate visibility.          |
+
+**Proposed Code Fixes**
+The following changes were identified as a potential fix for the live page to replace the rigid grid with a flexible, visual container:
+
+
+`````html
+<!-- Proposed replacement for the internal container -->
+<div class="flex flex-col md:flex-row items-center justify-between gap-6 p-4">
+  <!-- Flight Identity -->
+  <div class="flex items-center gap-4">
+    <div class="h-12 w-12 rounded-full bg-blue-600/10 flex items-center justify-center text-blue-600">
+      <!-- SVG Icon -->
+    </div>
+    <div>
+      <h3 class="text-lg font-bold text-slate-900 dark:text-white">${callsign}</h3>
+      <p class="text-xs font-medium text-slate-500">${aircraft} • ${tail}</p>
+    </div>
+  </div>
+
+  <!-- Journey Visualization -->
+  <div class="flex-1 flex items-center justify-center gap-4 max-w-md w-full">
+    <div class="text-right">
+      <div class="text-xl font-black">${origin}</div>
+      <div class="text-xs font-bold text-blue-600 uppercase">${etd} UTC</div>
+    </div>
+    
+    <div class="flex-1 flex flex-col items-center gap-1">
+      <div class="text-[10px] font-bold text-slate-400">${duration}</div>
+      <div class="w-full h-px bg-slate-200 relative">
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full border-2 bg-white"></div>
+      </div>
+      <div class="text-[10px] font-bold text-slate-400">${date}</div>
+    </div>
+
+    <div class="text-left">
+      <div class="text-xl font-black">${destination}</div>
+      <div class="text-xs font-bold text-blue-600 uppercase">${eta} UTC</div>
+    </div>
+  </div>
+</div>
+`````
+
+
+**Actionable Recommendations**
+*   **Refine Hierarchy:** Use `font-black` for airport codes and `font-mono` for callsigns to match industry standards.
+*   **Enhance Aesthetics:** Apply `backdrop-filter: blur(8px)` and reduce the container background opacity to integrate the component better into modern dark/light mode UI.
+*   **Data Density:** Remove repetitive labels like "FLIGHT" or "ROUTE" in favor of visual groupings to reduce cognitive load.
+
+*Note: The code fixes and findings above were identified on a live page in DevTools. When applying them to your codebase, please adapt them to your project's specific technical stack (e.g., Tailwind CSS classes, CSS modules, framework components) rather than applying them as literal CSS overrides.*
 
 -------------------------------------------------------
 

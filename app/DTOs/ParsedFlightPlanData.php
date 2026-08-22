@@ -15,6 +15,7 @@ final readonly class ParsedFlightPlanData
      * @param  array{section_present?: bool, acars_init_date?: ?string}  $flightInit
      * @param  array<string, string|list<array{direction: string, airport: string, time: string}>>  $sourceFragments
      * @param  array<string, mixed>  $legacy
+     * @param  list<array{coordinate: string, identifier: string, time: ?string, total_time: ?string}>  $waypoints
      */
     public function __construct(
         public array $identity,
@@ -27,5 +28,6 @@ final readonly class ParsedFlightPlanData
         public array $flightInit = [],
         public array $sourceFragments = [],
         public array $legacy = [],
+        public array $waypoints = [],
     ) {}
 }
