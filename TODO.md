@@ -26,19 +26,19 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 ### Navigation map
 
-| Order | Task | Suggested icon | Initial availability |
-| ---: | --- | --- | --- |
-| 1 | Overview | `home` | Core data ready |
-| 2 | Jepp PD-Pro | `paper-airplane` | Requires confirmed fixtures |
-| 3 | Maintenance Log | `clipboard-document-list` | Requires confirmed fixtures |
-| 4 | Envelope | `document-chart-bar` | Requires confirmed fixtures |
-| 5 | Flight Init | `bolt` | Core data ready |
-| 6 | FMS | `calculator` | Core route data ready |
-| 7 | Slot Times | `clock` | Basic approved slots ready |
-| 8 | Fuel Score | `gauge` or closest Heroicon | Release summary ready; waypoint score pending |
-| 9 | ETOPS | `globe-alt` | Basic critical points ready; typed model pending |
-| 10 | Weather | `cloud` | Requires confirmed fixtures |
-| 11 | Weight & Balance | `scale` | Requires confirmed fixtures |
+| Order | Task             | Suggested icon              | Initial availability                             |
+| ----: | ---------------- | --------------------------- | ------------------------------------------------ |
+|     1 | Overview         | `home`                      | Core data ready                                  |
+|     2 | Jepp PD-Pro      | `paper-airplane`            | Requires confirmed fixtures                      |
+|     3 | Maintenance Log  | `clipboard-document-list`   | Requires confirmed fixtures                      |
+|     4 | Envelope         | `document-chart-bar`        | Requires confirmed fixtures                      |
+|     5 | Flight Init      | `bolt`                      | Core data ready                                  |
+|     6 | FMS              | `calculator`                | Core route data ready                            |
+|     7 | Slot Times       | `clock`                     | Basic approved slots ready                       |
+|     8 | Fuel Score       | `gauge` or closest Heroicon | Release summary ready; waypoint score pending    |
+|     9 | ETOPS            | `globe-alt`                 | Basic critical points ready; typed model pending |
+|    10 | Weather          | `cloud`                     | Requires confirmed fixtures                      |
+|    11 | Weight & Balance | `scale`                     | Requires confirmed fixtures                      |
 
 Icons  use hero icons returned in FlightPlanTask enum
 
@@ -144,12 +144,16 @@ Operational-format follow-up: The extractor now supports flattened release secti
 
 The responsive Maintenance Log task presents confirmed flight context, crew, item/type/status counts, and source-listed descriptions, DMI references, limitations, and procedures. It remains available from the shared normalized flight context even without a dedicated maintenance-item section or a maintenance object in an older cached payload; the item area reports that narrower absence without hiding confirmed fields. An explicitly empty log retains its dedicated no-items state, and the view includes a clear warning that it makes no airworthiness or dispatchability determination. The Overview maintenance indicator continues to describe dedicated section presence separately from task availability.
 
+Presentation follow-up: The confirmed crew section now appears above the summary, which is labeled `MEL / CDL`, followed by the airworthiness warning and MEL/CDL/DMI item list. The first four log-sheet context fields are ordered Date, Aircraft type, Aircraft number, and Trip number; the aircraft number continues to reuse the confirmed shared tail-number value.
+
 Verification: All 56 focused extractor, DTO, builder, serializer, page-data, view-model, and Livewire tests passed with 600 assertions. Pint passed, the production Vite build completed successfully, and the final Larastan analysis reported no errors. Follow-up: removed redundant nullsafe maintenance-item access after non-null assertions; both focused builder suites and targeted Larastan analysis pass. The context-availability correction passed 5 maintenance-focused tests with 64 assertions, all 6 page-data tests with 40 assertions, all 10 view-model tests with 95 assertions, Pint, the production Vite build, and targeted Larastan analysis.
+
+The presentation-order follow-up passed its focused Livewire test with 34 assertions, Pint, the production Vite build, and Larastan with no errors.
 
 Commit message: `feat: add maintenance log task`
 
-## 6 — Current focus: Implement Envelope
-Extracted fields:
+## 6 — Completed: Implement Envelope
+Extracted shared fields:
 
 Trip Number
 Tail Number: N774CK
@@ -169,7 +173,37 @@ Goal: Present confirmed performance-envelope constraints with clear provenance.
 
 Done when: the view is a faithful presentation of a confirmed envelope result, not an independent performance calculator.
 
+Outcome: Identified the supported Envelope source as the release's Takeoff and Landing Report and added sanitized fixtures for multiline and flattened selected-result rows, negative temperature, intersection-qualified runways, alphanumeric report sequences, explicit no-warning results, missing limits, duplicate agreement, and conflicting reports. A focused extractor now normalizes the selected TLR assumptions, source limits, planned takeoff result, V-speeds, and source warnings into a typed Envelope DTO with explicit pounds, knots, Celsius, and inHg context; TLR weight values are normalized from their source hundreds-of-pounds scale. Conflicting report results fail closed, missing limits remain absent, and raw TLR evidence stays only in transient source fragments rather than the cached Livewire payload.
+
+Frontend follow-up: The Envelope task retains shared flight details, crew, and the private-evidence notice, but no longer presents TLR provenance, inputs, limits, calculated performance values, warnings, or the performance disclaimer. The complete extraction, typed DTO, serialization, reconstruction, and view-model framework remains available for future performance UI work. Older or incomplete cached results continue to report `not present in this release` instead of `not supported`.
+
+Shared-crew follow-up: Added a sanitized ID-first flight-release manifest fixture and extended the existing typed crew-position enum for PIC, SIC/FO, additional captain, IRP, MX, and ACM source roles. The shared crew extractor now recognizes manifests without a `CREW LIST` heading, parses multiple crew records from one line, ignores role-only additional-captain and ACM placeholders, and returns all six confirmed named crew members to Maintenance Log and Envelope while keeping employee identifiers out of cached crew data.
+
+Crew-name boundary follow-up: A flattened trailing `ADDNTL CAPT` heading is removed from the preceding crew name, so `GONZALEZ D ADDNTL CAPT` resolves to `GONZALEZ D`. Genuine named additional-captain records and following ID-first crew records remain intact.
+
+Verification: All 59 focused extractor, DTO, aggregate-builder, serializer, page-data, view-model, and Livewire tests passed with 662 assertions. Pint passed, the production Vite build completed successfully, and the final Larastan analysis reported no errors.
+
+Shared-crew verification: All 12 focused parser, crew-extractor, and aggregate-extractor tests passed with 111 assertions. The focused Maintenance Log and Envelope Livewire tests passed with 52 and 54 assertions respectively. Pint passed, and the final Larastan analysis reported no errors.
+
+Crew-name boundary verification: All 11 focused crew parser and flight-release extractor tests passed with 75 assertions, including end-of-line, fully flattened next-record, and genuine additional-captain cases. Pint passed, and the final Larastan analysis reported no errors.
+
+Test-analysis follow-up: Split the Maintenance Log and Envelope assertion chains before Livewire refresh calls so Larastan preserves the component test type instead of inferring an HTTP test response.
+
+Test-analysis verification: The focused Maintenance Log and Envelope Livewire tests passed with 52 and 54 assertions respectively. Pint passed, and targeted Larastan analysis of `FlightPlanBriefTest.php` reported no errors.
+
 Commit message: `feat: add flight envelope task`
+
+Shared-crew follow-up commit message: `fix: parse flight release crew manifest`
+
+Crew-name boundary follow-up commit message: `fix: trim crew manifest heading from name`
+
+Test-analysis follow-up commit message: `test: preserve Livewire type across refresh`
+
+### Follow up - Organize crew list above MEL / CDL list
+1. Format date mm dd yy i.e. 01 27 26. Label it as MO DY YR
+2. Format ramp fuel in thousands i.e. 225.5 with appropriate label
+3. Provide copy buttons for MEL / CDL numbers
+4. Field order should be date, Aircraft type, aircraft number, trip number
 
 ## 7 — Implement Flight Init
 
@@ -197,6 +231,7 @@ Should return 11
 Done when: supported initialization values can be reviewed without returning to the PDF.
 
 Commit message: `feat: add flight init task`
+
 
 ## 8 — Implement FMS
 Extracted Fields
@@ -327,3 +362,42 @@ View results on PDF upload when parsing completes
 - Use counter badge
 - Show task at top if items exist
 - Have task at bottom if 0
+
+## Add task: Takeoff and Landing Report
+
+Source inputs:
+
+Assumptions
+Airport - KDFW
+Planned runway  - 36L
+Outside air temperature - 23.0 °C
+Wind (source code)  - 077M07
+QNH - 30.18 inHg
+Flap    - 15
+Anti-ice    - Yes
+Source limits
+
+Permitted Calculations
+Maximum runway takeoff weight
+820,500 LB
+Maximum field takeoff weight
+772,400 LB
+Source-calculated values
+
+Calculated result
+Planned takeoff weight
+577,300 LB
+V1
+71 kt - Need to add 100 kts
+VR
+76 kt - Need to add 100 kts
+V2
+83 kt - Need to add 100 kts
+Source remarks
+
+**Warnings**
+No supported source warnings were listed with the selected result.
+
+No independent performance determination
+
+This view repeats the confirmed source result. It does not calculate an envelope or label the condition safe; review the controlling performance report.

@@ -287,6 +287,8 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeHtml('wire:key="flight-plan-task-panel-overview"')
             ->assertSeeText('CKS241')
             ->assertSeeText('May 25, 2026')
+            ->assertSeeText('MO DY YR')
+            ->assertSeeText('05 25 26')
             ->assertSeeText('B777-200F')
             ->assertSeeText('Tail N774CK')
             ->assertSeeText('ETD (UTC)')
@@ -402,11 +404,14 @@ class FlightPlanBriefTest extends TestCase
                         'final_reserve' => null,
                         'estimated_landing' => null,
                     ],
-                    crewMembers: [[
-                        'name' => 'Alex Morgan',
-                        'role' => 'CP',
-                        'base' => 'YIP',
-                    ]],
+                    crewMembers: [
+                        ['name' => 'MORGAN A', 'role' => 'PIC', 'base' => null],
+                        ['name' => 'RIVERA D', 'role' => 'SIC/FO', 'base' => null],
+                        ['name' => 'FOSTER B', 'role' => 'IRP', 'base' => null],
+                        ['name' => 'MCCULLOUGH M', 'role' => 'IRP', 'base' => null],
+                        ['name' => 'BENNETT B', 'role' => 'MX', 'base' => null],
+                        ['name' => 'GARCIA T', 'role' => 'LM', 'base' => null],
+                    ],
                     maintenance: [
                         'section_present' => true,
                         'etops_applicability' => 'confirmed_etops',
@@ -428,6 +433,15 @@ class FlightPlanBriefTest extends TestCase
                                 'status' => 'DEFERRED',
                                 'limitations' => 'Source-listed operational limitation.',
                                 'procedures' => 'Source-listed operations procedure.',
+                            ],
+                            [
+                                'type' => 'DMI',
+                                'number' => 'DMI-2099',
+                                'description' => 'Source-listed inspection item.',
+                                'reference' => null,
+                                'status' => null,
+                                'limitations' => null,
+                                'procedures' => null,
                             ],
                         ],
                     ],
@@ -452,6 +466,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeHtml('wire:key="flight-plan-task-panel-maintenance_log"')
             ->assertSeeText('Flight details')
             ->assertSeeText('May 25, 2026')
+            ->assertSeeText('05 25 26')
             ->assertSeeText('B777-200F')
             ->assertSeeText('N774CK')
             ->assertSeeText('109546')
@@ -459,20 +474,53 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('KMIA')
             ->assertSeeText('ETOPS flight')
             ->assertSeeText('Yes')
-            ->assertSeeText('216,800 LB')
-            ->assertSeeText('2 source-listed items')
-            ->assertSeeText('1 MEL · 1 CDL')
+            ->assertSeeText('Estimated ramp fuel (1,000 LB)')
+            ->assertSeeText('216.8')
+            ->assertSeeInOrder([
+                'MO DY YR',
+                'Aircraft type',
+                'Aircraft number',
+                'Trip number',
+            ])
+            ->assertSeeText('3 source-listed items')
+            ->assertSeeText('1 MEL · 1 CDL · 1 DMI')
             ->assertSeeText('1 OPEN · 1 DEFERRED')
             ->assertSeeText('28-22-01')
             ->assertSeeText('1042')
+            ->assertSeeHtml('data-copy-target="maintenance-item-number-1"')
+            ->assertSeeHtml('data-copy-label="MEL 28-22-01 number"')
+            ->assertSeeHtml('data-copy-target="maintenance-item-number-2"')
+            ->assertSeeHtml('data-copy-label="CDL 52-10-02 number"')
+            ->assertSeeText('DMI-2099')
+            ->assertDontSeeHtml('data-copy-target="maintenance-item-number-3"')
+            ->assertDontSeeHtml('data-copy-label="DMI DMI-2099 number"')
             ->assertSeeText('Forward cargo door fairing segment missing.')
             ->assertSeeText('Source-listed operational limitation.')
             ->assertSeeText('Source-listed operations procedure.')
-            ->assertSeeText('Alex Morgan')
-            ->assertSeeText('CP · YIP')
+            ->assertSeeText('MORGAN A')
+            ->assertSeeText('PIC')
+            ->assertSeeText('RIVERA D')
+            ->assertSeeText('SIC/FO')
+            ->assertSeeText('FOSTER B')
+            ->assertSeeText('MCCULLOUGH M')
+            ->assertSeeText('IRP')
+            ->assertSeeText('BENNETT B')
+            ->assertSeeText('MX')
+            ->assertSeeText('GARCIA T')
+            ->assertSeeText('LM')
+            ->assertSeeText('MEL / CDL')
+            ->assertSeeInOrder([
+                'Crew list',
+                'Items',
+                'Source-listed items',
+                '28-22-01',
+            ])
+            ->assertDontSeeText('Source summary')
             ->assertSeeText('No airworthiness determination')
             ->assertSeeText('does not determine dispatchability')
-            ->assertDontSeeText('Approved for dispatch')
+            ->assertDontSeeText('Approved for dispatch');
+
+        $component
             ->call('$refresh')
             ->assertSet('activeTask', FlightPlanTask::MaintenanceLog->value)
             ->assertSeeText('28-22-01');
@@ -510,6 +558,153 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('ETOPS flight')
             ->assertSeeText('No')
             ->assertDontSeeText('Maintenance Log data was not found');
+    }
+
+    public function test_envelope_hides_the_confirmed_tlr_presentation_and_keeps_shared_context_without_reparsing(): void
+    {
+        Storage::fake('user_flight_releases');
+        $user = User::factory()->admin()->create();
+
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')
+                ->andReturn($this->parsedFlightPlan(
+                    identity: [
+                        'flight_number' => 'CKS256',
+                        'trip_number' => '109546',
+                        'recall_number' => null,
+                        'aircraft_type' => 'B777-200F',
+                        'tail_number' => 'N774CK',
+                        'flight_date' => '2026-05-25',
+                        'release_revision' => null,
+                    ],
+                    crewMembers: [
+                        ['name' => 'MORGAN A', 'role' => 'PIC', 'base' => null],
+                        ['name' => 'RIVERA D', 'role' => 'SIC/FO', 'base' => null],
+                        ['name' => 'FOSTER B', 'role' => 'IRP', 'base' => null],
+                        ['name' => 'MCCULLOUGH M', 'role' => 'IRP', 'base' => null],
+                        ['name' => 'BENNETT B', 'role' => 'MX', 'base' => null],
+                        ['name' => 'GARCIA T', 'role' => 'LM', 'base' => null],
+                    ],
+                    envelope: [
+                        'section_present' => true,
+                        'source_type' => 'takeoff_landing_report',
+                        'report_reference' => 'TLR-30 SEQ-48273190 25MAY26 0115Z',
+                        'airport' => 'KLAX',
+                        'planned_runway' => '25R',
+                        'outside_air_temperature_celsius' => 18.0,
+                        'wind' => '250M08',
+                        'qnh_inches_mercury' => 29.92,
+                        'maximum_runway_takeoff_weight' => ['amount' => 768000, 'unit' => 'lb'],
+                        'flap_setting' => '15',
+                        'anti_ice' => false,
+                        'v1_knots' => 151,
+                        'rotate_knots' => 158,
+                        'v2_knots' => 164,
+                        'planned_takeoff_weight' => ['amount' => 612400, 'unit' => 'lb'],
+                        'maximum_field_takeoff_weight' => ['amount' => 766000, 'unit' => 'lb'],
+                        'source_warnings' => ['32-41-03 - SOURCE BRAKE MESSAGE'],
+                    ],
+                ));
+        });
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'formatForIcaoDisplay')
+                ->with('DCT Q139 TEST')
+                ->andReturn('DCT Q139 TEST');
+        });
+
+        $component = Livewire::actingAs($user)
+            ->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->call('extractFlightPlan');
+
+        $flightPlanKey = $component->get('flightPlanKey');
+
+        $component
+            ->call('selectTask', FlightPlanTask::Envelope->value)
+            ->assertSet('activeTask', FlightPlanTask::Envelope->value)
+            ->assertSeeHtml('wire:key="flight-plan-task-panel-envelope"')
+            ->assertSeeText('Flight details')
+            ->assertSeeText('109546')
+            ->assertSeeText('CKS256')
+            ->assertSeeText('B777-200F')
+            ->assertSeeText('N774CK')
+            ->assertSeeText('MORGAN A')
+            ->assertSeeText('PIC')
+            ->assertSeeText('RIVERA D')
+            ->assertSeeText('SIC/FO')
+            ->assertSeeText('FOSTER B')
+            ->assertSeeText('MCCULLOUGH M')
+            ->assertSeeText('IRP')
+            ->assertSeeText('BENNETT B')
+            ->assertSeeText('MX')
+            ->assertSeeText('GARCIA T')
+            ->assertSeeText('LM')
+            ->assertSeeText('Envelope source fragments remain private')
+            ->assertDontSeeText('Confirmed provenance')
+            ->assertDontSeeText('Takeoff and Landing Report')
+            ->assertDontSeeText('TLR-30 SEQ-48273190 25MAY26 0115Z')
+            ->assertDontSeeText('Source section')
+            ->assertDontSeeText('Report reference')
+            ->assertDontSeeText('Source inputs')
+            ->assertDontSeeText('Assumptions')
+            ->assertDontSeeText('Planned runway')
+            ->assertDontSeeText('Outside air temperature')
+            ->assertDontSeeText('Wind (source code)')
+            ->assertDontSeeText('QNH')
+            ->assertDontSeeText('Flap')
+            ->assertDontSeeText('Anti-ice')
+            ->assertDontSeeText('Source limits')
+            ->assertDontSeeText('Permitted envelope')
+            ->assertDontSeeText('Maximum runway takeoff weight')
+            ->assertDontSeeText('Maximum field takeoff weight')
+            ->assertDontSeeText('Source-calculated values')
+            ->assertDontSeeText('Calculated result')
+            ->assertDontSeeText('Planned takeoff weight')
+            ->assertDontSeeText('Warnings')
+            ->assertDontSeeText('612,400 LB')
+            ->assertDontSeeText('768,000 LB')
+            ->assertDontSeeText('151 kt')
+            ->assertDontSeeText('32-41-03 - SOURCE BRAKE MESSAGE')
+            ->assertDontSeeText('Source remarks')
+            ->assertDontSeeText('No supported source warnings were listed')
+            ->assertDontSeeText('No independent performance determination')
+            ->assertDontSeeText('This view repeats the confirmed source result');
+
+        $component
+            ->call('$refresh')
+            ->assertSet('activeTask', FlightPlanTask::Envelope->value)
+            ->assertSeeText('MORGAN A')
+            ->assertDontSeeText('612,400 LB');
+
+        $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
+    }
+
+    public function test_envelope_is_not_present_when_no_supported_tlr_result_was_confirmed(): void
+    {
+        Storage::fake('user_flight_releases');
+
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')
+                ->andReturn($this->parsedFlightPlan(envelope: [
+                    'section_present' => true,
+                    'source_type' => 'takeoff_landing_report',
+                    'planned_takeoff_weight' => null,
+                ]));
+        });
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'formatForIcaoDisplay')
+                ->with('DCT Q139 TEST')
+                ->andReturn('DCT Q139 TEST');
+        });
+
+        Livewire::actingAs(User::factory()->admin()->create())
+            ->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->call('extractFlightPlan')
+            ->call('selectTask', FlightPlanTask::Envelope->value)
+            ->assertSeeText('Not present in this release')
+            ->assertSeeText('Envelope data was not found')
+            ->assertDontSeeText('Not supported yet');
     }
 
     public function test_maintenance_log_exposes_shared_context_when_the_item_section_is_absent(): void
@@ -983,6 +1178,7 @@ class FlightPlanBriefTest extends TestCase
         ?array $fuel = null,
         ?array $crewMembers = null,
         ?array $maintenance = null,
+        ?array $envelope = null,
     ): ParsedFlightPlanData {
         $legacy ??= $this->flightPlan();
 
@@ -1026,6 +1222,7 @@ class FlightPlanBriefTest extends TestCase
                 'etops_applicability' => 'unknown',
                 'items' => [],
             ],
+            envelope: $envelope ?? [],
             legacy: $legacy,
         );
     }

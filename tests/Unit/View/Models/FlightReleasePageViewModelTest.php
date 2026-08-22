@@ -41,12 +41,17 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertNull($viewModel->overviewSlotSummary());
         $this->assertNull($viewModel->overviewEtopsSummary());
         $this->assertSame('Not confirmed', $viewModel->maintenanceEtopsLabel());
+        $this->assertNull($viewModel->maintenanceDate());
         $this->assertNull($viewModel->maintenanceRampFuel());
+        $this->assertSame('Estimated ramp fuel', $viewModel->maintenanceRampFuelLabel());
         $this->assertSame('0 source-listed items', $viewModel->maintenanceItemCountLabel());
         $this->assertNull($viewModel->maintenanceTypeSummary());
         $this->assertNull($viewModel->maintenanceStatusSummary());
         $this->assertSame([], $viewModel->maintenanceItems());
         $this->assertSame([], $viewModel->crewMembers());
+        $this->assertSame('Confirmed release section', $viewModel->envelopeSourceLabel());
+        $this->assertNull($viewModel->envelopePlannedTakeoffWeight());
+        $this->assertSame([], $viewModel->envelopeWarnings());
     }
 
     #[Test]
@@ -147,13 +152,59 @@ class FlightReleasePageViewModelTest extends TestCase
         $viewModel = $this->viewModel($payload);
 
         $this->assertSame('109546', $viewModel->tripNumber());
+        $this->assertSame('05 25 26', $viewModel->maintenanceDate());
         $this->assertSame('Yes', $viewModel->maintenanceEtopsLabel());
-        $this->assertSame('216,800 LB', $viewModel->maintenanceRampFuel());
+        $this->assertSame('216.8', $viewModel->maintenanceRampFuel());
+        $this->assertSame('Estimated ramp fuel (1,000 LB)', $viewModel->maintenanceRampFuelLabel());
         $this->assertSame('2 source-listed items', $viewModel->maintenanceItemCountLabel());
         $this->assertSame('1 MEL · 1 CDL', $viewModel->maintenanceTypeSummary());
         $this->assertSame('1 OPEN · 1 DEFERRED', $viewModel->maintenanceStatusSummary());
         $this->assertSame('28-22-01', $viewModel->maintenanceItems()[0]['number']);
+        $this->assertTrue($viewModel->maintenanceItems()[0]['copyable']);
+        $this->assertTrue($viewModel->maintenanceItems()[1]['copyable']);
         $this->assertSame('CP · YIP', $viewModel->crewMembers()[0]['details']);
+    }
+
+    #[Test]
+    public function it_does_not_offer_copying_for_dmi_item_numbers(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['maintenanceLog']['items'][] = [
+            'type' => 'DMI',
+            'number' => 'DMI-2099',
+            'description' => 'Source-listed inspection item.',
+            'reference' => null,
+            'status' => null,
+            'limitations' => null,
+            'procedures' => null,
+        ];
+
+        $items = $this->viewModel($payload)->maintenanceItems();
+
+        $this->assertFalse($items[2]['copyable']);
+    }
+
+    #[Test]
+    public function it_formats_the_confirmed_envelope_result_without_calculating_a_status(): void
+    {
+        $viewModel = $this->viewModel($this->resultPayload());
+
+        $this->assertSame('Takeoff and Landing Report', $viewModel->envelopeSourceLabel());
+        $this->assertSame('TLR-30 SEQ-48273190 25MAY26 0115Z', $viewModel->envelopeReportReference());
+        $this->assertSame('KLAX', $viewModel->envelopeAirport());
+        $this->assertSame('25R', $viewModel->envelopePlannedRunway());
+        $this->assertSame('18.0 °C', $viewModel->envelopeOutsideAirTemperature());
+        $this->assertSame('250M08', $viewModel->envelopeWind());
+        $this->assertSame('29.92 inHg', $viewModel->envelopeQnh());
+        $this->assertSame('15', $viewModel->envelopeFlapSetting());
+        $this->assertSame('No', $viewModel->envelopeAntiIce());
+        $this->assertSame('768,000 LB', $viewModel->envelopeMaximumRunwayTakeoffWeight());
+        $this->assertSame('766,000 LB', $viewModel->envelopeMaximumFieldTakeoffWeight());
+        $this->assertSame('612,400 LB', $viewModel->envelopePlannedTakeoffWeight());
+        $this->assertSame('151 kt', $viewModel->envelopeV1());
+        $this->assertSame('158 kt', $viewModel->envelopeRotateSpeed());
+        $this->assertSame('164 kt', $viewModel->envelopeV2());
+        $this->assertSame(['32-41-03 - SOURCE BRAKE MESSAGE'], $viewModel->envelopeWarnings());
     }
 
     #[Test]
@@ -186,6 +237,8 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertNull($viewModel->overviewInitialAltitude());
         $this->assertNull($viewModel->overviewRouteDistance());
         $this->assertSame('0 KG', $viewModel->overviewRampFuel());
+        $this->assertSame('0.0', $viewModel->maintenanceRampFuel());
+        $this->assertSame('Estimated ramp fuel (1,000 KG)', $viewModel->maintenanceRampFuelLabel());
         $this->assertNull($viewModel->overviewSlotSummary());
         $this->assertNull($viewModel->overviewEtopsSummary());
     }
@@ -338,6 +391,25 @@ class FlightReleasePageViewModelTest extends TestCase
                             'procedures' => 'Source-listed procedure.',
                         ],
                     ],
+                ],
+                'envelope' => [
+                    'sectionPresent' => true,
+                    'sourceType' => 'takeoff_landing_report',
+                    'reportReference' => 'TLR-30 SEQ-48273190 25MAY26 0115Z',
+                    'airport' => 'KLAX',
+                    'plannedRunway' => '25R',
+                    'outsideAirTemperatureCelsius' => 18.0,
+                    'wind' => '250M08',
+                    'qnhInchesMercury' => 29.92,
+                    'maximumRunwayTakeoffWeight' => ['amount' => 768000, 'unit' => 'lb'],
+                    'flapSetting' => '15',
+                    'antiIce' => false,
+                    'v1Knots' => 151,
+                    'rotateKnots' => 158,
+                    'v2Knots' => 164,
+                    'plannedTakeoffWeight' => ['amount' => 612400, 'unit' => 'lb'],
+                    'maximumFieldTakeoffWeight' => ['amount' => 766000, 'unit' => 'lb'],
+                    'sourceWarnings' => ['32-41-03 - SOURCE BRAKE MESSAGE'],
                 ],
                 'crewMembers' => [[
                     'name' => 'Alex Morgan',

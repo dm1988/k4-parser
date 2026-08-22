@@ -107,4 +107,67 @@ class CrewListParserTest extends TestCase
         $this->assertSame('YIP', $summary['crew'][5]['base']);
         $this->assertFalse($summary['crew'][5]['deadheading']);
     }
+
+    public function test_it_types_flight_release_manifest_positions(): void
+    {
+        $this->assertSame(CrewPosition::PilotInCommand, CrewPosition::tryFrom('PIC'));
+        $this->assertSame(CrewPosition::SecondInCommand, CrewPosition::tryFrom('SIC/FO'));
+        $this->assertSame(CrewPosition::AdditionalCaptain, CrewPosition::tryFrom('ADDNTL CAPT'));
+        $this->assertSame(CrewPosition::InternationalReliefPilot, CrewPosition::tryFrom('IRP'));
+        $this->assertSame(CrewPosition::MaintenancePersonnel, CrewPosition::tryFrom('MX'));
+        $this->assertSame(CrewPosition::Loadmaster, CrewPosition::tryFrom('LM'));
+        $this->assertSame(CrewPosition::AdditionalCrewMember, CrewPosition::tryFrom('ACM'));
+    }
+
+    public function test_it_parses_id_first_manifest_rows_and_ignores_role_only_placeholders(): void
+    {
+        $summary = app(CrewListParser::class)->parseWithSummary([
+            '4387 PIC MORGAN A',
+            '72914 SIC/FO RIVERA D',
+            'ADDNTL',
+            'CAPT',
+            '73521 IRP FOSTER B',
+            '73642 IRP MCCULLOUGH M',
+            '5826 MX BENNETT B 1957 LM GARCIA T',
+            'ACM ACM',
+            'ACM ACM',
+        ]);
+
+        $this->assertSame(6, $summary['crew_count']);
+        $this->assertSame(6, $summary['operating_crew_count']);
+        $this->assertSame(0, $summary['deadheading_crew_count']);
+        $this->assertSame(
+            ['MORGAN A', 'RIVERA D', 'FOSTER B', 'MCCULLOUGH M', 'BENNETT B', 'GARCIA T'],
+            array_column($summary['crew'], 'name'),
+        );
+        $this->assertSame(
+            ['PIC', 'SIC/FO', 'IRP', 'IRP', 'MX', 'LM'],
+            array_column($summary['crew'], 'role'),
+        );
+    }
+
+    public function test_it_removes_a_flattened_additional_captain_heading_from_the_preceding_name(): void
+    {
+        $crew = app(CrewListParser::class)->parseReleaseManifestLine(
+            '72914 SIC/FO GONZALEZ D ADDNTL CAPT',
+        );
+
+        $this->assertCount(1, $crew);
+        $this->assertSame('GONZALEZ D', $crew[0]['name']);
+        $this->assertSame(CrewPosition::SecondInCommand->value, $crew[0]['role']);
+
+        $flattenedCrew = app(CrewListParser::class)->parseReleaseManifestLine(
+            '72914 SIC/FO GONZALEZ D ADDNTL CAPT 73521 IRP FOSTER B',
+        );
+
+        $this->assertSame(['GONZALEZ D', 'FOSTER B'], array_column($flattenedCrew, 'name'));
+        $this->assertSame(['SIC/FO', 'IRP'], array_column($flattenedCrew, 'role'));
+
+        $additionalCaptain = app(CrewListParser::class)->parseReleaseManifestLine(
+            '73332 ADDNTL CAPT DE LA CRUZ J',
+        );
+
+        $this->assertSame('DE LA CRUZ J', $additionalCaptain[0]['name']);
+        $this->assertSame(CrewPosition::AdditionalCaptain->value, $additionalCaptain[0]['role']);
+    }
 }

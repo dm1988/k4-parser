@@ -67,6 +67,25 @@ class BuildFlightPlanDataTest extends TestCase
                     'procedures' => null,
                 ]],
             ],
+            envelope: [
+                'section_present' => true,
+                'source_type' => 'takeoff_landing_report',
+                'report_reference' => 'TLR-30 SEQ-48273190 25MAY26 0115Z',
+                'airport' => 'KLAX',
+                'planned_runway' => '25R',
+                'outside_air_temperature_celsius' => 18.0,
+                'wind' => '250M08',
+                'qnh_inches_mercury' => 29.92,
+                'maximum_runway_takeoff_weight' => ['amount' => 768000, 'unit' => 'lb'],
+                'flap_setting' => '15',
+                'anti_ice' => false,
+                'v1_knots' => 151,
+                'rotate_knots' => 158,
+                'v2_knots' => 164,
+                'planned_takeoff_weight' => ['amount' => 612400, 'unit' => 'lb'],
+                'maximum_field_takeoff_weight' => ['amount' => 766000, 'unit' => 'lb'],
+                'source_warnings' => ['Source warning'],
+            ],
         );
 
         $flightPlan = (new BuildFlightPlanData)->handle($parsed);
@@ -81,6 +100,9 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertTrue($flightPlan->maintenanceLog?->sectionPresent);
         $this->assertSame('28-22-01', $flightPlan->maintenanceLog->items[0]->number);
         $this->assertSame('Alex Morgan', $flightPlan->crewMembers[0]->name);
+        $this->assertSame(612400, $flightPlan->envelope->plannedTakeoffWeight?->amount);
+        $this->assertFalse($flightPlan->envelope->antiIce);
+        $this->assertSame(['Source warning'], $flightPlan->envelope?->sourceWarnings);
     }
 
     public function test_it_omits_the_fuel_plan_when_no_fuel_was_normalized(): void
@@ -157,6 +179,7 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertNull($flightPlan->route->distanceNauticalMiles);
         $this->assertNull($flightPlan->fuelPlan);
         $this->assertFalse($flightPlan->maintenanceLog?->sectionPresent);
+        $this->assertNull($flightPlan->envelope);
     }
 
     public function test_it_preserves_an_explicit_zero_fuel_quantity(): void

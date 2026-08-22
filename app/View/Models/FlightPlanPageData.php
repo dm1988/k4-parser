@@ -53,9 +53,11 @@ final readonly class FlightPlanPageData
             FlightPlanTask::Etops => $this->hasEtopsData()
                 ? FlightPlanTaskAvailability::Available
                 : FlightPlanTaskAvailability::NotPresent,
-            FlightPlanTask::Envelope,
             FlightPlanTask::Weather,
             FlightPlanTask::WeightAndBalance => FlightPlanTaskAvailability::NotSupported,
+            FlightPlanTask::Envelope => $this->flightPlan->envelope?->plannedTakeoffWeight === null
+                ? FlightPlanTaskAvailability::NotPresent
+                : FlightPlanTaskAvailability::Available,
         };
     }
 

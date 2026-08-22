@@ -63,6 +63,7 @@ This feature has its own master flag and entitlement gate. Treat it as distinct 
 - **ETD:** **Estimated Off-Blocks Time (EOBT) / Planned Out-Time / Scheduled Departure Baseline** — Estimated Time of Departure; the predicted UTC time an aircraft will disconnect from gate power, push back, and begin taxiing.
 - **ACARS INIT DATE:** — The exact UTC date when Takeoff and Landing Performance Report (TLR) calculations were computed and initialized via datalink.
 - **Recall Number:** **Release Index / Flight Plan Amendment Number / Dispatch Release Revision** — The sequential version number assigned by Flight Dispatch to pull down and verify a specific iteration of the operational flight plan (OFP).
+- **Envelope** - The physical file envenlope that gets mailed to company HQ. Documents included are flight release, fuel slips, w&b, notoc, security sheets. Flight info must be written on the face of the envelope.
 
 Prefer these established terms in UI copy, class names, tests, and documentation. Do not introduce near-synonyms when an existing term is accurate.
 

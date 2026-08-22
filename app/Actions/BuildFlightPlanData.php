@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\DTOs\CrewMemberData;
+use App\DTOs\EnvelopeData;
 use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightPlanData;
 use App\DTOs\FuelPlanData;
@@ -16,9 +17,11 @@ use App\Enums\MaintenanceItemType;
 use App\ValueObjects\AirportCode;
 use App\ValueObjects\FlightTime;
 use App\ValueObjects\FuelQuantity;
+use App\ValueObjects\WeightQuantity;
 use Carbon\CarbonImmutable;
 use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 class BuildFlightPlanData
 {
@@ -58,6 +61,7 @@ class BuildFlightPlanData
             ),
             fuelPlan: $this->fuelPlan($parsed),
             maintenanceLog: $this->maintenanceLog($parsed),
+            envelope: $this->envelope($parsed),
             crewMembers: $this->crewMembers($parsed->crewMembers),
         );
     }
@@ -129,6 +133,71 @@ class BuildFlightPlanData
             etopsApplicability: $applicability ?? EtopsApplicability::Unknown,
             items: $this->maintenanceItems($maintenance['items'] ?? null),
         );
+    }
+
+    private function envelope(ParsedFlightPlanData $parsed): ?EnvelopeData
+    {
+        $envelope = $parsed->envelope;
+
+        if (($envelope['section_present'] ?? false) !== true) {
+            return null;
+        }
+
+        return new EnvelopeData(
+            sectionPresent: true,
+            sourceType: $this->nullableString($envelope['source_type'] ?? null) ?? 'takeoff_landing_report',
+            reportReference: $this->nullableString($envelope['report_reference'] ?? null),
+            airport: $this->nullableString($envelope['airport'] ?? null),
+            plannedRunway: $this->nullableString($envelope['planned_runway'] ?? null),
+            outsideAirTemperatureCelsius: $this->nullableFloat($envelope['outside_air_temperature_celsius'] ?? null),
+            wind: $this->nullableString($envelope['wind'] ?? null),
+            qnhInchesMercury: $this->nullableFloat($envelope['qnh_inches_mercury'] ?? null),
+            maximumRunwayTakeoffWeight: $this->weightQuantity($envelope['maximum_runway_takeoff_weight'] ?? null),
+            flapSetting: $this->nullableString($envelope['flap_setting'] ?? null),
+            antiIce: is_bool($envelope['anti_ice'] ?? null) ? $envelope['anti_ice'] : null,
+            v1Knots: $this->nullableInteger($envelope['v1_knots'] ?? null),
+            rotateKnots: $this->nullableInteger($envelope['rotate_knots'] ?? null),
+            v2Knots: $this->nullableInteger($envelope['v2_knots'] ?? null),
+            plannedTakeoffWeight: $this->weightQuantity($envelope['planned_takeoff_weight'] ?? null),
+            maximumFieldTakeoffWeight: $this->weightQuantity($envelope['maximum_field_takeoff_weight'] ?? null),
+            sourceWarnings: $this->strings($envelope['source_warnings'] ?? null),
+        );
+    }
+
+    private function weightQuantity(mixed $value): ?WeightQuantity
+    {
+        if (! is_array($value) || ! is_int($value['amount'] ?? null) || ! is_string($value['unit'] ?? null)) {
+            return null;
+        }
+
+        try {
+            return new WeightQuantity($value['amount'], $value['unit']);
+        } catch (InvalidArgumentException) {
+            return null;
+        }
+    }
+
+    private function nullableFloat(mixed $value): ?float
+    {
+        return is_float($value) || is_int($value) ? (float) $value : null;
+    }
+
+    private function nullableInteger(mixed $value): ?int
+    {
+        return is_int($value) && $value >= 0 ? $value : null;
+    }
+
+    /** @return list<string> */
+    private function strings(mixed $values): array
+    {
+        if (! is_array($values)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            fn (mixed $value): ?string => $this->nullableString($value),
+            $values,
+        )));
     }
 
     /** @return list<MaintenanceItemData> */

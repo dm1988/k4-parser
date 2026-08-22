@@ -29,6 +29,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertTrue($pageData->flightPlan->maintenanceLog?->sectionPresent);
         $this->assertSame('28-22-01', $pageData->flightPlan->maintenanceLog->items[0]->number);
         $this->assertSame('Alex Morgan', $pageData->flightPlan->crewMembers[0]->name);
+        $this->assertSame(612400, $pageData->flightPlan->envelope?->plannedTakeoffWeight?->amount);
     }
 
     public function test_normalized_core_values_take_precedence_over_conflicting_flat_compatibility_values(): void
@@ -59,7 +60,7 @@ class BuildFlightPlanPageDataTest extends TestCase
             FlightPlanTask::Overview->value => FlightPlanTaskAvailability::Available,
             FlightPlanTask::JeppPdPro->value => FlightPlanTaskAvailability::Available,
             FlightPlanTask::MaintenanceLog->value => FlightPlanTaskAvailability::Available,
-            FlightPlanTask::Envelope->value => FlightPlanTaskAvailability::NotSupported,
+            FlightPlanTask::Envelope->value => FlightPlanTaskAvailability::Available,
             FlightPlanTask::FlightInit->value => FlightPlanTaskAvailability::Available,
             FlightPlanTask::Fms->value => FlightPlanTaskAvailability::Available,
             FlightPlanTask::SlotTimes->value => FlightPlanTaskAvailability::Available,
@@ -76,6 +77,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $payload['flight_plan_data']['schedule']['slotTimesUtc'] = [];
         $payload['flight_plan_data']['fuelPlan'] = null;
         $payload['flight_plan_data']['maintenanceLog'] = null;
+        $payload['flight_plan_data']['envelope'] = null;
         $payload['departure_airport'] = 'invalid';
         $payload['initial_altitude'] = [];
         $payload['etps'] = [['label' => 'incomplete']];
@@ -94,6 +96,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::FuelScore));
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::Etops));
         $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::MaintenanceLog));
+        $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::Envelope));
     }
 
     public function test_it_keeps_maintenance_context_available_without_a_dedicated_item_section(): void
@@ -210,6 +213,25 @@ class BuildFlightPlanPageDataTest extends TestCase
                         'limitations' => null,
                         'procedures' => null,
                     ]],
+                ],
+                'envelope' => [
+                    'sectionPresent' => true,
+                    'sourceType' => 'takeoff_landing_report',
+                    'reportReference' => 'TLR-30 SEQ-48273190 25MAY26 0115Z',
+                    'airport' => 'KLAX',
+                    'plannedRunway' => '25R',
+                    'outsideAirTemperatureCelsius' => 18.0,
+                    'wind' => '250M08',
+                    'qnhInchesMercury' => 29.92,
+                    'maximumRunwayTakeoffWeight' => ['amount' => 768000, 'unit' => 'lb'],
+                    'flapSetting' => '15',
+                    'antiIce' => false,
+                    'v1Knots' => 151,
+                    'rotateKnots' => 158,
+                    'v2Knots' => 164,
+                    'plannedTakeoffWeight' => ['amount' => 612400, 'unit' => 'lb'],
+                    'maximumFieldTakeoffWeight' => ['amount' => 766000, 'unit' => 'lb'],
+                    'sourceWarnings' => ['Source warning'],
                 ],
                 'crewMembers' => [[
                     'name' => 'Alex Morgan',

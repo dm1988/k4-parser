@@ -3,6 +3,7 @@
 namespace App\Services\Schedule\Extractor;
 
 use App\Enums\CrewPosition;
+use Illuminate\Support\Str;
 
 class CrewListParser
 {
@@ -16,6 +17,14 @@ class CrewListParser
         $crew = [];
 
         foreach ($lines as $line) {
+            $manifestMembers = $this->parseReleaseManifestLine((string) $line);
+
+            if ($manifestMembers !== []) {
+                array_push($crew, ...$manifestMembers);
+
+                continue;
+            }
+
             $member = $this->parseLine((string) $line);
 
             if ($member !== null) {
@@ -24,6 +33,40 @@ class CrewListParser
         }
 
         return $crew;
+    }
+
+    /**
+     * @return list<array{name: string, employee_id: string, crew_id: string, base: null, role: string, deadheading: bool}>
+     */
+    public function parseReleaseManifestLine(string $line): array
+    {
+        $rolePattern = CrewPosition::regexPattern();
+        $recordPattern = '/(?<!\d)(?<employee_id>\d{4,6})\h+'
+            .'(?<role>'.$rolePattern.')\h+'
+            .'(?<name>[A-Z][A-Z\'’\-]*(?:\h+[A-Z][A-Z\'’\-]*)+?)'
+            .'(?=\h+\d{4,6}\h+(?:'.$rolePattern.')\h+|\h*$)/u';
+        $matches = [];
+
+        if (preg_match_all($recordPattern, trim($line), $matches, PREG_SET_ORDER) < 1) {
+            return [];
+        }
+
+        return array_map(static function (array $match): array {
+            $position = CrewPosition::from($match['role']);
+            $name = Str::of($match['name'])
+                ->replaceMatches('/\h+ADDNTL\h+CAPT$/', '')
+                ->squish()
+                ->toString();
+
+            return [
+                'name' => $name,
+                'employee_id' => $match['employee_id'],
+                'crew_id' => $match['employee_id'],
+                'base' => null,
+                'role' => $position->value,
+                'deadheading' => $position === CrewPosition::Deadhead,
+            ];
+        }, $matches);
     }
 
     /**

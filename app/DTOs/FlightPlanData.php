@@ -13,6 +13,7 @@ final readonly class FlightPlanData implements JsonSerializable
         public RouteData $route,
         public ?FuelPlanData $fuelPlan = null,
         public ?MaintenanceLogData $maintenanceLog = null,
+        public ?EnvelopeData $envelope = null,
         public array $crewMembers = [],
     ) {}
 
@@ -23,6 +24,7 @@ final readonly class FlightPlanData implements JsonSerializable
      *     route: array<string, int|string|null>,
      *     fuelPlan: array<string, array{amount: float, unit: 'kg'|'lb'}|null>|null,
      *     maintenanceLog: array{sectionPresent: bool, etopsApplicability: string, items: list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string}>}|null,
+     *     envelope: array<string, mixed>|null,
      *     crewMembers: list<array{name: string, role: ?string, base: ?string}>
      * }
      */
@@ -34,6 +36,7 @@ final readonly class FlightPlanData implements JsonSerializable
             'route' => $this->route->toArray(),
             'fuelPlan' => $this->fuelPlan?->toArray(),
             'maintenanceLog' => $this->maintenanceLog?->toArray(),
+            'envelope' => $this->envelope?->toArray(),
             'crewMembers' => array_map(
                 static fn (CrewMemberData $member): array => $member->toArray(),
                 $this->crewMembers,
@@ -48,6 +51,7 @@ final readonly class FlightPlanData implements JsonSerializable
      *     route: array<string, int|string|null>,
      *     fuelPlan: array<string, array{amount: float, unit: 'kg'|'lb'}|null>|null,
      *     maintenanceLog: array{sectionPresent: bool, etopsApplicability: string, items: list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string}>}|null,
+     *     envelope: array<string, mixed>|null,
      *     crewMembers: list<array{name: string, role: ?string, base: ?string}>
      * }
      */

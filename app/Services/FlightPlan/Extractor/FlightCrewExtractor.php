@@ -19,7 +19,7 @@ class FlightCrewExtractor
      */
     public function extract(string $text): array
     {
-        $section = $this->crewSection($text);
+        $section = $this->crewSection($text) ?? $this->releaseManifestSection($text);
 
         if ($section === null) {
             return [
@@ -59,6 +59,53 @@ class FlightCrewExtractor
         return [
             'body' => trim($matches['body']),
             'source' => Str::squish($matches[0]),
+        ];
+    }
+
+    /** @return array{body: string, source: string}|null */
+    private function releaseManifestSection(string $text): ?array
+    {
+        $lines = preg_split('/\R/', $text) ?: [];
+        $sourceLines = [];
+        $memberCount = 0;
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            $members = $this->crewListParser->parseReleaseManifestLine($line);
+
+            if ($members !== []) {
+                $sourceLines[] = $line;
+                $memberCount += count($members);
+
+                continue;
+            }
+
+            if ($memberCount === 0) {
+                continue;
+            }
+
+            if ($line === '') {
+                continue;
+            }
+
+            if (preg_match('/^(?:ADDNTL|CAPT|ACM(?:\h+ACM)*)$/i', $line) === 1) {
+                $sourceLines[] = $line;
+
+                continue;
+            }
+
+            break;
+        }
+
+        if ($memberCount < 2) {
+            return null;
+        }
+
+        $body = implode("\n", $sourceLines);
+
+        return [
+            'body' => $body,
+            'source' => Str::squish($body),
         ];
     }
 }

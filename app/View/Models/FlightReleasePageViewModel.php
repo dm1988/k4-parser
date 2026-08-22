@@ -4,10 +4,13 @@ namespace App\View\Models;
 
 use App\DTOs\AirportData;
 use App\DTOs\CrewMemberData;
+use App\DTOs\EnvelopeData;
 use App\DTOs\MaintenanceItemData;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
+use App\Enums\MaintenanceItemType;
 use App\Enums\RouteTokenType;
+use App\ValueObjects\WeightQuantity;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Number;
 use Illuminate\Support\Str;
@@ -157,7 +160,25 @@ readonly class FlightReleasePageViewModel
 
     public function maintenanceRampFuel(): ?string
     {
-        return $this->overviewRampFuel();
+        $rampFuel = $this->pageData?->flightPlan->fuelPlan?->ramp;
+
+        return $rampFuel === null
+            ? null
+            : Number::format($rampFuel->amount / 1000, precision: 1);
+    }
+
+    public function maintenanceDate(): ?string
+    {
+        return $this->pageData?->flightPlan->identity->flightDate?->format('m d y');
+    }
+
+    public function maintenanceRampFuelLabel(): string
+    {
+        $unit = $this->pageData?->flightPlan->fuelPlan?->ramp?->unit;
+
+        return $unit === null
+            ? 'Estimated ramp fuel'
+            : 'Estimated ramp fuel (1,000 '.Str::upper($unit).')';
     }
 
     public function maintenanceItemCountLabel(): string
@@ -208,7 +229,7 @@ readonly class FlightReleasePageViewModel
     }
 
     /**
-     * @return list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string}>
+     * @return list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string, copyable: bool}>
      */
     public function maintenanceItems(): array
     {
@@ -220,7 +241,115 @@ readonly class FlightReleasePageViewModel
             'status' => $item->status,
             'limitations' => $item->limitations,
             'procedures' => $item->procedures,
+            'copyable' => in_array($item->type, [MaintenanceItemType::Mel, MaintenanceItemType::Cdl], true),
         ], $this->pageData?->flightPlan->maintenanceLog->items ?? []);
+    }
+
+    public function envelopeSourceLabel(): string
+    {
+        return match ($this->envelope()?->sourceType) {
+            'takeoff_landing_report' => 'Takeoff and Landing Report',
+            default => 'Confirmed release section',
+        };
+    }
+
+    public function envelopeReportReference(): ?string
+    {
+        return $this->envelope()?->reportReference;
+    }
+
+    public function envelopeAirport(): ?string
+    {
+        return $this->envelope()?->airport;
+    }
+
+    public function envelopePlannedRunway(): ?string
+    {
+        return $this->envelope()?->plannedRunway;
+    }
+
+    public function envelopeOutsideAirTemperature(): ?string
+    {
+        $temperature = $this->envelope()?->outsideAirTemperatureCelsius;
+
+        return $temperature === null ? null : Number::format($temperature, precision: 1).' °C';
+    }
+
+    public function envelopeWind(): ?string
+    {
+        return $this->envelope()?->wind;
+    }
+
+    public function envelopeQnh(): ?string
+    {
+        $qnh = $this->envelope()?->qnhInchesMercury;
+
+        return $qnh === null ? null : number_format($qnh, 2).' inHg';
+    }
+
+    public function envelopeFlapSetting(): ?string
+    {
+        return $this->envelope()?->flapSetting;
+    }
+
+    public function envelopeAntiIce(): ?string
+    {
+        $antiIce = $this->envelope()?->antiIce;
+
+        return $antiIce === null ? null : ($antiIce ? 'Yes' : 'No');
+    }
+
+    public function envelopeMaximumRunwayTakeoffWeight(): ?string
+    {
+        return $this->formatWeight($this->envelope()?->maximumRunwayTakeoffWeight);
+    }
+
+    public function envelopeMaximumFieldTakeoffWeight(): ?string
+    {
+        return $this->formatWeight($this->envelope()?->maximumFieldTakeoffWeight);
+    }
+
+    public function envelopePlannedTakeoffWeight(): ?string
+    {
+        return $this->formatWeight($this->envelope()?->plannedTakeoffWeight);
+    }
+
+    public function envelopeV1(): ?string
+    {
+        return $this->formatSpeed($this->envelope()?->v1Knots);
+    }
+
+    public function envelopeRotateSpeed(): ?string
+    {
+        return $this->formatSpeed($this->envelope()?->rotateKnots);
+    }
+
+    public function envelopeV2(): ?string
+    {
+        return $this->formatSpeed($this->envelope()?->v2Knots);
+    }
+
+    /** @return list<string> */
+    public function envelopeWarnings(): array
+    {
+        return $this->envelope()->sourceWarnings ?? [];
+    }
+
+    private function envelope(): ?EnvelopeData
+    {
+        return $this->pageData?->flightPlan->envelope;
+    }
+
+    private function formatWeight(?WeightQuantity $weight): ?string
+    {
+        return $weight === null
+            ? null
+            : Number::format($weight->amount).' '.Str::upper($weight->unit);
+    }
+
+    private function formatSpeed(?int $speed): ?string
+    {
+        return $speed === null ? null : $speed.' kt';
     }
 
     /** @param array<string, int> $counts */

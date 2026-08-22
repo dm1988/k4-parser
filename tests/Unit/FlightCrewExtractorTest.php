@@ -47,8 +47,38 @@ TEXT);
         $this->assertSame([], $absent['source_fragments']);
     }
 
+    public function test_it_extracts_six_members_from_an_id_first_flight_release_manifest(): void
+    {
+        $result = $this->extractor()->extract($this->fixture('release-manifest'));
+
+        $this->assertSame([
+            ['name' => 'MORGAN A', 'role' => 'PIC', 'base' => null],
+            ['name' => 'RIVERA D', 'role' => 'SIC/FO', 'base' => null],
+            ['name' => 'FOSTER B', 'role' => 'IRP', 'base' => null],
+            ['name' => 'MCCULLOUGH M', 'role' => 'IRP', 'base' => null],
+            ['name' => 'BENNETT B', 'role' => 'MX', 'base' => null],
+            ['name' => 'GARCIA T', 'role' => 'LM', 'base' => null],
+        ], $result['data']);
+        $this->assertArrayHasKey('flight_crew', $result['source_fragments']);
+        $this->assertStringNotContainsString('FUEL SUMMARY', $result['source_fragments']['flight_crew']);
+
+        $encodedData = json_encode($result['data'], JSON_THROW_ON_ERROR);
+
+        $this->assertStringNotContainsString('4387', $encodedData);
+        $this->assertStringNotContainsString('72914', $encodedData);
+    }
+
     private function extractor(): FlightCrewExtractor
     {
         return new FlightCrewExtractor(new CrewListParser);
+    }
+
+    private function fixture(string $name): string
+    {
+        $contents = file_get_contents(__DIR__.'/../Fixtures/FlightPlan/crew/'.$name.'.txt');
+
+        $this->assertNotFalse($contents);
+
+        return $contents;
     }
 }

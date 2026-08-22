@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\DTOs\ParsedFlightPlanData;
 use App\Services\Clients\AirportLookupClient;
+use App\Services\FlightPlan\Extractor\EnvelopeExtractor;
 use App\Services\FlightPlan\Extractor\ExtractFlightPlanData;
 use App\Services\FlightPlan\Extractor\FlightCrewExtractor;
 use App\Services\FlightPlan\Extractor\FlightFuelExtractor;
@@ -51,6 +52,11 @@ class ExtractFlightPlanDataTest extends TestCase
             'data' => $this->maintenance(),
             'source_fragments' => ['maintenance_log' => 'MEL 28-22-01'],
         ]);
+        $envelopeExtractor = $this->createMock(EnvelopeExtractor::class);
+        $envelopeExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
+            'data' => $this->envelope(),
+            'source_fragments' => ['envelope_takeoff_landing_report' => 'private TLR evidence'],
+        ]);
 
         $parsed = (new ExtractFlightPlanData(
             $textExtractor,
@@ -60,6 +66,7 @@ class ExtractFlightPlanDataTest extends TestCase
             $fuelExtractor,
             $crewExtractor,
             $maintenanceLogExtractor,
+            $envelopeExtractor,
         ))->extractFile('/tmp/release.pdf');
 
         $this->assertInstanceOf(ParsedFlightPlanData::class, $parsed);
@@ -70,6 +77,8 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame('Alex Morgan', $parsed->crewMembers[0]['name']);
         $this->assertSame('Alex Morgan CP YIP', $parsed->sourceFragments['flight_crew']);
         $this->assertSame('MEL 28-22-01', $parsed->sourceFragments['maintenance_log']);
+        $this->assertSame(612400, $parsed->envelope['planned_takeoff_weight']['amount']);
+        $this->assertSame('private TLR evidence', $parsed->sourceFragments['envelope_takeoff_landing_report']);
         $this->assertSame('FL 340', $parsed->legacy['initial_altitude']);
     }
 
@@ -92,6 +101,7 @@ class ExtractFlightPlanDataTest extends TestCase
             new FlightFuelExtractor,
             new FlightCrewExtractor(new CrewListParser),
             new MaintenanceLogExtractor,
+            new EnvelopeExtractor,
         );
 
         $parsed = $extractor->extractFile($samplePath);
@@ -110,6 +120,10 @@ class ExtractFlightPlanDataTest extends TestCase
             $parsed->maintenance['etops_applicability'],
             ['confirmed_etops', 'confirmed_non_etops', 'unknown'],
         );
+        $this->assertTrue($parsed->envelope['section_present']);
+        $this->assertSame('KLAX', $parsed->envelope['airport']);
+        $this->assertSame('25R-E957F', $parsed->envelope['planned_runway']);
+        $this->assertSame(['amount' => 618100, 'unit' => 'lb'], $parsed->envelope['planned_takeoff_weight']);
     }
 
     /** @return array{flight_number: string, trip_number: string, recall_number: string, aircraft_type: string, tail_number: string, flight_date: string, release_revision: null} */
@@ -196,6 +210,18 @@ class ExtractFlightPlanDataTest extends TestCase
                 'limitations' => null,
                 'procedures' => null,
             ]],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function envelope(): array
+    {
+        return [
+            'section_present' => true,
+            'source_type' => 'takeoff_landing_report',
+            'airport' => 'KLAX',
+            'planned_runway' => '25R',
+            'planned_takeoff_weight' => ['amount' => 612400, 'unit' => 'lb'],
         ];
     }
 }
