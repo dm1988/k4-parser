@@ -12,18 +12,14 @@
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             @foreach ($model->flightInitFields() as $field)
-                @if ($field['value'] !== null && $field['value'] !== '')
-                    <x-flight-release.copy-field
+                <dl>
+                    <x-flight-release.metric
                         :id="$field['id']"
                         :label="$field['label']"
                         :value="$field['value']"
-                        class="rounded-lg border border-[#1B365D]/10 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"
+                        empty-text="Not confirmed"
                     />
-                @else
-                    <dl>
-                        <x-flight-release.metric :label="$field['label']" empty-text="Not confirmed" />
-                    </dl>
-                @endif
+                </dl>
             @endforeach
         </div>
 
@@ -50,14 +46,7 @@
                         <div class="flex items-center gap-2 border-t border-[#1B365D]/10 pt-2 dark:border-slate-700">
                             <span class="text-[10px] font-bold uppercase tracking-[0.14em] text-[#4A5568] dark:text-slate-400">Employee number</span>
                             @if ($member['employeeNumber'])
-                                <span id="flight-init-crew-employee-{{ $loop->iteration }}" class="font-mono text-xs font-bold text-[#0B0E14] dark:text-slate-100">{{ $member['employeeNumber'] }}</span>
-                                <x-flight-release.copy-button
-                                    :target="'flight-init-crew-employee-'.$loop->iteration"
-                                    :label="$member['name'].' employee number'"
-                                    :status="'flight-init-crew-employee-'.$loop->iteration.'-status'"
-                                    :compact="true"
-                                />
-                                <span id="flight-init-crew-employee-{{ $loop->iteration }}-status" role="status" aria-live="polite" class="sr-only"></span>
+                                <span class="font-mono text-xs font-bold text-[#0B0E14] dark:text-slate-100">{{ $member['employeeNumber'] }}</span>
                             @else
                                 <span class="font-mono text-xs font-semibold text-[#4A5568] dark:text-slate-400">Not confirmed</span>
                             @endif

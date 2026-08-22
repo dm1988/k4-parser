@@ -231,9 +231,9 @@ Should return 11
 
 Done when: supported initialization values can be reviewed without returning to the PDF.
 
-Outcome: Added a dedicated Flight Init workspace with copyable tail, UTC ETD, ramp fuel, flight, route, explicit TLR ACARS INIT DATE, and crew employee numbers. ACARS dates and employee numbers are normalized by a dedicated service; the ACARS date never falls back to the release flight date. Employee numbers are retained in the owner-scoped normalized result for this task, while raw crew and TLR source fragments remain private.
+Outcome: Added a dedicated read-only Flight Init workspace for tail, UTC ETD, ramp fuel, flight, route, explicit TLR ACARS INIT DATE, and crew employee numbers, without copy controls. ACARS dates and employee numbers are normalized by a dedicated service; the ACARS date never falls back to the release flight date. Employee numbers are retained in the owner-scoped normalized result for this task, while raw crew and TLR source fragments remain private.
 
-Verification: Focused extractor, normalization, DTO, builder, serializer, view-model, Livewire rendering, adjacent task, and delegated copy-control tests pass. Pint, the production asset build, and final Larastan analysis were run successfully.
+Verification: Focused extractor, normalization, DTO, builder, serializer, view-model, Livewire rendering, adjacent task, and Flight Init copy-control absence tests pass. Pint, the production asset build, and final Larastan analysis were run successfully.
 
 Commit message: `feat: add flight init task`
 

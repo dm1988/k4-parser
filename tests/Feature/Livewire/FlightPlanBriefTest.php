@@ -560,7 +560,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertDontSeeText('Maintenance Log data was not found');
     }
 
-    public function test_flight_init_renders_acars_values_and_crew_employee_numbers_without_reparsing(): void
+    public function test_flight_init_renders_acars_values_and_crew_employee_numbers_without_copy_controls_or_reparsing(): void
     {
         Storage::fake('user_flight_releases');
         $user = User::factory()->admin()->create();
@@ -631,16 +631,16 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('N770CK')
             ->assertSeeText('ETD (UTC)')
             ->assertSeeHtml('id="flight-init-etd"')
-            ->assertSeeHtml('value="1355Z"')
+            ->assertSeeText('1355Z')
             ->assertSeeText('Estimated ramp fuel')
-            ->assertSeeHtml('value="225,500 LB"')
+            ->assertSeeText('225,500 LB')
             ->assertSeeText('Flight number')
             ->assertSeeText('CKS256')
             ->assertSeeText('PANC')
             ->assertSeeText('KMIA')
             ->assertSeeText('ACARS INIT DATE')
             ->assertSeeHtml('id="flight-init-acars-init-date"')
-            ->assertSeeHtml('value="11"')
+            ->assertSeeText('11')
             ->assertSeeText('not derived from the release flight date')
             ->assertSeeText('MORGAN A')
             ->assertSeeText('4387')
@@ -654,16 +654,16 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('5826')
             ->assertSeeText('GARCIA T')
             ->assertSeeText('1957')
-            ->assertSeeHtml('data-copy-target="flight-init-acars-init-date"')
-            ->assertSeeHtml('data-copy-target="flight-init-crew-employee-1"')
-            ->assertSeeHtml('data-copy-label="MORGAN A employee number"')
+            ->assertDontSee('data-copy-target="flight-init-', escape: false)
+            ->assertDontSee('data-copy-label="MORGAN A employee number"', escape: false)
             ->assertSeeText('Flight Init source fragments remain private');
 
         $component
             ->call('$refresh')
             ->assertSet('activeTask', FlightPlanTask::FlightInit->value)
             ->assertSeeText('GONZALEZ D')
-            ->assertSeeHtml('value="11"');
+            ->assertSeeText('11')
+            ->assertDontSee('data-copy-target="flight-init-', escape: false);
 
         $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
     }
