@@ -57,39 +57,19 @@ Done when: every displayed slot has an airport, direction/type, complete instant
 
 Commit message: `feat: add slot times task`
 
-## 10 — Implement Fuel Score
+## 10 — Current focus: Implement Fuel Score
 
 Goal: Deliver the release fuel summary first, then add source-backed waypoint monitoring.
 
 - Render ramp, taxi, takeoff, trip, contingency, alternate, final reserve, and estimated landing fuel from `FuelPlanData` with units.
 - Preserve legitimate zero values and distinguish them from missing values.
 - Add sanitized waypoint fixtures before modeling waypoint, ETA, planned remaining fuel, flight level, phase, wind, temperature, speed, and leg duration.
-- Define score thresholds and actual-versus-plan inputs as product rules before showing `on plan`, `caution`, or `below target`.
 - Keep raw summary/waypoint evidence with normalized values for review.
 - Test pounds/kilograms, scaling, exact-versus-rounded precedence, missing/zero values, ambiguous units, and score boundaries.
 
 Done when: summary values are reliable and no status badge appears without a documented calculation rule.
 
 Commit message: `feat: add fuel score task`
-
-## 11 — Completed: Implement ETOPS
-
-Goal: Replace legacy ETOPS arrays with typed, source-backed operational data.
-
-- Add ETOPS DTOs for applicability, entry/exit points, ETPs, scenarios, coordinates, alternates, diversion data, critical fuel, restrictions, and source fragments as fixtures permit.
-- Completed current focus: Migrate current ETP, EENT, and EEXP values without changing their displayed meaning.
-- Validate coordinate formats and preserve sequence/order.
-- Present critical points, alternates, fuel scenarios, and remarks in separate sections.
-- Do not infer approval, suitability, or compliance from the presence of an ETOPS section.
-- Test no-ETOPS releases, multiple ETPs, duplicate labels, malformed coordinates, partial sections, and legacy parity.
-
-Done when: the compatibility ETOPS fields are no longer needed by the front end.
-
-Outcome: Promoted the existing ETP, EENT, and EEXP extraction results into the normalized parsed contract and existing typed ETOPS DTOs. The normalized builder validates coordinates, retains point ordering, keeps alternate airport order and scenario text, carries explicit applicability without inferring ETOPS approval, and omits malformed optional points without failing the release. Exact repeated rows from duplicated PDF sections are collapsed while distinct points with duplicate labels remain in source order. Cached page data reconstructs ETOPS exclusively from `flight_plan_data.etops`; the page model and view model no longer consume the flat ETOPS compatibility fields. The dedicated responsive ETOPS task view separates applicability, boundary points, equal-time points, alternate pairings, and current source scenario text, labels unavailable diversion/critical-fuel/remark details honestly, protects source evidence, and states that no approval, suitability, compliance, or dispatchability determination is made. Jepp PD-Pro retains its existing displayed meaning, while the serializer continues emitting flat keys only for compatibility consumers outside the front end.
-
-Verification: Pint passed. The 55 focused extractor, builder, page-data, and view-model tests passed with 336 assertions, covering no ETOPS data, partial entry-only data, multiple points, duplicate labels, exact repeated rows, malformed coordinates, ordering, typed reconstruction, and legacy display parity. The 3 focused Livewire ETOPS task, absent-state, and Jepp parity tests passed with 81 assertions. Focused Larastan analysis of the modified extractor and view model passed with zero errors.
-
-Commit message: `feat: add etops task`
 
 ## 12 — Implement Weather
 
@@ -423,3 +403,22 @@ Outcome: Added immutable ETOPS DTOs under `App\DTOs\Etops` for applicability, en
 Verification: The 4 focused ETOPS DTO tests passed with 22 assertions. The 2 `FlightPlanData` aggregate tests, 6 builder tests, and serializer regression test passed with 56 combined assertions.
 
 Commit message: `feat: add typed etops data objects`
+
+## 11 — Completed: Implement ETOPS
+
+Goal: Replace legacy ETOPS arrays with typed, source-backed operational data.
+
+- Add ETOPS DTOs for applicability, entry/exit points, ETPs, scenarios, coordinates, alternates, diversion data, critical fuel, restrictions, and source fragments as fixtures permit.
+- Completed current focus: Migrate current ETP, EENT, and EEXP values without changing their displayed meaning.
+- Validate coordinate formats and preserve sequence/order.
+- Present critical points, alternates, fuel scenarios, and remarks in separate sections.
+- Do not infer approval, suitability, or compliance from the presence of an ETOPS section.
+- Test no-ETOPS releases, multiple ETPs, duplicate labels, malformed coordinates, partial sections, and legacy parity.
+
+Done when: the compatibility ETOPS fields are no longer needed by the front end.
+
+Outcome: Promoted the existing ETP, EENT, and EEXP extraction results into the normalized parsed contract and existing typed ETOPS DTOs. The normalized builder validates coordinates, retains point ordering, keeps alternate airport order and scenario text, carries explicit applicability without inferring ETOPS approval, and omits malformed optional points without failing the release. Exact repeated rows from duplicated PDF sections are collapsed while distinct points with duplicate labels remain in source order. Cached page data reconstructs ETOPS exclusively from `flight_plan_data.etops`; the page model and view model no longer consume the flat ETOPS compatibility fields. The dedicated responsive ETOPS task view separates applicability, boundary points, equal-time points, alternate pairings, and current source scenario text, labels unavailable diversion/critical-fuel/remark details honestly, protects source evidence, and states that no approval, suitability, compliance, or dispatchability determination is made. Jepp PD-Pro retains its existing displayed meaning, while the serializer continues emitting flat keys only for compatibility consumers outside the front end.
+
+Verification: Pint passed. The 55 focused extractor, builder, page-data, and view-model tests passed with 336 assertions, covering no ETOPS data, partial entry-only data, multiple points, duplicate labels, exact repeated rows, malformed coordinates, ordering, typed reconstruction, and legacy display parity. The 3 focused Livewire ETOPS task, absent-state, and Jepp parity tests passed with 81 assertions. Focused Larastan analysis of the modified extractor and view model passed with zero errors.
+
+Commit message: `feat: add etops task`
