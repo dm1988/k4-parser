@@ -57,12 +57,19 @@ class FlightIdentityExtractor
         return [
             'flight_number' => $this->normalizeFlightNumber($flightMatches[1] ?? null),
             'trip_number' => $this->nullableMatch($headerMatches, 1),
-            'recall_number' => $this->nullableMatch($headerMatches, 2),
+            'recall_number' => $this->recallNumber($headerMatches[2] ?? null),
             'tail_number' => $this->normalizeUpper($headerMatches[3] ?? null),
             'aircraft_type' => $this->normalizeUpper($headerMatches[4] ?? null),
             'flight_date' => $this->dateFromFormat($headerMatches[5] ?? null, '!m/d/y'),
             'source' => isset($headerMatches[0]) ? Str::squish($headerMatches[0]) : null,
         ];
+    }
+
+    private function recallNumber(mixed $value): ?string
+    {
+        return is_string($value) && preg_match('/^\d{5}$/', $value) === 1
+            ? $value
+            : null;
     }
 
     /**

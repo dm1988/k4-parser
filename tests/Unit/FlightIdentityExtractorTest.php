@@ -45,4 +45,20 @@ ETA 14.50Z CKS256
 (FPL-CKS257-IS-B77L/H-SDE2-KLAX0220-N0487F340 DCT TEST-RKSI1210-PBN/A1 DOF/260525 REG/N774CK)
 TEXT);
     }
+
+    public function test_it_rejects_non_five_digit_recall_numbers_without_losing_other_header_fields(): void
+    {
+        foreach (['1234', '123456'] as $recallNumber) {
+            $result = (new FlightIdentityExtractor)->extract(<<<TEXT
+KALITTA AIR TRIP 109546 RECALL {$recallNumber} N774CK B777-200F 05/25/26
+ETA 14.50Z CKS256
+(FPL-CKS256-IS-B77L/H-SDE2-KLAX0220-N0487F340 DCT TEST-RKSI1210-PBN/A1 DOF/260525 REG/N774CK)
+TEXT);
+
+            $this->assertNull($result['data']['recall_number']);
+            $this->assertSame('109546', $result['data']['trip_number']);
+            $this->assertSame('N774CK', $result['data']['tail_number']);
+            $this->assertArrayHasKey('identity_header', $result['source_fragments']);
+        }
+    }
 }

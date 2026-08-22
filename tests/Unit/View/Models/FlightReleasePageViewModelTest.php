@@ -30,6 +30,7 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertNull($viewModel->aircraftType());
         $this->assertNull($viewModel->tailNumber());
         $this->assertNull($viewModel->tripNumber());
+        $this->assertNull($viewModel->recallNumber());
         $this->assertNull($viewModel->etdUtc());
         $this->assertNull($viewModel->etaUtc());
         $this->assertNull($viewModel->releaseRevision());
@@ -40,6 +41,9 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertNull($viewModel->overviewRampFuel());
         $this->assertNull($viewModel->overviewSlotSummary());
         $this->assertNull($viewModel->overviewEtopsSummary());
+        $this->assertNull($viewModel->fmsDistanceToDestination());
+        $this->assertNull($viewModel->fmsAlternateReserve());
+        $this->assertSame([], $viewModel->fmsFields());
         $this->assertSame('Not confirmed', $viewModel->maintenanceEtopsLabel());
         $this->assertNull($viewModel->maintenanceDate());
         $this->assertNull($viewModel->maintenanceRampFuel());
@@ -78,6 +82,72 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('25R', $viewModel->departureRunway());
         $this->assertSame('SUMMR2', $viewModel->departureSid());
         $this->assertTrue($viewModel->hasPlannedRunways());
+    }
+
+    #[Test]
+    public function it_builds_source_backed_fms_fields_with_explicit_units(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['identity']['recallNumber'] = '62930';
+        $payload['flight_plan_data']['route']['distanceNauticalMiles'] = 5549;
+        $payload['flight_plan_data']['fuelPlan'] = [
+            'ramp' => null,
+            'taxi' => null,
+            'takeoff' => null,
+            'trip' => null,
+            'contingency' => null,
+            'alternate' => ['amount' => 5600.0, 'unit' => 'lb'],
+            'finalReserve' => null,
+            'estimatedLanding' => null,
+        ];
+
+        $viewModel = $this->viewModel($payload);
+
+        $this->assertSame('62930', $viewModel->recallNumber());
+        $this->assertSame('5,549 NM', $viewModel->fmsDistanceToDestination());
+        $this->assertSame('5,600 LB', $viewModel->fmsAlternateReserve());
+        $this->assertSame([
+            ['label' => 'Flight Number', 'value' => 'CKS241'],
+            ['label' => 'AC Type', 'value' => 'B777-200F'],
+            ['label' => 'RECALL Number', 'value' => '62930'],
+            ['label' => 'Distance to Destination', 'value' => '5,549 NM'],
+            ['label' => 'Initial Altitude', 'value' => 'FL 330'],
+            ['label' => 'Planned Duration', 'value' => '07h12m'],
+            ['label' => 'Alternate Airport Reserves', 'value' => '5,600 LB'],
+        ], $viewModel->fmsFields());
+    }
+
+    #[Test]
+    public function it_hides_a_non_five_digit_recall_number_from_fms_presentation(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['identity']['recallNumber'] = '5678';
+
+        $viewModel = $this->viewModel($payload);
+
+        $this->assertNull($viewModel->recallNumber());
+        $this->assertNull($viewModel->fmsFields()[2]['value']);
+    }
+
+    #[Test]
+    public function it_preserves_a_zero_kilogram_alternate_reserve_for_fms(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['fuelPlan'] = [
+            'ramp' => null,
+            'taxi' => null,
+            'takeoff' => null,
+            'trip' => null,
+            'contingency' => null,
+            'alternate' => ['amount' => 0.0, 'unit' => 'kg'],
+            'finalReserve' => null,
+            'estimatedLanding' => null,
+        ];
+
+        $viewModel = $this->viewModel($payload);
+
+        $this->assertSame('0 KG', $viewModel->fmsAlternateReserve());
+        $this->assertSame('0 KG', $viewModel->fmsFields()[6]['value']);
     }
 
     #[Test]

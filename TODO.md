@@ -238,7 +238,7 @@ Verification: Focused extractor, normalization, DTO, builder, serializer, view-m
 Commit message: `feat: add flight init task`
 
 
-## 8 — Implement FMS
+## 8 — Completed: Implement FMS
 Extracted Fields
 
 - FMS View
@@ -254,17 +254,21 @@ Extracted Fields
 - Cost Index
 - Alternate Airport Reserves
 
-- No copyable fields
+* No copyable fields
 
 Goal: Move the current route-oriented UI into a dedicated FMS task and extend it safely.
 
 - Migrate airports, runways, SID, STAR, route, distance, initial altitude, duration, and recall number from the current card.
-- Preserve token-aware route display and copying; route wrapping remains a presentation concern.
+- Preserve token-aware route display and wrapping without adding FMS copy controls.
 - Add cost index, step climbs, altitude profile, constraints, and remarks only after confirmed fixture coverage.
 - Keep airport enrichment in view data and normalized airport codes in the core route DTO.
-- Test flattened/multiline routes, long tokens, missing procedures, alternate absence, copy behavior, and legacy parity.
+- Test flattened/multiline routes, long tokens, missing procedures, alternate absence, and legacy parity.
 
 Done when: the old route card can be removed without losing any current route or airport capability.
+
+Outcome: Replaced the generic route card with a dedicated, responsive FMS workspace for confirmed flight identity, five-digit RECALL number, airports and enrichment, planned runways and procedures, route distance, initial altitude, planned duration, alternate airport reserves with units, and token-aware route display. FMS contains no copy controls; Jepp PD-Pro retains its independent route-copy presentation. Cost index, step climbs, altitude profiles, constraints, and remarks remain omitted because no confirmed fixture contract exists. Invalid four- or six-digit RECALL values are ignored without discarding the remaining release identity.
+
+Verification: Focused identity, route, fuel, page-data compatibility, view-model, complete and sparse Livewire FMS, Jepp regression, and workspace rehydration tests pass. Pint, the production asset build, and final Larastan analysis were run successfully.
 
 Commit message: `feat: add fms task`
 
@@ -406,3 +410,6 @@ No supported source warnings were listed with the selected result.
 No independent performance determination
 
 This view repeats the confirmed source result. It does not calculate an envelope or label the condition safe; review the controlling performance report.
+
+# Jepp PD Pro task view
+- Move route section above ETOPS critical points section

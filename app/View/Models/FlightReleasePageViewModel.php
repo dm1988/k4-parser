@@ -53,6 +53,15 @@ readonly class FlightReleasePageViewModel
         return $this->pageData?->flightPlan->identity->tripNumber;
     }
 
+    public function recallNumber(): ?string
+    {
+        $recallNumber = $this->pageData?->flightPlan->identity->recallNumber;
+
+        return is_string($recallNumber) && strlen($recallNumber) === 5 && ctype_digit($recallNumber)
+            ? $recallNumber
+            : null;
+    }
+
     public function etdUtc(): ?string
     {
         return $this->pageData?->flightPlan->schedule->etdUtc;
@@ -128,6 +137,34 @@ readonly class FlightReleasePageViewModel
         }
 
         return implode(' · ', $summary);
+    }
+
+    public function fmsDistanceToDestination(): ?string
+    {
+        return $this->overviewRouteDistance();
+    }
+
+    public function fmsAlternateReserve(): ?string
+    {
+        return $this->pageData?->flightPlan->fuelPlan?->alternate?->format();
+    }
+
+    /** @return list<array{label: string, value: ?string}> */
+    public function fmsFields(): array
+    {
+        if ($this->pageData === null) {
+            return [];
+        }
+
+        return [
+            ['label' => 'Flight Number', 'value' => $this->flightNumber()],
+            ['label' => 'AC Type', 'value' => $this->aircraftType()],
+            ['label' => 'RECALL Number', 'value' => $this->recallNumber()],
+            ['label' => 'Distance to Destination', 'value' => $this->fmsDistanceToDestination()],
+            ['label' => 'Initial Altitude', 'value' => $this->pageData->initialAltitude],
+            ['label' => 'Planned Duration', 'value' => $this->pageData->duration],
+            ['label' => 'Alternate Airport Reserves', 'value' => $this->fmsAlternateReserve()],
+        ];
     }
 
     /**

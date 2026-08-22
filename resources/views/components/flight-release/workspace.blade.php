@@ -59,14 +59,12 @@
             @elseif ($activeTask === \App\Enums\FlightPlanTask::FlightInit)
                 <x-flight-release.flight-init :model="$model" />
             @elseif ($activeTask === \App\Enums\FlightPlanTask::Fms)
-                <div class="p-3 sm:p-4">
-                    <x-flight-release.plan-card
-                        :model="$model"
-                        :departure-airport="$model->departureAirport()"
-                        :destination-airport="$model->destinationAirport()"
-                        :alternate-airport="$model->alternateAirport()"
-                    />
-                </div>
+                <x-flight-release.fms
+                    :model="$model"
+                    :departure-airport="$model->departureAirport()"
+                    :destination-airport="$model->destinationAirport()"
+                    :alternate-airport="$model->alternateAirport()"
+                />
             @else
                 <div class="flex flex-col gap-4 p-4 sm:p-5">
                     <x-flight-release.empty-state
