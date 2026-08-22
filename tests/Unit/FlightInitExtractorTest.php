@@ -29,6 +29,36 @@ class FlightInitExtractorTest extends TestCase
         $this->assertSame('01', $this->extractor()->extract($flattened)['data']['acars_init_date']);
     }
 
+    public function test_it_extracts_the_date_before_a_same_line_acars_takeoff_request(): void
+    {
+        $text = <<<'TEXT'
+TAKEOFF AND LANDING REPORT CKS 0256 KLAX-RKSI 25MAY26
+TLR-22 SEQ-94208476C 24MAY26 2155Z
+A/C N774CK B777-200F GE90-110BL
+ACARS INIT DATE 25 ACARS TAKEOFF REQUEST 2111Z-0911Z
+TEXT;
+        $result = $this->extractor()->extract($text);
+        $wrappedDate = $this->extractor()->extract(str_replace('DATE 25', "DATE\n25", $text));
+
+        $this->assertSame([
+            'section_present' => true,
+            'acars_init_date' => '25',
+        ], $result['data']);
+        $this->assertSame('25', $wrappedDate['data']['acars_init_date']);
+
+        $invalidUtf8 = $this->extractor()->extract(str_replace('GE90-110BL', "GE90-110BL \x96", $text));
+
+        $this->assertSame('25', $invalidUtf8['data']['acars_init_date']);
+
+        $concatenatedLabel = $this->extractor()->extract(str_replace(
+            "GE90-110BL\nACARS INIT DATE 25",
+            'GE90-110BLACARS INIT DATE   25',
+            $text,
+        ));
+
+        $this->assertSame('25', $concatenatedLabel['data']['acars_init_date']);
+    }
+
     public function test_it_distinguishes_an_absent_report_from_a_report_without_a_valid_init_date(): void
     {
         $absent = $this->extractor()->extract('ROUTE KDFW DCT RKSI');

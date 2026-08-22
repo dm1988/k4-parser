@@ -2,24 +2,6 @@
 
 Build one reviewable flight-release workspace from the normalized extraction pipeline. Parse each source fact once, keep operational values typed, and present unavailable data honestly instead of inferring it.
 
-## Setup needed prior to creating new tasks and views
-
-### Completed: Waypoints extraction service
-
-Outcome: Confirmed no existing waypoint extractor and added a focused computed-flight-plan service with a sanitized fixture. It requires the paired table headers, preserves source order and duplicate identifiers, and extracts canonical coordinates, identifiers, optional source `TIME`, and optional source `T/TME` values without stripping leading zeroes or inventing units. Coordinate-backed FIR crossing rows remain represented with a missing leg time, coordinate-less markers such as TOC are not assigned a nearby coordinate, and bounded source evidence contains only the extracted waypoint rows. The normalized extraction orchestrator now invokes the service once per release and retains its raw normalized records and private evidence in `ParsedFlightPlanData` for later DTO mapping.
-
-Verification: All 5 focused waypoint extractor tests and both normalized extraction-orchestrator tests passed with 66 assertions, covering the representative 10-record table, missing headers, duplicate identifiers, leading zeroes, FIR placeholders, TOC coordinate isolation, CRLF, horizontal whitespace, bounded evidence, single-pass invocation, and parsed-data retention.
-
-Commit message: `feat: add waypoint extraction service`
-
-### Completed: ETOPS DTO foundation
-
-Outcome: Added immutable ETOPS DTOs under `App\DTOs\Etops` for applicability, entry and exit points, ordered equal-time points, validated degrees-and-minutes coordinates, alternates, diversion data, scenarios, and critical fuel with explicit units. Duplicate ETP labels and source order are preserved, partial or absent sections remain representable, and the normalized flight-plan aggregate now has an optional ETOPS section without changing the legacy extractor or front end.
-
-Verification: The 4 focused ETOPS DTO tests passed with 22 assertions. The 2 `FlightPlanData` aggregate tests, 6 builder tests, and serializer regression test passed with 56 combined assertions.
-
-Commit message: `feat: add typed etops data objects`
-
 ### Current foundation
 
 - The feature is an authorized Livewire page with private upload staging, user-scoped result caching, metrics, recoverable errors, and guaranteed upload cleanup.
@@ -333,172 +315,15 @@ The following changes were identified as a potential fix for the live page to re
 
 ## 1 — Completed: Stabilize the result and view-data contract
 
-Outcome: Added a typed `FlightPlanPageData` layer and dedicated builder that hydrate shared identity, schedule, route, and fuel from nested `flight_plan_data`. The builder explicitly adapts only legacy airport enrichment, altitude, duration, and ETOPS fields, fails closed for missing or malformed normalized payloads, and preserves legitimate zero fuel values. The Livewire page now passes typed page data to `FlightReleasePageViewModel`; Blade continues to receive only presentation methods, while the dual-shape compatibility serializer and owner-scoped result cache remain unchanged.
-
-Added typed task and availability enums covering all eleven views. Overview, Flight Init, and FMS are available for every valid normalized result; supported Slot Times, Fuel Score, and ETOPS tasks distinguish available data from data not present; unimplemented tasks report not supported.
-
-Verification: All 25 focused page-data, view-model, serializer, cache, and Livewire tests passed with 233 assertions. Pint passed, and the final Larastan analysis completed with no errors.
-
-Commit message: `refactor: add typed flight plan page data`
-
 ## 2 — Completed: Build the responsive task workspace
-
-Goal: Replace the single result card with a reusable shell for all eleven task views.
-
-- Keep the existing page header and `Extract another flight plan` action.
-- Add a compact shared release header showing flight number/date, aircraft/tail, route, ETD/ETA, and release revision only when confirmed.
-- Add the task navigator as a left rail on desktop and a horizontally scrollable or disclosure-based control on small screens.
-- Keep the active task in Livewire state; changing tasks must not reparse the PDF or duplicate cached results.
-- Render one content panel at a time with stable keys and task-specific empty/unsupported states.
-- Add reusable section header, metric, status, empty-state, and source-evidence components before duplicating markup.
-- Cover keyboard navigation, active-state semantics, small-screen behavior, dark mode, and Livewire rehydration.
-
-Done when: all eleven destinations are reachable and accessible, with unavailable tasks clearly labeled and no layout overflow at supported breakpoints.
-
-Outcome: Replaced the single result surface with a reusable task workspace. A compact release header now presents confirmed identity, aircraft, route, UTC schedule, and optional revision data; the visibly headed eleven-task navigator scrolls horizontally on small screens and becomes a left rail on desktop. The active destination is locked Livewire state selected through an authorized, enum-validated action, so switching or rehydrating reads the existing owner-scoped cache without reparsing. Keyed panels preserve the current route view for Overview and FMS while available, absent, and unsupported destinations receive explicit task-specific states. Shared release header, section header, metric, status, empty-state, and source-evidence components provide consistent keyboard focus, active semantics, dark mode, and overflow-safe presentation.
-
-Follow-up outcome: Task navigation and Overview cards now use accessible green, yellow, and gray status circles without visible status text; descriptive status pills remain in section headers and support details.
-
-Verification: All 21 focused Livewire and view-model tests passed with 237 assertions. The production Vite build passed, Pint passed after formatting the changed PHP, and the final Larastan analysis completed with no errors.
-
-Commit message: `feat: add flight plan task workspace`
 
 ## 3 — Completed: Implement Overview
 
-Goal: Provide the highest-value release summary without inventing operational status.
-
-- Show flight number, date, tail, aircraft type, departure, destination, alternate, ETD, ETA, initial altitude, route distance, and ramp fuel when available.
-- Show source-backed indicators only. GENDEC, filing, weather/RAIM, maintenance, and other unparsed statuses must remain `not supported` rather than guessed.
-- Summarize slot and ETOPS availability from their typed section data.
-- Link each summary card to its detailed task.
-- Keep airport details secondary to the operational summary.
-- Test complete and sparse releases, missing alternate/fuel/time values, units, and navigation links.
-
-Done when: a crew member can identify the flight and spot which detailed sections contain data without opening every task.
-
-Outcome: Replaced the route-heavy Overview placeholder with a responsive, source-backed operational summary. Linked cards now present confirmed flight/aircraft identity, airport codes and alternate, UTC schedule and approved-slot availability, initial altitude and route distance in nautical miles, ramp fuel with its source unit, and ETOPS evidence without implying approval or suitability. Each card opens its corresponding Flight Init, FMS, Slot Times, Fuel Score, or ETOPS task through the existing authorized Livewire action without reparsing or changing the cached result. GENDEC, filing, Weather/RAIM, and maintenance remain explicitly not supported, while enriched airport names and locations stay in a secondary disclosure.
-
-Verification: All 25 focused Livewire and view-model tests passed with 318 assertions, covering complete and sparse releases, missing alternate/fuel/times, legitimate zero fuel, LB/KG units, unsupported indicators, detail-task links, rehydration, and cache reuse. Pint passed, the production Vite build completed successfully, and the final Larastan analysis reported no errors.
-
-Commit message: `feat: add flight plan overview`
-
 ## 4 — Completed: Implement Jepp PD Pro
 
-Context: Tool for copying and pasting flight release data into an EFB app such as Jeppesen PD Pro
-Goal: Present only confirmed performance-planning data from representative PD Pro sections.
-
-- Retain previous copyable field buttons
-- Add sanitized multiline and flattened fixtures before defining the schema.
-- Add focused parsed data, DTO/value objects, source fragments, builder mapping, and section view data.
-- Test alternate formats, missing fields, invalid values, duplicate agreement, and conflicts.
-- Fields: Departure, destination, alternate, planned departure runway and SID, Planned arrival runway, etops critical points, etops airpots, ETP coordinate, eent, eexp, and route
-- Runways, SID, and STAR are not copyable
-
-Done when: every displayed PD-Pro value is traceable to a sanitized fixture and has an explicit unit or context.
-
-Outcome: Implemented the requested Jepp PD-Pro view as an independent snapshot of the current FMS task rather than a wrapper around the FMS component. Jepp PD-Pro is now available for every valid page result and preserves the current departure, destination, alternate, planned runways and procedures, ETOPS critical points and airports, ETP/EENT/EEXP coordinates, airport detail disclosure, route display, and existing copy controls. Runway, SID, and STAR values remain non-copyable. The separate Blade file intentionally duplicates today’s FMS markup so future FMS changes do not alter the retained PD-Pro implementation; no speculative PD-Pro parser fields or new source evidence were introduced.
-
-Verification: All 22 focused page-data and Livewire tests passed with 330 assertions, covering complete and sparse availability, current Jepp/FMS presentation parity, copyable fields, non-copyable runways and procedures, task switching, and cache reuse without reparsing. The Jepp and FMS templates were confirmed byte-for-byte identical at this checkpoint. Pint passed, the production Vite build completed successfully, and the final Larastan analysis reported no errors.
-
-Commit message: `feat: add jepp pd pro task`
-
 ## 5 — Completed: Implement Maintenance Log
-- Create a function to determine if a flight is an etops flight from extracted flight release text.
-Extracted fields:
-- Date
-- AC Type: B777-200F
-- Tail Number: N774CK
-- Trip Number
-- CREW LIST
-- Departure
-- Destination
-- ETOPS Flight y/n?
-- Est. Ramp Fuel
-
-Goal: Expose items that get written on a maintenance log sheet
-
-
-- Add sanitized fixtures covering no items, one item, multiple items, wrapped descriptions, and operational limitations.
-- Model item type, number, DMI/reference, description, status, limitations, procedures, and source evidence only when confirmed.
-- Reuse shared flight identity and fuel context instead of reparsing it.
-- Present count and severity/status summary above an item list; never infer dispatchability.
-- Keep maintenance control references and raw fragments private to the result lifecycle.
-- Test malformed numbering, duplicate items, missing optional notes, and absent sections.
-
-Done when: maintenance entries are faithful to their source text and the UI makes no airworthiness decision.
-
-Outcome: Added a focused Maintenance Log extractor with sanitized fixtures for absent and explicitly empty sections, one and multiple MEL/CDL/DMI items, wrapped descriptions, and operational limitations and procedures. The parser validates item numbers, deduplicates matching records, rejects conflicting duplicates, and retains raw source fragments only in the transient parsed result. A dedicated reusable flight crew extractor now isolates confirmed crew sections, reuses the existing crew parser, and stores typed crew members on the shared flight-plan aggregate rather than the Maintenance Log DTO, without crew employee identifiers; its fixtures use randomized four- and five-digit identifiers. ETOPS applicability requires explicit yes/no or numeric operational evidence and otherwise remains `not confirmed` rather than inferring a non-ETOPS flight. Typed maintenance DTOs flow through the normalized cache contract without raw evidence, while shared date, aircraft, tail, trip, airports, ramp fuel, and crew remain available to later tasks without reparsing.
-
-Operational-format follow-up: The extractor now supports flattened release sections headed `MEL/CDL`, maps single-letter `M` and `C` records to MEL and CDL, captures unlabelled DMI references and descriptions, removes embedded page headers from descriptions, and stops before the following RAIM section. Duplicate ATA numbers remain separate when their DMI references differ. The supplied CKS052411KDFW release was verified directly with all 8 expected records: 5 MELs and 3 CDLs.
-
-The responsive Maintenance Log task presents confirmed flight context, crew, item/type/status counts, and source-listed descriptions, DMI references, limitations, and procedures. It remains available from the shared normalized flight context even without a dedicated maintenance-item section or a maintenance object in an older cached payload; the item area reports that narrower absence without hiding confirmed fields. An explicitly empty log retains its dedicated no-items state, and the view includes a clear warning that it makes no airworthiness or dispatchability determination. The Overview maintenance indicator continues to describe dedicated section presence separately from task availability.
-
-Presentation follow-up: The confirmed crew section now appears above the summary, which is labeled `MEL / CDL`, followed by the airworthiness warning and MEL/CDL/DMI item list. The first four log-sheet context fields are ordered Date, Aircraft type, Aircraft number, and Trip number; the aircraft number continues to reuse the confirmed shared tail-number value.
-
-Verification: All 56 focused extractor, DTO, builder, serializer, page-data, view-model, and Livewire tests passed with 600 assertions. Pint passed, the production Vite build completed successfully, and the final Larastan analysis reported no errors. Follow-up: removed redundant nullsafe maintenance-item access after non-null assertions; both focused builder suites and targeted Larastan analysis pass. The context-availability correction passed 5 maintenance-focused tests with 64 assertions, all 6 page-data tests with 40 assertions, all 10 view-model tests with 95 assertions, Pint, the production Vite build, and targeted Larastan analysis.
-
-The presentation-order follow-up passed its focused Livewire test with 34 assertions, Pint, the production Vite build, and Larastan with no errors.
-
-Commit message: `feat: add maintenance log task`
 
 ## 6 — Completed: Implement Envelope
-Extracted shared fields:
-
-Trip Number
-Tail Number: N774CK
-AC Type: B777-200F
-Flight Number: CKS256
-Departure
-Destination
-CREW LIST
-
-Goal: Present confirmed performance-envelope constraints with clear provenance.
-
-- Start with sanitized fixtures and define whether the source is PD-Pro, weight-and-balance, or another release section.
-- Reuse typed aircraft, route, crew, and performance data rather than duplicating extraction.
-- Separate assumptions, permitted envelope, calculated result, and source warnings visually.
-- Do not calculate an envelope in the browser or label a condition safe solely from partial data.
-- Test boundary values, missing limits, conflicting sources, units, and unavailable sections.
-
-Done when: the view is a faithful presentation of a confirmed envelope result, not an independent performance calculator.
-
-Outcome: Identified the supported Envelope source as the release's Takeoff and Landing Report and added sanitized fixtures for multiline and flattened selected-result rows, negative temperature, intersection-qualified runways, alphanumeric report sequences, explicit no-warning results, missing limits, duplicate agreement, and conflicting reports. A focused extractor now normalizes the selected TLR assumptions, source limits, planned takeoff result, V-speeds, and source warnings into a typed Envelope DTO with explicit pounds, knots, Celsius, and inHg context; TLR weight values are normalized from their source hundreds-of-pounds scale. Conflicting report results fail closed, missing limits remain absent, and raw TLR evidence stays only in transient source fragments rather than the cached Livewire payload.
-
-Frontend follow-up: The Envelope task retains shared flight details, crew, and the private-evidence notice, but no longer presents TLR provenance, inputs, limits, calculated performance values, warnings, or the performance disclaimer. The complete extraction, typed DTO, serialization, reconstruction, and view-model framework remains available for future performance UI work. An absent TLR section reports `not present in this release`; a detected section without a supported selected result reports `not supported yet`.
-
-QNH-format follow-up: Added source-faithful support for both decimal inHg and four-digit hPa TLR QNH values. The extractor, typed Envelope DTO, normalized cache contract, reconstruction, and formatter retain the source unit explicitly without silently converting pressure. The supplied CKS028616EDDP release now parses EDDP runway 08L, QNH 1015 hPa, and planned takeoff weight 639,900 LB, making Envelope available.
-
-QNH-format verification: All 31 focused extractor, DTO, builder, serializer, page-data, formatter, and Livewire tests passed with 245 assertions. Direct extraction of the supplied release confirmed the hPa value and planned takeoff result.
-
-Shared-crew follow-up: Added a sanitized ID-first flight-release manifest fixture and extended the existing typed crew-position enum for PIC, SIC/FO, additional captain, IRP, MX, and ACM source roles. The shared crew extractor now recognizes manifests without a `CREW LIST` heading, parses multiple crew records from one line, ignores role-only additional-captain and ACM placeholders, and returns all six confirmed named crew members to Maintenance Log and Envelope while keeping employee identifiers out of cached crew data.
-
-Crew-name boundary follow-up: A flattened trailing `ADDNTL CAPT` heading is removed from the preceding crew name, so `GONZALEZ D ADDNTL CAPT` resolves to `GONZALEZ D`. Genuine named additional-captain records and following ID-first crew records remain intact.
-
-Verification: All 59 focused extractor, DTO, aggregate-builder, serializer, page-data, view-model, and Livewire tests passed with 662 assertions. Pint passed, the production Vite build completed successfully, and the final Larastan analysis reported no errors.
-
-Shared-crew verification: All 12 focused parser, crew-extractor, and aggregate-extractor tests passed with 111 assertions. The focused Maintenance Log and Envelope Livewire tests passed with 52 and 54 assertions respectively. Pint passed, and the final Larastan analysis reported no errors.
-
-Crew-name boundary verification: All 11 focused crew parser and flight-release extractor tests passed with 75 assertions, including end-of-line, fully flattened next-record, and genuine additional-captain cases. Pint passed, and the final Larastan analysis reported no errors.
-
-Test-analysis follow-up: Split the Maintenance Log and Envelope assertion chains before Livewire refresh calls so Larastan preserves the component test type instead of inferring an HTTP test response.
-
-Test-analysis verification: The focused Maintenance Log and Envelope Livewire tests passed with 52 and 54 assertions respectively. Pint passed, and targeted Larastan analysis of `FlightPlanBriefTest.php` reported no errors.
-
-Commit message: `feat: add flight envelope task`
-
-Shared-crew follow-up commit message: `fix: parse flight release crew manifest`
-
-Crew-name boundary follow-up commit message: `fix: trim crew manifest heading from name`
-
-Test-analysis follow-up commit message: `test: preserve Livewire type across refresh`
-
-QNH-format follow-up commit message: `fix: support hpa envelope qnh`
-
-### Follow up - Organize crew list above MEL / CDL list
-1. Format date mm dd yy i.e. 01 27 26. Label it as MO DY YR
-2. Format ramp fuel in thousands i.e. 225.5 with appropriate label
-3. Provide copy buttons for MEL / CDL numbers
-4. Field order should be date, Aircraft type, aircraft number, trip number
 
 ## 7 — Completed: Implement Flight Init
 Crew list follow up change: Add employee numbers to each crew member
@@ -531,6 +356,12 @@ Outcome: Added a dedicated read-only Flight Init workspace for tail, UTC ETD, ra
 Verification: Focused extractor, normalization, DTO, builder, serializer, view-model, Livewire rendering, adjacent task, and Flight Init copy-control absence tests pass. Pint, the production asset build, and final Larastan analysis were run successfully.
 
 Commit message: `feat: add flight init task`
+
+ACARS date follow-up outcome: The TLR extractor now accepts PDF whitespace, including a line or page separator between `ACARS INIT DATE` and its day value. It avoids Unicode regex mode so an unrelated invalid byte cannot make the match fail, and it accepts the confirmed PDF concatenation `GE90-110BLACARS INIT DATE   25` without requiring a word boundary before `ACARS`. The supplied same-line, wrapped, invalid-byte, and concatenated forms all return `25` without falling back to either report date.
+
+ACARS date follow-up verification: The 24 focused extractor, normalizer, builder, page-data, and serializer tests passed with 151 assertions, and the focused Flight Init Livewire test passed with 40 assertions. Pint passed, and targeted Larastan analysis reported no errors.
+
+ACARS date follow-up commit message: `fix: parse concatenated ACARS init label`
 
 
 ## 8 — Completed: Implement FMS
@@ -574,3 +405,21 @@ Outcome: Flight-release crew extraction now requires a recognized crew role befo
 Verification: The 14 focused flight crew extractor, shared crew parser, and aggregate extractor tests pass with 128 assertions. Pint passed, and targeted Larastan analysis of the modified extractor and regression test reported no errors.
 
 Commit message: `fix: reject solar forecast crew entries`
+
+## Setup needed prior to creating new tasks and views
+
+### Completed: Waypoints extraction service
+
+Outcome: Confirmed no existing waypoint extractor and added a focused computed-flight-plan service with a sanitized fixture. It requires the paired table headers, preserves source order and duplicate identifiers, and extracts canonical coordinates, identifiers, optional source `TIME`, and optional source `T/TME` values without stripping leading zeroes or inventing units. Coordinate-backed FIR crossing rows remain represented with a missing leg time, coordinate-less markers such as TOC are not assigned a nearby coordinate, and bounded source evidence contains only the extracted waypoint rows. The normalized extraction orchestrator now invokes the service once per release and retains its raw normalized records and private evidence in `ParsedFlightPlanData` for later DTO mapping.
+
+Verification: All 5 focused waypoint extractor tests and both normalized extraction-orchestrator tests passed with 66 assertions, covering the representative 10-record table, missing headers, duplicate identifiers, leading zeroes, FIR placeholders, TOC coordinate isolation, CRLF, horizontal whitespace, bounded evidence, single-pass invocation, and parsed-data retention.
+
+Commit message: `feat: add waypoint extraction service`
+
+### Completed: ETOPS DTO foundation
+
+Outcome: Added immutable ETOPS DTOs under `App\DTOs\Etops` for applicability, entry and exit points, ordered equal-time points, validated degrees-and-minutes coordinates, alternates, diversion data, scenarios, and critical fuel with explicit units. Duplicate ETP labels and source order are preserved, partial or absent sections remain representable, and the normalized flight-plan aggregate now has an optional ETOPS section without changing the legacy extractor or front end.
+
+Verification: The 4 focused ETOPS DTO tests passed with 22 assertions. The 2 `FlightPlanData` aggregate tests, 6 builder tests, and serializer regression test passed with 56 combined assertions.
+
+Commit message: `feat: add typed etops data objects`

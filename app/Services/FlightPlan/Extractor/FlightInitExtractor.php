@@ -69,7 +69,7 @@ class FlightInitExtractor
     {
         $matches = [];
 
-        if (preg_match('/\bACARS\h+INIT\h+DATE\h+(?<day>0?[1-9]|[12]\d|3[01])\b/i', $section, $matches) !== 1) {
+        if (preg_match('/ACARS\s+INIT\s+DATE\s+(?<day>0?[1-9]|[12]\d|3[01])\b/i', $section, $matches) !== 1) {
             return null;
         }
 
