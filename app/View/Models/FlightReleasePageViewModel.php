@@ -5,6 +5,7 @@ namespace App\View\Models;
 use App\DTOs\AirportData;
 use App\DTOs\CrewMemberData;
 use App\DTOs\EnvelopeData;
+use App\DTOs\Etops\EtopsEqualTimePointData;
 use App\DTOs\MaintenanceItemData;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
@@ -553,7 +554,29 @@ readonly class FlightReleasePageViewModel
      */
     public function etps(): array
     {
-        return $this->pageData->etps ?? [];
+        $etops = $this->pageData?->flightPlan->etops;
+
+        if ($etops === null) {
+            return [];
+        }
+
+        return array_map(
+            static function (EtopsEqualTimePointData $point, int $index) use ($etops): array {
+                $scenario = $etops->scenarios[$index] ?? null;
+
+                return [
+                    'label' => $point->label,
+                    'airports' => implode('-', array_filter([
+                        $point->firstAlternate?->value,
+                        $point->secondAlternate?->value,
+                    ])),
+                    'coordinates' => $point->coordinate->latitude.' '.$point->coordinate->longitude,
+                    'scenario' => $scenario->name ?? '',
+                ];
+            },
+            $etops->equalTimePoints,
+            array_keys($etops->equalTimePoints),
+        );
     }
 
     /**
@@ -570,12 +593,16 @@ readonly class FlightReleasePageViewModel
 
     public function eentCoordinates(): ?string
     {
-        return $this->pageData?->eentCoordinates;
+        $coordinate = $this->pageData?->flightPlan->etops?->entryPoint?->coordinate;
+
+        return $coordinate === null ? null : $coordinate->latitude.' '.$coordinate->longitude;
     }
 
     public function eexpCoordinates(): ?string
     {
-        return $this->pageData?->eexpCoordinates;
+        $coordinate = $this->pageData?->flightPlan->etops?->exitPoint?->coordinate;
+
+        return $coordinate === null ? null : $coordinate->latitude.' '.$coordinate->longitude;
     }
 
     public function hasEtopsData(): bool

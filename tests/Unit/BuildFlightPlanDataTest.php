@@ -204,17 +204,66 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame(0.0, $flightPlan->fuelPlan->contingency?->amount);
     }
 
+    public function test_it_migrates_current_etops_values_without_changing_their_meaning(): void
+    {
+        $flightPlan = (new BuildFlightPlanData)->handle($this->partialParsedData(
+            etops: [
+                'etps' => [[
+                    'label' => 'ETP1',
+                    'airports' => 'KSFO-PACD',
+                    'coordinates' => 'N45 43.7 W143 53.1',
+                    'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
+                ]],
+                'eent_coordinates' => 'N40 31.1 W131 22.6',
+                'eexp_coordinates' => 'N45 19.3 E151 36.4',
+            ],
+        ));
+
+        $this->assertNotNull($flightPlan->etops);
+        $this->assertTrue($flightPlan->etops->sectionPresent);
+        $this->assertSame('unknown', $flightPlan->etops->applicability->value);
+        $this->assertSame('N40 31.1', $flightPlan->etops->entryPoint?->coordinate->latitude);
+        $this->assertSame('W131 22.6', $flightPlan->etops->entryPoint->coordinate->longitude);
+        $this->assertSame('N45 19.3', $flightPlan->etops->exitPoint?->coordinate->latitude);
+        $this->assertSame('E151 36.4', $flightPlan->etops->exitPoint->coordinate->longitude);
+        $this->assertSame('ETP1', $flightPlan->etops->equalTimePoints[0]->label);
+        $this->assertSame('KSFO', $flightPlan->etops->equalTimePoints[0]->firstAlternate?->value);
+        $this->assertSame('PACD', $flightPlan->etops->equalTimePoints[0]->secondAlternate?->value);
+        $this->assertSame('ALL ENGINE/DECOMPRESSION/LRC', $flightPlan->etops->scenarios[0]->name);
+        $this->assertSame('ETP1', $flightPlan->etops->scenarios[0]->equalTimePointLabel);
+    }
+
+    public function test_it_omits_malformed_etops_values_instead_of_failing_the_release(): void
+    {
+        $flightPlan = (new BuildFlightPlanData)->handle($this->partialParsedData(
+            etops: [
+                'etps' => [[
+                    'label' => 'ETP1',
+                    'airports' => 'INVALID',
+                    'coordinates' => 'N99 00.0 W143 53.1',
+                    'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
+                ]],
+                'eent_coordinates' => 'invalid',
+                'eexp_coordinates' => null,
+            ],
+        ));
+
+        $this->assertNull($flightPlan->etops);
+    }
+
     /**
      * @param  array<string, mixed>  $identity
      * @param  array<string, mixed>  $schedule
      * @param  array<string, mixed>  $route
      * @param  array<string, mixed>  $fuel
+     * @param  array<string, mixed>  $etops
      */
     private function partialParsedData(
         array $identity = [],
         array $schedule = [],
         array $route = [],
         array $fuel = [],
+        array $etops = [],
     ): ParsedFlightPlanData {
         return new ParsedFlightPlanData(
             identity: $identity,
@@ -225,6 +274,7 @@ class BuildFlightPlanDataTest extends TestCase
                 ...$route,
             ],
             fuel: $fuel,
+            etops: $etops,
         );
     }
 }

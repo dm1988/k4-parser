@@ -24,8 +24,8 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame('Ted Stevens Anchorage International Airport', $pageData->departureAirport?->name);
         $this->assertSame('FL 340', $pageData->initialAltitude);
         $this->assertSame('12h10m', $pageData->duration);
-        $this->assertSame('ETP1', $pageData->etps[0]['label']);
-        $this->assertSame('N40 31.1 W131 22.6', $pageData->eentCoordinates);
+        $this->assertSame('ETP1', $pageData->flightPlan->etops?->equalTimePoints[0]->label);
+        $this->assertSame('N40 31.1', $pageData->flightPlan->etops->entryPoint?->coordinate->latitude);
         $this->assertTrue($pageData->flightPlan->maintenanceLog?->sectionPresent);
         $this->assertSame('28-22-01', $pageData->flightPlan->maintenanceLog->items[0]->number);
         $this->assertSame('Alex Morgan', $pageData->flightPlan->crewMembers[0]->name);
@@ -85,9 +85,10 @@ class BuildFlightPlanPageDataTest extends TestCase
         unset($payload['flight_plan_data']['crewMembers'][0]['employeeNumber']);
         $payload['departure_airport'] = 'invalid';
         $payload['initial_altitude'] = [];
-        $payload['etps'] = [['label' => 'incomplete']];
-        $payload['eent_coordinates'] = null;
-        $payload['eexp_coordinates'] = null;
+        $payload['flight_plan_data']['etops'] = null;
+        $payload['etps'] = $this->legacyEtps();
+        $payload['eent_coordinates'] = 'N40 31.1 W131 22.6';
+        $payload['eexp_coordinates'] = 'N45 19.3 E151 36.4';
 
         $pageData = (new BuildFlightPlanPageData)->handle($payload);
 
@@ -97,7 +98,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertNull($pageData->flightPlan->crewMembers[0]->employeeNumber);
         $this->assertNull($pageData->departureAirport);
         $this->assertNull($pageData->initialAltitude);
-        $this->assertSame([], $pageData->etps);
+        $this->assertNull($pageData->flightPlan->etops);
         $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::JeppPdPro));
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::SlotTimes));
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::FuelScore));
@@ -263,6 +264,31 @@ class BuildFlightPlanPageDataTest extends TestCase
                     'sectionPresent' => true,
                     'acarsInitDate' => '11',
                 ],
+                'etops' => [
+                    'sectionPresent' => true,
+                    'applicability' => 'unknown',
+                    'entryPoint' => [
+                        'label' => 'EENT',
+                        'coordinate' => ['latitude' => 'N40 31.1', 'longitude' => 'W131 22.6'],
+                        'sequence' => 0,
+                    ],
+                    'exitPoint' => null,
+                    'equalTimePoints' => [[
+                        'label' => 'ETP1',
+                        'coordinate' => ['latitude' => 'N45 43.7', 'longitude' => 'W143 53.1'],
+                        'sequence' => 1,
+                        'firstAlternate' => 'KSFO',
+                        'secondAlternate' => 'PACD',
+                    ]],
+                    'alternates' => [],
+                    'scenarios' => [[
+                        'name' => 'ALL ENGINE/DECOMPRESSION/LRC',
+                        'equalTimePointLabel' => 'ETP1',
+                        'diversion' => null,
+                        'criticalFuel' => null,
+                        'remarks' => null,
+                    ]],
+                ],
                 'crewMembers' => [[
                     'name' => 'Alex Morgan',
                     'role' => 'CP',
@@ -271,5 +297,16 @@ class BuildFlightPlanPageDataTest extends TestCase
                 ]],
             ],
         ];
+    }
+
+    /** @return list<array{label: string, airports: string, coordinates: string, scenario: string}> */
+    private function legacyEtps(): array
+    {
+        return [[
+            'label' => 'ETP1',
+            'airports' => 'KSFO-PACD',
+            'coordinates' => 'N45 43.7 W143 53.1',
+            'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
+        ]];
     }
 }

@@ -55,6 +55,11 @@ class ExtractFlightPlanData
             maintenance: $maintenance['data'],
             envelope: $envelope['data'],
             flightInit: $flightInit['data'],
+            etops: [
+                'etps' => $route['etps'],
+                'eent_coordinates' => $route['eent_coordinates'],
+                'eexp_coordinates' => $route['eexp_coordinates'],
+            ],
             waypoints: $waypoints['data'],
             sourceFragments: [
                 ...$identity['source_fragments'],

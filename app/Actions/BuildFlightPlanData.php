@@ -4,6 +4,11 @@ namespace App\Actions;
 
 use App\DTOs\CrewMemberData;
 use App\DTOs\EnvelopeData;
+use App\DTOs\Etops\EtopsCoordinateData;
+use App\DTOs\Etops\EtopsData;
+use App\DTOs\Etops\EtopsEqualTimePointData;
+use App\DTOs\Etops\EtopsPointData;
+use App\DTOs\Etops\EtopsScenarioData;
 use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightInitData;
 use App\DTOs\FlightPlanData;
@@ -69,6 +74,7 @@ class BuildFlightPlanData
             maintenanceLog: $this->maintenanceLog($parsed),
             envelope: $this->envelope($parsed),
             flightInit: $this->flightInit($parsed),
+            etops: $this->etops($parsed),
             crewMembers: $this->crewMembers($parsed->crewMembers),
         );
     }
@@ -197,6 +203,92 @@ class BuildFlightPlanData
             sectionPresent: true,
             acarsInitDate: $this->flightInitFieldNormalizer->acarsInitDate($flightInit['acars_init_date'] ?? null),
         );
+    }
+
+    private function etops(ParsedFlightPlanData $parsed): ?EtopsData
+    {
+        $entryPoint = $this->etopsPoint('EENT', $parsed->etops['eent_coordinates'] ?? null, 0);
+        $equalTimePoints = [];
+        $scenarios = [];
+        $etpValues = $parsed->etops['etps'] ?? [];
+        $sequence = 1;
+
+        foreach ($etpValues as $value) {
+            $label = $this->nullableString($value['label']);
+            $coordinate = $this->etopsCoordinate($value['coordinates']);
+            $airports = explode('-', $value['airports']);
+            $scenario = $this->nullableString($value['scenario']);
+
+            if ($label === null || $coordinate === null || count($airports) !== 2 || $scenario === null) {
+                $sequence++;
+
+                continue;
+            }
+
+            try {
+                $equalTimePoints[] = new EtopsEqualTimePointData(
+                    label: $label,
+                    coordinate: $coordinate,
+                    sequence: $sequence,
+                    firstAlternate: new AirportCode($airports[0]),
+                    secondAlternate: new AirportCode($airports[1]),
+                );
+                $scenarios[] = new EtopsScenarioData($scenario, $label);
+            } catch (InvalidArgumentException) {
+                $sequence++;
+
+                continue;
+            }
+
+            $sequence++;
+        }
+
+        $exitPoint = $this->etopsPoint(
+            'EEXP',
+            $parsed->etops['eexp_coordinates'] ?? null,
+            $sequence,
+        );
+
+        if ($entryPoint === null && $equalTimePoints === [] && $exitPoint === null) {
+            return null;
+        }
+
+        $applicability = is_string($parsed->maintenance['etops_applicability'] ?? null)
+            ? EtopsApplicability::tryFrom($parsed->maintenance['etops_applicability'])
+            : null;
+
+        return new EtopsData(
+            sectionPresent: true,
+            applicability: $applicability ?? EtopsApplicability::Unknown,
+            entryPoint: $entryPoint,
+            exitPoint: $exitPoint,
+            equalTimePoints: $equalTimePoints,
+            scenarios: $scenarios,
+        );
+    }
+
+    private function etopsPoint(string $label, mixed $coordinates, int $sequence): ?EtopsPointData
+    {
+        $coordinate = $this->etopsCoordinate($coordinates);
+
+        return $coordinate === null ? null : new EtopsPointData($label, $coordinate, $sequence);
+    }
+
+    private function etopsCoordinate(mixed $value): ?EtopsCoordinateData
+    {
+        if (! is_string($value) || preg_match(
+            '/^([NS]\d{1,2}\h+\d{1,2}(?:\.\d+)?)\h+([EW]\d{1,3}\h+\d{1,2}(?:\.\d+)?)$/i',
+            trim($value),
+            $matches,
+        ) !== 1) {
+            return null;
+        }
+
+        try {
+            return new EtopsCoordinateData($matches[1], $matches[2]);
+        } catch (InvalidArgumentException) {
+            return null;
+        }
     }
 
     private function nullableFloat(mixed $value): ?float

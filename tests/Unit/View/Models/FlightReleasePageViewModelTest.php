@@ -335,6 +335,7 @@ class FlightReleasePageViewModelTest extends TestCase
     {
         $payload = $this->resultPayload();
         $payload['initial_altitude'] = null;
+        $payload['flight_plan_data']['etops'] = null;
         $payload['etps'] = [];
         $payload['eent_coordinates'] = null;
         $payload['eexp_coordinates'] = null;
@@ -403,7 +404,7 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
-    public function it_adapts_legacy_etops_fields_without_exposing_raw_arrays_to_blade(): void
+    public function it_adapts_normalized_etops_data_without_exposing_dtos_to_blade(): void
     {
         $viewModel = $this->viewModel($this->resultPayload());
 
@@ -534,6 +535,35 @@ class FlightReleasePageViewModelTest extends TestCase
                     'plannedTakeoffWeight' => ['amount' => 612400, 'unit' => 'lb'],
                     'maximumFieldTakeoffWeight' => ['amount' => 766000, 'unit' => 'lb'],
                     'sourceWarnings' => ['32-41-03 - SOURCE BRAKE MESSAGE'],
+                ],
+                'etops' => [
+                    'sectionPresent' => true,
+                    'applicability' => 'unknown',
+                    'entryPoint' => [
+                        'label' => 'EENT',
+                        'coordinate' => ['latitude' => 'N40 31.1', 'longitude' => 'W131 22.6'],
+                        'sequence' => 0,
+                    ],
+                    'exitPoint' => [
+                        'label' => 'EEXP',
+                        'coordinate' => ['latitude' => 'N45 19.3', 'longitude' => 'E151 36.4'],
+                        'sequence' => 2,
+                    ],
+                    'equalTimePoints' => [[
+                        'label' => 'ETP1',
+                        'coordinate' => ['latitude' => 'N45 43.7', 'longitude' => 'W143 53.1'],
+                        'sequence' => 1,
+                        'firstAlternate' => 'KSFO',
+                        'secondAlternate' => 'PACD',
+                    ]],
+                    'alternates' => [],
+                    'scenarios' => [[
+                        'name' => 'ALL ENGINE/DECOMPRESSION/LRC',
+                        'equalTimePointLabel' => 'ETP1',
+                        'diversion' => null,
+                        'criticalFuel' => null,
+                        'remarks' => null,
+                    ]],
                 ],
                 'crewMembers' => [[
                     'name' => 'Alex Morgan',

@@ -5,6 +5,9 @@ namespace Tests\Unit;
 use App\DTOs\AirportData;
 use App\DTOs\CrewMemberData;
 use App\DTOs\EnvelopeData;
+use App\DTOs\Etops\EtopsCoordinateData;
+use App\DTOs\Etops\EtopsData;
+use App\DTOs\Etops\EtopsPointData;
 use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightInitData;
 use App\DTOs\FlightPlanData;
@@ -55,6 +58,15 @@ class FlightPlanResultSerializerTest extends TestCase
                 plannedTakeoffWeight: new WeightQuantity(612400, 'lb'),
             ),
             flightInit: new FlightInitData(sectionPresent: true, acarsInitDate: '11'),
+            etops: new EtopsData(
+                sectionPresent: true,
+                applicability: EtopsApplicability::Unknown,
+                entryPoint: new EtopsPointData(
+                    'EENT',
+                    new EtopsCoordinateData('N40 31.1', 'W131 22.6'),
+                    0,
+                ),
+            ),
             crewMembers: [new CrewMemberData('Alex Morgan', 'CP', 'YIP', '4827')],
         );
         $parsed = new ParsedFlightPlanData(
@@ -117,6 +129,7 @@ class FlightPlanResultSerializerTest extends TestCase
         $this->assertSame('4827', $result['flight_plan_data']['crewMembers'][0]['employeeNumber']);
         $this->assertSame('11', $result['flight_plan_data']['flightInit']['acarsInitDate']);
         $this->assertSame(612400, $result['flight_plan_data']['envelope']['plannedTakeoffWeight']['amount']);
+        $this->assertSame('N40 31.1', $result['flight_plan_data']['etops']['entryPoint']['coordinate']['latitude']);
         $this->assertArrayNotHasKey('crewMembers', $result['flight_plan_data']['maintenanceLog']);
         $this->assertArrayNotHasKey('source_fragments', $result);
         $this->assertStringNotContainsString('must not leak', json_encode($result, JSON_THROW_ON_ERROR));

@@ -28,7 +28,7 @@ Commit message: `feat: add typed etops data objects`
 - The cached compatibility payload contains both the existing flat route fields and nested `flight_plan_data`.
 - The current results UI renders airports, runways, procedures, route tokens, and basic ETOPS data through the legacy `FlightReleasePageViewModel`.
 - Normalized today: flight/trip/recall identity, aircraft and tail, flight date, airports, route, runways, SID/STAR, distance, ETD/ETA, approved slot instants, and release-level fuel.
-- Still legacy-only: airport enrichment, initial altitude, duration, ETOPS points, EENT, and EEXP.
+- Still legacy-only: airport enrichment, initial altitude, and duration.
 - Not yet confirmed from fixtures: release revision, report/duty times, block duration, local times, contingency fuel, and most fields for Jepp PD-Pro, Maintenance Log, Envelope, Fuel Score, Weather, and Weight & Balance.
 
 ### Product and UI rules
@@ -54,7 +54,7 @@ Commit message: `feat: add typed etops data objects`
 |     6 | FMS              | `calculator`                | Core route data ready                            |
 |     7 | Slot Times       | `clock`                     | Basic approved slots ready                       |
 |     8 | Fuel Score       | `gauge` or closest Heroicon | Release summary ready; waypoint score pending    |
-|     9 | ETOPS            | `globe-alt`                 | Basic critical points ready; typed model pending |
+|     9 | ETOPS            | `globe-alt`                 | Current critical points typed; deeper scenarios pending |
 |    10 | Weather          | `cloud`                     | Requires confirmed fixtures                      |
 |    11 | Weight & Balance | `scale`                     | Requires confirmed fixtures                      |
 
@@ -90,18 +90,22 @@ Done when: summary values are reliable and no status badge appears without a doc
 
 Commit message: `feat: add fuel score task`
 
-## 11 — Implement ETOPS
+## 11 — Current focus: Implement ETOPS
 
 Goal: Replace legacy ETOPS arrays with typed, source-backed operational data.
 
 - Add ETOPS DTOs for applicability, entry/exit points, ETPs, scenarios, coordinates, alternates, diversion data, critical fuel, restrictions, and source fragments as fixtures permit.
-- Current focus: Migrate current ETP, EENT, and EEXP values without changing their displayed meaning.
+- Completed current focus: Migrate current ETP, EENT, and EEXP values without changing their displayed meaning.
 - Validate coordinate formats and preserve sequence/order.
 - Present critical points, alternates, fuel scenarios, and remarks in separate sections.
 - Do not infer approval, suitability, or compliance from the presence of an ETOPS section.
 - Test no-ETOPS releases, multiple ETPs, duplicate labels, malformed coordinates, partial sections, and legacy parity.
 
 Done when: the compatibility ETOPS fields are no longer needed by the front end.
+
+Outcome: Promoted the existing ETP, EENT, and EEXP extraction results into the normalized parsed contract and existing typed ETOPS DTOs. The normalized builder now validates coordinates, retains point ordering, keeps alternate airport order and scenario text, carries explicit applicability without inferring ETOPS approval, and omits malformed optional points without failing the release. Cached page data reconstructs ETOPS exclusively from `flight_plan_data.etops`; the page model and view model no longer consume the flat ETOPS compatibility fields. Jepp PD-Pro retains the existing airport, coordinate, scenario, EENT, and EEXP display strings, while the serializer continues emitting flat keys only for compatibility consumers outside the front end.
+
+Verification: Pint passed. The 41 focused DTO, extraction, builder, serializer, page-data, and view-model tests passed with 350 assertions. The focused Livewire ETOPS display-parity and missing-data tests passed, and the maintenance shared-context regression now asserts its established `1,000 LB` label with the displayed `216.8` value. Focused Larastan analysis of `BuildFlightPlanData` passed with zero errors after aligning its ETOPS loop with the declared parsed-data shape.
 
 Commit message: `feat: add etops task`
 

@@ -9,9 +9,6 @@ use App\Enums\FlightPlanTaskAvailability;
 
 final readonly class FlightPlanPageData
 {
-    /**
-     * @param  list<array{label: string, airports: string, coordinates: string, scenario: string}>  $etps
-     */
     public function __construct(
         public FlightPlanData $flightPlan,
         public ?AirportData $departureAirport = null,
@@ -19,9 +16,6 @@ final readonly class FlightPlanPageData
         public ?AirportData $alternateAirport = null,
         public ?string $initialAltitude = null,
         public ?string $duration = null,
-        public array $etps = [],
-        public ?string $eentCoordinates = null,
-        public ?string $eexpCoordinates = null,
     ) {}
 
     /** @return array<string, FlightPlanTaskAvailability> */
@@ -61,9 +55,13 @@ final readonly class FlightPlanPageData
 
     public function hasEtopsData(): bool
     {
-        return $this->etps !== []
-            || $this->eentCoordinates !== null
-            || $this->eexpCoordinates !== null;
+        $etops = $this->flightPlan->etops;
+
+        return $etops !== null && (
+            $etops->entryPoint !== null
+            || $etops->equalTimePoints !== []
+            || $etops->exitPoint !== null
+        );
     }
 
     private function envelopeAvailability(): FlightPlanTaskAvailability

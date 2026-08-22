@@ -964,7 +964,8 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('KMIA')
             ->assertSeeText('ETOPS flight')
             ->assertSeeText('Yes')
-            ->assertSeeText('216,800 LB')
+            ->assertSeeText('Estimated ramp fuel (1,000 LB)')
+            ->assertSeeText('216.8')
             ->assertSeeText('Alex Morgan')
             ->assertSeeText('No maintenance section found')
             ->assertDontSeeText('Maintenance Log data was not found')
@@ -1424,6 +1425,11 @@ class FlightPlanBriefTest extends TestCase
             ],
             envelope: $envelope ?? [],
             flightInit: $flightInit ?? [],
+            etops: [
+                'etps' => is_array($legacy['etps'] ?? null) ? $legacy['etps'] : [],
+                'eent_coordinates' => is_string($legacy['eent_coordinates'] ?? null) ? $legacy['eent_coordinates'] : null,
+                'eexp_coordinates' => is_string($legacy['eexp_coordinates'] ?? null) ? $legacy['eexp_coordinates'] : null,
+            ],
             legacy: $legacy,
         );
     }

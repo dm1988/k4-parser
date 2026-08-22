@@ -5,6 +5,11 @@ namespace App\Actions;
 use App\DTOs\AirportData;
 use App\DTOs\CrewMemberData;
 use App\DTOs\EnvelopeData;
+use App\DTOs\Etops\EtopsCoordinateData;
+use App\DTOs\Etops\EtopsData;
+use App\DTOs\Etops\EtopsEqualTimePointData;
+use App\DTOs\Etops\EtopsPointData;
+use App\DTOs\Etops\EtopsScenarioData;
 use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightInitData;
 use App\DTOs\FlightPlanData;
@@ -52,9 +57,6 @@ class BuildFlightPlanPageData
             alternateAirport: $this->airport($result['alternate_airport'] ?? null),
             initialAltitude: $this->nullableString($result['initial_altitude'] ?? null),
             duration: $this->nullableString($result['duration'] ?? null),
-            etps: $this->etps($result['etps'] ?? null),
-            eentCoordinates: $this->nullableString($result['eent_coordinates'] ?? null),
-            eexpCoordinates: $this->nullableString($result['eexp_coordinates'] ?? null),
         );
     }
 
@@ -94,6 +96,7 @@ class BuildFlightPlanPageData
             maintenanceLog: $this->maintenanceLog($data['maintenanceLog'] ?? null),
             envelope: $this->envelope($data['envelope'] ?? null),
             flightInit: $this->flightInit($data['flightInit'] ?? null),
+            etops: $this->etops($data['etops'] ?? null),
             crewMembers: $this->crewMembers($data['crewMembers'] ?? null),
         );
     }
@@ -364,34 +367,112 @@ class BuildFlightPlanPageData
         return $value !== '' ? $value : null;
     }
 
-    /**
-     * @return list<array{label: string, airports: string, coordinates: string, scenario: string}>
-     */
-    private function etps(mixed $value): array
+    private function etops(mixed $value): ?EtopsData
     {
         if (! is_array($value)) {
-            return [];
+            return null;
         }
 
-        $etps = [];
+        $applicability = is_string($value['applicability'] ?? null)
+            ? EtopsApplicability::tryFrom($value['applicability'])
+            : null;
+        $equalTimePoints = [];
+        $scenarios = [];
+        $equalTimePointValues = is_array($value['equalTimePoints'] ?? null) ? $value['equalTimePoints'] : [];
+        $scenarioValues = is_array($value['scenarios'] ?? null) ? $value['scenarios'] : [];
 
-        foreach ($value as $etp) {
+        foreach ($equalTimePointValues as $etp) {
             if (! is_array($etp)) {
                 continue;
             }
 
             $label = $this->nullableString($etp['label'] ?? null);
-            $airports = $this->nullableString($etp['airports'] ?? null);
-            $coordinates = $this->nullableString($etp['coordinates'] ?? null);
-            $scenario = $this->nullableString($etp['scenario'] ?? null);
+            $coordinate = $this->etopsCoordinate($etp['coordinate'] ?? null);
+            $sequence = $etp['sequence'] ?? null;
 
-            if ($label === null || $airports === null || $coordinates === null || $scenario === null) {
+            if ($label === null || $coordinate === null || ! is_int($sequence)) {
                 continue;
             }
 
-            $etps[] = compact('label', 'airports', 'coordinates', 'scenario');
+            try {
+                $equalTimePoints[] = new EtopsEqualTimePointData(
+                    label: $label,
+                    coordinate: $coordinate,
+                    sequence: $sequence,
+                    firstAlternate: $this->airportCode($etp['firstAlternate'] ?? null),
+                    secondAlternate: $this->airportCode($etp['secondAlternate'] ?? null),
+                );
+            } catch (InvalidArgumentException) {
+                continue;
+            }
         }
 
-        return $etps;
+        foreach ($scenarioValues as $scenario) {
+            if (! is_array($scenario)) {
+                continue;
+            }
+
+            $name = $this->nullableString($scenario['name'] ?? null);
+
+            if ($name === null) {
+                continue;
+            }
+
+            $scenarios[] = new EtopsScenarioData(
+                name: $name,
+                equalTimePointLabel: $this->nullableString($scenario['equalTimePointLabel'] ?? null),
+                remarks: $this->nullableString($scenario['remarks'] ?? null),
+            );
+        }
+
+        return new EtopsData(
+            sectionPresent: ($value['sectionPresent'] ?? false) === true,
+            applicability: $applicability ?? EtopsApplicability::Unknown,
+            entryPoint: $this->etopsPoint($value['entryPoint'] ?? null),
+            exitPoint: $this->etopsPoint($value['exitPoint'] ?? null),
+            equalTimePoints: $equalTimePoints,
+            scenarios: $scenarios,
+        );
+    }
+
+    private function etopsPoint(mixed $value): ?EtopsPointData
+    {
+        if (! is_array($value)) {
+            return null;
+        }
+
+        $label = $this->nullableString($value['label'] ?? null);
+        $coordinate = $this->etopsCoordinate($value['coordinate'] ?? null);
+        $sequence = $value['sequence'] ?? null;
+
+        if ($label === null || $coordinate === null || ! is_int($sequence)) {
+            return null;
+        }
+
+        try {
+            return new EtopsPointData($label, $coordinate, $sequence);
+        } catch (InvalidArgumentException) {
+            return null;
+        }
+    }
+
+    private function etopsCoordinate(mixed $value): ?EtopsCoordinateData
+    {
+        if (! is_array($value)) {
+            return null;
+        }
+
+        $latitude = $this->nullableString($value['latitude'] ?? null);
+        $longitude = $this->nullableString($value['longitude'] ?? null);
+
+        if ($latitude === null || $longitude === null) {
+            return null;
+        }
+
+        try {
+            return new EtopsCoordinateData($latitude, $longitude);
+        } catch (InvalidArgumentException) {
+            return null;
+        }
     }
 }
