@@ -32,6 +32,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame('4827', $pageData->flightPlan->crewMembers[0]->employeeNumber);
         $this->assertSame('11', $pageData->flightPlan->flightInit?->acarsInitDate);
         $this->assertSame(612400, $pageData->flightPlan->envelope?->plannedTakeoffWeight?->amount);
+        $this->assertSame(1015, $pageData->flightPlan->envelope->qnhHectopascals);
     }
 
     public function test_normalized_core_values_take_precedence_over_conflicting_flat_compatibility_values(): void
@@ -115,6 +116,24 @@ class BuildFlightPlanPageDataTest extends TestCase
 
         $this->assertNotNull($pageData);
         $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::MaintenanceLog));
+    }
+
+    public function test_it_distinguishes_an_unsupported_envelope_result_from_an_absent_section(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['envelope'] = [
+            'sectionPresent' => true,
+            'sourceType' => 'takeoff_landing_report',
+            'plannedTakeoffWeight' => null,
+        ];
+
+        $pageData = (new BuildFlightPlanPageData)->handle($payload);
+
+        $this->assertNotNull($pageData);
+        $this->assertSame(
+            FlightPlanTaskAvailability::NotSupported,
+            $pageData->availabilityFor(FlightPlanTask::Envelope),
+        );
     }
 
     public function test_it_fails_closed_for_missing_or_malformed_normalized_payloads(): void
@@ -228,7 +247,8 @@ class BuildFlightPlanPageDataTest extends TestCase
                     'plannedRunway' => '25R',
                     'outsideAirTemperatureCelsius' => 18.0,
                     'wind' => '250M08',
-                    'qnhInchesMercury' => 29.92,
+                    'qnhInchesMercury' => null,
+                    'qnhHectopascals' => 1015,
                     'maximumRunwayTakeoffWeight' => ['amount' => 768000, 'unit' => 'lb'],
                     'flapSetting' => '15',
                     'antiIce' => false,

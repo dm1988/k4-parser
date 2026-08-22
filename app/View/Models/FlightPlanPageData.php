@@ -55,9 +55,7 @@ final readonly class FlightPlanPageData
                 : FlightPlanTaskAvailability::NotPresent,
             FlightPlanTask::Weather,
             FlightPlanTask::WeightAndBalance => FlightPlanTaskAvailability::NotSupported,
-            FlightPlanTask::Envelope => $this->flightPlan->envelope?->plannedTakeoffWeight === null
-                ? FlightPlanTaskAvailability::NotPresent
-                : FlightPlanTaskAvailability::Available,
+            FlightPlanTask::Envelope => $this->envelopeAvailability(),
         };
     }
 
@@ -66,5 +64,16 @@ final readonly class FlightPlanPageData
         return $this->etps !== []
             || $this->eentCoordinates !== null
             || $this->eexpCoordinates !== null;
+    }
+
+    private function envelopeAvailability(): FlightPlanTaskAvailability
+    {
+        if ($this->flightPlan->envelope === null) {
+            return FlightPlanTaskAvailability::NotPresent;
+        }
+
+        return $this->flightPlan->envelope->plannedTakeoffWeight === null
+            ? FlightPlanTaskAvailability::NotSupported
+            : FlightPlanTaskAvailability::Available;
     }
 }

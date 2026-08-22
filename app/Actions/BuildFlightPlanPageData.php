@@ -191,6 +191,7 @@ class BuildFlightPlanPageData
             outsideAirTemperatureCelsius: $this->nullableFloat($value['outsideAirTemperatureCelsius'] ?? null),
             wind: $this->nullableString($value['wind'] ?? null),
             qnhInchesMercury: $this->nullableFloat($value['qnhInchesMercury'] ?? null),
+            qnhHectopascals: $this->nullableInteger($value['qnhHectopascals'] ?? null),
             maximumRunwayTakeoffWeight: $this->weightQuantity($value['maximumRunwayTakeoffWeight'] ?? null),
             flapSetting: $this->nullableString($value['flapSetting'] ?? null),
             antiIce: is_bool($value['antiIce'] ?? null) ? $value['antiIce'] : null,

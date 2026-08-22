@@ -792,6 +792,7 @@ class FlightPlanBriefTest extends TestCase
                         'outside_air_temperature_celsius' => 18.0,
                         'wind' => '250M08',
                         'qnh_inches_mercury' => 29.92,
+                        'qnh_hectopascals' => null,
                         'maximum_runway_takeoff_weight' => ['amount' => 768000, 'unit' => 'lb'],
                         'flap_setting' => '15',
                         'anti_ice' => false,
@@ -877,7 +878,7 @@ class FlightPlanBriefTest extends TestCase
         $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
     }
 
-    public function test_envelope_is_not_present_when_no_supported_tlr_result_was_confirmed(): void
+    public function test_envelope_is_not_supported_when_a_tlr_section_has_no_supported_result(): void
     {
         Storage::fake('user_flight_releases');
 
@@ -900,9 +901,9 @@ class FlightPlanBriefTest extends TestCase
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
             ->call('extractFlightPlan')
             ->call('selectTask', FlightPlanTask::Envelope->value)
-            ->assertSeeText('Not present in this release')
-            ->assertSeeText('Envelope data was not found')
-            ->assertDontSeeText('Not supported yet');
+            ->assertSeeText('Not supported yet')
+            ->assertSeeText('Envelope requires confirmed fixtures and typed extraction')
+            ->assertDontSeeText('Not present in this release');
     }
 
     public function test_maintenance_log_exposes_shared_context_when_the_item_section_is_absent(): void

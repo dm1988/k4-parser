@@ -95,7 +95,7 @@ Commit message: `feat: add fuel score task`
 Goal: Replace legacy ETOPS arrays with typed, source-backed operational data.
 
 - Add ETOPS DTOs for applicability, entry/exit points, ETPs, scenarios, coordinates, alternates, diversion data, critical fuel, restrictions, and source fragments as fixtures permit.
-- Migrate current ETP, EENT, and EEXP values without changing their displayed meaning.
+- Current focus: Migrate current ETP, EENT, and EEXP values without changing their displayed meaning.
 - Validate coordinate formats and preserve sequence/order.
 - Present critical points, alternates, fuel scenarios, and remarks in separate sections.
 - Do not infer approval, suitability, or compliance from the presence of an ETOPS section.
@@ -456,7 +456,11 @@ Done when: the view is a faithful presentation of a confirmed envelope result, n
 
 Outcome: Identified the supported Envelope source as the release's Takeoff and Landing Report and added sanitized fixtures for multiline and flattened selected-result rows, negative temperature, intersection-qualified runways, alphanumeric report sequences, explicit no-warning results, missing limits, duplicate agreement, and conflicting reports. A focused extractor now normalizes the selected TLR assumptions, source limits, planned takeoff result, V-speeds, and source warnings into a typed Envelope DTO with explicit pounds, knots, Celsius, and inHg context; TLR weight values are normalized from their source hundreds-of-pounds scale. Conflicting report results fail closed, missing limits remain absent, and raw TLR evidence stays only in transient source fragments rather than the cached Livewire payload.
 
-Frontend follow-up: The Envelope task retains shared flight details, crew, and the private-evidence notice, but no longer presents TLR provenance, inputs, limits, calculated performance values, warnings, or the performance disclaimer. The complete extraction, typed DTO, serialization, reconstruction, and view-model framework remains available for future performance UI work. Older or incomplete cached results continue to report `not present in this release` instead of `not supported`.
+Frontend follow-up: The Envelope task retains shared flight details, crew, and the private-evidence notice, but no longer presents TLR provenance, inputs, limits, calculated performance values, warnings, or the performance disclaimer. The complete extraction, typed DTO, serialization, reconstruction, and view-model framework remains available for future performance UI work. An absent TLR section reports `not present in this release`; a detected section without a supported selected result reports `not supported yet`.
+
+QNH-format follow-up: Added source-faithful support for both decimal inHg and four-digit hPa TLR QNH values. The extractor, typed Envelope DTO, normalized cache contract, reconstruction, and formatter retain the source unit explicitly without silently converting pressure. The supplied CKS028616EDDP release now parses EDDP runway 08L, QNH 1015 hPa, and planned takeoff weight 639,900 LB, making Envelope available.
+
+QNH-format verification: All 31 focused extractor, DTO, builder, serializer, page-data, formatter, and Livewire tests passed with 245 assertions. Direct extraction of the supplied release confirmed the hPa value and planned takeoff result.
 
 Shared-crew follow-up: Added a sanitized ID-first flight-release manifest fixture and extended the existing typed crew-position enum for PIC, SIC/FO, additional captain, IRP, MX, and ACM source roles. The shared crew extractor now recognizes manifests without a `CREW LIST` heading, parses multiple crew records from one line, ignores role-only additional-captain and ACM placeholders, and returns all six confirmed named crew members to Maintenance Log and Envelope while keeping employee identifiers out of cached crew data.
 
@@ -479,6 +483,8 @@ Shared-crew follow-up commit message: `fix: parse flight release crew manifest`
 Crew-name boundary follow-up commit message: `fix: trim crew manifest heading from name`
 
 Test-analysis follow-up commit message: `test: preserve Livewire type across refresh`
+
+QNH-format follow-up commit message: `fix: support hpa envelope qnh`
 
 ### Follow up - Organize crew list above MEL / CDL list
 1. Format date mm dd yy i.e. 01 27 26. Label it as MO DY YR

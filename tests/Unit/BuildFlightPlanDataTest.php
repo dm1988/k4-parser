@@ -76,7 +76,8 @@ class BuildFlightPlanDataTest extends TestCase
                 'planned_runway' => '25R',
                 'outside_air_temperature_celsius' => 18.0,
                 'wind' => '250M08',
-                'qnh_inches_mercury' => 29.92,
+                'qnh_inches_mercury' => null,
+                'qnh_hectopascals' => 1015,
                 'maximum_runway_takeoff_weight' => ['amount' => 768000, 'unit' => 'lb'],
                 'flap_setting' => '15',
                 'anti_ice' => false,
@@ -108,6 +109,8 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame('4827', $flightPlan->crewMembers[0]->employeeNumber);
         $this->assertSame('11', $flightPlan->flightInit?->acarsInitDate);
         $this->assertSame(612400, $flightPlan->envelope->plannedTakeoffWeight?->amount);
+        $this->assertNull($flightPlan->envelope->qnhInchesMercury);
+        $this->assertSame(1015, $flightPlan->envelope->qnhHectopascals);
         $this->assertFalse($flightPlan->envelope->antiIce);
         $this->assertSame(['Source warning'], $flightPlan->envelope?->sourceWarnings);
     }

@@ -321,6 +321,16 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
+    public function it_formats_source_qnh_hectopascals_without_converting_units(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['envelope']['qnhInchesMercury'] = null;
+        $payload['flight_plan_data']['envelope']['qnhHectopascals'] = 1015;
+
+        $this->assertSame('1015 hPa', $this->viewModel($payload)->envelopeQnh());
+    }
+
+    #[Test]
     public function it_keeps_legitimate_zero_kilogram_ramp_fuel_distinct_from_sparse_overview_values(): void
     {
         $payload = $this->resultPayload();
@@ -514,6 +524,7 @@ class FlightReleasePageViewModelTest extends TestCase
                     'outsideAirTemperatureCelsius' => 18.0,
                     'wind' => '250M08',
                     'qnhInchesMercury' => 29.92,
+                    'qnhHectopascals' => null,
                     'maximumRunwayTakeoffWeight' => ['amount' => 768000, 'unit' => 'lb'],
                     'flapSetting' => '15',
                     'antiIce' => false,

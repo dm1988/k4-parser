@@ -375,9 +375,15 @@ readonly class FlightReleasePageViewModel
 
     public function envelopeQnh(): ?string
     {
-        $qnh = $this->envelope()?->qnhInchesMercury;
+        $envelope = $this->envelope();
 
-        return $qnh === null ? null : number_format($qnh, 2).' inHg';
+        if ($envelope?->qnhHectopascals !== null) {
+            return $envelope->qnhHectopascals.' hPa';
+        }
+
+        return $envelope?->qnhInchesMercury === null
+            ? null
+            : number_format($envelope->qnhInchesMercury, 2).' inHg';
     }
 
     public function envelopeFlapSetting(): ?string

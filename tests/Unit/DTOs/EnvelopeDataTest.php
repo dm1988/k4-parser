@@ -14,12 +14,14 @@ class EnvelopeDataTest extends TestCase
         $data = new EnvelopeData(
             sectionPresent: true,
             sourceType: 'takeoff_landing_report',
+            qnhHectopascals: 1015,
             plannedTakeoffWeight: new WeightQuantity(612400, 'LB'),
             maximumFieldTakeoffWeight: new WeightQuantity(347000, 'kg'),
             sourceWarnings: ['Source warning'],
         );
 
         $this->assertSame(['amount' => 612400, 'unit' => 'lb'], $data->toArray()['plannedTakeoffWeight']);
+        $this->assertSame(1015, $data->toArray()['qnhHectopascals']);
         $this->assertSame(['amount' => 347000, 'unit' => 'kg'], $data->toArray()['maximumFieldTakeoffWeight']);
         $this->assertSame(['Source warning'], $data->jsonSerialize()['sourceWarnings']);
     }

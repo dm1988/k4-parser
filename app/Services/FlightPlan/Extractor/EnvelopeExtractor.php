@@ -13,7 +13,7 @@ class EnvelopeExtractor
 
     /**
      * @return array{
-     *     data: array{section_present: bool, source_type: string, report_reference: ?string, airport: ?string, planned_runway: ?string, outside_air_temperature_celsius: ?float, wind: ?string, qnh_inches_mercury: ?float, maximum_runway_takeoff_weight: array{amount: int, unit: string}|null, flap_setting: ?string, anti_ice: ?bool, v1_knots: ?int, rotate_knots: ?int, v2_knots: ?int, planned_takeoff_weight: array{amount: int, unit: string}|null, maximum_field_takeoff_weight: array{amount: int, unit: string}|null, source_warnings: list<string>},
+     *     data: array{section_present: bool, source_type: string, report_reference: ?string, airport: ?string, planned_runway: ?string, outside_air_temperature_celsius: ?float, wind: ?string, qnh_inches_mercury: ?float, qnh_hectopascals: ?int, maximum_runway_takeoff_weight: array{amount: int, unit: string}|null, flap_setting: ?string, anti_ice: ?bool, v1_knots: ?int, rotate_knots: ?int, v2_knots: ?int, planned_takeoff_weight: array{amount: int, unit: string}|null, maximum_field_takeoff_weight: array{amount: int, unit: string}|null, source_warnings: list<string>},
      *     source_fragments: array<string, string>
      * }
      */
@@ -69,7 +69,7 @@ class EnvelopeExtractor
     }
 
     /**
-     * @return array{section_present: true, source_type: string, report_reference: ?string, airport: string, planned_runway: string, outside_air_temperature_celsius: float, wind: string, qnh_inches_mercury: float, maximum_runway_takeoff_weight: array{amount: int, unit: string}|null, flap_setting: string, anti_ice: bool, v1_knots: int, rotate_knots: int, v2_knots: int, planned_takeoff_weight: array{amount: int, unit: string}, maximum_field_takeoff_weight: array{amount: int, unit: string}|null, source_warnings: list<string>}|null
+     * @return array{section_present: true, source_type: string, report_reference: ?string, airport: string, planned_runway: string, outside_air_temperature_celsius: float, wind: string, qnh_inches_mercury: ?float, qnh_hectopascals: ?int, maximum_runway_takeoff_weight: array{amount: int, unit: string}|null, flap_setting: string, anti_ice: bool, v1_knots: int, rotate_knots: int, v2_knots: int, planned_takeoff_weight: array{amount: int, unit: string}, maximum_field_takeoff_weight: array{amount: int, unit: string}|null, source_warnings: list<string>}|null
      */
     private function selectedResult(string $section): ?array
     {
@@ -77,13 +77,15 @@ class EnvelopeExtractor
         $matches = [];
         $pattern = '/APT\h+PRWY\h+POAT\h+PWIND\h+PQNH\h+PMRTW\h+FLP\h+IC\h+V1\h+VR\h+V2\h+PTOW\h+MFPTW\h*'
             .'(?<airport>[A-Z]{4})\h+(?<runway>\d{2}[LRC]?(?:[\/-][A-Z0-9]+)*)\h+(?<oat>[MP-]?\d{1,2}(?:\.\d)?)\h+'
-            .'(?<wind>\d{3}[MP]\d{2,3})\h+(?<qnh>\d{2}\.\d{2})\h+(?<pmrtw>\d{1,5}|-)\h+'
+            .'(?<wind>\d{3}[MP]\d{2,3})\h+(?<qnh>\d{2}\.\d{2}|\d{4})\h+(?<pmrtw>\d{1,5}|-)\h+'
             .'(?<flap>[A-Z0-9.]+)\h+(?<ice>[YN])\h+(?<v1>\d{1,3})\h+(?<vr>\d{1,3})\h+(?<v2>\d{1,3})\h+'
             .'(?<ptow>\d{1,5})\h+(?<mfptw>\d{1,5}|-)/i';
 
         if (preg_match($pattern, $source, $matches) !== 1) {
             return null;
         }
+
+        $qnh = $this->qnh($matches['qnh']);
 
         return [
             'section_present' => true,
@@ -93,7 +95,8 @@ class EnvelopeExtractor
             'planned_runway' => Str::upper($matches['runway']),
             'outside_air_temperature_celsius' => $this->signedDecimal($matches['oat']),
             'wind' => Str::upper($matches['wind']),
-            'qnh_inches_mercury' => (float) $matches['qnh'],
+            'qnh_inches_mercury' => $qnh['inches_mercury'],
+            'qnh_hectopascals' => $qnh['hectopascals'],
             'maximum_runway_takeoff_weight' => $this->weight($matches['pmrtw']),
             'flap_setting' => Str::upper($matches['flap']),
             'anti_ice' => Str::upper($matches['ice']) === 'Y',
@@ -128,6 +131,14 @@ class EnvelopeExtractor
         }
 
         return (float) $normalized;
+    }
+
+    /** @return array{inches_mercury: ?float, hectopascals: ?int} */
+    private function qnh(string $value): array
+    {
+        return Str::contains($value, '.')
+            ? ['inches_mercury' => (float) $value, 'hectopascals' => null]
+            : ['inches_mercury' => null, 'hectopascals' => (int) $value];
     }
 
     /** @return array{amount: int, unit: string}|null */
@@ -165,7 +176,7 @@ class EnvelopeExtractor
     }
 
     /**
-     * @return array{section_present: bool, source_type: string, report_reference: null, airport: null, planned_runway: null, outside_air_temperature_celsius: null, wind: null, qnh_inches_mercury: null, maximum_runway_takeoff_weight: null, flap_setting: null, anti_ice: null, v1_knots: null, rotate_knots: null, v2_knots: null, planned_takeoff_weight: null, maximum_field_takeoff_weight: null, source_warnings: list<string>}
+     * @return array{section_present: bool, source_type: string, report_reference: null, airport: null, planned_runway: null, outside_air_temperature_celsius: null, wind: null, qnh_inches_mercury: null, qnh_hectopascals: null, maximum_runway_takeoff_weight: null, flap_setting: null, anti_ice: null, v1_knots: null, rotate_knots: null, v2_knots: null, planned_takeoff_weight: null, maximum_field_takeoff_weight: null, source_warnings: list<string>}
      */
     private function emptyData(bool $sectionPresent): array
     {
@@ -178,6 +189,7 @@ class EnvelopeExtractor
             'outside_air_temperature_celsius' => null,
             'wind' => null,
             'qnh_inches_mercury' => null,
+            'qnh_hectopascals' => null,
             'maximum_runway_takeoff_weight' => null,
             'flap_setting' => null,
             'anti_ice' => null,

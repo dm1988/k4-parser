@@ -21,6 +21,7 @@ class EnvelopeExtractorTest extends TestCase
             'outside_air_temperature_celsius' => 18.0,
             'wind' => '250M08',
             'qnh_inches_mercury' => 29.92,
+            'qnh_hectopascals' => null,
             'maximum_runway_takeoff_weight' => ['amount' => 768000, 'unit' => 'lb'],
             'flap_setting' => '15',
             'anti_ice' => false,
@@ -47,6 +48,18 @@ class EnvelopeExtractorTest extends TestCase
         ], $multiline['source_warnings']);
         $this->assertSame('KLAX', $flattened['airport']);
         $this->assertSame(['amount' => 612400, 'unit' => 'lb'], $flattened['planned_takeoff_weight']);
+    }
+
+    public function test_it_preserves_four_digit_qnh_as_hectopascals_without_conversion(): void
+    {
+        $data = $this->extractor()->extract($this->fixture('hpa-result'))['data'];
+
+        $this->assertTrue($data['section_present']);
+        $this->assertSame('EDDP', $data['airport']);
+        $this->assertSame('08L', $data['planned_runway']);
+        $this->assertNull($data['qnh_inches_mercury']);
+        $this->assertSame(1015, $data['qnh_hectopascals']);
+        $this->assertSame(['amount' => 639900, 'unit' => 'lb'], $data['planned_takeoff_weight']);
     }
 
     public function test_it_keeps_missing_limits_null_without_discarding_the_calculated_result(): void
