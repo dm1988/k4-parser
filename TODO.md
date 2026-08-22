@@ -2,6 +2,21 @@
 
 Build one reviewable flight-release workspace from the normalized extraction pipeline. Parse each source fact once, keep operational values typed, and present unavailable data honestly instead of inferring it.
 
+## Setup needed prior to creating new tasks and views
+
+### Waypoints extraction service
+
+- Verify no existing service exists
+- Extract waypoints from the computed flight plan section of a flight release
+
+### Completed: ETOPS DTO foundation
+
+Outcome: Added immutable ETOPS DTOs under `App\DTOs\Etops` for applicability, entry and exit points, ordered equal-time points, validated degrees-and-minutes coordinates, alternates, diversion data, scenarios, and critical fuel with explicit units. Duplicate ETP labels and source order are preserved, partial or absent sections remain representable, and the normalized flight-plan aggregate now has an optional ETOPS section without changing the legacy extractor or front end.
+
+Verification: The 4 focused ETOPS DTO tests passed with 22 assertions. The 2 `FlightPlanData` aggregate tests, 6 builder tests, and serializer regression test passed with 56 combined assertions.
+
+Commit message: `feat: add typed etops data objects`
+
 ### Current foundation
 
 - The feature is an authorized Livewire page with private upload staging, user-scoped result caching, metrics, recoverable errors, and guaranteed upload cleanup.
@@ -187,6 +202,13 @@ This view repeats the confirmed source result. It does not calculate an envelope
 - Cost index missing
 - Distance to dest value missing
 - Create distinction between Alternate airport burn and Reserve fuel calculation. 
+
+# Action oriented labels on Overview
+
+# Large upload button
+- Similar to extract schedule upload button
+
+# Move 2 maintenance DTOs into Maintenance DTO subfolder
 
 -------------------------------------------------------
 

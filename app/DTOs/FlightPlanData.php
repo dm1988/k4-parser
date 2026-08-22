@@ -2,6 +2,7 @@
 
 namespace App\DTOs;
 
+use App\DTOs\Etops\EtopsData;
 use JsonSerializable;
 
 final readonly class FlightPlanData implements JsonSerializable
@@ -15,6 +16,7 @@ final readonly class FlightPlanData implements JsonSerializable
         public ?MaintenanceLogData $maintenanceLog = null,
         public ?EnvelopeData $envelope = null,
         public ?FlightInitData $flightInit = null,
+        public ?EtopsData $etops = null,
         public array $crewMembers = [],
     ) {}
 
@@ -27,6 +29,7 @@ final readonly class FlightPlanData implements JsonSerializable
      *     maintenanceLog: array{sectionPresent: bool, etopsApplicability: string, items: list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string}>}|null,
      *     envelope: array<string, mixed>|null,
      *     flightInit: array{sectionPresent: bool, acarsInitDate: ?string}|null,
+     *     etops: array<string, mixed>|null,
      *     crewMembers: list<array{name: string, role: ?string, base: ?string, employeeNumber: ?string}>
      * }
      */
@@ -40,6 +43,7 @@ final readonly class FlightPlanData implements JsonSerializable
             'maintenanceLog' => $this->maintenanceLog?->toArray(),
             'envelope' => $this->envelope?->toArray(),
             'flightInit' => $this->flightInit?->toArray(),
+            'etops' => $this->etops?->toArray(),
             'crewMembers' => array_map(
                 static fn (CrewMemberData $member): array => $member->toArray(),
                 $this->crewMembers,
@@ -56,6 +60,7 @@ final readonly class FlightPlanData implements JsonSerializable
      *     maintenanceLog: array{sectionPresent: bool, etopsApplicability: string, items: list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string}>}|null,
      *     envelope: array<string, mixed>|null,
      *     flightInit: array{sectionPresent: bool, acarsInitDate: ?string}|null,
+     *     etops: array<string, mixed>|null,
      *     crewMembers: list<array{name: string, role: ?string, base: ?string, employeeNumber: ?string}>
      * }
      */

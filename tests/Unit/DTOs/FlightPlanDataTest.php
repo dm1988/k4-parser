@@ -2,11 +2,13 @@
 
 namespace Tests\Unit\DTOs;
 
+use App\DTOs\Etops\EtopsData;
 use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightPlanData;
 use App\DTOs\FuelPlanData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
+use App\Enums\EtopsApplicability;
 use App\ValueObjects\AirportCode;
 use App\ValueObjects\FuelQuantity;
 use PHPUnit\Framework\TestCase;
@@ -23,12 +25,17 @@ class FlightPlanDataTest extends TestCase
                 destination: new AirportCode('KLAX'),
             ),
             fuelPlan: new FuelPlanData(ramp: FuelQuantity::pounds(216800)),
+            etops: new EtopsData(
+                sectionPresent: true,
+                applicability: EtopsApplicability::ConfirmedEtops,
+            ),
         );
 
         $this->assertSame('K4198', $flightPlan->identity->flightNumber);
         $this->assertSame('KJFK', $flightPlan->route->departure->value);
         $this->assertSame(216800.0, $flightPlan->fuelPlan?->ramp?->amount);
         $this->assertSame('2026-08-21T12:00:00+00:00', $flightPlan->toArray()['schedule']['etdUtc']);
+        $this->assertSame('confirmed_etops', $flightPlan->toArray()['etops']['applicability']);
         $this->assertTrue((new \ReflectionClass($flightPlan))->isReadOnly());
     }
 
@@ -45,7 +52,9 @@ class FlightPlanDataTest extends TestCase
 
         $this->assertNull($flightPlan->fuelPlan);
         $this->assertNull($flightPlan->flightInit);
+        $this->assertNull($flightPlan->etops);
         $this->assertNull($flightPlan->toArray()['fuelPlan']);
         $this->assertNull($flightPlan->toArray()['flightInit']);
+        $this->assertNull($flightPlan->toArray()['etops']);
     }
 }
