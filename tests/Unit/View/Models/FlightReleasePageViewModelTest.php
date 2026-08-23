@@ -53,6 +53,7 @@ class FlightReleasePageViewModelTest extends TestCase
             ['label' => 'Reserve', 'value' => null, 'unit' => null],
             ['label' => 'Estimated landing', 'value' => null, 'unit' => null],
         ], $viewModel->fuelScoreFields());
+        $this->assertSame([], $viewModel->fuelScoreWaypoints());
         $this->assertSame('Not confirmed', $viewModel->maintenanceEtopsLabel());
         $this->assertNull($viewModel->maintenanceDate());
         $this->assertNull($viewModel->maintenanceRampFuel());
@@ -183,6 +184,40 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('98,300', $fields[0]['value']);
         $this->assertSame('KG', $fields[0]['unit']);
         $this->assertNull($fields[1]['value']);
+    }
+
+    #[Test]
+    public function it_presents_sanitized_waypoints_in_source_order_without_losing_duplicates_or_zero_fuel(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['waypoints'] = [[
+            'identifier' => 'FIX01',
+            'coordinate' => 'N01 02.3 E004 05.6',
+            'legDurationMinutes' => 5,
+            'cumulativeDurationMinutes' => 11,
+            'remainingFuel' => ['amount' => 147700.0, 'unit' => 'lb'],
+        ], [
+            'identifier' => 'FIX01',
+            'coordinate' => 'N02 03.4 E005 06.7',
+            'legDurationMinutes' => null,
+            'cumulativeDurationMinutes' => null,
+            'remainingFuel' => null,
+        ]];
+
+        $this->assertSame([
+            [
+                'identifier' => 'FIX01',
+                'legDurationMinutes' => 5,
+                'cumulativeDurationMinutes' => 11,
+                'remainingFuel' => '147.7 k lbs',
+            ],
+            [
+                'identifier' => 'FIX01',
+                'legDurationMinutes' => null,
+                'cumulativeDurationMinutes' => null,
+                'remainingFuel' => null,
+            ],
+        ], $this->viewModel($payload)->fuelScoreWaypoints());
     }
 
     #[Test]

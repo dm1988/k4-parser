@@ -41,7 +41,7 @@ final readonly class FlightPlanPageData
             FlightPlanTask::SlotTimes => $this->flightPlan->schedule->slotTimesUtc === []
                 ? FlightPlanTaskAvailability::NotPresent
                 : FlightPlanTaskAvailability::Available,
-            FlightPlanTask::FuelScore => $this->flightPlan->fuelPlan === null
+            FlightPlanTask::FuelScore => $this->flightPlan->fuelPlan === null && $this->flightPlan->waypoints === []
                 ? FlightPlanTaskAvailability::NotPresent
                 : FlightPlanTaskAvailability::Available,
             FlightPlanTask::Etops => $this->hasEtopsData()

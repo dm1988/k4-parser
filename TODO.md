@@ -57,7 +57,7 @@ Done when: every displayed slot has an airport, direction/type, complete instant
 
 Commit message: `feat: add slot times task`
 
-## 10 — Partial: Implement Fuel Score
+## 10 — Completed: Implement Fuel Score
 
 Goal: Present the confirmed release fuel summary and add source-backed waypoint fuel monitoring without inventing a fuel score or operational status.
 
@@ -71,16 +71,17 @@ Goal: Present the confirmed release fuel summary and add source-backed waypoint 
 - Explicitly avoided inferring a score, compliance result, or dispatchability status.
 - Covered pounds, kilograms, scaling, exact source values, missing values, zero values, and ambiguous units with focused tests.
 
-### Remaining: Waypoint monitoring and planned ETA
+### Completed: Waypoint monitoring and planned ETA
 
-- Promote sanitized waypoint records into the cached typed flight-plan contract before rendering them. Include identifier, coordinate, leg duration, cumulative duration, and remaining fuel only when each value is confirmed by fixtures.
-- Preserve source order and duplicate waypoint identifiers. Do not infer missing values from adjacent rows.
-- Keep raw summary and waypoint evidence private. A `More…` disclosure may show sanitized typed rows, but must not expose raw PDF text through Livewire.
-- Add an optional user-entered Off time using validated 24-hour `HHMM` input (`0000`–`2359`).
-- Calculate planned waypoint ETA from Off time plus confirmed cumulative duration, including UTC midnight rollover. Label the result as planned and do not mutate extracted source data.
-- Test malformed Off times, missing durations, midnight rollover, duplicate waypoints, zero remaining fuel, unit ambiguity, and sparse waypoint rows.
+- Promoted sanitized waypoint identifiers, coordinates, leg/cumulative durations, and corroborated remaining-fuel values into readonly typed DTOs and the cached flight-plan contract.
+- Preserved source order, duplicate identifiers, explicit zero fuel, and honest nulls for sparse or malformed rows; ambiguous release fuel units withhold waypoint fuel.
+- Kept raw fuel and waypoint evidence private while rendering only sanitized rows in the Fuel Score disclosure.
+- Added optional validated 24-hour Off time input and client-only planned ETA calculation with UTC midnight rollover; the planned column remains hidden until valid calculated values exist.
+- Covered extractor, DTO, cache reconstruction, view-model, Livewire, and JavaScript behavior with focused tests, including malformed Off times, missing durations, duplicate waypoints, zero fuel, ambiguous units, sparse rows, and evidence isolation.
+- Follow-up: waypoint extraction now supports flattened PDF text layers where both headers and all rows are concatenated; the supplied PANC release produces 52 ordered typed waypoints from `JOH` through `KMIA`.
+- Follow-up: compact waypoint FRMG values are expanded to actual fuel quantities (`1477` becomes `147,700 lb`) and displayed as `147.7 k lbs`; coordinates remain typed but are omitted from the Fuel Score browser payload and table.
 
-Done when: every displayed fuel or waypoint value is source-backed, planned ETA is clearly separated from extracted values, missing data remains honest, and no status badge appears without a documented calculation rule.
+Outcome: every displayed fuel or waypoint value is source-backed, planned ETA remains clearly separate from extracted data, and no operational score or status is inferred.
 
 Commit message: `feat: add fuel score task`
 
@@ -200,6 +201,9 @@ This view repeats the confirmed source result. It does not calculate an envelope
 - Show's MEL status
 - Action oriented footer: Review MELs ->
 
+# ETOPs badge on section flight info header
+- Below duration and horizontal flight line, centered
+
 # Large upload button
 - Similar to extract schedule upload button
 
@@ -225,6 +229,63 @@ K4256
 Date:
 24May2026
 Arrival At:
+
+## Crew high mins
+- Currently crew member name is extracted as: FERGUSON S HIGH MINS
+- Fix: parse out HIGH MINS removing it from the name
+- Add a high mins flag to the DTO contract
+- Front end display as a caution
+
+# Hide ETOPs card if non ETOPS flight
+- Currently ETOPS card always displayed rendering:
+ETOPS evidence
+Confirmed release fields
+Not present in this release
+- Fix: Visually minimize ETOPs presence. If non ETOPS flight, remove from large card in workspace and render in the `Operational support status` section with a `Non ETOPS` badge
+
+# Create a way to turn tasks on or off
+- in ENV and config files
+- in coordination with enum
+
+# Refactor FlightPlanBriefTest
+- Split tests and organize into folders grouped by test focus area
+
+# PEST architechure tests
+
+-------------------------------------------------------
+
+**Completed**
+
+-------------------------------------------------------
+
+
+## 1 — Completed: Stabilize the result and view-data contract
+
+## 2 — Completed: Build the responsive task workspace
+
+## 3 — Completed: Implement Overview
+
+## 4 — Completed: Implement Jepp PD Pro
+
+## 5 — Completed: Implement Maintenance Log
+
+## 6 — Completed: Implement Envelope
+
+## 7 — Completed: Implement Flight Init
+
+## 8 — Completed: Implement FMS
+
+## 9 — Completed: Reject solar forecasts from flight crew
+
+## Setup needed prior to creating new tasks and views
+
+### Completed: Waypoints extraction service
+
+### Completed: ETOPS DTO foundation
+
+## 11 — Completed: Implement ETOPS
+
+# Completed: Refactor blade logic
 
 ## Completed: UI Redesign: Flight Plan Brief Header Component
 
@@ -311,157 +372,3 @@ Glass-surface follow-up outcome: Added a small backdrop blur to the semi-transpa
 Outer-container alignment outcome: Matched the release-summary section to the site header with solid `#F8F9FA` and `slate-800` backgrounds and removed its backdrop blur, while preserving the rounded card geometry and full border. The nested Journey info bar retains its separate mobile treatment.
 
 Commit message: `feat: redesign flight plan brief header`
-
-
-# Create a way to turn tasks on or off
-- in ENV and config files
-- in coordination with enum
-
-# Refactor FlightPlanBriefTest
-- Split tests and organize into folders grouped by test focus area
--------------------------------------------------------
-
-**Completed**
-
--------------------------------------------------------
-
-
-## 1 — Completed: Stabilize the result and view-data contract
-
-## 2 — Completed: Build the responsive task workspace
-
-## 3 — Completed: Implement Overview
-
-## 4 — Completed: Implement Jepp PD Pro
-
-## 5 — Completed: Implement Maintenance Log
-
-## 6 — Completed: Implement Envelope
-
-## 7 — Completed: Implement Flight Init
-Crew list follow up change: Add employee numbers to each crew member
-
-Goal: Provide a fast, ACARS flight initialization reference from existing normalized data.
-
-Fields:
-Tail Number: N774CK
-ETD
-Est. Ramp Fuel
-Flight Number: CKS256
-Departure
-Destination
-CREW LIST including employee numbers
-ACARS INIT DATE 25
-- ACARS INIT DATE must be taken from the TLR page not the flight date
-Sample data:
-TAKEOFF AND LANDING REPORT CKS 0524 KDFW-RKSI 11MAY26
-TLR-30 SEQ-93651152 11MAY26 1355Z
-A/C N770CK B777-300ER GE90-115BL
-ACARS INIT DATE 11
-
-Should return 11
-- Create tests for flight data that differs from an ACARS INIT DATE. It should return the ACARS date.
-
-Done when: supported initialization values can be reviewed without returning to the PDF.
-
-Outcome: Added a dedicated read-only Flight Init workspace for tail, UTC ETD, ramp fuel, flight, route, explicit TLR ACARS INIT DATE, and crew employee numbers, without copy controls. ACARS dates and employee numbers are normalized by a dedicated service; the ACARS date never falls back to the release flight date. Employee numbers are retained in the owner-scoped normalized result for this task, while raw crew and TLR source fragments remain private.
-
-Verification: Focused extractor, normalization, DTO, builder, serializer, view-model, Livewire rendering, adjacent task, and Flight Init copy-control absence tests pass. Pint, the production asset build, and final Larastan analysis were run successfully.
-
-Commit message: `feat: add flight init task`
-
-ACARS date follow-up outcome: The TLR extractor now accepts PDF whitespace, including a line or page separator between `ACARS INIT DATE` and its day value. It avoids Unicode regex mode so an unrelated invalid byte cannot make the match fail, and it accepts the confirmed PDF concatenation `GE90-110BLACARS INIT DATE   25` without requiring a word boundary before `ACARS`. The supplied same-line, wrapped, invalid-byte, and concatenated forms all return `25` without falling back to either report date.
-
-ACARS date follow-up verification: The 24 focused extractor, normalizer, builder, page-data, and serializer tests passed with 151 assertions, and the focused Flight Init Livewire test passed with 40 assertions. Pint passed, and targeted Larastan analysis reported no errors.
-
-ACARS date follow-up commit message: `fix: parse concatenated ACARS init label`
-
-
-## 8 — Completed: Implement FMS
-Extracted Fields
-
-- FMS View
-- Flight Number: CKS256
-- AC Type: B777-200F
-- RECALL Number - 5 digit
-- Departure
-- Destination
-- Alternate
-- Planned Departure / Arrival Runway, SID, and STAR
-- Distance to Destination: 5549
-- Initial Altitude
-- Cost Index
-- Alternate Airport Reserves
-
-* No copyable fields
-
-Goal: Move the current route-oriented UI into a dedicated FMS task and extend it safely.
-
-- Migrate airports, runways, SID, STAR, route, distance, initial altitude, duration, and recall number from the current card.
-- Preserve token-aware route display and wrapping without adding FMS copy controls.
-- Add cost index, step climbs, altitude profile, constraints, and remarks only after confirmed fixture coverage.
-- Keep airport enrichment in view data and normalized airport codes in the core route DTO.
-- Test flattened/multiline routes, long tokens, missing procedures, alternate absence, and legacy parity.
-
-Done when: the old route card can be removed without losing any current route or airport capability.
-
-Outcome: Replaced the generic route card with a dedicated, responsive FMS workspace for confirmed flight identity, five-digit RECALL number, airports and enrichment, planned runways and procedures, route distance, initial altitude, planned duration, alternate airport reserves with units, and token-aware route display. FMS contains no copy controls; Jepp PD-Pro retains its independent route-copy presentation. Cost index, step climbs, altitude profiles, constraints, and remarks remain omitted because no confirmed fixture contract exists. Invalid four- or six-digit RECALL values are ignored without discarding the remaining release identity.
-
-Verification: Focused identity, route, fuel, page-data compatibility, view-model, complete and sparse Livewire FMS, Jepp regression, and workspace rehydration tests pass. Pint, the production asset build, and final Larastan analysis were run successfully.
-
-Commit message: `feat: add fms task`
-
-## 9 — Completed: Reject solar forecasts from flight crew
-
-Outcome: Flight-release crew extraction now requires a recognized crew role before accepting a parsed member. If a `CREW LIST` span contains unrelated numbered text such as a NOAA solar forecast and yields no valid crew, extraction falls back to the ID-first release manifest elsewhere in the PDF text. The regression fixture confirms the NOAA issue date and forecast headings are excluded while the actual PIC, SIC/FO, and IRP records are returned.
-
-Verification: The 14 focused flight crew extractor, shared crew parser, and aggregate extractor tests pass with 128 assertions. Pint passed, and targeted Larastan analysis of the modified extractor and regression test reported no errors.
-
-Commit message: `fix: reject solar forecast crew entries`
-
-## Setup needed prior to creating new tasks and views
-
-### Completed: Waypoints extraction service
-
-Outcome: Confirmed no existing waypoint extractor and added a focused computed-flight-plan service with a sanitized fixture. It requires the paired table headers, preserves source order and duplicate identifiers, and extracts canonical coordinates, identifiers, optional source `TIME`, and optional source `T/TME` values without stripping leading zeroes or inventing units. Coordinate-backed FIR crossing rows remain represented with a missing leg time, coordinate-less markers such as TOC are not assigned a nearby coordinate, and bounded source evidence contains only the extracted waypoint rows. The normalized extraction orchestrator now invokes the service once per release and retains its raw normalized records and private evidence in `ParsedFlightPlanData` for later DTO mapping.
-
-Verification: All 5 focused waypoint extractor tests and both normalized extraction-orchestrator tests passed with 66 assertions, covering the representative 10-record table, missing headers, duplicate identifiers, leading zeroes, FIR placeholders, TOC coordinate isolation, CRLF, horizontal whitespace, bounded evidence, single-pass invocation, and parsed-data retention.
-
-Commit message: `feat: add waypoint extraction service`
-
-### Completed: ETOPS DTO foundation
-
-Outcome: Added immutable ETOPS DTOs under `App\DTOs\Etops` for applicability, entry and exit points, ordered equal-time points, validated degrees-and-minutes coordinates, alternates, diversion data, scenarios, and critical fuel with explicit units. Duplicate ETP labels and source order are preserved, partial or absent sections remain representable, and the normalized flight-plan aggregate now has an optional ETOPS section without changing the legacy extractor or front end.
-
-Verification: The 4 focused ETOPS DTO tests passed with 22 assertions. The 2 `FlightPlanData` aggregate tests, 6 builder tests, and serializer regression test passed with 56 combined assertions.
-
-Commit message: `feat: add typed etops data objects`
-
-## 11 — Completed: Implement ETOPS
-
-Goal: Replace legacy ETOPS arrays with typed, source-backed operational data.
-
-- Add ETOPS DTOs for applicability, entry/exit points, ETPs, scenarios, coordinates, alternates, diversion data, critical fuel, restrictions, and source fragments as fixtures permit.
-- Completed: Migrate current ETP, EENT, and EEXP values without changing their displayed meaning.
-- Validate coordinate formats and preserve sequence/order.
-- Present critical points, alternates, fuel scenarios, and remarks in separate sections.
-- Do not infer approval, suitability, or compliance from the presence of an ETOPS section.
-- Test no-ETOPS releases, multiple ETPs, duplicate labels, malformed coordinates, partial sections, and legacy parity.
-
-Done when: the compatibility ETOPS fields are no longer needed by the front end.
-
-Outcome: Promoted the existing ETP, EENT, and EEXP extraction results into the normalized parsed contract and existing typed ETOPS DTOs. The normalized builder validates coordinates, retains point ordering, keeps alternate airport order and scenario text, carries explicit applicability without inferring ETOPS approval, and omits malformed optional points without failing the release. Exact repeated rows from duplicated PDF sections are collapsed while distinct points with duplicate labels remain in source order. Cached page data reconstructs ETOPS exclusively from `flight_plan_data.etops`; the page model and view model no longer consume the flat ETOPS compatibility fields. The dedicated responsive ETOPS task view separates applicability, boundary points, equal-time points, alternate pairings, and current source scenario text, labels unavailable diversion/critical-fuel/remark details honestly, protects source evidence, and states that no approval, suitability, compliance, or dispatchability determination is made. Jepp PD-Pro retains its existing displayed meaning, while the serializer continues emitting flat keys only for compatibility consumers outside the front end.
-
-Verification: Pint passed. The 55 focused extractor, builder, page-data, and view-model tests passed with 336 assertions, covering no ETOPS data, partial entry-only data, multiple points, duplicate labels, exact repeated rows, malformed coordinates, ordering, typed reconstruction, and legacy display parity. The 3 focused Livewire ETOPS task, absent-state, and Jepp parity tests passed with 81 assertions. Focused Larastan analysis of the modified extractor and view model passed with zero errors.
-
-Commit message: `feat: add etops task`
-
-# Completed: Refactor blade logic
-- Goal move componentName into FlightPlanTask enum
-- In workspace blade, migrate large if chain into a switch case
-
-FlightPlanTask is an enum, move view mapping directly onto the Enum. This keeps the Blade template almost logic-free.
-
-Outcome: Moved conventional task component names, airport-prop requirements, and dedicated-view availability into `FlightPlanTask`. The workspace now uses a single availability-first `@switch(true)` and Laravel's dynamic component renderer while preserving Jepp padding, FMS/Jepp airport inputs, unavailable states, and the generic supported-data fallback.
-
-Commit message: `refactor: move flight task view mapping into enum`

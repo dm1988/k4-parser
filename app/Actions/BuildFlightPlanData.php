@@ -18,6 +18,7 @@ use App\DTOs\MaintenanceLogData;
 use App\DTOs\ParsedFlightPlanData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
+use App\DTOs\WaypointData;
 use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
 use App\Services\FlightPlan\FlightInitFieldNormalizer;
@@ -76,6 +77,7 @@ class BuildFlightPlanData
             flightInit: $this->flightInit($parsed),
             etops: $this->etops($parsed),
             crewMembers: $this->crewMembers($parsed->crewMembers),
+            waypoints: $this->waypoints($parsed),
         );
     }
 
@@ -132,6 +134,71 @@ class BuildFlightPlanData
     private function fuelQuantity(?array $fuel): ?FuelQuantity
     {
         return $fuel === null ? null : new FuelQuantity($fuel['amount'], $fuel['unit']);
+    }
+
+    /** @return list<WaypointData> */
+    private function waypoints(ParsedFlightPlanData $parsed): array
+    {
+        $fuelUnit = $this->confirmedFuelUnit($parsed->fuel);
+        $waypoints = [];
+
+        foreach ($parsed->waypoints as $waypoint) {
+            $identifier = $this->nullableString($waypoint['identifier'] ?? null);
+            $coordinate = $this->nullableString($waypoint['coordinate'] ?? null);
+
+            if ($identifier === null || $coordinate === null) {
+                continue;
+            }
+
+            $waypoints[] = new WaypointData(
+                identifier: $identifier,
+                coordinate: $coordinate,
+                legDurationMinutes: $this->legDurationMinutes($waypoint['time'] ?? null),
+                cumulativeDurationMinutes: $this->cumulativeDurationMinutes($waypoint['total_time'] ?? null),
+                remainingFuel: $this->waypointFuel($waypoint['remaining_fuel'] ?? null, $fuelUnit),
+            );
+        }
+
+        return $waypoints;
+    }
+
+    /** @param array<string, array{amount: float, unit: string}|null> $fuel */
+    private function confirmedFuelUnit(array $fuel): ?string
+    {
+        $units = [];
+
+        foreach ($fuel as $quantity) {
+            if (is_array($quantity) && is_string($quantity['unit'] ?? null)) {
+                $units[] = strtolower($quantity['unit']);
+            }
+        }
+
+        $units = array_values(array_unique($units));
+
+        return count($units) === 1 && in_array($units[0], ['lb', 'kg'], true) ? $units[0] : null;
+    }
+
+    private function legDurationMinutes(mixed $value): ?int
+    {
+        return is_string($value) && preg_match('/^\d{3}$/', $value) === 1 ? (int) $value : null;
+    }
+
+    private function cumulativeDurationMinutes(mixed $value): ?int
+    {
+        if (! is_string($value) || preg_match('/^(?<hours>\d{2})\.(?<minutes>[0-5]\d)$/', $value, $matches) !== 1) {
+            return null;
+        }
+
+        return ((int) $matches['hours'] * 60) + (int) $matches['minutes'];
+    }
+
+    private function waypointFuel(mixed $value, ?string $unit): ?FuelQuantity
+    {
+        if ($unit === null || ! is_string($value) || preg_match('/^\d{4}$/', $value) !== 1) {
+            return null;
+        }
+
+        return new FuelQuantity((int) $value * 100, $unit);
     }
 
     private function maintenanceLog(ParsedFlightPlanData $parsed): MaintenanceLogData

@@ -8,6 +8,7 @@ use App\DTOs\EnvelopeData;
 use App\DTOs\Etops\EtopsEqualTimePointData;
 use App\DTOs\Etops\EtopsScenarioData;
 use App\DTOs\MaintenanceItemData;
+use App\DTOs\WaypointData;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
 use App\Enums\MaintenanceItemType;
@@ -186,6 +187,33 @@ readonly class FlightReleasePageViewModel
             $this->fuelScoreField('Reserve', $fuelPlan?->finalReserve),
             $this->fuelScoreField('Estimated landing', $fuelPlan?->estimatedLanding),
         ];
+    }
+
+    /**
+     * @return list<array{identifier: string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: ?string}>
+     */
+    public function fuelScoreWaypoints(): array
+    {
+        return array_map(
+            fn (WaypointData $waypoint): array => [
+                'identifier' => $waypoint->identifier,
+                'legDurationMinutes' => $waypoint->legDurationMinutes,
+                'cumulativeDurationMinutes' => $waypoint->cumulativeDurationMinutes,
+                'remainingFuel' => $this->formatWaypointFuel($waypoint->remainingFuel),
+            ],
+            $this->pageData?->flightPlan->waypoints ?? [],
+        );
+    }
+
+    private function formatWaypointFuel(?FuelQuantity $quantity): ?string
+    {
+        if ($quantity === null) {
+            return null;
+        }
+
+        return $quantity->unit === 'lb'
+            ? Number::format($quantity->amount / 1000, precision: 1).' k lbs'
+            : Number::format($quantity->amount).' '.Str::upper($quantity->unit);
     }
 
     /** @return list<array{label: string, value: ?string}> */

@@ -33,6 +33,9 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame('11', $pageData->flightPlan->flightInit?->acarsInitDate);
         $this->assertSame(612400, $pageData->flightPlan->envelope?->plannedTakeoffWeight?->amount);
         $this->assertSame(1015, $pageData->flightPlan->envelope->qnhHectopascals);
+        $this->assertSame(['FIX01', 'FIX01'], array_column($pageData->flightPlan->waypoints, 'identifier'));
+        $this->assertSame(11, $pageData->flightPlan->waypoints[0]->cumulativeDurationMinutes);
+        $this->assertSame(0.0, $pageData->flightPlan->waypoints[0]->remainingFuel?->amount);
     }
 
     public function test_normalized_core_values_take_precedence_over_conflicting_flat_compatibility_values(): void
@@ -79,6 +82,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $payload = $this->resultPayload();
         $payload['flight_plan_data']['schedule']['slotTimesUtc'] = [];
         $payload['flight_plan_data']['fuelPlan'] = null;
+        $payload['flight_plan_data']['waypoints'] = [];
         $payload['flight_plan_data']['maintenanceLog'] = null;
         $payload['flight_plan_data']['envelope'] = null;
         unset($payload['flight_plan_data']['flightInit']);
@@ -320,6 +324,19 @@ class BuildFlightPlanPageDataTest extends TestCase
                     'role' => 'CP',
                     'base' => 'YIP',
                     'employeeNumber' => '4827',
+                ]],
+                'waypoints' => [[
+                    'identifier' => 'FIX01',
+                    'coordinate' => 'N01 02.3 E004 05.6',
+                    'legDurationMinutes' => 5,
+                    'cumulativeDurationMinutes' => 11,
+                    'remainingFuel' => ['amount' => 0.0, 'unit' => 'lb'],
+                ], [
+                    'identifier' => 'FIX01',
+                    'coordinate' => 'N02 03.4 E005 06.7',
+                    'legDurationMinutes' => null,
+                    'cumulativeDurationMinutes' => null,
+                    'remainingFuel' => null,
                 ]],
             ],
         ];

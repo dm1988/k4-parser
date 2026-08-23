@@ -10,9 +10,15 @@ class WaypointExtractor
 
     private const SECONDARY_HEADER = 'FRQ DTGO MH W/S OAT G/S T/TME REV REM ABO AFOB DSTN';
 
+    private const HEADER_PATTERN = '/IDENT\h+DIST\h+MC\h+FL\h+WIND\h+CMP\h+TAS\/MAC\h+TIME\h+ETA\h+ATA\h+TBO\h+FRMG\h+EFB'
+        .'\s*FRQ\h+DTGO\h+MH\h+W\/S\h+OAT\h+G\/S\h+T\/TME\h+REV\h+REM\h+ABO\h+AFOB\h+DSTN/i';
+
+    private const COORDINATE_PATTERN = '/(?<latitude>[NS](?:[0-8]\d|90)\h+[0-5]\d(?:\.\d+)?)'
+        .'\h*\/?\h*(?<longitude>[EW](?:0\d{2}|1[0-7]\d|180)\h+[0-5]\d(?:\.\d+)?)/i';
+
     /**
      * @return array{
-     *     data: list<array{coordinate: string, identifier: string, time: ?string, total_time: ?string}>,
+     *     data: list<array{coordinate: string, identifier: string, time: ?string, total_time: ?string, remaining_fuel: ?string}>,
      *     source_fragments: array<string, string>
      * }
      */
@@ -27,36 +33,32 @@ class WaypointExtractor
         $waypoints = [];
         $sourceLines = [self::PRIMARY_HEADER, self::SECONDARY_HEADER];
 
-        foreach ($section as $index => $line) {
-            $coordinate = $this->coordinate($line);
+        $records = $this->coordinateDelimitedRecords($section);
 
-            if ($coordinate === null) {
-                continue;
-            }
-
-            $detailIndex = $this->nextNonEmptyLineIndex($section, $index + 1);
-            $detail = $detailIndex === null ? null : $this->detail($section[$detailIndex]);
+        foreach ($records as $record) {
+            $detail = $this->detail($record['content']);
 
             if ($detail === null) {
                 continue;
             }
 
-            $continuationIndex = $this->nextNonEmptyLineIndex($section, $detailIndex + 1);
-            $totalTime = $continuationIndex === null ? null : $this->totalTime($section[$continuationIndex]);
+            $totalTime = $this->totalTime($record['content']);
 
             $waypoints[] = [
-                'coordinate' => $coordinate,
+                'coordinate' => $record['coordinate'],
                 'identifier' => $detail['identifier'],
                 'time' => $detail['time'],
                 'total_time' => $totalTime,
+                'remaining_fuel' => $detail['remaining_fuel'],
             ];
 
-            $sourceLines[] = $line;
-            $sourceLines[] = $section[$detailIndex];
-
-            if ($continuationIndex !== null && $totalTime !== null) {
-                $sourceLines[] = $section[$continuationIndex];
-            }
+            $sourceLines[] = implode(' ', array_filter([
+                $record['coordinate'],
+                $detail['identifier'],
+                $detail['time'],
+                $totalTime,
+                $detail['remaining_fuel'],
+            ], static fn (?string $value): bool => $value !== null));
         }
 
         return [
@@ -67,71 +69,59 @@ class WaypointExtractor
         ];
     }
 
-    /** @return list<string>|null */
-    private function computedFlightPlanSection(string $text): ?array
+    private function computedFlightPlanSection(string $text): ?string
     {
-        $lines = preg_split('/\R/', $text);
+        $matches = [];
 
-        if ($lines === false) {
+        if (preg_match(self::HEADER_PATTERN, $text, $matches, PREG_OFFSET_CAPTURE) !== 1) {
             return null;
         }
 
-        foreach ($lines as $index => $line) {
-            if (Str::upper(Str::squish($line)) !== self::PRIMARY_HEADER) {
-                continue;
-            }
+        $header = $matches[0][0];
+        $sectionStart = $matches[0][1] + strlen($header);
+        $remainingText = substr($text, $sectionStart);
 
-            $secondaryHeaderIndex = $this->nextNonEmptyLineIndex($lines, $index + 1);
+        return $this->textUntilSectionEnd($remainingText);
+    }
 
-            if ($secondaryHeaderIndex === null
-                || Str::upper(Str::squish($lines[$secondaryHeaderIndex])) !== self::SECONDARY_HEADER) {
-                continue;
-            }
+    private function textUntilSectionEnd(string $text): string
+    {
+        $matches = [];
 
-            return $this->linesUntilSectionEnd($lines, $secondaryHeaderIndex + 1);
+        if (preg_match('/-{3,}\h*ALTERNATE\b|\b(?:ATC|ICAO)\h+FLIGHT\h+PLAN\b|\b(?:FUEL\h+SUMMARY|ETOPS|NOTAMS?|WEATHER|MEL\h*\/\h*CDL|RAIM)\b/i', $text, $matches, PREG_OFFSET_CAPTURE) !== 1) {
+            return $text;
         }
 
-        return null;
+        return substr($text, 0, $matches[0][1]);
     }
 
     /**
-     * @param  list<string>  $lines
-     * @return list<string>
+     * @return list<array{coordinate: string, content: string}>
      */
-    private function linesUntilSectionEnd(array $lines, int $start): array
-    {
-        $section = [];
-
-        for ($index = $start; $index < count($lines); $index++) {
-            if ($this->isSectionHeading($lines[$index])) {
-                break;
-            }
-
-            $section[] = $lines[$index];
-        }
-
-        return $section;
-    }
-
-    private function isSectionHeading(string $line): bool
-    {
-        return preg_match('/^\h*(?:ATC|ICAO)\h+FLIGHT\h+PLAN\b|^\h*(?:FUEL\h+SUMMARY|ETOPS|NOTAMS?|WEATHER|MEL\h*\/\h*CDL|RAIM)\b/i', $line) === 1;
-    }
-
-    private function coordinate(string $line): ?string
+    private function coordinateDelimitedRecords(string $section): array
     {
         $matches = [];
-        $pattern = '/^\h*(?<latitude>[NS](?:[0-8]\d|90)\h+[0-5]\d(?:\.\d+)?)'
-            .'\h*\/?\h*(?<longitude>[EW](?:0\d{2}|1[0-7]\d|180)\h+[0-5]\d(?:\.\d+)?)\h*$/i';
 
-        if (preg_match($pattern, $line, $matches) !== 1) {
-            return null;
+        if (preg_match_all(self::COORDINATE_PATTERN, $section, $matches, PREG_OFFSET_CAPTURE) === false) {
+            return [];
         }
 
-        return Str::upper(Str::squish($matches['latitude'].' '.$matches['longitude']));
+        $records = [];
+        $coordinates = $matches[0];
+
+        foreach ($coordinates as $index => [$rawCoordinate, $offset]) {
+            $contentStart = $offset + strlen($rawCoordinate);
+            $contentEnd = $coordinates[$index + 1][1] ?? strlen($section);
+            $records[] = [
+                'coordinate' => Str::upper(Str::squish($matches['latitude'][$index][0].' '.$matches['longitude'][$index][0])),
+                'content' => Str::squish(substr($section, $contentStart, $contentEnd - $contentStart)),
+            ];
+        }
+
+        return $records;
     }
 
-    /** @return array{identifier: string, time: ?string}|null */
+    /** @return array{identifier: string, time: ?string, remaining_fuel: ?string}|null */
     private function detail(string $line): ?array
     {
         $matches = [];
@@ -141,13 +131,18 @@ class WaypointExtractor
         }
 
         $timeMatches = [];
-        $time = preg_match('/\h(?<time>\d{3}|---)\h+\.{3}\h+\.{3}(?:\h|$)/', $matches['details'], $timeMatches) === 1
+        $time = preg_match('/\h(?<time>\d{3}|---)\h+\.{2,3}\h+\.{2,3}(?:\h|$)/', $matches['details'], $timeMatches) === 1
             ? $timeMatches['time']
+            : null;
+        $fuelMatches = [];
+        $remainingFuel = preg_match('/\h(?:\d{4}|----)\h+(?<fuel>\d{4}|----)\h+(?:\d{4}|\.{2,4})(?:\h|$)/', $matches['details'], $fuelMatches) === 1
+            ? $fuelMatches['fuel']
             : null;
 
         return [
             'identifier' => Str::upper($matches['identifier']),
             'time' => $time === '---' ? null : $time,
+            'remaining_fuel' => $remainingFuel === '----' ? null : $remainingFuel,
         ];
     }
 
@@ -155,22 +150,10 @@ class WaypointExtractor
     {
         $matches = [];
 
-        if (preg_match('/\h(?<total_time>\d{2}\.\d{2})\h+\.{3}\h+\.{3}(?:\h|$)/', $line, $matches) !== 1) {
+        if (preg_match('/\h(?<total_time>\d{2}\.\d{2})\h+\.{2,3}\h+\.{2,3}(?:\h|$)/', $line, $matches) !== 1) {
             return null;
         }
 
         return $matches['total_time'];
-    }
-
-    /** @param list<string> $lines */
-    private function nextNonEmptyLineIndex(array $lines, int $start): ?int
-    {
-        for ($index = $start; $index < count($lines); $index++) {
-            if (trim($lines[$index]) !== '') {
-                return $index;
-            }
-        }
-
-        return null;
     }
 }

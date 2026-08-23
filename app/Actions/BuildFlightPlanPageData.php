@@ -18,6 +18,7 @@ use App\DTOs\MaintenanceItemData;
 use App\DTOs\MaintenanceLogData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
+use App\DTOs\WaypointData;
 use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
 use App\Services\FlightPlan\FlightInitFieldNormalizer;
@@ -98,6 +99,7 @@ class BuildFlightPlanPageData
             flightInit: $this->flightInit($data['flightInit'] ?? null),
             etops: $this->etops($data['etops'] ?? null),
             crewMembers: $this->crewMembers($data['crewMembers'] ?? null),
+            waypoints: $this->waypoints($data['waypoints'] ?? null),
         );
     }
 
@@ -155,6 +157,44 @@ class BuildFlightPlanPageData
         } catch (InvalidArgumentException) {
             return null;
         }
+    }
+
+    /** @return list<WaypointData> */
+    private function waypoints(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        $waypoints = [];
+
+        foreach ($value as $waypoint) {
+            if (! is_array($waypoint)) {
+                continue;
+            }
+
+            $identifier = $this->nullableString($waypoint['identifier'] ?? null);
+            $coordinate = $this->nullableString($waypoint['coordinate'] ?? null);
+
+            if ($identifier === null || $coordinate === null) {
+                continue;
+            }
+
+            $waypoints[] = new WaypointData(
+                identifier: $identifier,
+                coordinate: $coordinate,
+                legDurationMinutes: $this->nonNegativeInteger($waypoint['legDurationMinutes'] ?? null),
+                cumulativeDurationMinutes: $this->nonNegativeInteger($waypoint['cumulativeDurationMinutes'] ?? null),
+                remainingFuel: $this->fuelQuantity($waypoint['remainingFuel'] ?? null),
+            );
+        }
+
+        return $waypoints;
+    }
+
+    private function nonNegativeInteger(mixed $value): ?int
+    {
+        return is_int($value) && $value >= 0 ? $value : null;
     }
 
     private function airportCode(mixed $value): ?AirportCode

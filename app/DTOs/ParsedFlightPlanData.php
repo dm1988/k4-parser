@@ -16,7 +16,7 @@ final readonly class ParsedFlightPlanData
      * @param  array{etps?: list<array{label: string, airports: string, coordinates: string, scenario: string}>, eent_coordinates?: ?string, eexp_coordinates?: ?string}  $etops
      * @param  array<string, string|list<array{direction: string, airport: string, time: string}>>  $sourceFragments
      * @param  array<string, mixed>  $legacy
-     * @param  list<array{coordinate: string, identifier: string, time: ?string, total_time: ?string}>  $waypoints
+     * @param  list<array{coordinate: string, identifier: string, time: ?string, total_time: ?string, remaining_fuel: ?string}>  $waypoints
      */
     public function __construct(
         public array $identity,

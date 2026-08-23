@@ -7,7 +7,10 @@ use JsonSerializable;
 
 final readonly class FlightPlanData implements JsonSerializable
 {
-    /** @param list<CrewMemberData> $crewMembers */
+    /**
+     * @param  list<CrewMemberData>  $crewMembers
+     * @param  list<WaypointData>  $waypoints
+     */
     public function __construct(
         public FlightIdentityData $identity,
         public ScheduleData $schedule,
@@ -18,6 +21,7 @@ final readonly class FlightPlanData implements JsonSerializable
         public ?FlightInitData $flightInit = null,
         public ?EtopsData $etops = null,
         public array $crewMembers = [],
+        public array $waypoints = [],
     ) {}
 
     /**
@@ -30,7 +34,8 @@ final readonly class FlightPlanData implements JsonSerializable
      *     envelope: array<string, mixed>|null,
      *     flightInit: array{sectionPresent: bool, acarsInitDate: ?string}|null,
      *     etops: array<string, mixed>|null,
-     *     crewMembers: list<array{name: string, role: ?string, base: ?string, employeeNumber: ?string}>
+     *     crewMembers: list<array{name: string, role: ?string, base: ?string, employeeNumber: ?string}>,
+     *     waypoints: list<array{identifier: string, coordinate: string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: array{amount: float, unit: 'kg'|'lb'}|null}>
      * }
      */
     public function toArray(): array
@@ -48,6 +53,10 @@ final readonly class FlightPlanData implements JsonSerializable
                 static fn (CrewMemberData $member): array => $member->toArray(),
                 $this->crewMembers,
             ),
+            'waypoints' => array_map(
+                static fn (WaypointData $waypoint): array => $waypoint->toArray(),
+                $this->waypoints,
+            ),
         ];
     }
 
@@ -61,7 +70,8 @@ final readonly class FlightPlanData implements JsonSerializable
      *     envelope: array<string, mixed>|null,
      *     flightInit: array{sectionPresent: bool, acarsInitDate: ?string}|null,
      *     etops: array<string, mixed>|null,
-     *     crewMembers: list<array{name: string, role: ?string, base: ?string, employeeNumber: ?string}>
+     *     crewMembers: list<array{name: string, role: ?string, base: ?string, employeeNumber: ?string}>,
+     *     waypoints: list<array{identifier: string, coordinate: string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: array{amount: float, unit: 'kg'|'lb'}|null}>
      * }
      */
     public function jsonSerialize(): array

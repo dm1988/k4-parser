@@ -1058,6 +1058,19 @@ class FlightPlanBriefTest extends TestCase
                         'final_reserve' => null,
                         'estimated_landing' => null,
                     ],
+                    waypoints: [[
+                        'identifier' => 'FIX01',
+                        'coordinate' => 'N01 02.3 E004 05.6',
+                        'time' => '005',
+                        'total_time' => '00.11',
+                        'remaining_fuel' => '1477',
+                    ], [
+                        'identifier' => 'FIX01',
+                        'coordinate' => 'N02 03.4 E005 06.7',
+                        'time' => null,
+                        'total_time' => null,
+                        'remaining_fuel' => null,
+                    ]],
                 ));
         });
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
@@ -1122,6 +1135,14 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('Not present in this release')
             ->assertSeeText('No score or status inferred')
             ->assertSeeText('does not calculate a fuel score')
+            ->assertSeeText('Waypoint fuel')
+            ->assertSeeText('Off time (UTC)')
+            ->assertSeeText('Planned ETA')
+            ->assertSeeText('Remaining fuel')
+            ->assertSee('147.7 k lbs')
+            ->assertSeeText('does not alter extracted release data')
+            ->assertSee('FIX01')
+            ->assertDontSeeText('Coordinate')
             ->assertDontSeeText('Its dedicated operational layout is scheduled in the next focused task.');
 
         $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
@@ -1448,6 +1469,7 @@ class FlightPlanBriefTest extends TestCase
         ?array $maintenance = null,
         ?array $envelope = null,
         ?array $flightInit = null,
+        ?array $waypoints = null,
     ): ParsedFlightPlanData {
         $legacy ??= $this->flightPlan();
 
@@ -1499,6 +1521,7 @@ class FlightPlanBriefTest extends TestCase
                 'eexp_coordinates' => is_string($legacy['eexp_coordinates'] ?? null) ? $legacy['eexp_coordinates'] : null,
             ],
             legacy: $legacy,
+            waypoints: $waypoints ?? [],
         );
     }
 

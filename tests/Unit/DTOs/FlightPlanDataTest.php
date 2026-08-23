@@ -8,6 +8,7 @@ use App\DTOs\FlightPlanData;
 use App\DTOs\FuelPlanData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
+use App\DTOs\WaypointData;
 use App\Enums\EtopsApplicability;
 use App\ValueObjects\AirportCode;
 use App\ValueObjects\FuelQuantity;
@@ -29,6 +30,7 @@ class FlightPlanDataTest extends TestCase
                 sectionPresent: true,
                 applicability: EtopsApplicability::ConfirmedEtops,
             ),
+            waypoints: [new WaypointData('FIX01', 'N01 02.3 E004 05.6', 5, 11, FuelQuantity::pounds(0))],
         );
 
         $this->assertSame('K4198', $flightPlan->identity->flightNumber);
@@ -36,6 +38,7 @@ class FlightPlanDataTest extends TestCase
         $this->assertSame(216800.0, $flightPlan->fuelPlan?->ramp?->amount);
         $this->assertSame('2026-08-21T12:00:00+00:00', $flightPlan->toArray()['schedule']['etdUtc']);
         $this->assertSame('confirmed_etops', $flightPlan->toArray()['etops']['applicability']);
+        $this->assertSame(0.0, $flightPlan->toArray()['waypoints'][0]['remainingFuel']['amount']);
         $this->assertTrue((new \ReflectionClass($flightPlan))->isReadOnly());
     }
 

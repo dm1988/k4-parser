@@ -16,11 +16,13 @@ use App\DTOs\MaintenanceLogData;
 use App\DTOs\ParsedFlightPlanData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
+use App\DTOs\WaypointData;
 use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
 use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use App\Services\FlightPlan\FlightPlanResultSerializer;
 use App\ValueObjects\AirportCode;
+use App\ValueObjects\FuelQuantity;
 use App\ValueObjects\WeightQuantity;
 use Tests\TestCase;
 
@@ -68,6 +70,7 @@ class FlightPlanResultSerializerTest extends TestCase
                 ),
             ),
             crewMembers: [new CrewMemberData('Alex Morgan', 'CP', 'YIP', '4827')],
+            waypoints: [new WaypointData('FIX01', 'N01 02.3 E004 05.6', 5, 11, FuelQuantity::pounds(0))],
         );
         $parsed = new ParsedFlightPlanData(
             identity: [
@@ -105,6 +108,7 @@ class FlightPlanResultSerializerTest extends TestCase
                 'fuel_summary' => 'must not leak',
                 'maintenance_log' => 'private maintenance evidence',
                 'envelope_takeoff_landing_report' => 'private TLR evidence',
+                'computed_flight_plan_waypoints' => 'private waypoint row evidence',
             ],
             legacy: [
                 'departure_airport' => new AirportData('KLAX', 'LAX', 'Los Angeles International', 'Los Angeles', 'California', 'United States'),
@@ -130,10 +134,13 @@ class FlightPlanResultSerializerTest extends TestCase
         $this->assertSame('11', $result['flight_plan_data']['flightInit']['acarsInitDate']);
         $this->assertSame(612400, $result['flight_plan_data']['envelope']['plannedTakeoffWeight']['amount']);
         $this->assertSame('N40 31.1', $result['flight_plan_data']['etops']['entryPoint']['coordinate']['latitude']);
+        $this->assertSame('FIX01', $result['flight_plan_data']['waypoints'][0]['identifier']);
+        $this->assertSame(0.0, $result['flight_plan_data']['waypoints'][0]['remainingFuel']['amount']);
         $this->assertArrayNotHasKey('crewMembers', $result['flight_plan_data']['maintenanceLog']);
         $this->assertArrayNotHasKey('source_fragments', $result);
         $this->assertStringNotContainsString('must not leak', json_encode($result, JSON_THROW_ON_ERROR));
         $this->assertStringNotContainsString('private maintenance evidence', json_encode($result, JSON_THROW_ON_ERROR));
         $this->assertStringNotContainsString('private TLR evidence', json_encode($result, JSON_THROW_ON_ERROR));
+        $this->assertStringNotContainsString('private waypoint row evidence', json_encode($result, JSON_THROW_ON_ERROR));
     }
 }
