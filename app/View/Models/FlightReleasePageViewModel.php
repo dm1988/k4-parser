@@ -12,6 +12,7 @@ use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
 use App\Enums\MaintenanceItemType;
 use App\Enums\RouteTokenType;
+use App\ValueObjects\FuelQuantity;
 use App\ValueObjects\WeightQuantity;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Number;
@@ -149,6 +150,22 @@ readonly class FlightReleasePageViewModel
     public function fmsAlternateReserve(): ?string
     {
         return $this->pageData?->flightPlan->fuelPlan?->alternate?->format();
+    }
+
+    /** @return list<array{label: string, value: ?string, unit: ?string}> */
+    public function fuelScoreFields(): array
+    {
+        $fuelPlan = $this->pageData?->flightPlan->fuelPlan;
+
+        return [
+            $this->fuelScoreField('Ramp', $fuelPlan?->ramp),
+            $this->fuelScoreField('Taxi', $fuelPlan?->taxi),
+            $this->fuelScoreField('Takeoff', $fuelPlan?->takeoff),
+            $this->fuelScoreField('Trip', $fuelPlan?->trip),
+            $this->fuelScoreField('Alternate', $fuelPlan?->alternate),
+            $this->fuelScoreField('Reserve', $fuelPlan?->finalReserve),
+            $this->fuelScoreField('Estimated landing', $fuelPlan?->estimatedLanding),
+        ];
     }
 
     /** @return list<array{label: string, value: ?string}> */
@@ -451,6 +468,22 @@ readonly class FlightReleasePageViewModel
     private function formatSpeed(?int $speed): ?string
     {
         return $speed === null ? null : $speed.' kt';
+    }
+
+    /** @return array{label: string, value: ?string, unit: ?string} */
+    private function fuelScoreField(string $label, ?FuelQuantity $quantity): array
+    {
+        if ($quantity === null) {
+            return ['label' => $label, 'value' => null, 'unit' => null];
+        }
+
+        return [
+            'label' => $label,
+            'value' => $quantity->unit === 'lb'
+                ? Number::format($quantity->amount / 1000, precision: 1)
+                : Number::format($quantity->amount),
+            'unit' => $quantity->unit === 'lb' ? 'k lbs' : Str::upper($quantity->unit),
+        ];
     }
 
     /** @param array<string, int> $counts */

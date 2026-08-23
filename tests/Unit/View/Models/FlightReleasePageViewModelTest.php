@@ -44,6 +44,15 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertNull($viewModel->fmsDistanceToDestination());
         $this->assertNull($viewModel->fmsAlternateReserve());
         $this->assertSame([], $viewModel->fmsFields());
+        $this->assertSame([
+            ['label' => 'Ramp', 'value' => null, 'unit' => null],
+            ['label' => 'Taxi', 'value' => null, 'unit' => null],
+            ['label' => 'Takeoff', 'value' => null, 'unit' => null],
+            ['label' => 'Trip', 'value' => null, 'unit' => null],
+            ['label' => 'Alternate', 'value' => null, 'unit' => null],
+            ['label' => 'Reserve', 'value' => null, 'unit' => null],
+            ['label' => 'Estimated landing', 'value' => null, 'unit' => null],
+        ], $viewModel->fuelScoreFields());
         $this->assertSame('Not confirmed', $viewModel->maintenanceEtopsLabel());
         $this->assertNull($viewModel->maintenanceDate());
         $this->assertNull($viewModel->maintenanceRampFuel());
@@ -127,6 +136,53 @@ class FlightReleasePageViewModelTest extends TestCase
 
         $this->assertNull($viewModel->recallNumber());
         $this->assertNull($viewModel->fmsFields()[2]['value']);
+    }
+
+    #[Test]
+    public function it_builds_the_complete_fuel_summary_without_losing_zero_values(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['fuelPlan'] = [
+            'ramp' => ['amount' => 216800.0, 'unit' => 'lb'],
+            'taxi' => ['amount' => 2000.0, 'unit' => 'lb'],
+            'takeoff' => ['amount' => 214829.0, 'unit' => 'lb'],
+            'trip' => ['amount' => 195116.0, 'unit' => 'lb'],
+            'alternate' => ['amount' => 5600.0, 'unit' => 'lb'],
+            'finalReserve' => ['amount' => 6900.0, 'unit' => 'lb'],
+            'estimatedLanding' => ['amount' => 19713.0, 'unit' => 'lb'],
+        ];
+
+        $this->assertSame([
+            ['label' => 'Ramp', 'value' => '216.8', 'unit' => 'k lbs'],
+            ['label' => 'Taxi', 'value' => '2.0', 'unit' => 'k lbs'],
+            ['label' => 'Takeoff', 'value' => '214.8', 'unit' => 'k lbs'],
+            ['label' => 'Trip', 'value' => '195.1', 'unit' => 'k lbs'],
+            ['label' => 'Alternate', 'value' => '5.6', 'unit' => 'k lbs'],
+            ['label' => 'Reserve', 'value' => '6.9', 'unit' => 'k lbs'],
+            ['label' => 'Estimated landing', 'value' => '19.7', 'unit' => 'k lbs'],
+        ], $this->viewModel($payload)->fuelScoreFields());
+    }
+
+    #[Test]
+    public function it_keeps_kilogram_fuel_quantities_in_their_source_unit(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['fuelPlan'] = [
+            'ramp' => ['amount' => 98300.0, 'unit' => 'kg'],
+            'taxi' => null,
+            'takeoff' => null,
+            'trip' => null,
+            'contingency' => null,
+            'alternate' => null,
+            'finalReserve' => null,
+            'estimatedLanding' => null,
+        ];
+
+        $fields = $this->viewModel($payload)->fuelScoreFields();
+
+        $this->assertSame('98,300', $fields[0]['value']);
+        $this->assertSame('KG', $fields[0]['unit']);
+        $this->assertNull($fields[1]['value']);
     }
 
     #[Test]

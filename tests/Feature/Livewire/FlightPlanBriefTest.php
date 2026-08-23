@@ -1103,6 +1103,18 @@ class FlightPlanBriefTest extends TestCase
                 ->assertSet('activeTask', $task->value);
         }
 
+        $component
+            ->call('selectTask', FlightPlanTask::FuelScore->value)
+            ->assertSeeText('Fuel summary')
+            ->assertSeeText('Ramp fuel')
+            ->assertSeeText('120.0')
+            ->assertSeeText('k lbs')
+            ->assertSeeText('Taxi fuel')
+            ->assertSeeText('Not present in this release')
+            ->assertSeeText('No score or status inferred')
+            ->assertSeeText('does not calculate a fuel score')
+            ->assertDontSeeText('Its dedicated operational layout is scheduled in the next focused task.');
+
         $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
     }
 

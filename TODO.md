@@ -1,3 +1,46 @@
+# Refactor blade logic
+- Goal move componentName into FlightPlanTask enum
+- In workspace blade, migrate large if chain into a switch case
+
+FlightPlanTask is an enum, move view mapping directly onto the Enum. This keeps the Blade template almost logic-free.
+
+In App\Enums\FlightPlanTask.php:
+
+/**
+     * Get the corresponding component name.
+     * Maps 'jepp_pd_pro' directly to 'flight-release.jepp-pd-pro'
+     */
+    public function componentName(): string
+    {
+        return 'flight-release.' . Str::kebab($this->value);
+    }
+
+    /**
+     * Determine if the task needs airport parameters.
+     */
+    public function requiresAirports(): bool
+    {
+        return in_array($this, [self::JeppPdPro, self::Fms], true);
+    }
+
+    /**
+     * Determine tasks that have dedicated visual components rendered.
+     */
+    public function hasCustomView(): bool
+    {
+        return match($this) {
+            self::Overview,
+            self::JeppPdPro,
+            self::MaintenanceLog,
+            self::Envelope,
+            self::FlightInit,
+            self::Fms,
+            self::FuelScore,
+            self::Etops => true,
+            default => false,
+        };
+    }
+
 # Flight Plan Brief Roadmap
 
 Build one reviewable flight-release workspace from the normalized extraction pipeline. Parse each source fact once, keep operational values typed, and present unavailable data honestly instead of inferring it.
@@ -73,6 +116,8 @@ Goal: Deliver the release fuel summary first, then add source-backed waypoint mo
 Done when: summary values are reliable and no status badge appears without a documented calculation rule.
 
 Commit message: `feat: add fuel score task`
+
+Current outcome: Added the dedicated responsive Fuel Score summary for all eight typed `FuelPlanData` quantities. Pound values are displayed in `k lbs`, kilogram values retain their source unit, legitimate zeroes remain visible, missing values remain distinct, and the view explicitly avoids inferring a score, compliance, or dispatchability. Waypoint monitoring and the user-entered Off-time ETA calculation remain pending until waypoint duration and remaining-fuel values are promoted into the cached typed contract.
 
 ## 12 — Implement Weather
 

@@ -65,6 +65,8 @@
                     :destination-airport="$model->destinationAirport()"
                     :alternate-airport="$model->alternateAirport()"
                 />
+            @elseif ($activeTask === \App\Enums\FlightPlanTask::FuelScore)
+                <x-flight-release.fuel-score :model="$model" />
             @elseif ($activeTask === \App\Enums\FlightPlanTask::Etops)
                 <x-flight-release.etops :model="$model" />
             @else
