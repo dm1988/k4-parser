@@ -63,9 +63,12 @@ Goal: Deliver the release fuel summary first, then add source-backed waypoint mo
 
 - Render ramp, taxi, takeoff, trip, contingency, alternate, final reserve, and estimated landing fuel from `FuelPlanData` with units.
 - Preserve legitimate zero values and distinguish them from missing values.
-- Add sanitized waypoint fixtures before modeling waypoint, ETA, planned remaining fuel, flight level, phase, wind, temperature, speed, and leg duration.
+- Add sanitized waypoint fixtures before modeling waypoint, ETA, remaining fuel, and leg duration.
 - Keep raw summary/waypoint evidence with normalized values for review.
+- Expanding card shows raw waypoint evidence with "More..." label and drop arrow
+- Units in 1000xlbs labeled as "k lbs"
 - Test pounds/kilograms, scaling, exact-versus-rounded precedence, missing/zero values, ambiguous units, and score boundaries.
+- Planned fuel featue: User input `Off` time which calculates an ETA column by adding time to Off time. Ensuring 24 hour time format
 
 Done when: summary values are reliable and no status badge appears without a documented calculation rule.
 
@@ -126,6 +129,10 @@ View results on PDF upload when parsing completes
 - Have task at bottom if 0
 
 ## Add task: Takeoff and Landing Report
+
+Naming outcome: Renamed the view-model presentation API from the ambiguous `envelope*` prefix to `tlr*`. The normalized payload continues using its existing `envelope` storage key until the broader data contract is migrated.
+
+Commit message: `refactor: rename envelope view model methods to tlr`
 
 Source inputs:
 
@@ -188,9 +195,6 @@ This view repeats the confirmed source result. It does not calculate an envelope
 
 # Move 2 maintenance DTOs into Maintenance DTO subfolder
 
-# ACARS INIT Date Not confirmed
-- Investigate
-- 
 # GENDEC
 - Define General Declaration in CONTEXT.md
 - **General Declaration / GENDEC** - A General Declaration (GENDEC) is an official international aviation and customs document required by border control, immigration, custom, and public health authorities when an aircraft arrives in or departs from a foreign country.
@@ -285,7 +289,9 @@ The following changes were identified as a potential fix for the live page to re
 # Create a way to turn tasks on or off
 - in ENV and config files
 - in coordination with enum
-- 
+
+# Refactor FlightPlanBriefTest
+- Split tests and organize into folders grouped by test focus area
 -------------------------------------------------------
 
 **Completed**

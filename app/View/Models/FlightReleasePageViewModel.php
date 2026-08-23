@@ -340,103 +340,103 @@ readonly class FlightReleasePageViewModel
         ], $this->pageData?->flightPlan->maintenanceLog->items ?? []);
     }
 
-    public function envelopeSourceLabel(): string
+    public function tlrSourceLabel(): string
     {
-        return match ($this->envelope()?->sourceType) {
+        return match ($this->tlr()?->sourceType) {
             'takeoff_landing_report' => 'Takeoff and Landing Report',
             default => 'Confirmed release section',
         };
     }
 
-    public function envelopeReportReference(): ?string
+    public function tlrReportReference(): ?string
     {
-        return $this->envelope()?->reportReference;
+        return $this->tlr()?->reportReference;
     }
 
-    public function envelopeAirport(): ?string
+    public function tlrAirport(): ?string
     {
-        return $this->envelope()?->airport;
+        return $this->tlr()?->airport;
     }
 
-    public function envelopePlannedRunway(): ?string
+    public function tlrPlannedRunway(): ?string
     {
-        return $this->envelope()?->plannedRunway;
+        return $this->tlr()?->plannedRunway;
     }
 
-    public function envelopeOutsideAirTemperature(): ?string
+    public function tlrOutsideAirTemperature(): ?string
     {
-        $temperature = $this->envelope()?->outsideAirTemperatureCelsius;
+        $temperature = $this->tlr()?->outsideAirTemperatureCelsius;
 
         return $temperature === null ? null : Number::format($temperature, precision: 1).' °C';
     }
 
-    public function envelopeWind(): ?string
+    public function tlrWind(): ?string
     {
-        return $this->envelope()?->wind;
+        return $this->tlr()?->wind;
     }
 
-    public function envelopeQnh(): ?string
+    public function tlrQnh(): ?string
     {
-        $envelope = $this->envelope();
+        $tlr = $this->tlr();
 
-        if ($envelope?->qnhHectopascals !== null) {
-            return $envelope->qnhHectopascals.' hPa';
+        if ($tlr?->qnhHectopascals !== null) {
+            return $tlr->qnhHectopascals.' hPa';
         }
 
-        return $envelope?->qnhInchesMercury === null
+        return $tlr?->qnhInchesMercury === null
             ? null
-            : number_format($envelope->qnhInchesMercury, 2).' inHg';
+            : number_format($tlr->qnhInchesMercury, 2).' inHg';
     }
 
-    public function envelopeFlapSetting(): ?string
+    public function tlrFlapSetting(): ?string
     {
-        return $this->envelope()?->flapSetting;
+        return $this->tlr()?->flapSetting;
     }
 
-    public function envelopeAntiIce(): ?string
+    public function tlrAntiIce(): ?string
     {
-        $antiIce = $this->envelope()?->antiIce;
+        $antiIce = $this->tlr()?->antiIce;
 
         return $antiIce === null ? null : ($antiIce ? 'Yes' : 'No');
     }
 
-    public function envelopeMaximumRunwayTakeoffWeight(): ?string
+    public function tlrMaximumRunwayTakeoffWeight(): ?string
     {
-        return $this->formatWeight($this->envelope()?->maximumRunwayTakeoffWeight);
+        return $this->formatWeight($this->tlr()?->maximumRunwayTakeoffWeight);
     }
 
-    public function envelopeMaximumFieldTakeoffWeight(): ?string
+    public function tlrMaximumFieldTakeoffWeight(): ?string
     {
-        return $this->formatWeight($this->envelope()?->maximumFieldTakeoffWeight);
+        return $this->formatWeight($this->tlr()?->maximumFieldTakeoffWeight);
     }
 
-    public function envelopePlannedTakeoffWeight(): ?string
+    public function tlrPlannedTakeoffWeight(): ?string
     {
-        return $this->formatWeight($this->envelope()?->plannedTakeoffWeight);
+        return $this->formatWeight($this->tlr()?->plannedTakeoffWeight);
     }
 
-    public function envelopeV1(): ?string
+    public function tlrV1(): ?string
     {
-        return $this->formatSpeed($this->envelope()?->v1Knots);
+        return $this->formatSpeed($this->tlr()?->v1Knots);
     }
 
-    public function envelopeRotateSpeed(): ?string
+    public function tlrRotateSpeed(): ?string
     {
-        return $this->formatSpeed($this->envelope()?->rotateKnots);
+        return $this->formatSpeed($this->tlr()?->rotateKnots);
     }
 
-    public function envelopeV2(): ?string
+    public function tlrV2(): ?string
     {
-        return $this->formatSpeed($this->envelope()?->v2Knots);
+        return $this->formatSpeed($this->tlr()?->v2Knots);
     }
 
     /** @return list<string> */
-    public function envelopeWarnings(): array
+    public function tlrWarnings(): array
     {
-        return $this->envelope()->sourceWarnings ?? [];
+        return $this->tlr()->sourceWarnings ?? [];
     }
 
-    private function envelope(): ?EnvelopeData
+    private function tlr(): ?EnvelopeData
     {
         return $this->pageData?->flightPlan->envelope;
     }

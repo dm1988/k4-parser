@@ -57,9 +57,9 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertNull($viewModel->flightInitRampFuel());
         $this->assertNull($viewModel->flightInitAcarsDate());
         $this->assertSame([], $viewModel->flightInitCrewMembers());
-        $this->assertSame('Confirmed release section', $viewModel->envelopeSourceLabel());
-        $this->assertNull($viewModel->envelopePlannedTakeoffWeight());
-        $this->assertSame([], $viewModel->envelopeWarnings());
+        $this->assertSame('Confirmed release section', $viewModel->tlrSourceLabel());
+        $this->assertNull($viewModel->tlrPlannedTakeoffWeight());
+        $this->assertSame([], $viewModel->tlrWarnings());
     }
 
     #[Test]
@@ -298,26 +298,26 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
-    public function it_formats_the_confirmed_envelope_result_without_calculating_a_status(): void
+    public function it_formats_the_confirmed_tlr_result_without_calculating_a_status(): void
     {
         $viewModel = $this->viewModel($this->resultPayload());
 
-        $this->assertSame('Takeoff and Landing Report', $viewModel->envelopeSourceLabel());
-        $this->assertSame('TLR-30 SEQ-48273190 25MAY26 0115Z', $viewModel->envelopeReportReference());
-        $this->assertSame('KLAX', $viewModel->envelopeAirport());
-        $this->assertSame('25R', $viewModel->envelopePlannedRunway());
-        $this->assertSame('18.0 °C', $viewModel->envelopeOutsideAirTemperature());
-        $this->assertSame('250M08', $viewModel->envelopeWind());
-        $this->assertSame('29.92 inHg', $viewModel->envelopeQnh());
-        $this->assertSame('15', $viewModel->envelopeFlapSetting());
-        $this->assertSame('No', $viewModel->envelopeAntiIce());
-        $this->assertSame('768,000 LB', $viewModel->envelopeMaximumRunwayTakeoffWeight());
-        $this->assertSame('766,000 LB', $viewModel->envelopeMaximumFieldTakeoffWeight());
-        $this->assertSame('612,400 LB', $viewModel->envelopePlannedTakeoffWeight());
-        $this->assertSame('151 kt', $viewModel->envelopeV1());
-        $this->assertSame('158 kt', $viewModel->envelopeRotateSpeed());
-        $this->assertSame('164 kt', $viewModel->envelopeV2());
-        $this->assertSame(['32-41-03 - SOURCE BRAKE MESSAGE'], $viewModel->envelopeWarnings());
+        $this->assertSame('Takeoff and Landing Report', $viewModel->tlrSourceLabel());
+        $this->assertSame('TLR-30 SEQ-48273190 25MAY26 0115Z', $viewModel->tlrReportReference());
+        $this->assertSame('KLAX', $viewModel->tlrAirport());
+        $this->assertSame('25R', $viewModel->tlrPlannedRunway());
+        $this->assertSame('18.0 °C', $viewModel->tlrOutsideAirTemperature());
+        $this->assertSame('250M08', $viewModel->tlrWind());
+        $this->assertSame('29.92 inHg', $viewModel->tlrQnh());
+        $this->assertSame('15', $viewModel->tlrFlapSetting());
+        $this->assertSame('No', $viewModel->tlrAntiIce());
+        $this->assertSame('768,000 LB', $viewModel->tlrMaximumRunwayTakeoffWeight());
+        $this->assertSame('766,000 LB', $viewModel->tlrMaximumFieldTakeoffWeight());
+        $this->assertSame('612,400 LB', $viewModel->tlrPlannedTakeoffWeight());
+        $this->assertSame('151 kt', $viewModel->tlrV1());
+        $this->assertSame('158 kt', $viewModel->tlrRotateSpeed());
+        $this->assertSame('164 kt', $viewModel->tlrV2());
+        $this->assertSame(['32-41-03 - SOURCE BRAKE MESSAGE'], $viewModel->tlrWarnings());
     }
 
     #[Test]
@@ -327,7 +327,7 @@ class FlightReleasePageViewModelTest extends TestCase
         $payload['flight_plan_data']['envelope']['qnhInchesMercury'] = null;
         $payload['flight_plan_data']['envelope']['qnhHectopascals'] = 1015;
 
-        $this->assertSame('1015 hPa', $this->viewModel($payload)->envelopeQnh());
+        $this->assertSame('1015 hPa', $this->viewModel($payload)->tlrQnh());
     }
 
     #[Test]
