@@ -1,50 +1,3 @@
-# Current focus: Refactor blade logic
-- Goal move componentName into FlightPlanTask enum
-- In workspace blade, migrate large if chain into a switch case
-
-FlightPlanTask is an enum, move view mapping directly onto the Enum. This keeps the Blade template almost logic-free.
-
-In App\Enums\FlightPlanTask.php:
-
-/**
-     * Get the corresponding component name.
-     * Maps 'jepp_pd_pro' directly to 'flight-release.jepp-pd-pro'
-     */
-    public function componentName(): string
-    {
-        return 'flight-release.' . Str::kebab($this->value);
-    }
-
-    /**
-     * Determine if the task needs airport parameters.
-     */
-    public function requiresAirports(): bool
-    {
-        return in_array($this, [self::JeppPdPro, self::Fms], true);
-    }
-
-    /**
-     * Determine tasks that have dedicated visual components rendered.
-     */
-    public function hasCustomView(): bool
-    {
-        return match($this) {
-            self::Overview,
-            self::JeppPdPro,
-            self::MaintenanceLog,
-            self::Envelope,
-            self::FlightInit,
-            self::Fms,
-            self::FuelScore,
-            self::Etops => true,
-            default => false,
-        };
-    }
-
-Outcome: Moved conventional task component names, airport-prop requirements, and dedicated-view availability into `FlightPlanTask`. The workspace now uses a single availability-first `@switch(true)` and Laravel's dynamic component renderer while preserving Jepp padding, FMS/Jepp airport inputs, unavailable states, and the generic supported-data fallback.
-
-Commit message: `refactor: move flight task view mapping into enum`
-
 # Flight Plan Brief Roadmap
 
 Build one reviewable flight-release workspace from the normalized extraction pipeline. Parse each source fact once, keep operational values typed, and present unavailable data honestly instead of inferring it.
@@ -104,24 +57,32 @@ Done when: every displayed slot has an airport, direction/type, complete instant
 
 Commit message: `feat: add slot times task`
 
-## 10 — Current focus: Implement Fuel Score
+## 10 — Partial: Implement Fuel Score
 
-Goal: Deliver the release fuel summary first, then add source-backed waypoint monitoring.
+Goal: Present the confirmed release fuel summary and add source-backed waypoint fuel monitoring without inventing a fuel score or operational status.
 
-- Render ramp, taxi, takeoff, trip, contingency, alternate, final reserve, and estimated landing fuel from `FuelPlanData` with units.
-- Preserve legitimate zero values and distinguish them from missing values.
-- Add sanitized waypoint fixtures before modeling waypoint, ETA, remaining fuel, and leg duration.
-- Keep raw summary/waypoint evidence with normalized values for review.
-- Expanding card shows raw waypoint evidence with "More..." label and drop arrow
-- Units in 1000xlbs labeled as "k lbs"
-- Test pounds/kilograms, scaling, exact-versus-rounded precedence, missing/zero values, ambiguous units, and score boundaries.
-- Planned fuel featue: User input `Off` time which calculates an ETA column by adding time to Off time. Ensuring 24 hour time format
+### Completed: Release fuel summary
 
-Done when: summary values are reliable and no status badge appears without a documented calculation rule.
+- Added a dedicated responsive Fuel Score view using typed `FuelPlanData` values.
+- Displayed ramp, taxi, takeoff, trip, alternate, final reserve, and estimated landing fuel with explicit units.
+- Presented pounds in thousands with the amount separated from the subtle `k lbs` unit label; kilogram values retain their source unit.
+- Preserved legitimate zero values and kept missing quantities visibly distinct.
+- Kept fuel and waypoint source evidence private and out of the Livewire snapshot.
+- Explicitly avoided inferring a score, compliance result, or dispatchability status.
+- Covered pounds, kilograms, scaling, exact source values, missing values, zero values, and ambiguous units with focused tests.
+
+### Remaining: Waypoint monitoring and planned ETA
+
+- Promote sanitized waypoint records into the cached typed flight-plan contract before rendering them. Include identifier, coordinate, leg duration, cumulative duration, and remaining fuel only when each value is confirmed by fixtures.
+- Preserve source order and duplicate waypoint identifiers. Do not infer missing values from adjacent rows.
+- Keep raw summary and waypoint evidence private. A `More…` disclosure may show sanitized typed rows, but must not expose raw PDF text through Livewire.
+- Add an optional user-entered Off time using validated 24-hour `HHMM` input (`0000`–`2359`).
+- Calculate planned waypoint ETA from Off time plus confirmed cumulative duration, including UTC midnight rollover. Label the result as planned and do not mutate extracted source data.
+- Test malformed Off times, missing durations, midnight rollover, duplicate waypoints, zero remaining fuel, unit ambiguity, and sparse waypoint rows.
+
+Done when: every displayed fuel or waypoint value is source-backed, planned ETA is clearly separated from extracted values, missing data remains honest, and no status badge appears without a documented calculation rule.
 
 Commit message: `feat: add fuel score task`
-
-Current outcome: Added the dedicated responsive Fuel Score summary for all eight typed `FuelPlanData` quantities. Pound values are displayed in `k lbs`, kilogram values retain their source unit, legitimate zeroes remain visible, missing values remain distinct, and the view explicitly avoids inferring a score, compliance, or dispatchability. Waypoint monitoring and the user-entered Off-time ETA calculation remain pending until waypoint duration and remaining-fuel values are promoted into the cached typed contract.
 
 ## 12 — Implement Weather
 
@@ -265,7 +226,7 @@ Date:
 24May2026
 Arrival At:
 
-## UI Redesign: Flight Plan Brief Header Component
+## Completed: UI Redesign: Flight Plan Brief Header Component
 
 **Context**
 Redesign of a data-heavy flight information section (originally a standard description list) into a visual "Flight Strip" for a more intuitive dashboard experience.
@@ -329,11 +290,28 @@ The following changes were identified as a potential fix for the live page to re
 
 
 **Actionable Recommendations**
-*   **Refine Hierarchy:** Use `font-black` for airport codes and `font-mono` for callsigns to match industry standards.
+*   **Refine Hierarchy:** Use `font-black` for airport codes and `font-mono` for callsigns to match industry standards. In dark mode: `font-white`.
 *   **Enhance Aesthetics:** Apply `backdrop-filter: blur(8px)` and reduce the container background opacity to integrate the component better into modern dark/light mode UI.
 *   **Data Density:** Remove repetitive labels like "FLIGHT" or "ROUTE" in favor of visual groupings to reduce cognitive load.
 
-*Note: The code fixes and findings above were identified on a live page in DevTools. When applying them to your codebase, please adapt them to your project's specific technical stack (e.g., Tailwind CSS classes, CSS modules, framework components) rather than applying them as literal CSS overrides.*
+**Outcome:** Replaced the rigid release-summary metric grid with a responsive flight strip that groups the flight and aircraft identity, pairs UTC departure and arrival times with their airports, and centers the planned duration and release date along a visual route line. Missing values remain explicit, the optional release revision is presented neutrally, and no operational status is inferred. The component retains accessible summary semantics, dark-mode styling, and caller-supplied attributes.
+
+**Verification:** Focused Livewire rendering coverage confirms the responsive header structure, visual treatment, accessible summary label, and flight-strip information hierarchy.
+
+Date/time follow-up outcome: Departure and arrival dates now render on their own lines beneath the corresponding airport codes. Canonical UTC timestamps are formatted as four-digit aviation times with a separate `Z` label, and overnight arrival dates remain distinct from departure dates. Missing dates and times remain explicit.
+
+Flight-strip spacing follow-up outcome: UTC times now use compact lowercase aviation notation without whitespace (for example, `1430z`), and the journey visualization is capped at Tailwind's `max-w-xl` width so the route line and airport endpoints remain visually cohesive on wide screens.
+
+Responsive-header follow-up outcome: Reduced mobile vertical spacing, replaced the fixed desktop identity width with a flexible 280px minimum, removed journey auto-centering, and added a subtle mobile-only surface around the flight data. The journey retains the previously requested `max-w-xl` cap and becomes transparent within the desktop row.
+
+Dark-mode follow-up outcome: Matched the mobile journey surface to the header's `slate-800/80` dark background token.
+
+Glass-surface follow-up outcome: Added a small backdrop blur to the semi-transparent Journey section in both themes.
+
+Outer-container alignment outcome: Matched the release-summary section to the site header with solid `#F8F9FA` and `slate-800` backgrounds and removed its backdrop blur, while preserving the rounded card geometry and full border. The nested Journey info bar retains its separate mobile treatment.
+
+Commit message: `feat: redesign flight plan brief header`
+
 
 # Create a way to turn tasks on or off
 - in ENV and config files
@@ -464,7 +442,7 @@ Commit message: `feat: add typed etops data objects`
 Goal: Replace legacy ETOPS arrays with typed, source-backed operational data.
 
 - Add ETOPS DTOs for applicability, entry/exit points, ETPs, scenarios, coordinates, alternates, diversion data, critical fuel, restrictions, and source fragments as fixtures permit.
-- Completed current focus: Migrate current ETP, EENT, and EEXP values without changing their displayed meaning.
+- Completed: Migrate current ETP, EENT, and EEXP values without changing their displayed meaning.
 - Validate coordinate formats and preserve sequence/order.
 - Present critical points, alternates, fuel scenarios, and remarks in separate sections.
 - Do not infer approval, suitability, or compliance from the presence of an ETOPS section.
@@ -477,3 +455,13 @@ Outcome: Promoted the existing ETP, EENT, and EEXP extraction results into the n
 Verification: Pint passed. The 55 focused extractor, builder, page-data, and view-model tests passed with 336 assertions, covering no ETOPS data, partial entry-only data, multiple points, duplicate labels, exact repeated rows, malformed coordinates, ordering, typed reconstruction, and legacy display parity. The 3 focused Livewire ETOPS task, absent-state, and Jepp parity tests passed with 81 assertions. Focused Larastan analysis of the modified extractor and view model passed with zero errors.
 
 Commit message: `feat: add etops task`
+
+# Completed: Refactor blade logic
+- Goal move componentName into FlightPlanTask enum
+- In workspace blade, migrate large if chain into a switch case
+
+FlightPlanTask is an enum, move view mapping directly onto the Enum. This keeps the Blade template almost logic-free.
+
+Outcome: Moved conventional task component names, airport-prop requirements, and dedicated-view availability into `FlightPlanTask`. The workspace now uses a single availability-first `@switch(true)` and Laravel's dynamic component renderer while preserving Jepp padding, FMS/Jepp airport inputs, unavailable states, and the generic supported-data fallback.
+
+Commit message: `refactor: move flight task view mapping into enum`

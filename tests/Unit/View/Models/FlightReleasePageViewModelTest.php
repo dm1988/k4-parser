@@ -250,6 +250,10 @@ class FlightReleasePageViewModelTest extends TestCase
 
         $this->assertSame('May 25, 2026 · 1830Z', $viewModel->overviewEtdUtc());
         $this->assertSame('May 26, 2026 · 0215Z', $viewModel->overviewEtaUtc());
+        $this->assertSame('May 25, 2026', $viewModel->releaseHeaderDepartureDate());
+        $this->assertSame('1830', $viewModel->releaseHeaderDepartureTime());
+        $this->assertSame('May 26, 2026', $viewModel->releaseHeaderArrivalDate());
+        $this->assertSame('0215', $viewModel->releaseHeaderArrivalTime());
         $this->assertSame('FL 330', $viewModel->overviewInitialAltitude());
         $this->assertSame('4,000 NM', $viewModel->overviewRouteDistance());
         $this->assertSame('120,000 LB', $viewModel->overviewRampFuel());

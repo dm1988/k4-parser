@@ -90,6 +90,26 @@ readonly class FlightReleasePageViewModel
         return $this->formatUtcTime($this->etaUtc());
     }
 
+    public function releaseHeaderDepartureDate(): ?string
+    {
+        return $this->formatUtcPart($this->etdUtc(), 'M j, Y');
+    }
+
+    public function releaseHeaderDepartureTime(): ?string
+    {
+        return $this->formatUtcPart($this->etdUtc(), 'Hi');
+    }
+
+    public function releaseHeaderArrivalDate(): ?string
+    {
+        return $this->formatUtcPart($this->etaUtc(), 'M j, Y');
+    }
+
+    public function releaseHeaderArrivalTime(): ?string
+    {
+        return $this->formatUtcPart($this->etaUtc(), 'Hi');
+    }
+
     public function overviewInitialAltitude(): ?string
     {
         return $this->pageData?->initialAltitude;
@@ -816,6 +836,11 @@ readonly class FlightReleasePageViewModel
 
     private function formatUtcTime(?string $value): ?string
     {
+        return $this->formatUtcPart($value, 'M j, Y · Hi\Z');
+    }
+
+    private function formatUtcPart(?string $value, string $format): ?string
+    {
         if ($value === null || preg_match('/(?:Z|\+00:00)\z/', $value) !== 1) {
             return null;
         }
@@ -823,7 +848,7 @@ readonly class FlightReleasePageViewModel
         try {
             return CarbonImmutable::parse($value)
                 ->utc()
-                ->format('M j, Y · Hi\Z');
+                ->format($format);
         } catch (Throwable) {
             return null;
         }
