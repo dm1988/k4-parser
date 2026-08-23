@@ -29,57 +29,60 @@
                 :availability="$availability"
             />
 
-            @if ($availability === \App\Enums\FlightPlanTaskAvailability::NotPresent)
-                <x-flight-release.empty-state
-                    title="Not present in this release"
-                    :message="$activeTask->label().' data was not found in the confirmed release fields. No value or status has been inferred.'"
-                    icon="document-magnifying-glass"
-                />
-            @elseif ($availability === \App\Enums\FlightPlanTaskAvailability::NotSupported)
-                <x-flight-release.empty-state
-                    title="Not supported yet"
-                    :message="$activeTask->label().' requires confirmed fixtures and typed extraction before it can be displayed safely.'"
-                    icon="wrench-screwdriver"
-                />
-            @elseif ($activeTask === \App\Enums\FlightPlanTask::Overview)
-                <x-flight-release.overview :model="$model" />
-            @elseif ($activeTask === \App\Enums\FlightPlanTask::JeppPdPro)
-                <div class="p-3 sm:p-4">
-                    <x-flight-release.jepp-pd-pro
+            @switch(true)
+                @case($availability === \App\Enums\FlightPlanTaskAvailability::NotPresent)
+                    <x-flight-release.empty-state
+                        title="Not present in this release"
+                        :message="$activeTask->label().' data was not found in the confirmed release fields. No value or status has been inferred.'"
+                        icon="document-magnifying-glass"
+                    />
+                    @break
+
+                @case($availability === \App\Enums\FlightPlanTaskAvailability::NotSupported)
+                    <x-flight-release.empty-state
+                        title="Not supported yet"
+                        :message="$activeTask->label().' requires confirmed fixtures and typed extraction before it can be displayed safely.'"
+                        icon="wrench-screwdriver"
+                    />
+                    @break
+
+                @case(! $activeTask->hasCustomView())
+                    <div class="flex flex-col gap-4 p-4 sm:p-5">
+                        <x-flight-release.empty-state
+                            title="Source-backed data available"
+                            :message="$activeTask->label().' is available for this release. Its dedicated operational layout is scheduled in the next focused task.'"
+                            icon="check-circle"
+                            class="min-h-52 rounded-lg bg-[#F8F9FA] dark:bg-slate-800/60"
+                        />
+                        <x-flight-release.source-evidence />
+                    </div>
+                    @break
+
+                @case($activeTask === \App\Enums\FlightPlanTask::JeppPdPro)
+                    <div class="p-3 sm:p-4">
+                        <x-dynamic-component
+                            :component="$activeTask->componentName()"
+                            :model="$model"
+                            :departure-airport="$model->departureAirport()"
+                            :destination-airport="$model->destinationAirport()"
+                            :alternate-airport="$model->alternateAirport()"
+                        />
+                    </div>
+                    @break
+
+                @case($activeTask->requiresAirports())
+                    <x-dynamic-component
+                        :component="$activeTask->componentName()"
                         :model="$model"
                         :departure-airport="$model->departureAirport()"
                         :destination-airport="$model->destinationAirport()"
                         :alternate-airport="$model->alternateAirport()"
                     />
-                </div>
-            @elseif ($activeTask === \App\Enums\FlightPlanTask::MaintenanceLog)
-                <x-flight-release.maintenance-log :model="$model" />
-            @elseif ($activeTask === \App\Enums\FlightPlanTask::Envelope)
-                <x-flight-release.envelope :model="$model" />
-            @elseif ($activeTask === \App\Enums\FlightPlanTask::FlightInit)
-                <x-flight-release.flight-init :model="$model" />
-            @elseif ($activeTask === \App\Enums\FlightPlanTask::Fms)
-                <x-flight-release.fms
-                    :model="$model"
-                    :departure-airport="$model->departureAirport()"
-                    :destination-airport="$model->destinationAirport()"
-                    :alternate-airport="$model->alternateAirport()"
-                />
-            @elseif ($activeTask === \App\Enums\FlightPlanTask::FuelScore)
-                <x-flight-release.fuel-score :model="$model" />
-            @elseif ($activeTask === \App\Enums\FlightPlanTask::Etops)
-                <x-flight-release.etops :model="$model" />
-            @else
-                <div class="flex flex-col gap-4 p-4 sm:p-5">
-                    <x-flight-release.empty-state
-                        title="Source-backed data available"
-                        :message="$activeTask->label().' is available for this release. Its dedicated operational layout is scheduled in the next focused task.'"
-                        icon="check-circle"
-                        class="min-h-52 rounded-lg bg-[#F8F9FA] dark:bg-slate-800/60"
-                    />
-                    <x-flight-release.source-evidence />
-                </div>
-            @endif
+                    @break
+
+                @default
+                    <x-dynamic-component :component="$activeTask->componentName()" :model="$model" />
+            @endswitch
         </section>
     </div>
 </div>

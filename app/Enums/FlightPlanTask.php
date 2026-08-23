@@ -2,6 +2,8 @@
 
 namespace App\Enums;
 
+use Illuminate\Support\Str;
+
 enum FlightPlanTask: string
 {
     case Overview = 'overview';
@@ -47,6 +49,31 @@ enum FlightPlanTask: string
             self::Etops => 'globe-alt',
             self::Weather => 'cloud',
             self::WeightAndBalance => 'scale',
+        };
+    }
+
+    public function componentName(): string
+    {
+        return 'flight-release.'.Str::kebab(Str::replace('_', ' ', $this->value));
+    }
+
+    public function requiresAirports(): bool
+    {
+        return in_array($this, [self::JeppPdPro, self::Fms], true);
+    }
+
+    public function hasCustomView(): bool
+    {
+        return match ($this) {
+            self::Overview,
+            self::JeppPdPro,
+            self::MaintenanceLog,
+            self::Envelope,
+            self::FlightInit,
+            self::Fms,
+            self::FuelScore,
+            self::Etops => true,
+            default => false,
         };
     }
 }

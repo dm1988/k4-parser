@@ -1,4 +1,4 @@
-# Refactor blade logic
+# Current focus: Refactor blade logic
 - Goal move componentName into FlightPlanTask enum
 - In workspace blade, migrate large if chain into a switch case
 
@@ -40,6 +40,10 @@ In App\Enums\FlightPlanTask.php:
             default => false,
         };
     }
+
+Outcome: Moved conventional task component names, airport-prop requirements, and dedicated-view availability into `FlightPlanTask`. The workspace now uses a single availability-first `@switch(true)` and Laravel's dynamic component renderer while preserving Jepp padding, FMS/Jepp airport inputs, unavailable states, and the generic supported-data fallback.
+
+Commit message: `refactor: move flight task view mapping into enum`
 
 # Flight Plan Brief Roadmap
 
