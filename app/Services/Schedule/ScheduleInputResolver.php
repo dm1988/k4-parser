@@ -7,8 +7,9 @@ use App\Services\Schedule\Extractor\PdfTextExtractor;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Validation\ValidationException;
+use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Encoders\JpegEncoder;
-use Intervention\Image\Laravel\Facades\Image;
+use Intervention\Image\ImageManager;
 use Symfony\Component\Process\Process;
 use Throwable;
 
@@ -222,7 +223,7 @@ class ScheduleInputResolver
     private function prepareImageForOcr(string $sourcePath, string $optimizedPath): string
     {
         try {
-            $image = Image::decodePath($sourcePath);
+            $image = ImageManager::usingDriver(Driver::class)->decodePath($sourcePath);
             $originalWidth = $image->width();
             $originalHeight = $image->height();
 
