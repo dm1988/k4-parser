@@ -302,7 +302,7 @@ readonly class FlightReleasePageViewModel
             ['id' => 'flight-init-flight-number', 'label' => 'Flight number', 'value' => $this->flightNumber()],
             ['id' => 'flight-init-departure', 'label' => 'Departure', 'value' => $this->departure()],
             ['id' => 'flight-init-destination', 'label' => 'Destination', 'value' => $this->destination()],
-            ['id' => 'flight-init-acars-init-date', 'label' => 'ACARS INIT DATE', 'value' => $this->flightInitAcarsDate()],
+            ['id' => 'flight-init-acars-init-date', 'label' => 'ACARS init date', 'value' => $this->flightInitAcarsDate()],
         ];
     }
 
