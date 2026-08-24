@@ -6,12 +6,12 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 - The feature is an authorized Livewire page with private upload staging, user-scoped result caching, metrics, recoverable errors, and guaranteed upload cleanup.
 - `FlightPlanTextExtractor` reads each PDF once, removes null bytes, caches by content hash, and translates parser failures.
-- Focused identity, schedule, route, and fuel extractors feed `ParsedFlightPlanData`; `BuildFlightPlanData` creates the typed aggregate.
+- Focused identity, schedule, route, waypoint, maintenance, and fuel extractors feed `ParsedFlightPlanData`; `BuildFlightPlanData` creates the typed aggregate.
 - The cached compatibility payload contains both the existing flat route fields and nested `flight_plan_data`.
 - The current results UI renders airports, runways, procedures, route tokens, and typed ETOPS data through `FlightReleasePageViewModel`.
 - Normalized today: flight/trip/recall identity, aircraft and tail, flight date, airports, route, runways, SID/STAR, distance, ETD/ETA, approved slot instants, release-level fuel, and current ETOPS boundary/equal-time points and scenario text.
 - Still legacy-only: airport enrichment, initial altitude, and duration.
-- Not yet confirmed from fixtures: release revision, report/duty times, block duration, local times, contingency fuel, and most fields for Jepp PD-Pro, Maintenance Log, Envelope, Fuel Score, Weather, and Weight & Balance.
+- Not yet confirmed from fixtures: release revision, additional fuel, and most fields for Weather, and Weight & Balance.
 
 ### Product and UI rules
 
@@ -20,29 +20,29 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Keep operational values compact and scannable; use monospaced text for codes, times, routes, coordinates, and numeric planning values.
 - Label every time basis and fuel unit. Never silently mix UTC/local or pounds/kilograms.
 - Distinguish `not present in this release` from `not supported yet`. Do not render zero, empty text, or a green status for missing data.
-- Preserve source evidence internally for Weather, ETOPS, Fuel Score, and Weight & Balance. Do not expose raw PDF text or a raw-release link without an approved secure storage and retention design.
+- Preserve source evidence internally for Weather, ETOPS, Fuel Score, and Weight & Balance.
 - Reuse Blade components and view data; do not parse, normalize, query, or authorize inside Blade.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 ### Navigation map
 
-| Order | Task             | Suggested icon              | Initial availability                             |
-| ----: | ---------------- | --------------------------- | ------------------------------------------------ |
-|     1 | Overview         | `home`                      | Core data ready                                  |
-|     2 | Jepp PD-Pro      | `paper-airplane`            | Requires confirmed fixtures                      |
-|     3 | Maintenance Log  | `clipboard-document-list`   | Requires confirmed fixtures                      |
-|     4 | Envelope         | `document-chart-bar`        | Requires confirmed fixtures                      |
-|     5 | Flight Init      | `bolt`                      | Core data ready                                  |
-|     6 | FMS              | `calculator`                | Core route data ready                            |
-|     7 | Slot Times       | `clock`                     | Basic approved slots ready                       |
-|     8 | Fuel Score       | `gauge` or closest Heroicon | Release summary ready; waypoint score pending    |
-|     9 | ETOPS            | `globe-alt`                 | Current source-backed task view ready             |
-|    10 | Weather          | `cloud`                     | Requires confirmed fixtures                      |
-|    11 | Weight & Balance | `scale`                     | Requires confirmed fixtures                      |
+| Order | Task             | Suggested icon              | Current availability                |
+| ----: | ---------------- | --------------------------- | ----------------------------------- |
+|     1 | Overview         | `home`                      | Core data ready                     |
+|     2 | Jepp PD-Pro      | `paper-airplane`            | Source-backed task view ready       |
+|     3 | Maintenance Log  | `clipboard-document-list`   | Source-backed task view ready       |
+|     4 | Envelope         | `document-chart-bar`        | Source-backed task view ready       |
+|     5 | Flight Init      | `bolt`                      | Core data ready                     |
+|     6 | FMS              | `calculator`                | Core route data ready               |
+|     7 | Slot Times       | `clock`                     | Basic source-backed approved slots  |
+|     8 | Fuel Score       | `gauge` or closest Heroicon | Source-backed summary and waypoint  |
+|     9 | ETOPS            | `globe-alt`                 | Source-backed task view ready       |
+|    10 | Weather          | `cloud`                     | Awaiting confirmed fixtures         |
+|    11 | Weight & Balance | `scale`                     | Awaiting confirmed fixtures         |
 
 Icons  use hero icons returned in FlightPlanTask enum
 
-## 9 — Implement Slot Times
+## 9 — Current focus: Implement Slot Times
 
 Goal: Present approved slots and later permit constraints with explicit time context.
 
@@ -56,34 +56,6 @@ Goal: Present approved slots and later permit constraints with explicit time con
 Done when: every displayed slot has an airport, direction/type, complete instant, and visible time basis.
 
 Commit message: `feat: add slot times task`
-
-## 10 — Completed: Implement Fuel Score
-
-Goal: Present the confirmed release fuel summary and add source-backed waypoint fuel monitoring without inventing a fuel score or operational status.
-
-### Completed: Release fuel summary
-
-- Added a dedicated responsive Fuel Score view using typed `FuelPlanData` values.
-- Displayed ramp, taxi, takeoff, trip, alternate, final reserve, and estimated landing fuel with explicit units.
-- Presented pounds in thousands with the amount separated from the subtle `k lbs` unit label; kilogram values retain their source unit.
-- Preserved legitimate zero values and kept missing quantities visibly distinct.
-- Kept fuel and waypoint source evidence private and out of the Livewire snapshot.
-- Explicitly avoided inferring a score, compliance result, or dispatchability status.
-- Covered pounds, kilograms, scaling, exact source values, missing values, zero values, and ambiguous units with focused tests.
-
-### Completed: Waypoint monitoring and planned ETA
-
-- Promoted sanitized waypoint identifiers, coordinates, leg/cumulative durations, and corroborated remaining-fuel values into readonly typed DTOs and the cached flight-plan contract.
-- Preserved source order, duplicate identifiers, explicit zero fuel, and honest nulls for sparse or malformed rows; ambiguous release fuel units withhold waypoint fuel.
-- Kept raw fuel and waypoint evidence private while rendering only sanitized rows in the Fuel Score disclosure.
-- Added optional validated 24-hour Off time input and client-only planned ETA calculation with UTC midnight rollover; the planned column remains hidden until valid calculated values exist.
-- Covered extractor, DTO, cache reconstruction, view-model, Livewire, and JavaScript behavior with focused tests, including malformed Off times, missing durations, duplicate waypoints, zero fuel, ambiguous units, sparse rows, and evidence isolation.
-- Follow-up: waypoint extraction now supports flattened PDF text layers where both headers and all rows are concatenated; the supplied PANC release produces 52 ordered typed waypoints from `JOH` through `KMIA`.
-- Follow-up: compact waypoint FRMG values are expanded to actual fuel quantities (`1477` becomes `147,700 lb`) and displayed as `147.7 k lbs`; coordinates remain typed but are omitted from the Fuel Score browser payload and table.
-
-Outcome: every displayed fuel or waypoint value is source-backed, planned ETA remains clearly separate from extracted data, and no operational score or status is inferred.
-
-Commit message: `feat: add fuel score task`
 
 ## 12 — Implement Weather
 
@@ -209,6 +181,11 @@ This view repeats the confirmed source result. It does not calculate an envelope
 
 # Move 2 maintenance DTOs into Maintenance DTO subfolder
 
+# Tripe extract key flight release data
+- Key flight plan data is found on the 3 copies. Ensure regex matches 3 times for data found on the top copy.
+- If not found 3 times, reduce confidence score yet still present data
+- Show user message to check the value
+
 # GENDEC
 - Define General Declaration in CONTEXT.md
 - **General Declaration / GENDEC** - A General Declaration (GENDEC) is an official international aviation and customs document required by border control, immigration, custom, and public health authorities when an aircraft arrives in or departs from a foreign country.
@@ -251,7 +228,11 @@ Not present in this release
 - Split tests and organize into folders grouped by test focus area
 
 # PEST architechure tests
-
+- Does pest need to be installed? 
+- Can I run along side existing test suite?
+- Naming
+- Layering
+- 
 -------------------------------------------------------
 
 **Completed**
@@ -372,3 +353,31 @@ Glass-surface follow-up outcome: Added a small backdrop blur to the semi-transpa
 Outer-container alignment outcome: Matched the release-summary section to the site header with solid `#F8F9FA` and `slate-800` backgrounds and removed its backdrop blur, while preserving the rounded card geometry and full border. The nested Journey info bar retains its separate mobile treatment.
 
 Commit message: `feat: redesign flight plan brief header`
+
+## 10 — Completed: Implement Fuel Score
+
+Goal: Present the confirmed release fuel summary and add source-backed waypoint fuel monitoring without inventing a fuel score or operational status.
+
+### Completed: Release fuel summary
+
+- Added a dedicated responsive Fuel Score view using typed `FuelPlanData` values.
+- Displayed ramp, taxi, takeoff, trip, alternate, final reserve, and estimated landing fuel with explicit units.
+- Presented pounds in thousands with the amount separated from the subtle `k lbs` unit label; kilogram values retain their source unit.
+- Preserved legitimate zero values and kept missing quantities visibly distinct.
+- Kept fuel and waypoint source evidence private and out of the Livewire snapshot.
+- Explicitly avoided inferring a score, compliance result, or dispatchability status.
+- Covered pounds, kilograms, scaling, exact source values, missing values, zero values, and ambiguous units with focused tests.
+
+### Completed: Waypoint monitoring and planned ETA
+
+- Promoted sanitized waypoint identifiers, coordinates, leg/cumulative durations, and corroborated remaining-fuel values into readonly typed DTOs and the cached flight-plan contract.
+- Preserved source order, duplicate identifiers, explicit zero fuel, and honest nulls for sparse or malformed rows; ambiguous release fuel units withhold waypoint fuel.
+- Kept raw fuel and waypoint evidence private while rendering only sanitized rows in the Fuel Score disclosure.
+- Added optional validated 24-hour Off time input and client-only planned ETA calculation with UTC midnight rollover; the planned column remains hidden until valid calculated values exist.
+- Covered extractor, DTO, cache reconstruction, view-model, Livewire, and JavaScript behavior with focused tests, including malformed Off times, missing durations, duplicate waypoints, zero fuel, ambiguous units, sparse rows, and evidence isolation.
+- Follow-up: waypoint extraction now supports flattened PDF text layers where both headers and all rows are concatenated; the supplied PANC release produces 52 ordered typed waypoints from `JOH` through `KMIA`.
+- Follow-up: compact waypoint FRMG values are expanded to actual fuel quantities (`1477` becomes `147,700 lb`) and displayed as `147.7 k lbs`; coordinates remain typed but are omitted from the Fuel Score browser payload and table.
+
+Outcome: every displayed fuel or waypoint value is source-backed, planned ETA remains clearly separate from extracted data, and no operational score or status is inferred.
+
+Commit message: `feat: add fuel score task`

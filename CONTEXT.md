@@ -67,6 +67,9 @@ This feature has its own master flag and entitlement gate. Treat it as distinct 
 - **Route** - The complete defined trajectory or flight path connecting an origin to a destination. Composed of SIDs, airways (Victor/Jet routes), Area Navigation (RNAV) legs, and STARs.
 - **Waypoint** - A specific 2D/3D geographical coordinate point (latitude/longitude) used for navigation. Identified by a 5-letter name (e.g., KORD, FIXIT), RNAV fix, VOR/NDB, or lat/long coordinates. Serves as a reporting point, turn point, altitude/speed constraint marker, or leg transition.
 - **Takeoff and Landing Report / TLR** - A Takeoff and Landing Report (TLR) is a detailed document generated for flight crews and dispatchers that provides aircraft performance calculations tailored to specific flight conditions, airport environments, and weight parameters.
+- **Core data** - The normalized flight identity, schedule, route, aircraft, airport, and other foundational fields shared across supported flight-plan workflows. “Core data ready” means these established typed values are available to the task without adding speculative parsing.
+- **Confirmed fixtures** - Sanitized, representative source-document samples whose expected fields, units, layouts, variants, and important edge cases have been verified. A task awaiting confirmed fixtures must not invent a parser, calculation, warning, or operational status from assumptions.
+- **Source-backed** - Extracted or displayed information that can be traced to a confirmed value in the source document or fixture. Source-backed values may be normalized or formatted for presentation, but their meaning must not be inferred, expanded, or assigned an operational status without a documented rule.
 
 Prefer these established terms in UI copy, class names, tests, and documentation. Do not introduce near-synonyms when an existing term is accurate.
 
