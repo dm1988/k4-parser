@@ -10,7 +10,7 @@ class FlightScheduleExtractor
 {
     /**
      * @return array{
-     *     data: array{etd_utc: ?string, eta_utc: ?string, block_duration: ?string, report_time_utc: ?string, duty_end_utc: ?string, slot_times_utc: list<string>},
+     *     data: array{etd_utc: ?string, eta_utc: ?string, block_duration: ?string, report_time_utc: ?string, duty_end_utc: ?string, slots: list<array{direction: string, airport: string, instant_utc: string, source_time: string}>, slot_times_utc: list<string>},
      *     source_fragments: array<string, string|list<array{direction: string, airport: string, time: string}>>
      * }
      */
@@ -24,7 +24,7 @@ class FlightScheduleExtractor
         $etd = $this->utcInstant($flightDate, $etdMatches, dayIndex: 3);
         $eta = $this->utcInstant($flightDate, $etaMatches, dayIndex: 3, after: $etd);
         $this->corroborateFplDepartureTime($text, $etd);
-        [$slotTimes, $slotEvidence] = $this->slotTimes($text, $flightDate, $etd);
+        [$slots, $slotEvidence, $slotSourceText] = $this->slotTimes($text, $flightDate, $etd);
 
         return [
             'data' => [
@@ -33,9 +33,20 @@ class FlightScheduleExtractor
                 'block_duration' => null,
                 'report_time_utc' => null,
                 'duty_end_utc' => null,
+                'slot_source_text' => $slotSourceText,
+                'slots' => array_map(
+                    static fn (array $slot): array => [
+                        'direction' => $slot['direction'],
+                        'airport' => $slot['airport'],
+                        'instant_utc' => $slot['instant']->toIso8601String(),
+                        'source_time' => $slot['source_time'],
+                        'tolerance_minutes' => $slot['tolerance_minutes'],
+                    ],
+                    $slots,
+                ),
                 'slot_times_utc' => array_map(
-                    static fn (CarbonImmutable $time): string => $time->toIso8601String(),
-                    $slotTimes,
+                    static fn (array $slot): string => $slot['instant']->toIso8601String(),
+                    $slots,
                 ),
             ],
             'source_fragments' => array_filter([
@@ -114,40 +125,89 @@ class FlightScheduleExtractor
     }
 
     /**
-     * @return array{list<CarbonImmutable>, list<array{direction: string, airport: string, time: string}>}
+     * @return array{list<array{direction: 'arrival'|'departure', airport: string, instant: CarbonImmutable, source_time: string, tolerance_minutes: ?int, source_order: int}>, list<array{direction: string, airport: string, time: string}>, ?string}
      */
     private function slotTimes(string $text, ?string $flightDate, ?CarbonImmutable $etd): array
     {
         if ($flightDate === null) {
-            return [[], []];
+            return [[], [], null];
         }
 
         $sectionMatches = [];
 
-        if (preg_match('/APPROVED\s+SLOT\s+TIMES?:\s*(.+?)(?=\*{3,}|PLANNED\s+TO|\R|$)/is', $text, $sectionMatches) !== 1) {
-            return [[], []];
+        if (preg_match('/APPROVED\s+SLOT\s+TIMES?:\s*(.+?)(?=\bAPPROVED\s+SLOT\s+TIMES?\b|\bETOPS\b|\bMEL\s*\/\s*CDL\b|\bPLANNED\s+TO\b|\R\s*\*{3,}\s*(?:\R|$)|\z)/is', $text, $sectionMatches) !== 1) {
+            return [[], [], null];
         }
 
         $matches = [];
-        preg_match_all('/\b(ARR|DEP)\s+([A-Z]{4})\s+@\s*(\d{2})(\d{2})Z\b/i', $sectionMatches[1], $matches, PREG_SET_ORDER);
-        $times = [];
+        preg_match_all(
+            '/(?:(?<direction_before>ARR|DEP)\s+(?<airport_before>[A-Z]{4})\s+@\s*(?<time_before>\d{4})Z(?:\s*\(\s*(?:\+\/-|\+-)\s*(?<tolerance_before>\d+)\s*MIN\s*\))?)|(?:-\s*(?<airport_after>[A-Z]{4}):\s*(?<time_after>\d{4})Z(?:\s*(?:\+\/-|\+-)\s*(?<tolerance_after>\d+)\s*MIN)?(?:\s+(?<direction_after>ARR|DEP))?)/i',
+            $sectionMatches[1],
+            $matches,
+            PREG_SET_ORDER,
+        );
+        $slots = [];
         $evidence = [];
 
-        foreach ($matches as $match) {
-            $time = $this->utcInstant($flightDate, [1 => $match[3], 2 => $match[4]], dayIndex: 5, after: $etd);
+        foreach ($matches as $sourceOrder => $match) {
+            $sourceDigits = ($match['time_before'] ?? '') !== '' ? $match['time_before'] : ($match['time_after'] ?? '');
+            $direction = Str::upper(($match['direction_before'] ?? '') !== '' ? $match['direction_before'] : ($match['direction_after'] ?? ''));
+
+            if ($direction === '' && preg_match('/\bARRIVAL\b/i', $sectionMatches[1]) === 1) {
+                $direction = 'ARR';
+            }
+
+            if ($direction === '') {
+                continue;
+            }
+
+            $time = $this->utcInstant($flightDate, [1 => substr($sourceDigits, 0, 2), 2 => substr($sourceDigits, 2, 2)], dayIndex: 5, after: $etd);
 
             if ($time === null) {
                 continue;
             }
 
-            $times[] = $time;
+            $airport = Str::upper(($match['airport_before'] ?? '') !== '' ? $match['airport_before'] : ($match['airport_after'] ?? ''));
+            $sourceTime = $sourceDigits.'Z';
+            $tolerance = ($match['tolerance_before'] ?? '') !== '' ? $match['tolerance_before'] : ($match['tolerance_after'] ?? '');
+            $slots[] = [
+                'direction' => $direction === 'DEP' ? 'departure' : 'arrival',
+                'airport' => $airport,
+                'instant' => $time,
+                'source_time' => $sourceTime,
+                'tolerance_minutes' => $tolerance === '' ? null : (int) $tolerance,
+                'source_order' => $sourceOrder,
+            ];
             $evidence[] = [
-                'direction' => Str::upper($match[1]),
-                'airport' => Str::upper($match[2]),
-                'time' => $match[3].$match[4].'Z',
+                'direction' => $direction,
+                'airport' => $airport,
+                'time' => $sourceTime,
             ];
         }
 
-        return [$times, $evidence];
+        usort($slots, static fn (array $left, array $right): int => [
+            $left['instant']->getTimestamp(),
+            $left['source_order'],
+        ] <=> [
+            $right['instant']->getTimestamp(),
+            $right['source_order'],
+        ]);
+
+        $slots = array_values(array_reduce($slots, static function (array $unique, array $slot): array {
+            $key = implode('|', [
+                $slot['direction'],
+                $slot['airport'],
+                $slot['instant']->toIso8601String(),
+                $slot['source_time'],
+                $slot['tolerance_minutes'] ?? '',
+            ]);
+            $unique[$key] ??= $slot;
+
+            return $unique;
+        }, []));
+
+        $sourceText = preg_replace('/(?:\s*\*+\s*)+$/', '', $sectionMatches[1]) ?? $sectionMatches[1];
+
+        return [$slots, $evidence, Str::squish('APPROVED SLOT TIMES: '.$sourceText)];
     }
 }

@@ -3,6 +3,10 @@
 namespace Tests\Unit\DTOs;
 
 use App\DTOs\ScheduleData;
+use App\DTOs\SlotTimeData;
+use App\Enums\SlotDirection;
+use App\ValueObjects\AirportCode;
+use Carbon\CarbonImmutable;
 use Tests\TestCase;
 
 class ScheduleDataTest extends TestCase
@@ -17,6 +21,13 @@ class ScheduleDataTest extends TestCase
             blockDuration: '4:00h',
             reportTimeUtc: '2026-08-21T10:00:00+00:00',
             reportTimeLocal: 'Aug 21 06:00',
+            slots: [new SlotTimeData(
+                SlotDirection::Departure,
+                new AirportCode('KJFK'),
+                CarbonImmutable::parse('2026-08-21T12:15:00Z'),
+                '1215Z',
+                30,
+            )],
             slotTimesUtc: ['2026-08-21T12:15:00+00:00'],
             slotTimesLocal: ['Aug 21 08:15'],
         );
@@ -28,6 +39,7 @@ class ScheduleDataTest extends TestCase
         $this->assertSame('4:00h', $schedule->blockDuration);
         $this->assertSame(['2026-08-21T12:15:00+00:00'], $schedule->slotTimesUtc);
         $this->assertSame(['Aug 21 08:15'], $schedule->slotTimesLocal);
+        $this->assertSame('KJFK', $schedule->slots[0]->airport->value);
     }
 
     public function test_it_normalizes_legacy_flight_schedule_fields(): void
@@ -71,6 +83,13 @@ class ScheduleDataTest extends TestCase
             'reportTimeLocal' => '0600',
             'slotTimesUtc' => ['1215Z', '1230Z'],
             'slotTimesLocal' => ['0815', '0830'],
+            'slots' => [[
+                'direction' => 'arrival',
+                'airport' => 'KLAX',
+                'instantUtc' => '2026-08-21T16:00:00Z',
+                'sourceTime' => '1600Z',
+                'toleranceMinutes' => 30,
+            ]],
         ]);
 
         $this->assertSame($schedule->toArray(), ScheduleData::fromArray($schedule->toArray())->toArray());

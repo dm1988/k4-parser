@@ -71,6 +71,7 @@ enum FlightPlanTask: string
             self::Envelope,
             self::FlightInit,
             self::Fms,
+            self::SlotTimes,
             self::FuelScore,
             self::Etops => true,
             default => false,

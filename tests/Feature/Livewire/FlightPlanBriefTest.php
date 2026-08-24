@@ -1045,7 +1045,21 @@ class FlightPlanBriefTest extends TestCase
                         'block_duration' => null,
                         'report_time_utc' => null,
                         'duty_end_utc' => null,
-                        'slot_times_utc' => ['2026-05-25T18:45:00Z'],
+                        'slot_source_text' => 'APPROVED SLOT TIMES: DEP PANC @ 1845Z ARR KMIA @ 0230Z (+/- 30 MIN)',
+                        'slots' => [[
+                            'direction' => 'departure',
+                            'airport' => 'PANC',
+                            'instant_utc' => '2026-05-25T18:45:00Z',
+                            'source_time' => '1845Z',
+                            'tolerance_minutes' => 30,
+                        ], [
+                            'direction' => 'arrival',
+                            'airport' => 'KMIA',
+                            'instant_utc' => '2026-05-26T02:30:00Z',
+                            'source_time' => '0230Z',
+                            'tolerance_minutes' => 30,
+                        ]],
+                        'slot_times_utc' => ['2026-05-25T18:45:00Z', '2026-05-26T02:30:00Z'],
                     ],
                     route: ['distance_nautical_miles' => 4000],
                     fuel: [
@@ -1097,7 +1111,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('FL 330')
             ->assertSeeText('4,000 NM')
             ->assertSeeText('120,000 LB')
-            ->assertSeeText('1 approved UTC slot')
+            ->assertSeeText('2 approved UTC slots')
             ->assertSeeText('1 critical point · EENT · EEXP')
             ->assertSeeText('Operational support status')
             ->assertSeeText('GENDEC')
@@ -1126,6 +1140,24 @@ class FlightPlanBriefTest extends TestCase
         }
 
         $component
+            ->call('selectTask', FlightPlanTask::SlotTimes->value)
+            ->assertSeeText('Approved slot times')
+            ->assertSeeText('All displayed times are UTC')
+            ->assertSeeText('Departure')
+            ->assertSeeText('PANC')
+            ->assertSeeText('May 25, 2026')
+            ->assertSeeText('1845Z')
+            ->assertSeeText('Time (UTC)')
+            ->assertSeeText('Approved window')
+            ->assertSeeText('May 25, 1815Z–May 25, 1915Z UTC')
+            ->assertSeeText('± 30 min')
+            ->assertSeeText('Planned arrival comparison')
+            ->assertSeeText('May 26, 0215Z UTC')
+            ->assertSeeText('Planned ETA is within the confirmed window')
+            ->assertSeeText('Confirmed window')
+            ->assertSeeText('Extracted slot text')
+            ->assertSeeText('APPROVED SLOT TIMES: DEP PANC @ 1845Z ARR KMIA @ 0230Z (+/- 30 MIN)')
+            ->assertSeeText('Local times, permits, and statuses are not inferred')
             ->call('selectTask', FlightPlanTask::FuelScore->value)
             ->assertSeeText('Fuel summary')
             ->assertSeeText('Ramp')

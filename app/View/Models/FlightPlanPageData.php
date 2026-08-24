@@ -38,7 +38,7 @@ final readonly class FlightPlanPageData
             FlightPlanTask::MaintenanceLog,
             FlightPlanTask::FlightInit,
             FlightPlanTask::Fms => FlightPlanTaskAvailability::Available,
-            FlightPlanTask::SlotTimes => $this->flightPlan->schedule->slotTimesUtc === []
+            FlightPlanTask::SlotTimes => $this->flightPlan->schedule->slots === []
                 ? FlightPlanTaskAvailability::NotPresent
                 : FlightPlanTaskAvailability::Available,
             FlightPlanTask::FuelScore => $this->flightPlan->fuelPlan === null && $this->flightPlan->waypoints === []

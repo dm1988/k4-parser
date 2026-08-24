@@ -18,6 +18,7 @@ use App\DTOs\MaintenanceLogData;
 use App\DTOs\ParsedFlightPlanData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
+use App\DTOs\SlotTimeData;
 use App\DTOs\WaypointData;
 use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
@@ -55,6 +56,8 @@ class BuildFlightPlanData
                 blockDuration: $parsed->schedule['block_duration'] ?? null,
                 reportTimeUtc: $this->utcTime($parsed->schedule['report_time_utc'] ?? null),
                 dutyEndUtc: $this->utcTime($parsed->schedule['duty_end_utc'] ?? null),
+                slotSourceText: $parsed->schedule['slot_source_text'] ?? null,
+                slots: $this->slots($parsed->schedule['slots'] ?? []),
                 slotTimesUtc: array_map(
                     fn (?string $time): ?string => $this->utcTime($time),
                     $parsed->schedule['slot_times_utc'] ?? [],
@@ -103,6 +106,25 @@ class BuildFlightPlanData
     private function utcTime(?string $value): ?string
     {
         return $value === null ? null : FlightTime::utc($value)->toIso8601String();
+    }
+
+    /**
+     * @param  list<array{direction: string, airport: string, instant_utc: string, source_time: string, tolerance_minutes: ?int}>  $slots
+     * @return list<SlotTimeData>
+     */
+    private function slots(array $slots): array
+    {
+        $normalized = [];
+
+        foreach ($slots as $slot) {
+            $slotData = SlotTimeData::fromArray($slot);
+
+            if ($slotData !== null) {
+                $normalized[] = $slotData;
+            }
+        }
+
+        return $normalized;
     }
 
     private function airportCode(?string $value): ?AirportCode

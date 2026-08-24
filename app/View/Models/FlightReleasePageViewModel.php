@@ -8,6 +8,7 @@ use App\DTOs\EnvelopeData;
 use App\DTOs\Etops\EtopsEqualTimePointData;
 use App\DTOs\Etops\EtopsScenarioData;
 use App\DTOs\MaintenanceItemData;
+use App\DTOs\SlotTimeData;
 use App\DTOs\WaypointData;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
@@ -130,13 +131,67 @@ readonly class FlightReleasePageViewModel
 
     public function overviewSlotSummary(): ?string
     {
-        $slotCount = count($this->pageData?->flightPlan->schedule->slotTimesUtc ?? []);
+        $slotCount = count($this->pageData?->flightPlan->schedule->slots ?? []);
 
         if ($slotCount === 0) {
             return null;
         }
 
         return $slotCount.' approved UTC '.($slotCount === 1 ? 'slot' : 'slots');
+    }
+
+    /** @return list<array{direction: string, airport: string, date: string, time: string, sourceTime: string, timeBasis: string, tolerance: ?string, window: ?string, plannedArrival: ?string, comparison: ?string, plannedPosition: ?float}> */
+    public function slotTimes(): array
+    {
+        return array_map(
+            fn (SlotTimeData $slot): array => $this->slotTime($slot),
+            $this->pageData?->flightPlan->schedule->slots ?? [],
+        );
+    }
+
+    public function slotSourceText(): ?string
+    {
+        return $this->pageData?->flightPlan->schedule->slotSourceText;
+    }
+
+    /** @return array{direction: string, airport: string, date: string, time: string, sourceTime: string, timeBasis: string, tolerance: ?string, window: ?string, plannedArrival: ?string, comparison: ?string, plannedPosition: ?float} */
+    private function slotTime(SlotTimeData $slot): array
+    {
+        $tolerance = $slot->toleranceMinutes;
+        $plannedArrival = null;
+        $comparison = null;
+        $plannedPosition = null;
+
+        if ($slot->direction->value === 'arrival' && $tolerance !== null && $tolerance > 0 && $this->etaUtc() !== null) {
+            try {
+                $eta = CarbonImmutable::parse($this->etaUtc())->utc();
+                $offsetMinutes = $slot->instantUtc->diffInMinutes($eta, false);
+                $plannedArrival = $eta->format('M j, Hi\Z').' UTC';
+                $comparison = abs($offsetMinutes) <= $tolerance
+                    ? 'Planned ETA is within the confirmed window'
+                    : 'Planned ETA is outside the confirmed window';
+                $plannedPosition = max(0, min(100, 50 + (($offsetMinutes / ($tolerance * 4)) * 100)));
+            } catch (Throwable) {
+            }
+        }
+
+        return [
+            'direction' => $slot->direction->label(),
+            'airport' => $slot->airport->value,
+            'date' => $slot->instantUtc->format('M j, Y'),
+            'time' => $slot->instantUtc->format('Hi').'Z',
+            'sourceTime' => $slot->sourceTime,
+            'timeBasis' => 'UTC',
+            'tolerance' => $tolerance === null ? null : '± '.$tolerance.' min',
+            'window' => $tolerance === null ? null : sprintf(
+                '%s–%s UTC',
+                $slot->instantUtc->subMinutes($tolerance)->format('M j, Hi\Z'),
+                $slot->instantUtc->addMinutes($tolerance)->format('M j, Hi\Z'),
+            ),
+            'plannedArrival' => $plannedArrival,
+            'comparison' => $comparison,
+            'plannedPosition' => $plannedPosition,
+        ];
     }
 
     public function overviewEtopsSummary(): ?string

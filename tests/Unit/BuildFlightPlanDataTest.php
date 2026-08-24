@@ -26,6 +26,13 @@ class BuildFlightPlanDataTest extends TestCase
                 'block_duration' => null,
                 'report_time_utc' => null,
                 'duty_end_utc' => null,
+                'slots' => [[
+                    'direction' => 'departure',
+                    'airport' => 'KLAX',
+                    'instant_utc' => '2026-05-25T15:20:00+00:00',
+                    'source_time' => '1520Z',
+                    'tolerance_minutes' => 30,
+                ]],
                 'slot_times_utc' => ['2026-05-25T15:20:00+00:00'],
             ],
             route: [
@@ -104,6 +111,11 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame('62930', $flightPlan->identity->recallNumber);
         $this->assertSame('2026-05-25', $flightPlan->identity->flightDate?->toDateString());
         $this->assertSame('2026-05-25T02:20:00+00:00', $flightPlan->schedule->etdUtc);
+        $this->assertSame('departure', $flightPlan->schedule->slots[0]->direction->value);
+        $this->assertSame('KLAX', $flightPlan->schedule->slots[0]->airport->value);
+        $this->assertSame('2026-05-25T15:20:00+00:00', $flightPlan->schedule->slots[0]->instantUtc->toIso8601String());
+        $this->assertSame('1520Z', $flightPlan->schedule->slots[0]->sourceTime);
+        $this->assertSame(30, $flightPlan->schedule->slots[0]->toleranceMinutes);
         $this->assertSame('KLAX', $flightPlan->route->departure->value);
         $this->assertSame(5549, $flightPlan->route->distanceNauticalMiles);
         $this->assertSame(216800.0, $flightPlan->fuelPlan?->ramp?->amount);

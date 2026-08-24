@@ -80,6 +80,7 @@ class BuildFlightPlanPageDataTest extends TestCase
     public function test_it_preserves_a_sparse_normalized_result_and_ignores_malformed_optional_legacy_data(): void
     {
         $payload = $this->resultPayload();
+        $payload['flight_plan_data']['schedule']['slots'] = [];
         $payload['flight_plan_data']['schedule']['slotTimesUtc'] = [];
         $payload['flight_plan_data']['fuelPlan'] = null;
         $payload['flight_plan_data']['waypoints'] = [];
@@ -233,6 +234,13 @@ class BuildFlightPlanPageDataTest extends TestCase
                     'reportTimeLocal' => null,
                     'dutyEndUtc' => null,
                     'dutyEndLocal' => null,
+                    'slots' => [[
+                        'direction' => 'departure',
+                        'airport' => 'PANC',
+                        'instantUtc' => '2026-05-25T15:20:00+00:00',
+                        'sourceTime' => '1520Z',
+                        'toleranceMinutes' => 30,
+                    ]],
                     'slotTimesUtc' => ['2026-05-25T15:20:00+00:00'],
                     'slotTimesLocal' => [],
                 ],

@@ -14,6 +14,9 @@ final readonly class ScheduleData
         public ?string $reportTimeLocal = null,
         public ?string $dutyEndUtc = null,
         public ?string $dutyEndLocal = null,
+        public ?string $slotSourceText = null,
+        /** @var list<SlotTimeData> */
+        public array $slots = [],
         public array $slotTimesUtc = [],
         public array $slotTimesLocal = [],
     ) {}
@@ -31,13 +34,15 @@ final readonly class ScheduleData
             reportTimeLocal: self::nullableString($data, 'reportTimeLocal', 'report_time_local', 'dutyLocalStart', 'duty_local_start'),
             dutyEndUtc: self::nullableString($data, 'dutyEndUtc', 'duty_end_utc', 'dutyUtcEnd', 'duty_utc_end'),
             dutyEndLocal: self::nullableString($data, 'dutyEndLocal', 'duty_end_local', 'dutyLocalEnd', 'duty_local_end'),
+            slotSourceText: self::nullableString($data, 'slotSourceText', 'slot_source_text'),
+            slots: self::slots($data['slots'] ?? []),
             slotTimesUtc: self::stringList($data['slotTimesUtc'] ?? $data['slot_times_utc'] ?? []),
             slotTimesLocal: self::stringList($data['slotTimesLocal'] ?? $data['slot_times_local'] ?? []),
         );
     }
 
     /**
-     * @return array{etdUtc: string|null, etdLocal: string|null, etaUtc: string|null, etaLocal: string|null, blockDuration: string|null, reportTimeUtc: string|null, reportTimeLocal: string|null, dutyEndUtc: string|null, dutyEndLocal: string|null, slotTimesUtc: list<string|null>, slotTimesLocal: list<string>}
+     * @return array{etdUtc: string|null, etdLocal: string|null, etaUtc: string|null, etaLocal: string|null, blockDuration: string|null, reportTimeUtc: string|null, reportTimeLocal: string|null, dutyEndUtc: string|null, dutyEndLocal: string|null, slotSourceText: string|null, slots: list<array{direction: string, airport: string, instantUtc: string, sourceTime: string, toleranceMinutes: ?int}>, slotTimesUtc: list<string>, slotTimesLocal: list<string>}
      */
     public function toArray(): array
     {
@@ -51,6 +56,11 @@ final readonly class ScheduleData
             'reportTimeLocal' => $this->reportTimeLocal,
             'dutyEndUtc' => $this->dutyEndUtc,
             'dutyEndLocal' => $this->dutyEndLocal,
+            'slotSourceText' => $this->slotSourceText,
+            'slots' => array_map(
+                static fn (SlotTimeData $slot): array => $slot->toArray(),
+                $this->slots,
+            ),
             'slotTimesUtc' => $this->slotTimesUtc,
             'slotTimesLocal' => $this->slotTimesLocal,
         ];
@@ -91,5 +101,29 @@ final readonly class ScheduleData
         }
 
         return $normalized;
+    }
+
+    /** @return list<SlotTimeData> */
+    private static function slots(mixed $values): array
+    {
+        if (! is_array($values)) {
+            return [];
+        }
+
+        $slots = [];
+
+        foreach ($values as $value) {
+            if (! is_array($value)) {
+                continue;
+            }
+
+            $slot = SlotTimeData::fromArray($value);
+
+            if ($slot !== null) {
+                $slots[] = $slot;
+            }
+        }
+
+        return $slots;
     }
 }

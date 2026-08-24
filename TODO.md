@@ -42,7 +42,7 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 Icons  use hero icons returned in FlightPlanTask enum
 
-## 9 — Current focus: Implement Slot Times
+## 9 — Completed: Implement Slot Times
 
 Goal: Present approved slots and later permit constraints with explicit time context.
 
@@ -56,6 +56,8 @@ Goal: Present approved slots and later permit constraints with explicit time con
 Done when: every displayed slot has an airport, direction/type, complete instant, and visible time basis.
 
 Commit message: `feat: add slot times task`
+
+Outcome: Approved departure and arrival slots now use typed direction, airport, canonical UTC instant, source time, and optional tolerance data. The task view shows complete UTC dates/times, confirmed ±minute windows with UTC bounds, a graphical planned-ETA comparison, and sanitized extracted slot text in a keyboard-accessible disclosure. Parsing covers confirmed inline and multiline formats, midnight rollover, stable ordering, malformed values, and missing flight dates without inferring local times or unsupported permit details.
 
 ## 12 — Implement Weather
 

@@ -270,6 +270,19 @@ class FlightReleasePageViewModelTest extends TestCase
             '2026-05-25T18:45:00+00:00',
             '2026-05-26T02:30:00+00:00',
         ];
+        $payload['flight_plan_data']['schedule']['slots'] = [[
+            'direction' => 'departure',
+            'airport' => 'PANC',
+            'instantUtc' => '2026-05-25T18:45:00+00:00',
+            'sourceTime' => '1845Z',
+            'toleranceMinutes' => 30,
+        ], [
+            'direction' => 'arrival',
+            'airport' => 'KMIA',
+            'instantUtc' => '2026-05-26T02:30:00+00:00',
+            'sourceTime' => '0230Z',
+            'toleranceMinutes' => 30,
+        ]];
         $payload['flight_plan_data']['fuelPlan'] = [
             'ramp' => ['amount' => 120000.0, 'unit' => 'lb'],
             'taxi' => null,
@@ -293,6 +306,22 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('4,000 NM', $viewModel->overviewRouteDistance());
         $this->assertSame('120,000 LB', $viewModel->overviewRampFuel());
         $this->assertSame('2 approved UTC slots', $viewModel->overviewSlotSummary());
+        $this->assertSame([
+            'direction' => 'Departure',
+            'airport' => 'PANC',
+            'date' => 'May 25, 2026',
+            'time' => '1845Z',
+            'sourceTime' => '1845Z',
+            'timeBasis' => 'UTC',
+            'tolerance' => '± 30 min',
+            'window' => 'May 25, 1815Z–May 25, 1915Z UTC',
+            'plannedArrival' => null,
+            'comparison' => null,
+            'plannedPosition' => null,
+        ], $viewModel->slotTimes()[0]);
+        $this->assertSame('May 26, 0215Z UTC', $viewModel->slotTimes()[1]['plannedArrival']);
+        $this->assertSame('Planned ETA is within the confirmed window', $viewModel->slotTimes()[1]['comparison']);
+        $this->assertSame(37.5, $viewModel->slotTimes()[1]['plannedPosition']);
         $this->assertSame('1 critical point · EENT · EEXP', $viewModel->overviewEtopsSummary());
         $this->assertSame([
             ['label' => 'GENDEC', 'availability' => FlightPlanTaskAvailability::NotSupported],
