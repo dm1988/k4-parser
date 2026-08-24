@@ -2,11 +2,38 @@
 
 namespace Tests\Unit;
 
+use App\Enums\AltitudeUnit;
 use App\Services\FlightPlan\FlightInitFieldNormalizer;
 use PHPUnit\Framework\TestCase;
 
 class FlightInitFieldNormalizerTest extends TestCase
 {
+    public function test_it_normalizes_feet_and_metric_initial_altitudes_with_source_evidence(): void
+    {
+        $normalizer = new FlightInitFieldNormalizer;
+
+        $feet = $normalizer->initialAltitude('F330');
+        $meters = $normalizer->initialAltitude('S0890');
+
+        $this->assertSame(33000, $feet?->value);
+        $this->assertSame(AltitudeUnit::Feet, $feet?->unit);
+        $this->assertTrue($feet?->isFlightLevel);
+        $this->assertSame(8900, $meters?->value);
+        $this->assertSame(AltitudeUnit::Meters, $meters?->unit);
+        $this->assertTrue($meters?->isFlightLevel);
+    }
+
+    public function test_it_rejects_malformed_or_missing_initial_altitudes(): void
+    {
+        $normalizer = new FlightInitFieldNormalizer;
+
+        $this->assertNull($normalizer->initialAltitude(null));
+        $this->assertNull($normalizer->initialAltitude(''));
+        $this->assertNull($normalizer->initialAltitude('FL330'));
+        $this->assertNull($normalizer->initialAltitude('S89O'));
+        $this->assertNull($normalizer->initialAltitude('X330'));
+    }
+
     public function test_it_normalizes_supported_acars_init_dates(): void
     {
         $normalizer = new FlightInitFieldNormalizer;

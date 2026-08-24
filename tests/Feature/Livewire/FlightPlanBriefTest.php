@@ -744,6 +744,7 @@ class FlightPlanBriefTest extends TestCase
                     flightInit: [
                         'section_present' => true,
                         'acars_init_date' => '11',
+                        'initial_altitude' => 'F330',
                     ],
                 ));
         });
@@ -780,6 +781,8 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('PANC')
             ->assertSeeText('KMIA')
             ->assertSeeText('ACARS INIT DATE')
+            ->assertSeeText('Initial altitude')
+            ->assertSeeText('FL330')
             ->assertSeeHtml('id="flight-init-acars-init-date"')
             ->assertSeeText('11')
             ->assertSeeText('not derived from the release flight date')

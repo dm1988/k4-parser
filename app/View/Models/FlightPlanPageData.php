@@ -14,7 +14,6 @@ final readonly class FlightPlanPageData
         public ?AirportData $departureAirport = null,
         public ?AirportData $destinationAirport = null,
         public ?AirportData $alternateAirport = null,
-        public ?string $initialAltitude = null,
         public ?string $duration = null,
     ) {}
 

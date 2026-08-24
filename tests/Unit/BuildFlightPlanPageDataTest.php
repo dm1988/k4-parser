@@ -22,7 +22,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame(5549, $pageData->flightPlan->route->distanceNauticalMiles);
         $this->assertSame(0.0, $pageData->flightPlan->fuelPlan?->contingency?->amount);
         $this->assertSame('Ted Stevens Anchorage International Airport', $pageData->departureAirport?->name);
-        $this->assertSame('FL 340', $pageData->initialAltitude);
+        $this->assertSame(34000, $pageData->flightPlan->flightInit?->initialAltitude?->value);
         $this->assertSame('12h10m', $pageData->duration);
         $this->assertSame('ETP1', $pageData->flightPlan->etops?->equalTimePoints[0]->label);
         $this->assertSame('N40 31.1', $pageData->flightPlan->etops->entryPoint?->coordinate->latitude);
@@ -102,7 +102,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertNull($pageData->flightPlan->flightInit);
         $this->assertNull($pageData->flightPlan->crewMembers[0]->employeeNumber);
         $this->assertNull($pageData->departureAirport);
-        $this->assertNull($pageData->initialAltitude);
+        $this->assertNull($pageData->flightPlan->flightInit?->initialAltitude);
         $this->assertNull($pageData->flightPlan->etops);
         $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::JeppPdPro));
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::SlotTimes));
@@ -301,6 +301,11 @@ class BuildFlightPlanPageDataTest extends TestCase
                 'flightInit' => [
                     'sectionPresent' => true,
                     'acarsInitDate' => '11',
+                    'initialAltitude' => [
+                        'value' => 34000,
+                        'unit' => 'feet',
+                        'isFlightLevel' => true,
+                    ],
                 ],
                 'etops' => [
                     'sectionPresent' => true,

@@ -7,7 +7,10 @@
   - Completed tasks
 1. Complete numbered tasks in order
 2. Focus on one task at a time indicated by `Current focus: ` in h2 title
-3. Mark completed by [x] and replacing `Current focus: ` with `Completed: `
+3. Only complete assigned task
+4. Mark completed by [x] and replacing `Current focus: ` with `Completed: `
+5. Reference `# Codex Usage Rules` in AGENTS.md
+6. Create a commit message for each task
 
 # Flight Plan Brief Roadmap
 
@@ -67,7 +70,7 @@ Icons  use hero icons returned in FlightPlanTask enum
 
 # Tasks
 
-## 1. Flight Init — Normalize initial altitude units
+## 1. [x] Completed: Flight Init — Normalize initial altitude units
 
 Goal: Represent the confirmed initial altitude as a typed numeric value with an explicit unit instead of displaying the source flight-level code unchanged.
 
@@ -82,9 +85,15 @@ Current behavior: A metric initial altitude such as `S0890` is rendered verbatim
 - Flight level text sample in feet representing FL330: -N0497F330 
 - Flight level text sample in meters: -K0920S0890
 
+Outcome: Initial altitude is normalized into a typed integer value with an explicit feet or meters unit and an `isFlightLevel` flag. Flight levels render in operational notation, such as `FL270` for feet and `FL089M` for meters; non-flight-level values retain explicit `ft` or `m` units. Original ICAO codes remain in private source evidence. Sanitized feet and metric fixtures cover confirmed inputs, with focused coverage for malformed and missing values.
+
 Done when: Flight Init displays a typed initial altitude with its correct unit, and unsupported or absent values are reported without inference.
 
 Commit message: `fix: normalize flight init altitude units`
+
+Follow up: 
+1. [x] Render FL if flight level. If Meters append M. i.e. FL270 for flight level in feet or FL089M for flight level in meters.
+2. [ ] Investigate: In flight init task, provide value in ft for entry into FMS?
 
 ## 2. FMS task view
 

@@ -19,16 +19,19 @@ use App\DTOs\MaintenanceLogData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
 use App\DTOs\WaypointData;
+use App\Enums\AltitudeUnit;
 use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
 use App\Services\FlightPlan\FlightInitFieldNormalizer;
 use App\ValueObjects\AirportCode;
 use App\ValueObjects\FuelQuantity;
+use App\ValueObjects\InitialAltitude;
 use App\ValueObjects\WeightQuantity;
 use App\View\Models\FlightPlanPageData;
 use Carbon\CarbonImmutable;
 use Carbon\Exceptions\InvalidFormatException;
 use InvalidArgumentException;
+use ValueError;
 
 class BuildFlightPlanPageData
 {
@@ -47,7 +50,7 @@ class BuildFlightPlanPageData
 
         try {
             $flightPlan = $this->flightPlan($normalized);
-        } catch (InvalidArgumentException) {
+        } catch (InvalidArgumentException|ValueError) {
             return null;
         }
 
@@ -56,7 +59,6 @@ class BuildFlightPlanPageData
             departureAirport: $this->airport($result['departure_airport'] ?? null),
             destinationAirport: $this->airport($result['destination_airport'] ?? null),
             alternateAirport: $this->airport($result['alternate_airport'] ?? null),
-            initialAltitude: $this->nullableString($result['initial_altitude'] ?? null),
             duration: $this->nullableString($result['duration'] ?? null),
         );
     }
@@ -269,7 +271,28 @@ class BuildFlightPlanPageData
         return new FlightInitData(
             sectionPresent: true,
             acarsInitDate: $this->flightInitFieldNormalizer->acarsInitDate($value['acarsInitDate'] ?? null),
+            initialAltitude: $this->initialAltitude($value['initialAltitude'] ?? null),
         );
+    }
+
+    private function initialAltitude(mixed $value): ?InitialAltitude
+    {
+        if (! is_array($value)
+            || ! is_int($value['value'] ?? null)
+            || ! is_string($value['unit'] ?? null)
+            || ! is_bool($value['isFlightLevel'] ?? null)) {
+            return null;
+        }
+
+        try {
+            return new InitialAltitude(
+                value: $value['value'],
+                unit: AltitudeUnit::from($value['unit']),
+                isFlightLevel: $value['isFlightLevel'],
+            );
+        } catch (InvalidArgumentException|ValueError) {
+            return null;
+        }
     }
 
     private function nullableFloat(mixed $value): ?float

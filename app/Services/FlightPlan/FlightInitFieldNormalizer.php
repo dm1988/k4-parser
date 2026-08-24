@@ -2,8 +2,31 @@
 
 namespace App\Services\FlightPlan;
 
+use App\Enums\AltitudeUnit;
+use App\ValueObjects\InitialAltitude;
+
 class FlightInitFieldNormalizer
 {
+    public function initialAltitude(mixed $value): ?InitialAltitude
+    {
+        $value = is_string($value) ? strtoupper(trim($value)) : null;
+
+        if ($value === null || preg_match('/^(?<prefix>[FASM])(?<level>\d{3,4})$/', $value, $matches) !== 1) {
+            return null;
+        }
+
+        $unit = match ($matches['prefix']) {
+            'F', 'A' => AltitudeUnit::Feet,
+            'S', 'M' => AltitudeUnit::Meters,
+        };
+
+        return new InitialAltitude(
+            value: (int) $matches['level'] * ($unit === AltitudeUnit::Feet ? 100 : 10),
+            unit: $unit,
+            isFlightLevel: in_array($matches['prefix'], ['F', 'S'], true),
+        );
+    }
+
     public function acarsInitDate(mixed $value): ?string
     {
         $value = is_string($value) ? trim($value) : null;

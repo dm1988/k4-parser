@@ -86,12 +86,34 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('Anchorage, Alaska, United States', $viewModel->departureAirport()['location']);
         $this->assertSame('ANC', $viewModel->departureAirport()['iata']);
         $this->assertSame('PANC', $viewModel->departureAirport()['icao']);
-        $this->assertSame('FL 330', $viewModel->initialAltitude());
+        $this->assertSame('FL330', $viewModel->initialAltitude());
         $this->assertSame('07h12m', $viewModel->duration());
         $this->assertSame('DCT TEST', $viewModel->route());
         $this->assertSame('25R', $viewModel->departureRunway());
         $this->assertSame('SUMMR2', $viewModel->departureSid());
         $this->assertTrue($viewModel->hasPlannedRunways());
+    }
+
+    #[Test]
+    public function it_formats_flight_levels_and_altitudes_for_feet_and_meters(): void
+    {
+        $cases = [
+            [27000, 'feet', true, 'FL270'],
+            [8900, 'meters', true, 'FL089M'],
+            [27000, 'feet', false, '27,000 ft'],
+            [8900, 'meters', false, '8,900 m'],
+        ];
+
+        foreach ($cases as [$value, $unit, $isFlightLevel, $expected]) {
+            $payload = $this->resultPayload();
+            $payload['flight_plan_data']['flightInit']['initialAltitude'] = [
+                'value' => $value,
+                'unit' => $unit,
+                'isFlightLevel' => $isFlightLevel,
+            ];
+
+            $this->assertSame($expected, $this->viewModel($payload)->initialAltitude());
+        }
     }
 
     #[Test]
@@ -121,7 +143,7 @@ class FlightReleasePageViewModelTest extends TestCase
             ['label' => 'AC Type', 'value' => 'B777-200F'],
             ['label' => 'RECALL Number', 'value' => '62930'],
             ['label' => 'Distance to Destination', 'value' => '5,549 NM'],
-            ['label' => 'Initial Altitude', 'value' => 'FL 330'],
+            ['label' => 'Initial Altitude', 'value' => 'FL330'],
             ['label' => 'Planned Duration', 'value' => '07h12m'],
             ['label' => 'Alternate Airport Reserves', 'value' => '5,600 LB'],
         ], $viewModel->fmsFields());
@@ -314,7 +336,7 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('1830', $viewModel->releaseHeaderDepartureTime());
         $this->assertSame('May 26, 2026', $viewModel->releaseHeaderArrivalDate());
         $this->assertSame('0215', $viewModel->releaseHeaderArrivalTime());
-        $this->assertSame('FL 330', $viewModel->overviewInitialAltitude());
+        $this->assertSame('FL330', $viewModel->overviewInitialAltitude());
         $this->assertSame('4,000 NM', $viewModel->overviewRouteDistance());
         $this->assertSame('120,000 LB', $viewModel->overviewRampFuel());
         $this->assertSame('2 approved UTC slots', $viewModel->overviewSlotSummary());
@@ -412,6 +434,11 @@ class FlightReleasePageViewModelTest extends TestCase
         $payload['flight_plan_data']['flightInit'] = [
             'sectionPresent' => true,
             'acarsInitDate' => '11',
+            'initialAltitude' => [
+                'value' => 33000,
+                'unit' => 'feet',
+                'isFlightLevel' => true,
+            ],
         ];
         $payload['flight_plan_data']['crewMembers'][0]['employeeNumber'] = '4827';
 
@@ -429,6 +456,7 @@ class FlightReleasePageViewModelTest extends TestCase
             'flight-init-flight-number',
             'flight-init-departure',
             'flight-init-destination',
+            'flight-init-initial-altitude',
             'flight-init-acars-init-date',
         ], array_column($viewModel->flightInitFields(), 'id'));
     }
@@ -471,6 +499,7 @@ class FlightReleasePageViewModelTest extends TestCase
     {
         $payload = $this->resultPayload();
         $payload['initial_altitude'] = null;
+        $payload['flight_plan_data']['flightInit']['initialAltitude'] = null;
         $payload['flight_plan_data']['etops'] = null;
         $payload['etps'] = [];
         $payload['eent_coordinates'] = null;
@@ -681,6 +710,15 @@ class FlightReleasePageViewModelTest extends TestCase
                     'plannedTakeoffWeight' => ['amount' => 612400, 'unit' => 'lb'],
                     'maximumFieldTakeoffWeight' => ['amount' => 766000, 'unit' => 'lb'],
                     'sourceWarnings' => ['32-41-03 - SOURCE BRAKE MESSAGE'],
+                ],
+                'flightInit' => [
+                    'sectionPresent' => true,
+                    'acarsInitDate' => null,
+                    'initialAltitude' => [
+                        'value' => 33000,
+                        'unit' => 'feet',
+                        'isFlightLevel' => true,
+                    ],
                 ],
                 'etops' => [
                     'sectionPresent' => true,

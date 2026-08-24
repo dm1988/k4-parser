@@ -10,6 +10,7 @@ use App\DTOs\Etops\EtopsScenarioData;
 use App\DTOs\MaintenanceItemData;
 use App\DTOs\SlotTimeData;
 use App\DTOs\WaypointData;
+use App\Enums\AltitudeUnit;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
 use App\Enums\MaintenanceItemType;
@@ -114,7 +115,9 @@ readonly class FlightReleasePageViewModel
 
     public function overviewInitialAltitude(): ?string
     {
-        return $this->pageData?->initialAltitude;
+        $altitude = $this->initialAltitude();
+
+        return $altitude === '' ? null : $altitude;
     }
 
     public function overviewRouteDistance(): ?string
@@ -283,7 +286,7 @@ readonly class FlightReleasePageViewModel
             ['label' => 'AC Type', 'value' => $this->aircraftType()],
             ['label' => 'RECALL Number', 'value' => $this->recallNumber()],
             ['label' => 'Distance to Destination', 'value' => $this->fmsDistanceToDestination()],
-            ['label' => 'Initial Altitude', 'value' => $this->pageData->initialAltitude],
+            ['label' => 'Initial Altitude', 'value' => $this->initialAltitude()],
             ['label' => 'Planned Duration', 'value' => $this->pageData->duration],
             ['label' => 'Alternate Airport Reserves', 'value' => $this->fmsAlternateReserve()],
         ];
@@ -422,6 +425,7 @@ readonly class FlightReleasePageViewModel
             ['id' => 'flight-init-flight-number', 'label' => 'Flight number', 'value' => $this->flightNumber()],
             ['id' => 'flight-init-departure', 'label' => 'Departure', 'value' => $this->departure()],
             ['id' => 'flight-init-destination', 'label' => 'Destination', 'value' => $this->destination()],
+            ['id' => 'flight-init-initial-altitude', 'label' => 'Initial altitude', 'value' => $this->initialAltitude()],
             ['id' => 'flight-init-acars-init-date', 'label' => 'ACARS init date', 'value' => $this->flightInitAcarsDate()],
         ];
     }
@@ -658,7 +662,25 @@ readonly class FlightReleasePageViewModel
 
     public function initialAltitude(): string
     {
-        return $this->pageData->initialAltitude ?? '';
+        $altitude = $this->pageData?->flightPlan->flightInit?->initialAltitude;
+
+        if ($altitude === null) {
+            return '';
+        }
+
+        if ($altitude->isFlightLevel) {
+            $wholeHundreds = intdiv($altitude->value, 100);
+            $remainder = $altitude->value % 100;
+            $level = str_pad((string) $wholeHundreds, 3, '0', STR_PAD_LEFT);
+
+            if ($remainder !== 0) {
+                $level .= '.'.rtrim(str_pad((string) $remainder, 2, '0', STR_PAD_LEFT), '0');
+            }
+
+            return 'FL'.$level.($altitude->unit === AltitudeUnit::Meters ? 'M' : '');
+        }
+
+        return Number::format($altitude->value).' '.$altitude->unit->abbreviation();
     }
 
     public function departureRunway(): ?string

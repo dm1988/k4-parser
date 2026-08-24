@@ -99,6 +99,8 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame(612400, $parsed->envelope['planned_takeoff_weight']['amount']);
         $this->assertSame('private TLR evidence', $parsed->sourceFragments['envelope_takeoff_landing_report']);
         $this->assertSame('11', $parsed->flightInit['acars_init_date']);
+        $this->assertSame('F340', $parsed->flightInit['initial_altitude']);
+        $this->assertSame('F340', $parsed->sourceFragments['flight_init_initial_altitude']);
         $this->assertSame('private ACARS init evidence', $parsed->sourceFragments['flight_init_takeoff_landing_report']);
         $this->assertSame('DP550', $parsed->waypoints[0]['identifier']);
         $this->assertSame('bounded waypoint evidence', $parsed->sourceFragments['computed_flight_plan_waypoints']);
@@ -205,6 +207,7 @@ class ExtractFlightPlanDataTest extends TestCase
             'eent_coordinates' => 'N40 31.1 W131 22.6',
             'eexp_coordinates' => 'N45 19.3 E151 36.4',
             'initial_altitude' => 'FL 340',
+            'initial_altitude_source' => 'F340',
             'duration' => '12h10m',
             'route' => 'DCT TEST',
         ];

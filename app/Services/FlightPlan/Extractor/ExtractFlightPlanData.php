@@ -54,7 +54,11 @@ class ExtractFlightPlanData
             crewMembers: $crew['data'],
             maintenance: $maintenance['data'],
             envelope: $envelope['data'],
-            flightInit: $flightInit['data'],
+            flightInit: [
+                ...$flightInit['data'],
+                'section_present' => true,
+                'initial_altitude' => $route['initial_altitude_source'],
+            ],
             etops: [
                 'etps' => $route['etps'],
                 'eent_coordinates' => $route['eent_coordinates'],
@@ -69,6 +73,7 @@ class ExtractFlightPlanData
                 ...$maintenance['source_fragments'],
                 ...$envelope['source_fragments'],
                 ...$flightInit['source_fragments'],
+                'flight_init_initial_altitude' => $route['initial_altitude_source'],
                 ...$waypoints['source_fragments'],
             ],
             legacy: $route,
