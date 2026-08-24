@@ -1,3 +1,6 @@
+# Critical - missing MELs
+Using the ZSOF2 release, 2 are extracted yet there are 8 on the release.
+
 # Flight Plan Brief Roadmap
 
 Build one reviewable flight-release workspace from the normalized extraction pipeline. Parse each source fact once, keep operational values typed, and present unavailable data honestly instead of inferring it.
@@ -158,6 +161,7 @@ This view repeats the confirmed source result. It does not calculate an envelope
 
 # Jepp PD Pro task view
 - Move route section above ETOPS critical points section
+- Bug fix: Planned runway extraction now permits a missing SID/STAR and stops at the next planned-runway header, newline, or asterisk divider. Verified against `CKS093312ZSOF 2.pdf`: runway 33 with no SID, and arrival runway 33L with OLMEN OLME2E.
 
 # FMS task view
 - Cost index missing

@@ -164,8 +164,8 @@ class FlightRouteExtractor
     private function extractPlannedRunwayLine(string $text, string $type): array
     {
         $pattern = '/PLANNED\s+TO\s+'.preg_quote($type, '/').'\s+RUNWAY:\s*'
-            .'(\d{2}[LCR]?)\s+(.+?)'
-            .'(?=\s+PLANNED\s+TO\s+(?:DEPT|ARRV)\s+RUNWAY:|\.\s+\*{3,}|\R|$)/i';
+            .'(\d{2}[LCR]?)\h*(.*?)'
+            .'(?=PLANNED\s+TO\s+(?:DEPT|ARRV)\s+RUNWAY:|\h*\*|\R|$)/i';
 
         if (preg_match($pattern, $text, $matches) !== 1) {
             return [
@@ -178,7 +178,7 @@ class FlightRouteExtractor
 
         return [
             'runway' => $matches[1],
-            'procedure' => is_string($procedure) ? rtrim($procedure, '.') : null,
+            'procedure' => is_string($procedure) && $procedure !== '' ? rtrim($procedure, '.') : null,
         ];
     }
 

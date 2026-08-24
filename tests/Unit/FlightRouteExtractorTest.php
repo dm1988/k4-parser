@@ -161,6 +161,19 @@ TEXT);
         $this->assertSame('N45 19.3 E151 36.4', $flightPlan['eexp_coordinates']);
     }
 
+    public function test_planned_runway_extraction_stops_at_asterisks_and_allows_a_missing_sid(): void
+    {
+        $flightPlan = $this->makeExtractor()->extractFlightPlanDataFromText(<<<'TEXT'
+PLANNED TO DEPT RUNWAY: 33          PLANNED TO ARRV RUNWAY: 33L   OLMEN OLME2E     ******************************************************************     * THE CURRENT AIMS OPERATIONAL PROGRAM SOFTWARE LOADED IN N794CK *
+(FPL-CKS093-IS-B77L/H-SDE2-ZSOF0330-N0487F340 DCT OLMEN OLME2E-RKSI0600)
+TEXT);
+
+        $this->assertSame('33', $flightPlan['departure_runway']);
+        $this->assertNull($flightPlan['departure_sid']);
+        $this->assertSame('33L', $flightPlan['arrival_runway']);
+        $this->assertSame('OLMEN OLME2E', $flightPlan['arrival_star']);
+    }
+
     public function test_sample_flight_release_extracts_planned_runways_sid_and_star(): void
     {
         $extractor = $this->makeExtractor();
