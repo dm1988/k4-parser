@@ -47,7 +47,14 @@
                                 </div>
                                 <div class="relative h-3 rounded-full bg-[#1B365D]/10 dark:bg-slate-700" aria-hidden="true">
                                     <div class="absolute inset-y-0 left-1/4 right-1/4 rounded-full bg-[#B8860B]/35 dark:bg-amber-400/30"></div>
-                                    <div class="absolute -top-1 h-5 w-1 rounded-full bg-[#1B365D] dark:bg-blue-300" style="left: calc({{ $slot['plannedPosition'] }}% - 2px)"></div>
+                                    <div @class([
+                                        'absolute -top-1 h-5 w-1 -translate-x-1/2 rounded-full bg-[#1B365D] dark:bg-blue-300',
+                                        'left-0' => $slot['plannedPosition'] < 12.5,
+                                        'left-1/4' => $slot['plannedPosition'] >= 12.5 && $slot['plannedPosition'] < 37.5,
+                                        'left-1/2' => $slot['plannedPosition'] >= 37.5 && $slot['plannedPosition'] < 62.5,
+                                        'left-3/4' => $slot['plannedPosition'] >= 62.5 && $slot['plannedPosition'] < 87.5,
+                                        'left-full' => $slot['plannedPosition'] >= 87.5,
+                                    ])></div>
                                 </div>
                                 <div class="flex justify-between gap-3 text-[10px] font-semibold text-[#4A5568] dark:text-slate-400">
                                     <span>Earlier</span>
@@ -64,7 +71,7 @@
     </section>
 
     @if ($model->slotSourceText() !== null)
-        <details class="group rounded-xl border border-[#1B365D]/10 bg-[#F8F9FA] dark:border-slate-700 dark:bg-slate-800/60">
+        <details open class="group rounded-xl border border-[#1B365D]/10 bg-[#F8F9FA] dark:border-slate-700 dark:bg-slate-800/60">
             <summary class="cursor-pointer rounded-xl px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-[#1B365D] outline-none focus-visible:ring-2 focus-visible:ring-[#B8860B] focus-visible:ring-offset-2 dark:text-slate-200 dark:focus-visible:ring-offset-slate-900">Extracted slot text</summary>
             <p class="whitespace-pre-wrap break-words border-t border-[#1B365D]/10 px-4 py-3 font-mono text-xs leading-relaxed text-[#0B0E14] dark:border-slate-700 dark:text-slate-100">{{ $model->slotSourceText() }}</p>
         </details>

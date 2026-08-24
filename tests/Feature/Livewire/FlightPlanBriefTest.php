@@ -1156,6 +1156,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('Planned ETA is within the confirmed window')
             ->assertSeeText('Confirmed window')
             ->assertSeeText('Extracted slot text')
+            ->assertSeeHtml('<details open')
             ->assertSeeText('APPROVED SLOT TIMES: DEP PANC @ 1845Z ARR KMIA @ 0230Z (+/- 30 MIN)')
             ->assertSeeText('Local times, permits, and statuses are not inferred')
             ->call('selectTask', FlightPlanTask::FuelScore->value)
