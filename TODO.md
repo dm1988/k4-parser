@@ -176,8 +176,12 @@ Required outcome:
 Commit message: `fix: recover operational MEL records`
 
 # FMS task view
+## Bug: Distance not rendered:
+- Current: with an extracted value of `TOTAL DIST/DEST 0896`, it is rendered as `Not present in this release`. 
+- Also happens in this sample data: `TOTAL DIST/DEST 3597`
+- 
+## Remaining items
 - Cost index missing
-- Distance to dest value missing
 - Create distinction between Alternate airport burn and Reserve fuel calculation. 
 
 # Action oriented labels on Overview
@@ -261,6 +265,8 @@ Not present in this release
 ## 1 — Completed: Stabilize the result and view-data contract
 
 ## 2 — Completed: Build the responsive task workspace
+
+Outcome update: Available tasks no longer render redundant status badges or dots; `Not present` and `Not supported` indicators remain visible.
 
 ## 3 — Completed: Implement Overview
 
