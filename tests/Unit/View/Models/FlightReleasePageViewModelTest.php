@@ -261,6 +261,18 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
+    public function it_uses_the_confirmed_flight_date_when_the_departure_time_is_absent(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['schedule']['etdUtc'] = null;
+
+        $viewModel = $this->viewModel($payload);
+
+        $this->assertSame('May 25, 2026', $viewModel->releaseHeaderDepartureDate());
+        $this->assertNull($viewModel->releaseHeaderDepartureTime());
+    }
+
+    #[Test]
     public function it_builds_complete_source_backed_overview_values_with_units(): void
     {
         $payload = $this->resultPayload();

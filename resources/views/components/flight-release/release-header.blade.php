@@ -17,7 +17,7 @@
                 <p class="truncate text-xs font-semibold text-[#4A5568] dark:text-slate-400">
                     {{ $model->aircraftType() ?? 'Aircraft not present' }}
                     <span aria-hidden="true"> · </span>
-                    {{ $model->tailNumber() ?? 'Tail not present' }}
+                    {{ $model->tailNumber() === null ? 'Tail not present' : 'Tail '.$model->tailNumber() }}
                 </p>
             </div>
         </div>
@@ -70,7 +70,7 @@
         @if ($model->releaseRevision())
             <div class="flex justify-end lg:w-28 lg:shrink-0">
                 <span class="inline-flex rounded-full bg-slate-200 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700 dark:bg-slate-700 dark:text-slate-200">
-                    Revision {{ $model->releaseRevision() }}
+                    Release revision {{ $model->releaseRevision() }}
                 </span>
             </div>
         @endif

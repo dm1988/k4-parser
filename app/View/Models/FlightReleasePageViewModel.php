@@ -94,7 +94,7 @@ readonly class FlightReleasePageViewModel
 
     public function releaseHeaderDepartureDate(): ?string
     {
-        return $this->formatUtcPart($this->etdUtc(), 'M j, Y');
+        return $this->formatUtcPart($this->etdUtc(), 'M j, Y') ?? $this->flightDate();
     }
 
     public function releaseHeaderDepartureTime(): ?string

@@ -43,6 +43,7 @@ class FlightPlanTaskTest extends TestCase
             FlightPlanTask::Envelope,
             FlightPlanTask::FlightInit,
             FlightPlanTask::Fms,
+            FlightPlanTask::SlotTimes,
             FlightPlanTask::FuelScore,
             FlightPlanTask::Etops,
         ], $customViews);

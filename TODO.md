@@ -9,6 +9,7 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Focused identity, schedule, route, waypoint, maintenance, and fuel extractors feed `ParsedFlightPlanData`; `BuildFlightPlanData` creates the typed aggregate.
 - The cached compatibility payload contains both the existing flat route fields and nested `flight_plan_data`.
 - The current results UI renders airports, runways, procedures, route tokens, and typed ETOPS data through `FlightReleasePageViewModel`.
+- The release header preserves the explicit tail label and falls back to the confirmed flight date when a departure timestamp is unavailable.
 - Normalized today: flight/trip/recall identity, aircraft and tail, flight date, airports, route, runways, SID/STAR, distance, ETD/ETA, approved slot instants, release-level fuel, and current ETOPS boundary/equal-time points and scenario text.
 - Still legacy-only: airport enrichment, initial altitude, and duration.
 - Not yet confirmed from fixtures: release revision, additional fuel, and most fields for Weather, and Weight & Balance.
