@@ -70,6 +70,7 @@ This feature has its own master flag and entitlement gate. Treat it as distinct 
 - **Core data** - The normalized flight identity, schedule, route, aircraft, airport, and other foundational fields shared across supported flight-plan workflows. “Core data ready” means these established typed values are available to the task without adding speculative parsing.
 - **Confirmed fixtures** - Sanitized, representative source-document samples whose expected fields, units, layouts, variants, and important edge cases have been verified. A task awaiting confirmed fixtures must not invent a parser, calculation, warning, or operational status from assumptions.
 - **Source-backed** - Extracted or displayed information that can be traced to a confirmed value in the source document or fixture. Source-backed values may be normalized or formatted for presentation, but their meaning must not be inferred, expanded, or assigned an operational status without a documented rule.
+- **General Declaration / GENDEC** - A General Declaration (GENDEC) is an official international aviation and customs document required by border control, immigration, custom, and public health authorities when an aircraft arrives in or departs from a foreign country.
 
 Prefer these established terms in UI copy, class names, tests, and documentation. Do not introduce near-synonyms when an existing term is accurate.
 

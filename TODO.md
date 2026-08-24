@@ -1,3 +1,14 @@
+# TODO Useage
+- Sections:
+  - TODO Useage
+  - Roadmap
+  - Tasks
+  - After branch merge tasks
+  - Completed tasks
+1. Complete numbered tasks in order
+2. Focus on one task at a time indicated by `Current focus: ` in h2 title
+3. Mark completed by [x] and replacing `Current focus: ` with `Completed: `
+
 # Flight Plan Brief Roadmap
 
 Build one reviewable flight-release workspace from the normalized extraction pipeline. Parse each source fact once, keep operational values typed, and present unavailable data honestly instead of inferring it.
@@ -13,6 +24,17 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Normalized today: flight/trip/recall identity, aircraft and tail, flight date, airports, route, runways, SID/STAR, distance, ETD/ETA, approved slot instants, release-level fuel, and current ETOPS boundary/equal-time points and scenario text.
 - Still legacy-only: airport enrichment, initial altitude, and duration.
 - Not yet confirmed from fixtures: release revision, additional fuel, and most fields for Weather, and Weight & Balance.
+
+### Branch completion criteria
+- Weather task completed
+- Weight & Balance task completed
+- Initial altitude revised from legacy arrays to source backed fixtures and can distingush between units: meters or feet
+- No known bugs pending
+- Tasks include a badging number system to highlight important information within each task that requests user's attention
+- Compatibility paths removed
+- Extract route button is removed and parsing/extracting begins immediately after file selection
+- Refactor to a large dropzone file upload
+- All work required to complete this branch is documented above the **Branch Merge** divider; only explicitly deferred, post-merge tasks appear below it.
 
 ### Product and UI rules
 
@@ -43,14 +65,44 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 Icons  use hero icons returned in FlightPlanTask enum
 
-# Flight init initial altitude in meters
-- Currently: When a flight plan is filed with an initial altitude in meters, it is extracted and rendered as `S0890`, representing an altitude of 8,900 meters. This conversion logic is not handled. 
-- Create an initial altitude confirmed fixure using source backed data.
-- Create a unit enum for feet and meters
-- 
-- Fix: Extract an altitude integer 
+# Tasks
 
-## 12 — Implement Weather
+## 1. Flight Init — Normalize initial altitude units
+
+Goal: Represent the confirmed initial altitude as a typed numeric value with an explicit unit instead of displaying the source flight-level code unchanged.
+
+Current behavior: A metric initial altitude such as `S0890` is rendered verbatim. The value represents 8,900 meters, but the extractor does not currently separate the altitude from its unit.
+  
+- Add a sanitized, source-backed fixture containing a confirmed metric initial altitude, as well as feet. Implement an `isFlightLevel` bool.
+- Introduce an altitude unit enum supporting feet, and meters.
+- Extract the altitude as an integer and preserve its confirmed source unit.
+- Render the normalized altitude with an explicit unit while retaining the original source evidence.
+- Test metric and feet inputs, malformed values, and missing initial altitude data.
+
+- Flight level text sample in feet representing FL330: -N0497F330 
+- Flight level text sample in meters: -K0920S0890
+
+Done when: Flight Init displays a typed initial altitude with its correct unit, and unsupported or absent values are reported without inference.
+
+Commit message: `fix: normalize flight init altitude units`
+
+## 2. FMS task view
+
+### Bug: Distance not rendered:
+- Current: with an extracted value of `TOTAL DIST/DEST 0896`, it is rendered as `Not present in this release`. 
+- Also happens in this sample data: `TOTAL DIST/DEST 3597`
+- 
+### Remaining items
+- Cost index missing
+- Create distinction between Alternate airport burn and Reserve fuel calculation. 
+  
+## 3. Remove Extract route button
+View results on PDF upload when parsing completes
+
+## 4. Large upload button
+- Similar to extract schedule upload button
+
+## 5. Implement Weather
 
 Goal: Organize confirmed weather by airport and route while retaining the source report.
 
@@ -65,7 +117,7 @@ Done when: parsed fields can always be compared with the retained raw report and
 
 Commit message: `feat: add weather task`
 
-## 13 — Implement Weight & Balance
+## 6. Implement Weight & Balance
 
 Goal: Present confirmed weights, indices, and source status without performing an unauthorized calculation.
 
@@ -79,7 +131,68 @@ Done when: every comparison is based on confirmed source values and no browser-s
 
 Commit message: `feat: add weight and balance task`
 
-## 14 — Remove compatibility paths and complete release verification
+## 7. Add task: review MEL / CDL
+- Use counter badge
+- Show task at top if items exist
+- Have task at bottom if 0
+
+## 8. Jepp PD Pro task view
+- Within the task view: Move route section above ETOPS critical points section
+- resources/views/components/flight-release/jepp-pd-pro.blade.php
+
+- Bug fixed: Planned runway extraction now permits a missing SID/STAR and stops at the next planned-runway header, newline, or asterisk divider. Verified against `CKS093312ZSOF 2.pdf`: runway 33 with no SID, and arrival runway 33L with OLMEN OLME2E.
+
+## 9. Action oriented labels on Overview
+- Flight and aircraft card footer: ACARS Initialize Flight ->
+- Route card: Program FMS ->
+- Schedule and slots -> review slot times
+- Fuel card: Score fuel ->
+- ETOPs evidence card: Review ETOPs ->
+
+## 10. ETOPs badge on section flight info header
+- Below duration and horizontal flight line, centered
+
+## 11. Cleanup
+- Move 2 maintenance DTOs into Maintenance DTO subfolder
+
+## 12. Feat: GENDEC available determination
+- Create service to determine gendec availablity
+- Search for General Declaration page
+- Sample text:
+General Declaration
+(Outward/Inward)
+Owner or Operator:
+K4
+Marks of Nationality and Registration:
+N774CK
+Departure from:
+Los Angeles
+United States
+Flight No:
+K4256
+Date:
+24May2026
+Arrival At:
+
+## 13. Bug: Loose crew name regex extraction
+- Crew details are extracted within name:
+1. `Additional` extracted as name: PAYNE R ADDNTL
+2. `IRP` extracted as name: GONZALEZ D IRP
+3. `HIGH MINS` extracted as name: FERGUSON S HIGH MINS
+
+- Fix: parse out HIGH MINS, IRP, HIGH MINS removing it from the name
+- Stop crew name parsing on line break
+- Add a high mins flag to the DTO contract
+- Front end display as a caution
+
+## 14. Hide ETOPs card if non ETOPS flight
+- Currently ETOPS card always displayed rendering:
+ETOPS evidence
+Confirmed release fields
+Not present in this release
+- Fix: Visually minimize ETOPs presence. If non ETOPS flight, remove from large card in workspace and render in the `Operational support status` section with a `Non ETOPS` badge
+
+## 15. Remove compatibility paths and complete release verification
 
 Goal: Finish the migration only after every active front-end consumer uses typed page data.
 
@@ -96,13 +209,21 @@ Done when: no UI depends on the flat compatibility payload, all enabled tasks ha
 
 Commit message: `refactor: complete flight plan workspace migration`
 
-## 15 - Remove Extract route button
-View results on PDF upload when parsing completes
+## 16. 747 AC seeder
+- Add 747 ac seeder
 
-## Add task: review MEL / CDL
-- Use counter badge
-- Show task at top if items exist
-- Have task at bottom if 0
+## Feat: Determine B43 or B44 release
+- Add B44 tag if B44 release
+- Future task: B44 info
+
+## Maintenance task
+- NEF determine and NEF badge
+
+-------------------
+**Branch Merge**
+-------------------
+
+# After branch merge tasks
 
 ## Add task: Takeoff and Landing Report
 
@@ -147,118 +268,31 @@ No independent performance determination
 
 This view repeats the confirmed source result. It does not calculate an envelope or label the condition safe; review the controlling performance report.
 
-# Jepp PD Pro task view
-- Move route section above ETOPS critical points section
-- Bug fix: Planned runway extraction now permits a missing SID/STAR and stops at the next planned-runway header, newline, or asterisk divider. Verified against `CKS093312ZSOF 2.pdf`: runway 33 with no SID, and arrival runway 33L with OLMEN OLME2E.
-
-## Current focus: Critical — Recover six missing MELs from CKS093312ZSOF 2.pdf
-
-Investigation outcome: The release contains eight operational MEL records under `MEL/CDL`, but `MaintenanceLogExtractor` returns only `22-99-02` / DMI `100230537` and `22-99-01` / DMI `100230538`. The following six source-backed MELs are omitted:
-
-| MEL number | DMI | Source description |
-| --- | --- | --- |
-| `25-20-1-NEF-16` | `100224958` | MISCELLANEOUS INTERIOR TRIM (NON-STRUCTURAL PANELS AND MOLDINGS) |
-| `23-27-1-2` | `100230493` | DATA COMMUNICATION MANAGEMENT SYSTEM (ETOPS) ACPT/CANC/RJCT SWITCH LIGHTS |
-| `47-11-1-1` | `100230523` | NITROGEN GENERATION SYSTEM (NGS) NITROGEN GENERATION PERFORMANCE |
-| `25-25-3-3` | `100230529` | SUPERNUMERARY SEATS (777F) LEG RESTS (M) |
-| `22-11-7` | `100230535` | AUTOMATIC LANDING SYSTEM (AUTOLAND) (LMP) AUTOMATIC LANDING SYSTEM (AUTOLAND) |
-| `27-02-3` | `100230536` | PRIMARY FLIGHT COMPUTER CHANNELS (LMP) (M) |
-
-Root cause: Both the operational-item matcher and `validNumber()` require the third MEL/CDL number segment to contain 2–4 characters and allow only one optional suffix. These six confirmed source formats use a one-character third segment, and `25-20-1-NEF-16` contains two additional segments, so they are rejected before DTO construction. Separately, the maintenance-section header regex accepts bare `MAINTENANCE`, causing this fixture's retained evidence to begin at the unrelated phrase `MAINTENANCE WRITE UP IS` instead of the actual `MEL/CDL` heading.
-
-Required outcome:
-
-- Support the confirmed variable-length MEL/CDL number formats without accepting arbitrary prose as an item number.
-- Anchor operational extraction to the actual `MEL/CDL` section when the release uses that heading.
-- Extract all eight records once, retaining DMI and description evidence across the page break.
-- Add a sanitized fixture covering these exact number shapes, page-header interruption, and adjacent flattened records.
-- Test malformed numbers, duplicate records, conflicting duplicates, and section-start false positives.
-
-Commit message: `fix: recover operational MEL records`
-
-# FMS task view
-## Bug: Distance not rendered:
-- Current: with an extracted value of `TOTAL DIST/DEST 0896`, it is rendered as `Not present in this release`. 
-- Also happens in this sample data: `TOTAL DIST/DEST 3597`
-- 
-## Remaining items
-- Cost index missing
-- Create distinction between Alternate airport burn and Reserve fuel calculation. 
-
-# Action oriented labels on Overview
-- Flight and aircraft card footer: ACARS Initialize Flight ->
-- Route card: Program FMS ->
-- Schedule and slots -> review slot times
-- Fuel card: Score fuel ->
-- ETOPs evidence card: Review ETOPs ->
-
-# Create maintenance overview card
+## Create maintenance overview card
 - Show's MEL status
 - Action oriented footer: Review MELs ->
 
-# ETOPs badge on section flight info header
-- Below duration and horizontal flight line, centered
-
-# Large upload button
-- Similar to extract schedule upload button
-
-# Move 2 maintenance DTOs into Maintenance DTO subfolder
-
-# Tripe extract key flight release data
+## Triple extract key flight release data
 - Key flight plan data is found on the 3 copies. Ensure regex matches 3 times for data found on the top copy.
 - If not found 3 times, reduce confidence score yet still present data
 - Show user message to check the value
 
-# GENDEC
-- Define General Declaration in CONTEXT.md
-- **General Declaration / GENDEC** - A General Declaration (GENDEC) is an official international aviation and customs document required by border control, immigration, custom, and public health authorities when an aircraft arrives in or departs from a foreign country.
-- Create service to determine gendec availablity
-- Search for General Declaration page
-- Sample text:
-General Declaration
-(Outward/Inward)
-Owner or Operator:
-K4
-Marks of Nationality and Registration:
-N774CK
-Departure from:
-Los Angeles
-United States
-Flight No:
-K4256
-Date:
-24May2026
-Arrival At:
-
-## Crew high mins
-- Currently crew member name is extracted as: FERGUSON S HIGH MINS
-- Fix: parse out HIGH MINS removing it from the name
-- Add a high mins flag to the DTO contract
-- Front end display as a caution
-
-# Hide ETOPs card if non ETOPS flight
-- Currently ETOPS card always displayed rendering:
-ETOPS evidence
-Confirmed release fields
-Not present in this release
-- Fix: Visually minimize ETOPs presence. If non ETOPS flight, remove from large card in workspace and render in the `Operational support status` section with a `Non ETOPS` badge
-
-# Create a way to turn tasks on or off
+## Create a way to turn tasks on or off
 - in ENV and config files
 - in coordination with enum
 
-# Refactor FlightPlanBriefTest
+## Refactor FlightPlanBriefTest
 - Split tests and organize into folders grouped by test focus area
 
-# PEST architechure tests
+## PEST architechure tests
 - Does pest need to be installed? 
 - Can I run along side existing test suite?
 - Naming
 - Layering
-- 
+  
 -------------------------------------------------------
 
-**Completed**
+# Completed Tasks
 
 -------------------------------------------------------
 
@@ -291,135 +325,37 @@ Outcome update: Available tasks no longer render redundant status badges or dots
 
 ## 11 — Completed: Implement ETOPS
 
-# Completed: Refactor blade logic
+## Completed: Refactor blade logic
 
 ## Completed: UI Redesign: Flight Plan Brief Header Component
 
-**Context**
-Redesign of a data-heavy flight information section (originally a standard description list) into a visual "Flight Strip" for a more intuitive dashboard experience.
-
-**Diagnostics**
-The original layout utilized a Tailwind-styled `dl` (description list) with the following technical characteristics:
-*   **Structure:** A grid-based layout (`grid-cols-2` scaling to `xl:grid-cols-6`).
-*   **Styling:** Contained within a `section` element featuring `bg-[#F8F9FA]` (light) or `bg-slate-800/70` (dark) with a subtle border and shadow.
-*   **Data Points:** Flight callsign, date, aircraft type, tail number, route (origin/destination), and UTC timestamps (ETD/ETA).
-
-**Visual Layout Improvements**
-The information was restructured to prioritize aviation-specific hierarchy:
-
-| Feature                 | Change Implementation                                                                  |
-| :---------------------- | :------------------------------------------------------------------------------------- |
-| **Callsign & Aircraft** | Grouped with a flight icon; increased font size to `text-lg`.                          |
-| **Route Visualization** | Implemented a horizontal journey flow (Origin → Destination) using a progress line.    |
-| **Temporal Data**       | Paired ETD/ETA directly with their respective airport codes; centered flight duration. |
-| **Status Indication**   | Added a color-coded status badge (`emerald-500/10`) for immediate visibility.          |
-
-**Proposed Code Fixes**
-The following changes were identified as a potential fix for the live page to replace the rigid grid with a flexible, visual container:
-
-
-`````html
-<!-- Proposed replacement for the internal container -->
-<div class="flex flex-col md:flex-row items-center justify-between gap-6 p-4">
-  <!-- Flight Identity -->
-  <div class="flex items-center gap-4">
-    <div class="h-12 w-12 rounded-full bg-blue-600/10 flex items-center justify-center text-blue-600">
-      <!-- SVG Icon -->
-    </div>
-    <div>
-      <h3 class="text-lg font-bold text-slate-900 dark:text-white">${callsign}</h3>
-      <p class="text-xs font-medium text-slate-500">${aircraft} • ${tail}</p>
-    </div>
-  </div>
-
-  <!-- Journey Visualization -->
-  <div class="flex-1 flex items-center justify-center gap-4 max-w-md w-full">
-    <div class="text-right">
-      <div class="text-xl font-black">${origin}</div>
-      <div class="text-xs font-bold text-blue-600 uppercase">${etd} UTC</div>
-    </div>
-    
-    <div class="flex-1 flex flex-col items-center gap-1">
-      <div class="text-[10px] font-bold text-slate-400">${duration}</div>
-      <div class="w-full h-px bg-slate-200 relative">
-        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full border-2 bg-white"></div>
-      </div>
-      <div class="text-[10px] font-bold text-slate-400">${date}</div>
-    </div>
-
-    <div class="text-left">
-      <div class="text-xl font-black">${destination}</div>
-      <div class="text-xs font-bold text-blue-600 uppercase">${eta} UTC</div>
-    </div>
-  </div>
-</div>
-`````
-
-
-**Actionable Recommendations**
-*   **Refine Hierarchy:** Use `font-black` for airport codes and `font-mono` for callsigns to match industry standards. In dark mode: `font-white`.
-*   **Enhance Aesthetics:** Apply `backdrop-filter: blur(8px)` and reduce the container background opacity to integrate the component better into modern dark/light mode UI.
-*   **Data Density:** Remove repetitive labels like "FLIGHT" or "ROUTE" in favor of visual groupings to reduce cognitive load.
-
-**Outcome:** Replaced the rigid release-summary metric grid with a responsive flight strip that groups the flight and aircraft identity, pairs UTC departure and arrival times with their airports, and centers the planned duration and release date along a visual route line. Missing values remain explicit, the optional release revision is presented neutrally, and no operational status is inferred. The component retains accessible summary semantics, dark-mode styling, and caller-supplied attributes.
-
-**Verification:** Focused Livewire rendering coverage confirms the responsive header structure, visual treatment, accessible summary label, and flight-strip information hierarchy.
-
-Date/time follow-up outcome: Departure and arrival dates now render on their own lines beneath the corresponding airport codes. Canonical UTC timestamps are formatted as four-digit aviation times with a separate `Z` label, and overnight arrival dates remain distinct from departure dates. Missing dates and times remain explicit.
-
-Flight-strip spacing follow-up outcome: UTC times now use compact lowercase aviation notation without whitespace (for example, `1430z`), and the journey visualization is capped at Tailwind's `max-w-xl` width so the route line and airport endpoints remain visually cohesive on wide screens.
-
-Responsive-header follow-up outcome: Reduced mobile vertical spacing, replaced the fixed desktop identity width with a flexible 280px minimum, removed journey auto-centering, and added a subtle mobile-only surface around the flight data. The journey retains the previously requested `max-w-xl` cap and becomes transparent within the desktop row.
-
-Dark-mode follow-up outcome: Matched the mobile journey surface to the header's `slate-800/80` dark background token.
-
-Glass-surface follow-up outcome: Added a small backdrop blur to the semi-transparent Journey section in both themes.
-
-Outer-container alignment outcome: Matched the release-summary section to the site header with solid `#F8F9FA` and `slate-800` backgrounds and removed its backdrop blur, while preserving the rounded card geometry and full border. The nested Journey info bar retains its separate mobile treatment.
-
-Commit message: `feat: redesign flight plan brief header`
-
-## 10 — Completed: Implement Fuel Score
-
-Goal: Present the confirmed release fuel summary and add source-backed waypoint fuel monitoring without inventing a fuel score or operational status.
-
 ### Completed: Release fuel summary
-
-- Added a dedicated responsive Fuel Score view using typed `FuelPlanData` values.
-- Displayed ramp, taxi, takeoff, trip, alternate, final reserve, and estimated landing fuel with explicit units.
-- Presented pounds in thousands with the amount separated from the subtle `k lbs` unit label; kilogram values retain their source unit.
-- Preserved legitimate zero values and kept missing quantities visibly distinct.
-- Kept fuel and waypoint source evidence private and out of the Livewire snapshot.
-- Explicitly avoided inferring a score, compliance result, or dispatchability status.
-- Covered pounds, kilograms, scaling, exact source values, missing values, zero values, and ambiguous units with focused tests.
 
 ### Completed: Waypoint monitoring and planned ETA
 
-- Promoted sanitized waypoint identifiers, coordinates, leg/cumulative durations, and corroborated remaining-fuel values into readonly typed DTOs and the cached flight-plan contract.
-- Preserved source order, duplicate identifiers, explicit zero fuel, and honest nulls for sparse or malformed rows; ambiguous release fuel units withhold waypoint fuel.
-- Kept raw fuel and waypoint evidence private while rendering only sanitized rows in the Fuel Score disclosure.
-- Added optional validated 24-hour Off time input and client-only planned ETA calculation with UTC midnight rollover; the planned column remains hidden until valid calculated values exist.
-- Covered extractor, DTO, cache reconstruction, view-model, Livewire, and JavaScript behavior with focused tests, including malformed Off times, missing durations, duplicate waypoints, zero fuel, ambiguous units, sparse rows, and evidence isolation.
-- Follow-up: waypoint extraction now supports flattened PDF text layers where both headers and all rows are concatenated; the supplied PANC release produces 52 ordered typed waypoints from `JOH` through `KMIA`.
-- Follow-up: compact waypoint FRMG values are expanded to actual fuel quantities (`1477` becomes `147,700 lb`) and displayed as `147.7 k lbs`; coordinates remain typed but are omitted from the Fuel Score browser payload and table.
-
-Outcome: every displayed fuel or waypoint value is source-backed, planned ETA remains clearly separate from extracted data, and no operational score or status is inferred.
-
-Commit message: `feat: add fuel score task`
-
 ## 9 — Completed: Implement Slot Times
 
-Goal: Present approved slots and later permit constraints with explicit time context.
+## Completed: Critical — Recover six missing MELs from CKS093312ZSOF 2.pdf
 
-- Promote slot evidence into a typed slot DTO containing direction/type, airport, canonical UTC instant, and source time.
-- Render the currently supported departure/arrival slots first.
-- Add tolerance windows, permits, authority/country, validity, revision, status, and notes only after confirmed fixtures.
-- Sort slots deterministically while preserving source order where times are equal.
-- Never convert to local time without an explicit airport timezone and DST-safe conversion.
-- Test midnight rollover, multiple slots, malformed times, missing flight date, ordering, and UTC labels.
+Investigation outcome: The release contains eight operational MEL records under `MEL/CDL`, but `MaintenanceLogExtractor` returns only `22-99-02` / DMI `100230537` and `22-99-01` / DMI `100230538`. The following six source-backed MELs are omitted:
 
-Done when: every displayed slot has an airport, direction/type, complete instant, and visible time basis.
+| MEL number | DMI | Source description |
+| --- | --- | --- |
+| `25-20-1-NEF-16` | `100224958` | MISCELLANEOUS INTERIOR TRIM (NON-STRUCTURAL PANELS AND MOLDINGS) |
+| `23-27-1-2` | `100230493` | DATA COMMUNICATION MANAGEMENT SYSTEM (ETOPS) ACPT/CANC/RJCT SWITCH LIGHTS |
+| `47-11-1-1` | `100230523` | NITROGEN GENERATION SYSTEM (NGS) NITROGEN GENERATION PERFORMANCE |
+| `25-25-3-3` | `100230529` | SUPERNUMERARY SEATS (777F) LEG RESTS (M) |
+| `22-11-7` | `100230535` | AUTOMATIC LANDING SYSTEM (AUTOLAND) (LMP) AUTOMATIC LANDING SYSTEM (AUTOLAND) |
+| `27-02-3` | `100230536` | PRIMARY FLIGHT COMPUTER CHANNELS (LMP) (M) |
 
-Commit message: `feat: add slot times task`
+Root cause: Both the operational-item matcher and `validNumber()` require the third MEL/CDL number segment to contain 2–4 characters and allow only one optional suffix. These six confirmed source formats use a one-character third segment, and `25-20-1-NEF-16` contains two additional segments, so they are rejected before DTO construction. Separately, the maintenance-section header regex accepts bare `MAINTENANCE`, causing this fixture's retained evidence to begin at the unrelated phrase `MAINTENANCE WRITE UP IS` instead of the actual `MEL/CDL` heading.
 
-Outcome: Approved departure and arrival slots now use typed direction, airport, canonical UTC instant, source time, and optional tolerance data. The task view shows complete UTC dates/times, confirmed ±minute windows with UTC bounds, a graphical planned-ETA comparison, and sanitized extracted slot text in a keyboard-accessible disclosure. Parsing covers confirmed inline and multiline formats, midnight rollover, stable ordering, malformed values, and missing flight dates without inferring local times or unsupported permit details.
+Required outcome:
+
+- Support the confirmed variable-length MEL/CDL number formats without accepting arbitrary prose as an item number.
+- Anchor operational extraction to the actual `MEL/CDL` section when the release uses that heading.
+- Extract all eight records once, retaining DMI and description evidence across the page break.
+- Add a sanitized fixture covering these exact number shapes, page-header interruption, and adjacent flattened records.
+- Test malformed numbers, duplicate records, conflicting duplicates, and section-start false positives.
+
+Commit message: `fix: recover operational MEL records`
