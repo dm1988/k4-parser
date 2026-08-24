@@ -11,6 +11,8 @@ class MaintenanceLogExtractor
 {
     private const FIELD_LABELS = 'DESCRIPTION|DESC|STATUS|DMI|REFERENCE|REF|LIMITATION|LIMITATIONS|PROCEDURE|PROCEDURES';
 
+    private const MEL_CDL_NUMBER_PATTERN = '\d{2}-\d{2}-[A-Z0-9]{1,4}(?:-[A-Z0-9]{1,4}){0,2}';
+
     /**
      * @return array{
      *     data: array{section_present: bool, etops_applicability: string, items: list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string}>},
@@ -66,7 +68,10 @@ class MaintenanceLogExtractor
     /** @return array{body: string, source: string}|null */
     private function maintenanceSection(string $text): ?array
     {
-        $pattern = '/(?:MAINTENANCE(?:\h+LOG|\h+ITEMS?)?|MEL\h*\/\h*CDL(?:\h*\/\h*DMI)?)\h*:?\h*'
+        $headerPattern = preg_match('/\bMEL\h*\/\h*CDL(?:\h*\/\h*DMI)?/i', $text) === 1
+            ? 'MEL\h*\/\h*CDL(?:\h*\/\h*DMI)?'
+            : 'MAINTENANCE(?:\h+LOG|\h+ITEMS?)';
+        $pattern = '/(?:'.$headerPattern.')\h*:?\h*'
             .'(?<body>.*?)(?=\bEND\h+MAINTENANCE\h+LOG\b|\bPASSED\h+RAIM\h+REQUIREMENTS\b|(?:\R\h*(?:CREW|FUEL\h+SUMMARY|ROUTE|NOTAMS?|WEATHER)\b)|\z)/is';
         $matches = [];
 
@@ -87,8 +92,8 @@ class MaintenanceLogExtractor
     {
         $pattern = '/(?:\A|\R|\bITEM\h+)(?<type>MEL|CDL|DMI)\h+'
             .'(?:(?:ITEM|NO\.?)\h*)?(?<number>[A-Z0-9][A-Z0-9.-]*)'
-            .'|(?<marker>[MC])\h+(?<operational_number>\d{2}-\d{2}-[A-Z0-9]{2,4}(?:-[A-Z0-9]{1,4})?)'
-            .'(?=DMI\h+\d{6,}\b)/i';
+            .'|(?<marker>[MC])\s+(?<operational_number>'.self::MEL_CDL_NUMBER_PATTERN.')'
+            .'(?=\s*DMI\h+\d{6,}\b)/i';
         $matches = [];
 
         if (preg_match_all($pattern, $section, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL) === false) {
@@ -204,7 +209,7 @@ class MaintenanceLogExtractor
     {
         return match ($type) {
             MaintenanceItemType::Mel,
-            MaintenanceItemType::Cdl => preg_match('/^\d{2}-\d{2}-[A-Z0-9]{2,4}(?:-[A-Z0-9]{1,4})?$/', $number) === 1,
+            MaintenanceItemType::Cdl => preg_match('/^'.self::MEL_CDL_NUMBER_PATTERN.'$/', $number) === 1,
             MaintenanceItemType::Dmi => preg_match('/^[A-Z0-9]{2,}(?:-[A-Z0-9]+)*$/', $number) === 1,
         };
     }

@@ -1,6 +1,3 @@
-# Critical - missing MELs
-Using the ZSOF2 release, 2 are extracted yet there are 8 on the release.
-
 # Flight Plan Brief Roadmap
 
 Build one reviewable flight-release workspace from the normalized extraction pipeline. Parse each source fact once, keep operational values typed, and present unavailable data honestly instead of inferring it.
@@ -45,22 +42,12 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 Icons  use hero icons returned in FlightPlanTask enum
 
-## 9 — Completed: Implement Slot Times
-
-Goal: Present approved slots and later permit constraints with explicit time context.
-
-- Promote slot evidence into a typed slot DTO containing direction/type, airport, canonical UTC instant, and source time.
-- Render the currently supported departure/arrival slots first.
-- Add tolerance windows, permits, authority/country, validity, revision, status, and notes only after confirmed fixtures.
-- Sort slots deterministically while preserving source order where times are equal.
-- Never convert to local time without an explicit airport timezone and DST-safe conversion.
-- Test midnight rollover, multiple slots, malformed times, missing flight date, ordering, and UTC labels.
-
-Done when: every displayed slot has an airport, direction/type, complete instant, and visible time basis.
-
-Commit message: `feat: add slot times task`
-
-Outcome: Approved departure and arrival slots now use typed direction, airport, canonical UTC instant, source time, and optional tolerance data. The task view shows complete UTC dates/times, confirmed ±minute windows with UTC bounds, a graphical planned-ETA comparison, and sanitized extracted slot text in a keyboard-accessible disclosure. Parsing covers confirmed inline and multiline formats, midnight rollover, stable ordering, malformed values, and missing flight dates without inferring local times or unsupported permit details.
+# Flight init initial altitude in meters
+- Currently: When a flight plan is filed with an initial altitude in meters, it is extracted and rendered as `S0890`, representing an altitude of 8,900 meters. This conversion logic is not handled. 
+- Create an initial altitude confirmed fixure using source backed data.
+- Create a unit enum for feet and meters
+- 
+- Fix: Extract an altitude integer 
 
 ## 12 — Implement Weather
 
@@ -162,6 +149,31 @@ This view repeats the confirmed source result. It does not calculate an envelope
 # Jepp PD Pro task view
 - Move route section above ETOPS critical points section
 - Bug fix: Planned runway extraction now permits a missing SID/STAR and stops at the next planned-runway header, newline, or asterisk divider. Verified against `CKS093312ZSOF 2.pdf`: runway 33 with no SID, and arrival runway 33L with OLMEN OLME2E.
+
+## Current focus: Critical — Recover six missing MELs from CKS093312ZSOF 2.pdf
+
+Investigation outcome: The release contains eight operational MEL records under `MEL/CDL`, but `MaintenanceLogExtractor` returns only `22-99-02` / DMI `100230537` and `22-99-01` / DMI `100230538`. The following six source-backed MELs are omitted:
+
+| MEL number | DMI | Source description |
+| --- | --- | --- |
+| `25-20-1-NEF-16` | `100224958` | MISCELLANEOUS INTERIOR TRIM (NON-STRUCTURAL PANELS AND MOLDINGS) |
+| `23-27-1-2` | `100230493` | DATA COMMUNICATION MANAGEMENT SYSTEM (ETOPS) ACPT/CANC/RJCT SWITCH LIGHTS |
+| `47-11-1-1` | `100230523` | NITROGEN GENERATION SYSTEM (NGS) NITROGEN GENERATION PERFORMANCE |
+| `25-25-3-3` | `100230529` | SUPERNUMERARY SEATS (777F) LEG RESTS (M) |
+| `22-11-7` | `100230535` | AUTOMATIC LANDING SYSTEM (AUTOLAND) (LMP) AUTOMATIC LANDING SYSTEM (AUTOLAND) |
+| `27-02-3` | `100230536` | PRIMARY FLIGHT COMPUTER CHANNELS (LMP) (M) |
+
+Root cause: Both the operational-item matcher and `validNumber()` require the third MEL/CDL number segment to contain 2–4 characters and allow only one optional suffix. These six confirmed source formats use a one-character third segment, and `25-20-1-NEF-16` contains two additional segments, so they are rejected before DTO construction. Separately, the maintenance-section header regex accepts bare `MAINTENANCE`, causing this fixture's retained evidence to begin at the unrelated phrase `MAINTENANCE WRITE UP IS` instead of the actual `MEL/CDL` heading.
+
+Required outcome:
+
+- Support the confirmed variable-length MEL/CDL number formats without accepting arbitrary prose as an item number.
+- Anchor operational extraction to the actual `MEL/CDL` section when the release uses that heading.
+- Extract all eight records once, retaining DMI and description evidence across the page break.
+- Add a sanitized fixture covering these exact number shapes, page-header interruption, and adjacent flattened records.
+- Test malformed numbers, duplicate records, conflicting duplicates, and section-start false positives.
+
+Commit message: `fix: recover operational MEL records`
 
 # FMS task view
 - Cost index missing
@@ -387,3 +399,20 @@ Goal: Present the confirmed release fuel summary and add source-backed waypoint 
 Outcome: every displayed fuel or waypoint value is source-backed, planned ETA remains clearly separate from extracted data, and no operational score or status is inferred.
 
 Commit message: `feat: add fuel score task`
+
+## 9 — Completed: Implement Slot Times
+
+Goal: Present approved slots and later permit constraints with explicit time context.
+
+- Promote slot evidence into a typed slot DTO containing direction/type, airport, canonical UTC instant, and source time.
+- Render the currently supported departure/arrival slots first.
+- Add tolerance windows, permits, authority/country, validity, revision, status, and notes only after confirmed fixtures.
+- Sort slots deterministically while preserving source order where times are equal.
+- Never convert to local time without an explicit airport timezone and DST-safe conversion.
+- Test midnight rollover, multiple slots, malformed times, missing flight date, ordering, and UTC labels.
+
+Done when: every displayed slot has an airport, direction/type, complete instant, and visible time basis.
+
+Commit message: `feat: add slot times task`
+
+Outcome: Approved departure and arrival slots now use typed direction, airport, canonical UTC instant, source time, and optional tolerance data. The task view shows complete UTC dates/times, confirmed ±minute windows with UTC bounds, a graphical planned-ETA comparison, and sanitized extracted slot text in a keyboard-accessible disclosure. Parsing covers confirmed inline and multiline formats, midnight rollover, stable ordering, malformed values, and missing flight dates without inferring local times or unsupported permit details.

@@ -110,29 +110,100 @@ class MaintenanceLogExtractorTest extends TestCase
         $this->assertStringNotContainsString('PASSED RAIM', $items[7]['description']);
     }
 
+    public function test_it_extracts_all_mels_with_variable_number_segments_across_a_page_break(): void
+    {
+        $result = $this->extractor()->extract($this->fixture('zsof-variable-mel-numbers'));
+        $items = $result['data']['items'];
+
+        $this->assertTrue($result['data']['section_present']);
+        $this->assertCount(8, $items);
+        $this->assertSame(array_fill(0, 8, 'MEL'), array_column($items, 'type'));
+        $this->assertSame([
+            '25-20-1-NEF-16',
+            '23-27-1-2',
+            '47-11-1-1',
+            '25-25-3-3',
+            '22-11-7',
+            '27-02-3',
+            '22-99-02',
+            '22-99-01',
+        ], array_column($items, 'number'));
+        $this->assertSame([
+            '100224958',
+            '100230493',
+            '100230523',
+            '100230529',
+            '100230535',
+            '100230536',
+            '100230537',
+            '100230538',
+        ], array_column($items, 'reference'));
+        $this->assertSame([
+            'MISCELLANEOUS INTERIOR TRIM (NON-STRUCTURAL PANELS AND MOLDINGS)',
+            'DATA COMMUNICATION MANAGEMENT SYSTEM (ETOPS) ACPT/CANC/RJCT SWITCH LIGHTS',
+            'NITROGEN GENERATION SYSTEM (NGS) NITROGEN GENERATION PERFORMANCE',
+            'SUPERNUMERARY SEATS (777F) LEG RESTS (M)',
+            'AUTOMATIC LANDING SYSTEM (AUTOLAND) (LMP) AUTOMATIC LANDING SYSTEM (AUTOLAND)',
+            'PRIMARY FLIGHT COMPUTER CHANNELS (LMP) (M)',
+            'LMP STATUS - AIRCRAFT DOWNGRADED TO CAT II (M)',
+            'LMP STATUS - AIRCRAFT DOWNGRADED TO CAT I (M)',
+        ], array_column($items, 'description'));
+        $this->assertStringStartsWith('MEL/CDL', $result['source_fragments']['maintenance_log']);
+        $this->assertStringNotContainsString('MAINTENANCE WRITE UP IS', $result['source_fragments']['maintenance_log']);
+        $this->assertStringNotContainsString('PAGE 2 OF 37', $items[6]['description']);
+        $this->assertStringNotContainsString('PASSED RAIM', $items[7]['description']);
+        $this->assertArrayHasKey('maintenance_item_8', $result['source_fragments']);
+        $this->assertArrayNotHasKey('maintenance_item_9', $result['source_fragments']);
+    }
+
+    public function test_it_does_not_treat_maintenance_prose_as_a_log_section(): void
+    {
+        $result = $this->extractor()->extract('THESE ARE NOT A VALID FAULT AND A MAINTENANCE WRITE UP IS NOT REQUIRED.');
+
+        $this->assertFalse($result['data']['section_present']);
+        $this->assertSame([], $result['data']['items']);
+        $this->assertSame([], $result['source_fragments']);
+    }
+
+    public function test_it_rejects_operational_numbers_outside_confirmed_segment_boundaries(): void
+    {
+        $result = $this->extractor()->extract(<<<'TEXT'
+MEL/CDL
+M 25-20-1DMI 100000001 CONFIRMED NUMBER
+M 25-2-1DMI 100000002 SECOND SEGMENT TOO SHORT
+M 25-20-ABCDE DMI 100000003 THIRD SEGMENT TOO LONG
+M 25-20-1-A-B-CDMI 100000004 TOO MANY SUFFIX SEGMENTS
+PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION
+TEXT);
+
+        $this->assertCount(1, $result['data']['items']);
+        $this->assertSame('25-20-1', $result['data']['items'][0]['number']);
+        $this->assertSame('100000001', $result['data']['items'][0]['reference']);
+    }
+
     public function test_it_ignores_malformed_numbers_and_deduplicates_identical_items(): void
     {
         $result = $this->extractor()->extract(<<<'TEXT'
 MAINTENANCE LOG
 MEL ??? | DESCRIPTION: Invalid item.
-MEL 28-22-01 | STATUS: OPEN | DESCRIPTION: Center tank override pump inoperative.
-MEL 28-22-01 | STATUS: OPEN | DESCRIPTION: Center tank override pump inoperative.
+MEL 25-20-1-NEF-16 | STATUS: OPEN | DESCRIPTION: Interior trim panel deferred.
+MEL 25-20-1-NEF-16 | STATUS: OPEN | DESCRIPTION: Interior trim panel deferred.
 END MAINTENANCE LOG
 TEXT);
 
         $this->assertCount(1, $result['data']['items']);
-        $this->assertSame('28-22-01', $result['data']['items'][0]['number']);
+        $this->assertSame('25-20-1-NEF-16', $result['data']['items'][0]['number']);
     }
 
     public function test_it_rejects_conflicting_duplicate_items(): void
     {
         $this->expectException(FlightPlanDataConflictException::class);
-        $this->expectExceptionMessage('Conflicting flight release values were found for maintenance item MEL 28-22-01.');
+        $this->expectExceptionMessage('Conflicting flight release values were found for maintenance item MEL 25-20-1-NEF-16.');
 
         $this->extractor()->extract(<<<'TEXT'
 MAINTENANCE LOG
-MEL 28-22-01 | STATUS: OPEN | DESCRIPTION: First description.
-MEL 28-22-01 | STATUS: OPEN | DESCRIPTION: Conflicting description.
+MEL 25-20-1-NEF-16 | STATUS: OPEN | DESCRIPTION: First description.
+MEL 25-20-1-NEF-16 | STATUS: OPEN | DESCRIPTION: Conflicting description.
 END MAINTENANCE LOG
 TEXT);
     }
