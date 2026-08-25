@@ -7,7 +7,7 @@ use App\ValueObjects\InitialAltitude;
 
 class FlightInitFieldNormalizer
 {
-    public function initialAltitude(mixed $value): ?InitialAltitude
+    public function filedInitialAltitude(mixed $value): ?InitialAltitude
     {
         $value = is_string($value) ? strtoupper(trim($value)) : null;
 
@@ -24,6 +24,21 @@ class FlightInitFieldNormalizer
             value: (int) $matches['level'] * ($unit === AltitudeUnit::Feet ? 100 : 10),
             unit: $unit,
             isFlightLevel: in_array($matches['prefix'], ['F', 'S'], true),
+        );
+    }
+
+    public function fmsInitialAltitude(mixed $value): ?InitialAltitude
+    {
+        $value = is_string($value) ? strtoupper(trim($value)) : null;
+
+        if ($value === null || preg_match('/^F(?<level>\d{3})$/', $value, $matches) !== 1) {
+            return null;
+        }
+
+        return new InitialAltitude(
+            value: (int) $matches['level'] * 100,
+            unit: AltitudeUnit::Feet,
+            isFlightLevel: true,
         );
     }
 

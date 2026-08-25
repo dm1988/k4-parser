@@ -70,7 +70,7 @@ Icons  use hero icons returned in FlightPlanTask enum
 
 # Tasks
 
-## 1. [x] Partial: Flight Init — Normalize initial altitude units
+## 1. [x] Completed: Flight Init — Normalize initial altitude units
 
 Goal: Represent the confirmed initial altitude as a typed numeric value with an explicit unit instead of displaying the source flight-level code unchanged.
 
@@ -93,10 +93,40 @@ Commit message: `fix: normalize flight init altitude units`
 
 Follow up: 
 1. [x] Render FL if flight level. If Meters append M. i.e. FL270 for flight level in feet or FL089M for flight level in meters.
-2. [ ] Decide: convert ft to meters or extract flight level in feet in seperate section. 
-   - Problem: In flight init task, if value is in meters, provide value in ft for entry into FMS marked in parenthesis. Leave overview view initial altitude render as is. 
 
-## 2. Current focus: FMS task view
+### [x] Completed: Follow up - initial altitude in ft
+Problem: FMS only accepts Cruise altitude entry in feet
+
+Currently: Filed initial altitude exists in the code base already but not identified as such.
+2 initial altitudes are given in a flight release, one filed, and one for FMS initialization given in flight level thousands of feet. This last case is not handled.
+
+Sample text from release: 
+```text
+         BURN    TIME   FL   DIST  WIND
+
+DEST RKSI 033.4   01.48  290  0896  P078   BASIC OPTG WEIGHT  310710
+```
+Current naming convention: 'initial_altitude' => $this->formatInitialAltitude($matches[2]),
+
+
+- From the sample text, the FMS init flight level is FL290
+- Mapping:
+Overview and Jepp PD-Pro: Filed initial altitude
+FMS: FMS initial altitude
+
+Fix: Extract flight level from seperate section. 
+   - Create seperate initial altitude in Flight init DTO
+   - Distinguish between FMS initial altitude and filed initial altitude. Rename objects as necessary
+   - Extract flight init flight level in services
+   - Identify filed initial altitude
+   - Distinguish UI labels
+
+Outcome: The ICAO FPL value is retained as the typed filed initial altitude for Overview and Jepp PD-Pro. The destination-summary FL column is independently extracted as a feet-based typed FMS initial altitude and rendered only in FMS. The Flight Init task renders neither altitude.
+
+### Failed tests
+Tests\Feature\Livewire\FlightPlanBriefTest - 2 failues in flight level
+
+## 2. FMS task view
 
 ### [x] Bug fixed: Distance not rendered
 - Distance extraction now finds every `TOTAL DIST/DEST` occurrence regardless of stripped preceding whitespace and returns the value only when all captured distances agree.

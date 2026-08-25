@@ -43,7 +43,7 @@ class FlightRouteExtractor
      *     eent_coordinates: ?string,
      *     eexp_coordinates: ?string,
      *     initial_altitude: string,
-     *     initial_altitude_source: string,
+     *     filed_initial_altitude_source: string,
      *     duration: string,
      *     route: string
      * }
@@ -87,7 +87,7 @@ class FlightRouteExtractor
      *     eent_coordinates: ?string,
      *     eexp_coordinates: ?string,
      *     initial_altitude: string,
-     *     initial_altitude_source: string,
+     *     filed_initial_altitude_source: string,
      *     duration: string,
      *     route: string
      * }
@@ -125,7 +125,7 @@ class FlightRouteExtractor
             'eent_coordinates' => $this->extractMarkerCoordinates($text, 'EENT'),
             'eexp_coordinates' => $this->extractMarkerCoordinates($text, 'EEXP'),
             'initial_altitude' => $this->formatInitialAltitude($matches[2]),
-            'initial_altitude_source' => $matches[2],
+            'filed_initial_altitude_source' => $matches[2],
             'duration' => $this->formatDuration($matches[5]),
             'route' => $route,
         ];

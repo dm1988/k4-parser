@@ -10,20 +10,22 @@ final readonly class FlightInitData implements JsonSerializable
     public function __construct(
         public bool $sectionPresent,
         public ?string $acarsInitDate = null,
-        public ?InitialAltitude $initialAltitude = null,
+        public ?InitialAltitude $filedInitialAltitude = null,
+        public ?InitialAltitude $fmsInitialAltitude = null,
     ) {}
 
-    /** @return array{sectionPresent: bool, acarsInitDate: ?string, initialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null} */
+    /** @return array{sectionPresent: bool, acarsInitDate: ?string, filedInitialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null, fmsInitialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null} */
     public function toArray(): array
     {
         return [
             'sectionPresent' => $this->sectionPresent,
             'acarsInitDate' => $this->acarsInitDate,
-            'initialAltitude' => $this->initialAltitude?->toArray(),
+            'filedInitialAltitude' => $this->filedInitialAltitude?->toArray(),
+            'fmsInitialAltitude' => $this->fmsInitialAltitude?->toArray(),
         ];
     }
 
-    /** @return array{sectionPresent: bool, acarsInitDate: ?string, initialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null} */
+    /** @return array{sectionPresent: bool, acarsInitDate: ?string, filedInitialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null, fmsInitialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null} */
     public function jsonSerialize(): array
     {
         return $this->toArray();

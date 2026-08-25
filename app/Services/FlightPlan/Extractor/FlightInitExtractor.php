@@ -9,7 +9,7 @@ class FlightInitExtractor
 {
     /**
      * @return array{
-     *     data: array{section_present: bool, acars_init_date: ?string},
+     *     data: array{section_present: bool, acars_init_date: ?string, fms_initial_altitude: ?string},
      *     source_fragments: array<string, string>
      * }
      */
@@ -18,6 +18,7 @@ class FlightInitExtractor
         $sections = $this->sections($text);
         $dates = [];
         $sourceFragment = null;
+        $fmsInitialAltitude = $this->fmsInitialAltitude($text);
 
         foreach ($sections as $section) {
             $date = $this->acarsInitDate($section);
@@ -36,12 +37,39 @@ class FlightInitExtractor
 
         return [
             'data' => [
-                'section_present' => $sections !== [],
+                'section_present' => $sections !== [] || $fmsInitialAltitude['value'] !== null,
                 'acars_init_date' => $dates[0] ?? null,
+                'fms_initial_altitude' => $fmsInitialAltitude['value'],
             ],
-            'source_fragments' => $sourceFragment === null ? [] : [
+            'source_fragments' => array_filter([
                 'flight_init_takeoff_landing_report' => $sourceFragment,
-            ],
+                'flight_init_fms_initial_altitude' => $fmsInitialAltitude['source'],
+            ]),
+        ];
+    }
+
+    /** @return array{value: ?string, source: ?string} */
+    private function fmsInitialAltitude(string $text): array
+    {
+        $matches = [];
+        preg_match_all(
+            '/DEST\s+[A-Z]{4}\s+[\d.]+\s+[\d.]+\s+(?<level>\d{2,3})\s+\d{1,5}\s+[PM]\d{3}\b/i',
+            $text,
+            $matches,
+            PREG_SET_ORDER,
+        );
+
+        $levels = array_map(static fn (array $match): int => (int) $match['level'], $matches);
+
+        if (count(array_unique($levels)) > 1) {
+            throw FlightPlanDataConflictException::forField('FMS initial altitude');
+        }
+
+        $level = $levels[0] ?? null;
+
+        return [
+            'value' => $level === null ? null : 'F'.str_pad((string) $level, 3, '0', STR_PAD_LEFT),
+            'source' => isset($matches[0][0]) ? Str::squish($matches[0][0]) : null,
         ];
     }
 

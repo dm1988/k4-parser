@@ -98,7 +98,8 @@ class BuildFlightPlanDataTest extends TestCase
             flightInit: [
                 'section_present' => true,
                 'acars_init_date' => '11',
-                'initial_altitude' => 'S0890',
+                'filed_initial_altitude' => 'S0890',
+                'fms_initial_altitude' => 'F290',
             ],
             waypoints: [
                 ['identifier' => 'FIX01', 'coordinate' => 'N01 02.3 E004 05.6', 'time' => '005', 'total_time' => '00.11', 'remaining_fuel' => '0000'],
@@ -125,9 +126,11 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame('Alex Morgan', $flightPlan->crewMembers[0]->name);
         $this->assertSame('4827', $flightPlan->crewMembers[0]->employeeNumber);
         $this->assertSame('11', $flightPlan->flightInit?->acarsInitDate);
-        $this->assertSame(8900, $flightPlan->flightInit?->initialAltitude?->value);
-        $this->assertSame('meters', $flightPlan->flightInit?->initialAltitude?->unit->value);
-        $this->assertTrue($flightPlan->flightInit?->initialAltitude?->isFlightLevel);
+        $this->assertSame(8900, $flightPlan->flightInit?->filedInitialAltitude?->value);
+        $this->assertSame('meters', $flightPlan->flightInit?->filedInitialAltitude?->unit->value);
+        $this->assertTrue($flightPlan->flightInit?->filedInitialAltitude?->isFlightLevel);
+        $this->assertSame(29000, $flightPlan->flightInit?->fmsInitialAltitude?->value);
+        $this->assertSame('feet', $flightPlan->flightInit?->fmsInitialAltitude?->unit->value);
         $this->assertSame(612400, $flightPlan->envelope->plannedTakeoffWeight?->amount);
         $this->assertNull($flightPlan->envelope->qnhInchesMercury);
         $this->assertSame(1015, $flightPlan->envelope->qnhHectopascals);

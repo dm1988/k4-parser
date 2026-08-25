@@ -32,7 +32,7 @@ final readonly class FlightPlanData implements JsonSerializable
      *     fuelPlan: array<string, array{amount: float, unit: 'kg'|'lb'}|null>|null,
      *     maintenanceLog: array{sectionPresent: bool, etopsApplicability: string, items: list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string}>}|null,
      *     envelope: array<string, mixed>|null,
-     *     flightInit: array{sectionPresent: bool, acarsInitDate: ?string, initialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null}|null,
+     *     flightInit: array{sectionPresent: bool, acarsInitDate: ?string, filedInitialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null, fmsInitialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null}|null,
      *     etops: array<string, mixed>|null,
      *     crewMembers: list<array{name: string, role: ?string, base: ?string, employeeNumber: ?string}>,
      *     waypoints: list<array{identifier: string, coordinate: string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: array{amount: float, unit: 'kg'|'lb'}|null}>
@@ -68,7 +68,7 @@ final readonly class FlightPlanData implements JsonSerializable
      *     fuelPlan: array<string, array{amount: float, unit: 'kg'|'lb'}|null>|null,
      *     maintenanceLog: array{sectionPresent: bool, etopsApplicability: string, items: list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string}>}|null,
      *     envelope: array<string, mixed>|null,
-     *     flightInit: array{sectionPresent: bool, acarsInitDate: ?string, initialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null}|null,
+     *     flightInit: array{sectionPresent: bool, acarsInitDate: ?string, filedInitialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null, fmsInitialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null}|null,
      *     etops: array<string, mixed>|null,
      *     crewMembers: list<array{name: string, role: ?string, base: ?string, employeeNumber: ?string}>,
      *     waypoints: list<array{identifier: string, coordinate: string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: array{amount: float, unit: 'kg'|'lb'}|null}>

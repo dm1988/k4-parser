@@ -12,8 +12,8 @@ class FlightInitFieldNormalizerTest extends TestCase
     {
         $normalizer = new FlightInitFieldNormalizer;
 
-        $feet = $normalizer->initialAltitude('F330');
-        $meters = $normalizer->initialAltitude('S0890');
+        $feet = $normalizer->filedInitialAltitude('F330');
+        $meters = $normalizer->filedInitialAltitude('S0890');
 
         $this->assertSame(33000, $feet?->value);
         $this->assertSame(AltitudeUnit::Feet, $feet?->unit);
@@ -27,11 +27,23 @@ class FlightInitFieldNormalizerTest extends TestCase
     {
         $normalizer = new FlightInitFieldNormalizer;
 
-        $this->assertNull($normalizer->initialAltitude(null));
-        $this->assertNull($normalizer->initialAltitude(''));
-        $this->assertNull($normalizer->initialAltitude('FL330'));
-        $this->assertNull($normalizer->initialAltitude('S89O'));
-        $this->assertNull($normalizer->initialAltitude('X330'));
+        $this->assertNull($normalizer->filedInitialAltitude(null));
+        $this->assertNull($normalizer->filedInitialAltitude(''));
+        $this->assertNull($normalizer->filedInitialAltitude('FL330'));
+        $this->assertNull($normalizer->filedInitialAltitude('S89O'));
+        $this->assertNull($normalizer->filedInitialAltitude('X330'));
+    }
+
+    public function test_it_normalizes_only_three_digit_fms_flight_levels_as_feet(): void
+    {
+        $normalizer = new FlightInitFieldNormalizer;
+        $altitude = $normalizer->fmsInitialAltitude('F290');
+
+        $this->assertSame(29000, $altitude?->value);
+        $this->assertSame(AltitudeUnit::Feet, $altitude?->unit);
+        $this->assertTrue($altitude?->isFlightLevel);
+        $this->assertNull($normalizer->fmsInitialAltitude('S0890'));
+        $this->assertNull($normalizer->fmsInitialAltitude('290'));
     }
 
     public function test_it_normalizes_supported_acars_init_dates(): void

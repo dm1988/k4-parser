@@ -354,6 +354,11 @@ class FlightPlanBriefTest extends TestCase
                         'final_reserve' => null,
                         'estimated_landing' => null,
                     ],
+                    flightInit: [
+                        'section_present' => true,
+                        'filed_initial_altitude' => 'F330',
+                        'fms_initial_altitude' => 'F290',
+                    ],
                 ));
         });
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
@@ -389,8 +394,8 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('62930')
             ->assertSeeText('Distance to Destination')
             ->assertSeeText('5,549 NM')
-            ->assertSeeText('Initial Altitude')
-            ->assertSeeText('FL 330')
+            ->assertSeeText('FMS initial altitude')
+            ->assertSeeText('FL290')
             ->assertSeeText('Planned Duration')
             ->assertSeeText('07h12m')
             ->assertSeeText('Alternate Airport Reserves')
@@ -744,7 +749,8 @@ class FlightPlanBriefTest extends TestCase
                     flightInit: [
                         'section_present' => true,
                         'acars_init_date' => '11',
-                        'initial_altitude' => 'F330',
+                        'filed_initial_altitude' => 'F330',
+                        'fms_initial_altitude' => 'F290',
                     ],
                 ));
         });
@@ -781,8 +787,8 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('PANC')
             ->assertSeeText('KMIA')
             ->assertSeeText('ACARS INIT DATE')
-            ->assertSeeText('Initial altitude')
-            ->assertSeeText('FL330')
+            ->assertDontSeeText('Filed initial altitude')
+            ->assertDontSeeText('FMS initial altitude')
             ->assertSeeHtml('id="flight-init-acars-init-date"')
             ->assertSeeText('11')
             ->assertSeeText('not derived from the release flight date')
@@ -1089,6 +1095,11 @@ class FlightPlanBriefTest extends TestCase
                         'total_time' => null,
                         'remaining_fuel' => null,
                     ]],
+                    flightInit: [
+                        'section_present' => true,
+                        'filed_initial_altitude' => 'F330',
+                        'fms_initial_altitude' => 'F290',
+                    ],
                 ));
         });
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
@@ -1112,7 +1123,8 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('KRSW')
             ->assertSeeText('May 25, 2026 · 1830Z')
             ->assertSeeText('May 26, 2026 · 0215Z')
-            ->assertSeeText('FL 330')
+            ->assertSeeText('Initial altitude')
+            ->assertSeeText('FL330')
             ->assertSeeText('4,000 NM')
             ->assertSeeText('120,000 LB')
             ->assertSeeText('2 approved UTC slots')

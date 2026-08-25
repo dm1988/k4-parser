@@ -61,8 +61,11 @@ class ExtractFlightPlanDataTest extends TestCase
         ]);
         $flightInitExtractor = $this->createMock(FlightInitExtractor::class);
         $flightInitExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
-            'data' => ['section_present' => true, 'acars_init_date' => '11'],
-            'source_fragments' => ['flight_init_takeoff_landing_report' => 'private ACARS init evidence'],
+            'data' => ['section_present' => true, 'acars_init_date' => '11', 'fms_initial_altitude' => 'F290'],
+            'source_fragments' => [
+                'flight_init_takeoff_landing_report' => 'private ACARS init evidence',
+                'flight_init_fms_initial_altitude' => 'DEST RKSI 033.4 01.48 290 0896 P078',
+            ],
         ]);
         $waypointExtractor = $this->createMock(WaypointExtractor::class);
         $waypointExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
@@ -99,9 +102,11 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame(612400, $parsed->envelope['planned_takeoff_weight']['amount']);
         $this->assertSame('private TLR evidence', $parsed->sourceFragments['envelope_takeoff_landing_report']);
         $this->assertSame('11', $parsed->flightInit['acars_init_date']);
-        $this->assertSame('F340', $parsed->flightInit['initial_altitude']);
-        $this->assertSame('F340', $parsed->sourceFragments['flight_init_initial_altitude']);
+        $this->assertSame('F340', $parsed->flightInit['filed_initial_altitude']);
+        $this->assertSame('F290', $parsed->flightInit['fms_initial_altitude']);
+        $this->assertSame('F340', $parsed->sourceFragments['flight_init_filed_initial_altitude']);
         $this->assertSame('private ACARS init evidence', $parsed->sourceFragments['flight_init_takeoff_landing_report']);
+        $this->assertSame('DEST RKSI 033.4 01.48 290 0896 P078', $parsed->sourceFragments['flight_init_fms_initial_altitude']);
         $this->assertSame('DP550', $parsed->waypoints[0]['identifier']);
         $this->assertSame('bounded waypoint evidence', $parsed->sourceFragments['computed_flight_plan_waypoints']);
         $this->assertSame('ETP1', $parsed->etops['etps'][0]['label']);
@@ -207,7 +212,7 @@ class ExtractFlightPlanDataTest extends TestCase
             'eent_coordinates' => 'N40 31.1 W131 22.6',
             'eexp_coordinates' => 'N45 19.3 E151 36.4',
             'initial_altitude' => 'FL 340',
-            'initial_altitude_source' => 'F340',
+            'filed_initial_altitude_source' => 'F340',
             'duration' => '12h10m',
             'route' => 'DCT TEST',
         ];

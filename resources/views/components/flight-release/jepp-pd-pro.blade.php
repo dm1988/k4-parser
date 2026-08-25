@@ -12,7 +12,7 @@
             Extracted flight plan
         </span>
         <div class="ml-auto flex items-center gap-3">
-            <span class="font-mono text-xs font-semibold text-[#0B0E14] dark:text-slate-100">{{ $model->initialAltitude() }}</span>
+            <span class="font-mono text-xs font-semibold text-[#0B0E14] dark:text-slate-100">{{ $model->filedInitialAltitude() }}</span>
             <span class="text-[10px] text-[#4A5568] dark:text-slate-500">·</span>
             <span class="font-mono text-xs font-semibold text-[#0B0E14] dark:text-slate-100">{{ $model->duration() }}</span>
         </div>

@@ -21,7 +21,8 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('', $viewModel->departure());
         $this->assertSame('', $viewModel->destination());
         $this->assertNull($viewModel->alternate());
-        $this->assertSame('', $viewModel->initialAltitude());
+        $this->assertSame('', $viewModel->filedInitialAltitude());
+        $this->assertSame('', $viewModel->fmsInitialAltitude());
         $this->assertSame('', $viewModel->duration());
         $this->assertSame('', $viewModel->route());
         $this->assertSame([], $viewModel->taskAvailability());
@@ -86,7 +87,8 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('Anchorage, Alaska, United States', $viewModel->departureAirport()['location']);
         $this->assertSame('ANC', $viewModel->departureAirport()['iata']);
         $this->assertSame('PANC', $viewModel->departureAirport()['icao']);
-        $this->assertSame('FL330', $viewModel->initialAltitude());
+        $this->assertSame('FL330', $viewModel->filedInitialAltitude());
+        $this->assertSame('FL290', $viewModel->fmsInitialAltitude());
         $this->assertSame('07h12m', $viewModel->duration());
         $this->assertSame('DCT TEST', $viewModel->route());
         $this->assertSame('25R', $viewModel->departureRunway());
@@ -106,13 +108,13 @@ class FlightReleasePageViewModelTest extends TestCase
 
         foreach ($cases as [$value, $unit, $isFlightLevel, $expected]) {
             $payload = $this->resultPayload();
-            $payload['flight_plan_data']['flightInit']['initialAltitude'] = [
+            $payload['flight_plan_data']['flightInit']['filedInitialAltitude'] = [
                 'value' => $value,
                 'unit' => $unit,
                 'isFlightLevel' => $isFlightLevel,
             ];
 
-            $this->assertSame($expected, $this->viewModel($payload)->initialAltitude());
+            $this->assertSame($expected, $this->viewModel($payload)->filedInitialAltitude());
         }
     }
 
@@ -143,7 +145,7 @@ class FlightReleasePageViewModelTest extends TestCase
             ['label' => 'AC Type', 'value' => 'B777-200F'],
             ['label' => 'RECALL Number', 'value' => '62930'],
             ['label' => 'Distance to Destination', 'value' => '5,549 NM'],
-            ['label' => 'Initial Altitude', 'value' => 'FL330'],
+            ['label' => 'FMS initial altitude', 'value' => 'FL290'],
             ['label' => 'Planned Duration', 'value' => '07h12m'],
             ['label' => 'Alternate Airport Reserves', 'value' => '5,600 LB'],
         ], $viewModel->fmsFields());
@@ -434,8 +436,13 @@ class FlightReleasePageViewModelTest extends TestCase
         $payload['flight_plan_data']['flightInit'] = [
             'sectionPresent' => true,
             'acarsInitDate' => '11',
-            'initialAltitude' => [
+            'filedInitialAltitude' => [
                 'value' => 33000,
+                'unit' => 'feet',
+                'isFlightLevel' => true,
+            ],
+            'fmsInitialAltitude' => [
+                'value' => 29000,
                 'unit' => 'feet',
                 'isFlightLevel' => true,
             ],
@@ -456,7 +463,6 @@ class FlightReleasePageViewModelTest extends TestCase
             'flight-init-flight-number',
             'flight-init-departure',
             'flight-init-destination',
-            'flight-init-initial-altitude',
             'flight-init-acars-init-date',
         ], array_column($viewModel->flightInitFields(), 'id'));
     }
@@ -499,7 +505,7 @@ class FlightReleasePageViewModelTest extends TestCase
     {
         $payload = $this->resultPayload();
         $payload['initial_altitude'] = null;
-        $payload['flight_plan_data']['flightInit']['initialAltitude'] = null;
+        $payload['flight_plan_data']['flightInit']['filedInitialAltitude'] = null;
         $payload['flight_plan_data']['etops'] = null;
         $payload['etps'] = [];
         $payload['eent_coordinates'] = null;
@@ -714,8 +720,13 @@ class FlightReleasePageViewModelTest extends TestCase
                 'flightInit' => [
                     'sectionPresent' => true,
                     'acarsInitDate' => null,
-                    'initialAltitude' => [
+                    'filedInitialAltitude' => [
                         'value' => 33000,
+                        'unit' => 'feet',
+                        'isFlightLevel' => true,
+                    ],
+                    'fmsInitialAltitude' => [
+                        'value' => 29000,
                         'unit' => 'feet',
                         'isFlightLevel' => true,
                     ],

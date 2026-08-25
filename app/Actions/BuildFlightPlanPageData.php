@@ -271,7 +271,8 @@ class BuildFlightPlanPageData
         return new FlightInitData(
             sectionPresent: true,
             acarsInitDate: $this->flightInitFieldNormalizer->acarsInitDate($value['acarsInitDate'] ?? null),
-            initialAltitude: $this->initialAltitude($value['initialAltitude'] ?? null),
+            filedInitialAltitude: $this->initialAltitude($value['filedInitialAltitude'] ?? null),
+            fmsInitialAltitude: $this->initialAltitude($value['fmsInitialAltitude'] ?? null),
         );
     }
 

@@ -57,7 +57,7 @@ class ExtractFlightPlanData
             flightInit: [
                 ...$flightInit['data'],
                 'section_present' => true,
-                'initial_altitude' => $route['initial_altitude_source'],
+                'filed_initial_altitude' => $route['filed_initial_altitude_source'],
             ],
             etops: [
                 'etps' => $route['etps'],
@@ -73,7 +73,7 @@ class ExtractFlightPlanData
                 ...$maintenance['source_fragments'],
                 ...$envelope['source_fragments'],
                 ...$flightInit['source_fragments'],
-                'flight_init_initial_altitude' => $route['initial_altitude_source'],
+                'flight_init_filed_initial_altitude' => $route['filed_initial_altitude_source'],
                 ...$waypoints['source_fragments'],
             ],
             legacy: $route,

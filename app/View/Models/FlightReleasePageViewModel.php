@@ -16,6 +16,7 @@ use App\Enums\FlightPlanTaskAvailability;
 use App\Enums\MaintenanceItemType;
 use App\Enums\RouteTokenType;
 use App\ValueObjects\FuelQuantity;
+use App\ValueObjects\InitialAltitude;
 use App\ValueObjects\WeightQuantity;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Number;
@@ -115,7 +116,7 @@ readonly class FlightReleasePageViewModel
 
     public function overviewInitialAltitude(): ?string
     {
-        $altitude = $this->initialAltitude();
+        $altitude = $this->filedInitialAltitude();
 
         return $altitude === '' ? null : $altitude;
     }
@@ -286,7 +287,7 @@ readonly class FlightReleasePageViewModel
             ['label' => 'AC Type', 'value' => $this->aircraftType()],
             ['label' => 'RECALL Number', 'value' => $this->recallNumber()],
             ['label' => 'Distance to Destination', 'value' => $this->fmsDistanceToDestination()],
-            ['label' => 'Initial Altitude', 'value' => $this->initialAltitude()],
+            ['label' => 'FMS initial altitude', 'value' => $this->fmsInitialAltitude()],
             ['label' => 'Planned Duration', 'value' => $this->pageData->duration],
             ['label' => 'Alternate Airport Reserves', 'value' => $this->fmsAlternateReserve()],
         ];
@@ -425,7 +426,6 @@ readonly class FlightReleasePageViewModel
             ['id' => 'flight-init-flight-number', 'label' => 'Flight number', 'value' => $this->flightNumber()],
             ['id' => 'flight-init-departure', 'label' => 'Departure', 'value' => $this->departure()],
             ['id' => 'flight-init-destination', 'label' => 'Destination', 'value' => $this->destination()],
-            ['id' => 'flight-init-initial-altitude', 'label' => 'Initial altitude', 'value' => $this->initialAltitude()],
             ['id' => 'flight-init-acars-init-date', 'label' => 'ACARS init date', 'value' => $this->flightInitAcarsDate()],
         ];
     }
@@ -660,9 +660,18 @@ readonly class FlightReleasePageViewModel
         return 'No alternate airport listed.';
     }
 
-    public function initialAltitude(): string
+    public function filedInitialAltitude(): string
     {
-        $altitude = $this->pageData?->flightPlan->flightInit?->initialAltitude;
+        return $this->formatInitialAltitude($this->pageData?->flightPlan->flightInit?->filedInitialAltitude);
+    }
+
+    public function fmsInitialAltitude(): string
+    {
+        return $this->formatInitialAltitude($this->pageData?->flightPlan->flightInit?->fmsInitialAltitude);
+    }
+
+    private function formatInitialAltitude(?InitialAltitude $altitude): string
+    {
 
         if ($altitude === null) {
             return '';

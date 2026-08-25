@@ -27,9 +27,9 @@ class FlightRouteExtractorTest extends TestCase
             base_path('tests/Fixtures/FlightPlan/flight-init/initial-altitude-meters.txt'),
         ));
 
-        $this->assertSame('F330', $feet['initial_altitude_source']);
+        $this->assertSame('F330', $feet['filed_initial_altitude_source']);
         $this->assertSame('FL 330', $feet['initial_altitude']);
-        $this->assertSame('S0890', $meters['initial_altitude_source']);
+        $this->assertSame('S0890', $meters['filed_initial_altitude_source']);
         $this->assertSame('S0890', $meters['initial_altitude']);
     }
 
@@ -107,7 +107,7 @@ TEXT;
             'eent_coordinates' => null,
             'eexp_coordinates' => null,
             'initial_altitude' => 'FL 330',
-            'initial_altitude_source' => 'F330',
+            'filed_initial_altitude_source' => 'F330',
             'duration' => '07h12m',
             'route' => "DCT JOH DCT YAK J541 SSR DCT 5726N13228W DCT YXS DCT\nDESNU DCT HASOS DCT TIMMR DCT FSD Q19 DSM/N0486F350 J45 IRK DCT\nFAM J151 GETME DCT VLKNN Q139 MGMRY DCT ACORI FROGZ5",
         ], $flightPlan);
@@ -311,7 +311,7 @@ TEXT);
             'eent_coordinates' => null,
             'eexp_coordinates' => null,
             'initial_altitude' => 'FL 360',
-            'initial_altitude_source' => 'F360',
+            'filed_initial_altitude_source' => 'F360',
             'duration' => '03h22m',
             'route' => 'OSUDO4A ASETA',
         ], $extractor->extractFlightPlanData('/tmp/flight-release.pdf'));
@@ -354,7 +354,7 @@ TEXT);
             'eent_coordinates' => null,
             'eexp_coordinates' => null,
             'initial_altitude' => 'FL 360',
-            'initial_altitude_source' => 'F360',
+            'filed_initial_altitude_source' => 'F360',
             'duration' => '03h22m',
             'route' => 'OSUDO4A ASETA',
         ], $secondExtractor->extractFlightPlanData(__FILE__));

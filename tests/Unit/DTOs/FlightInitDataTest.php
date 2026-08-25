@@ -14,14 +14,20 @@ class FlightInitDataTest extends TestCase
         $data = new FlightInitData(
             sectionPresent: true,
             acarsInitDate: '11',
-            initialAltitude: new InitialAltitude(33000, AltitudeUnit::Feet, true),
+            filedInitialAltitude: new InitialAltitude(8900, AltitudeUnit::Meters, true),
+            fmsInitialAltitude: new InitialAltitude(29000, AltitudeUnit::Feet, true),
         );
 
         $this->assertSame([
             'sectionPresent' => true,
             'acarsInitDate' => '11',
-            'initialAltitude' => [
-                'value' => 33000,
+            'filedInitialAltitude' => [
+                'value' => 8900,
+                'unit' => 'meters',
+                'isFlightLevel' => true,
+            ],
+            'fmsInitialAltitude' => [
+                'value' => 29000,
                 'unit' => 'feet',
                 'isFlightLevel' => true,
             ],
