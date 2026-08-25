@@ -20,6 +20,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame('PANC', $pageData->flightPlan->route->departure->value);
         $this->assertSame('DCT Q139 TEST', $pageData->flightPlan->route->route);
         $this->assertSame(5549, $pageData->flightPlan->route->distanceNauticalMiles);
+        $this->assertSame(200, $pageData->flightPlan->fuelPlan?->costIndex);
         $this->assertSame(0.0, $pageData->flightPlan->fuelPlan?->contingency?->amount);
         $this->assertSame('Ted Stevens Anchorage International Airport', $pageData->departureAirport?->name);
         $this->assertSame(34000, $pageData->flightPlan->flightInit?->filedInitialAltitude?->value);
@@ -258,6 +259,7 @@ class BuildFlightPlanPageDataTest extends TestCase
                     'distanceNauticalMiles' => 5549,
                 ],
                 'fuelPlan' => [
+                    'costIndex' => 200,
                     'ramp' => ['amount' => 216800.0, 'unit' => 'lb'],
                     'taxi' => ['amount' => 2000.0, 'unit' => 'lb'],
                     'takeoff' => ['amount' => 214800.0, 'unit' => 'lb'],

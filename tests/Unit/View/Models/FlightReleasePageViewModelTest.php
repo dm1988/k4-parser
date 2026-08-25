@@ -125,6 +125,7 @@ class FlightReleasePageViewModelTest extends TestCase
         $payload['flight_plan_data']['identity']['recallNumber'] = '62930';
         $payload['flight_plan_data']['route']['distanceNauticalMiles'] = 5549;
         $payload['flight_plan_data']['fuelPlan'] = [
+            'costIndex' => 200,
             'ramp' => null,
             'taxi' => null,
             'takeoff' => null,
@@ -143,7 +144,8 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame([
             ['label' => 'Flight Number', 'value' => 'CKS241'],
             ['label' => 'AC Type', 'value' => 'B777-200F'],
-            ['label' => 'RECALL Number', 'value' => '62930'],
+            ['label' => 'Recall Number', 'value' => '62930'],
+            ['label' => 'Cost Index', 'value' => '200'],
             ['label' => 'Distance to Destination', 'value' => '5,549 NM'],
             ['label' => 'FMS initial altitude', 'value' => 'FL290'],
             ['label' => 'Planned Duration', 'value' => '07h12m'],
@@ -262,7 +264,7 @@ class FlightReleasePageViewModelTest extends TestCase
         $viewModel = $this->viewModel($payload);
 
         $this->assertSame('0 KG', $viewModel->fmsAlternateReserve());
-        $this->assertSame('0 KG', $viewModel->fmsFields()[6]['value']);
+        $this->assertSame('0 KG', $viewModel->fmsFields()[7]['value']);
     }
 
     #[Test]

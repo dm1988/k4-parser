@@ -23,6 +23,7 @@ use App\DTOs\WaypointData;
 use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
 use App\Services\FlightPlan\FlightInitFieldNormalizer;
+use App\Services\FlightPlan\FuelPlanFieldNormalizer;
 use App\ValueObjects\AirportCode;
 use App\ValueObjects\FlightTime;
 use App\ValueObjects\FuelQuantity;
@@ -36,6 +37,7 @@ class BuildFlightPlanData
 {
     public function __construct(
         private readonly FlightInitFieldNormalizer $flightInitFieldNormalizer = new FlightInitFieldNormalizer,
+        private readonly FuelPlanFieldNormalizer $fuelPlanFieldNormalizer = new FuelPlanFieldNormalizer,
     ) {}
 
     public function handle(ParsedFlightPlanData $parsed): FlightPlanData
@@ -136,11 +138,12 @@ class BuildFlightPlanData
     {
         $fuel = $parsed->fuel;
 
-        if (array_filter($fuel, static fn (?array $value): bool => $value !== null) === []) {
+        if (array_filter($fuel, static fn (mixed $value): bool => $value !== null) === []) {
             return null;
         }
 
         return new FuelPlanData(
+            costIndex: $this->fuelPlanFieldNormalizer->costIndex($fuel['cost_index'] ?? null),
             ramp: $this->fuelQuantity($fuel['ramp'] ?? null),
             taxi: $this->fuelQuantity($fuel['taxi'] ?? null),
             takeoff: $this->fuelQuantity($fuel['takeoff'] ?? null),
@@ -184,7 +187,7 @@ class BuildFlightPlanData
         return $waypoints;
     }
 
-    /** @param array<string, array{amount: float, unit: string}|null> $fuel */
+    /** @param array<string, mixed> $fuel */
     private function confirmedFuelUnit(array $fuel): ?string
     {
         $units = [];

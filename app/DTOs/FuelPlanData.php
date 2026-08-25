@@ -8,6 +8,7 @@ use JsonSerializable;
 final readonly class FuelPlanData implements JsonSerializable
 {
     public function __construct(
+        public ?int $costIndex = null,
         public ?FuelQuantity $ramp = null,
         public ?FuelQuantity $taxi = null,
         public ?FuelQuantity $takeoff = null,
@@ -19,11 +20,12 @@ final readonly class FuelPlanData implements JsonSerializable
     ) {}
 
     /**
-     * @return array<string, array{amount: float, unit: 'kg'|'lb'}|null>
+     * @return array<string, array{amount: float, unit: 'kg'|'lb'}|int|null>
      */
     public function toArray(): array
     {
         return [
+            'costIndex' => $this->costIndex,
             'ramp' => $this->ramp?->toArray(),
             'taxi' => $this->taxi?->toArray(),
             'takeoff' => $this->takeoff?->toArray(),
@@ -36,7 +38,7 @@ final readonly class FuelPlanData implements JsonSerializable
     }
 
     /**
-     * @return array<string, array{amount: float, unit: 'kg'|'lb'}|null>
+     * @return array<string, array{amount: float, unit: 'kg'|'lb'}|int|null>
      */
     public function jsonSerialize(): array
     {

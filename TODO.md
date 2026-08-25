@@ -126,16 +126,41 @@ Outcome: The ICAO FPL value is retained as the typed filed initial altitude for 
 ### Failed tests
 Tests\Feature\Livewire\FlightPlanBriefTest - 2 failues in flight level
 
-## 2. FMS task view
+## 2. [x] Completed: FMS task view
 
 ### [x] Bug fixed: Distance not rendered
 - Distance extraction now finds every `TOTAL DIST/DEST` occurrence regardless of stripped preceding whitespace and returns the value only when all captured distances agree.
 - Verified leading-zero distance `TOTAL DIST/DEST 0896` as 896 NM and `TOTAL DIST/DEST 3597` as 3,597 NM.
 
-### Cost index missing
+### [x] Completed: Cost index missing
+Currently:
+- No evidence of extraction.
+- No fixtures in place. Cost index not found in DTOs
+- Cost index is needed in FMS task
+- Not rendered
 
-### Reserve fuel
-- Create distinction between Alternate airport burn and Reserve fuel calculation. 
+Cost index is found within the fuel burn section. Logically belongs in the Fuel Plan Data.
+app/DTOs/FuelPlanData.php
+app/Services/FlightPlan/Extractor/FlightFuelExtractor.php
+
+Fix:
+- DTO fixture
+- Implement extraction logical
+- Cost index range 0-999
+- Implement UI render within FMS task only
+- Sample text
+```text
+FUEL BURN BASED ON:  CI200
+```
+- Update tests
+
+Outcome: Cost index is extracted from the fuel-burn basis as a typed integer in the confirmed 0–999 range, retained with private source evidence, serialized through `FuelPlanData`, restored from cached page data, and rendered only in the FMS task. Missing, malformed, and out-of-range values remain unavailable without inference. A sanitized fuel fixture and focused extractor, DTO, aggregate, cache-rehydration, view-model, and Livewire coverage verify the complete path.
+
+Follow-up outcome: Cost-index normalization now lives in `FuelPlanFieldNormalizer`; both build actions delegate to the service instead of owning duplicated domain logic.
+
+PDF regression outcome: Cost-index extraction accepts collapsed parser text such as `CI180TAXI` while still rejecting values with more than three digits. The supplied `CKS025625KLAX.pdf` now extracts cost index 180 with retained source evidence.
+
+Commit message: `fix: extract and render FMS cost index`
   
 ## 3. Remove Extract route button
 View results on PDF upload when parsing completes
@@ -252,6 +277,12 @@ Commit message: `refactor: complete flight plan workspace migration`
 
 ## 16. 747 AC seeder
 - Add 747 ac seeder
+### Reserve fuel
+- Create distinction between Alternate airport burn and Reserve fuel calculation. 
+- Differed due to needing aircraft type fixture and distintion between 747 and 777 aircraft type
+- Requires full fleet in production database.
+- coincides with future 747 seeder into production
+- will have to add migration for reserve fuel additive
 
 ## Feat: Determine B43 or B44 release
 - Add B44 tag if B44 release

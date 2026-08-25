@@ -285,12 +285,20 @@ readonly class FlightReleasePageViewModel
         return [
             ['label' => 'Flight Number', 'value' => $this->flightNumber()],
             ['label' => 'AC Type', 'value' => $this->aircraftType()],
-            ['label' => 'RECALL Number', 'value' => $this->recallNumber()],
+            ['label' => 'Recall Number', 'value' => $this->recallNumber()],
+            ['label' => 'Cost Index', 'value' => $this->fmsCostIndex()],
             ['label' => 'Distance to Destination', 'value' => $this->fmsDistanceToDestination()],
             ['label' => 'FMS initial altitude', 'value' => $this->fmsInitialAltitude()],
             ['label' => 'Planned Duration', 'value' => $this->pageData->duration],
             ['label' => 'Alternate Airport Reserves', 'value' => $this->fmsAlternateReserve()],
         ];
+    }
+
+    private function fmsCostIndex(): ?string
+    {
+        $costIndex = $this->pageData?->flightPlan->fuelPlan?->costIndex;
+
+        return $costIndex === null ? null : (string) $costIndex;
     }
 
     /**

@@ -11,6 +11,7 @@ class FuelPlanDataTest extends TestCase
     public function test_it_owns_release_level_fuel_quantities(): void
     {
         $fuel = new FuelPlanData(
+            costIndex: 200,
             ramp: FuelQuantity::pounds(216800),
             taxi: FuelQuantity::pounds(1800),
             takeoff: FuelQuantity::pounds(215000),
@@ -22,6 +23,8 @@ class FuelPlanDataTest extends TestCase
         );
 
         $this->assertSame(216800.0, $fuel->ramp?->amount);
+        $this->assertSame(200, $fuel->costIndex);
+        $this->assertSame(200, $fuel->toArray()['costIndex']);
         $this->assertSame(150000.0, $fuel->trip?->amount);
         $this->assertSame('lb', $fuel->estimatedLanding?->unit);
         $this->assertSame(

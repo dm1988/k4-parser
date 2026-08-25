@@ -345,6 +345,7 @@ class FlightPlanBriefTest extends TestCase
                     ],
                     route: ['distance_nautical_miles' => 5549],
                     fuel: [
+                        'cost_index' => 200,
                         'ramp' => null,
                         'taxi' => null,
                         'takeoff' => null,
@@ -390,8 +391,10 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('CKS256')
             ->assertSeeText('AC Type')
             ->assertSeeText('B777-200F')
-            ->assertSeeText('RECALL Number')
+            ->assertSeeText('Recall Number')
             ->assertSeeText('62930')
+            ->assertSeeText('Cost Index')
+            ->assertSeeText('200')
             ->assertSeeText('Distance to Destination')
             ->assertSeeText('5,549 NM')
             ->assertSeeText('FMS initial altitude')
@@ -412,7 +415,6 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('GUKDO GUKD2E')
             ->assertSeeTextInOrder(['DCT', 'Q139', 'TEST'])
             ->assertDontSeeText('ETOPS critical points')
-            ->assertDontSeeText('Cost index')
             ->assertDontSee('data-copy-target=', escape: false);
 
         $component
