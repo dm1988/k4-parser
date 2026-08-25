@@ -507,13 +507,38 @@ TEXT;
         $extractor->extractRoute('/tmp/flight-release.pdf');
     }
 
-    public function test_it_extracts_and_corroborates_total_route_distance(): void
+    public function test_it_extracts_total_route_distance_from_every_repeated_page(): void
     {
         $extractor = $this->makeExtractor();
-        $text = 'TOTAL DIST/DEST 5549 DEST RKSI 195.1 12.10 340 5549 M025';
+        $text = 'TOTAL DIST/DEST 5549 copied page TOTAL DIST/DEST 5549';
 
         $this->assertSame(5549, $extractor->extractDistanceNauticalMiles($text));
+        $this->assertSame(3597, $extractor->extractDistanceNauticalMiles('TOTAL DIST/DEST 3597'));
         $this->assertNull($extractor->extractDistanceNauticalMiles('No distance listed'));
+        $this->assertNull($extractor->extractDistanceNauticalMiles(
+            'DEST RKSI 033.4 01.48 290 0896 P078',
+        ));
+    }
+
+    public function test_it_extracts_distance_when_pdf_columns_are_joined_after_stripped_line_breaks(): void
+    {
+        $extractor = $this->makeExtractor();
+        $text = 'T/O ALT NILTOTAL DIST/DEST 0896 copied page '
+            .'T/O ALT DIFFERENTTOTAL DIST/DEST 0896';
+
+        $this->assertSame(896, $extractor->extractDistanceNauticalMiles($text));
+    }
+
+    public function test_it_rejects_conflicting_distances_when_pdf_columns_are_joined(): void
+    {
+        $extractor = $this->makeExtractor();
+
+        $this->expectException(FlightPlanDataConflictException::class);
+        $this->expectExceptionMessage('Conflicting flight release values were found for route distance.');
+
+        $extractor->extractDistanceNauticalMiles(
+            'NILTOTAL DIST/DEST 0896 DIFFERENTTOTAL DIST/DEST 0897',
+        );
     }
 
     public function test_it_rejects_conflicting_total_route_distances(): void
@@ -524,7 +549,7 @@ TEXT;
         $this->expectExceptionMessage('Conflicting flight release values were found for route distance.');
 
         $extractor->extractDistanceNauticalMiles(
-            'TOTAL DIST/DEST 5549 DEST RKSI 195.1 12.10 340 5550 M025',
+            'TOTAL DIST/DEST 5549 copied page TOTAL DIST/DEST 5550',
         );
     }
 

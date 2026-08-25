@@ -70,7 +70,7 @@ Icons  use hero icons returned in FlightPlanTask enum
 
 # Tasks
 
-## 1. [x] Completed: Flight Init — Normalize initial altitude units
+## 1. [x] Partial: Flight Init — Normalize initial altitude units
 
 Goal: Represent the confirmed initial altitude as a typed numeric value with an explicit unit instead of displaying the source flight-level code unchanged.
 
@@ -93,16 +93,18 @@ Commit message: `fix: normalize flight init altitude units`
 
 Follow up: 
 1. [x] Render FL if flight level. If Meters append M. i.e. FL270 for flight level in feet or FL089M for flight level in meters.
-2. [ ] Investigate: In flight init task, provide value in ft for entry into FMS?
+2. [ ] Decide: convert ft to meters or extract flight level in feet in seperate section. 
+   - Problem: In flight init task, if value is in meters, provide value in ft for entry into FMS marked in parenthesis. Leave overview view initial altitude render as is. 
 
-## 2. FMS task view
+## 2. Current focus: FMS task view
 
-### Bug: Distance not rendered:
-- Current: with an extracted value of `TOTAL DIST/DEST 0896`, it is rendered as `Not present in this release`. 
-- Also happens in this sample data: `TOTAL DIST/DEST 3597`
-- 
-### Remaining items
-- Cost index missing
+### [x] Bug fixed: Distance not rendered
+- Distance extraction now finds every `TOTAL DIST/DEST` occurrence regardless of stripped preceding whitespace and returns the value only when all captured distances agree.
+- Verified leading-zero distance `TOTAL DIST/DEST 0896` as 896 NM and `TOTAL DIST/DEST 3597` as 3,597 NM.
+
+### Cost index missing
+
+### Reserve fuel
 - Create distinction between Alternate airport burn and Reserve fuel calculation. 
   
 ## 3. Remove Extract route button

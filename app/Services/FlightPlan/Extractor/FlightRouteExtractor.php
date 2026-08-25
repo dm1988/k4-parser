@@ -255,18 +255,9 @@ class FlightRouteExtractor
 
     public function extractDistanceNauticalMiles(string $text): ?int
     {
-        $distances = [];
-        $headerMatches = [];
-
-        if (preg_match('/\bTOTAL\s+DIST\/DEST\s+(\d{1,5})\b/i', $text, $headerMatches) === 1) {
-            $distances[] = (int) $headerMatches[1];
-        }
-
-        $summaryMatches = [];
-
-        if (preg_match('/\bDEST\s+[A-Z]{4}\s+[\d.]+\s+[\d.]+\s+\d{2,3}\s+(\d{1,5})\b/i', $text, $summaryMatches) === 1) {
-            $distances[] = (int) $summaryMatches[1];
-        }
+        $matches = [];
+        preg_match_all('/TOTAL\s+DIST\/DEST\s+(\d{1,5})\b/i', $text, $matches);
+        $distances = array_map(static fn (string $distance): int => (int) $distance, $matches[1]);
 
         if (count(array_unique($distances)) > 1) {
             throw FlightPlanDataConflictException::forField('route distance');
