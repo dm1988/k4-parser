@@ -7,6 +7,44 @@ use PHPUnit\Framework\TestCase;
 
 class FlightFuelExtractorTest extends TestCase
 {
+    public function test_it_extracts_a_source_backed_cost_index(): void
+    {
+        $text = file_get_contents(__DIR__.'/../Fixtures/FlightPlan/fuel/cost-index.txt');
+
+        $this->assertIsString($text);
+
+        $result = (new FlightFuelExtractor)->extract($text);
+
+        $this->assertSame(200, $result['data']['cost_index']);
+        $this->assertSame('FUEL BURN BASED ON: CI200', $result['source_fragments']['fuel_cost_index']);
+    }
+
+    public function test_it_accepts_cost_index_boundaries_and_rejects_invalid_values(): void
+    {
+        foreach ([0, 999] as $costIndex) {
+            $result = (new FlightFuelExtractor)->extract("FUEL BURN BASED ON: CI{$costIndex}");
+
+            $this->assertSame($costIndex, $result['data']['cost_index']);
+        }
+
+        foreach (['FUEL BURN BASED ON: CI1000', 'FUEL BURN BASED ON: CIABC', 'NO COST INDEX'] as $text) {
+            $result = (new FlightFuelExtractor)->extract($text);
+
+            $this->assertNull($result['data']['cost_index']);
+            $this->assertArrayNotHasKey('fuel_cost_index', $result['source_fragments']);
+        }
+    }
+
+    public function test_it_extracts_cost_index_when_pdf_text_collapses_the_following_line(): void
+    {
+        $result = (new FlightFuelExtractor)->extract(
+            'R/R PAD 001.0 00.04 FUEL BURN BASED ON: CI180TAXI 002.0 00.00',
+        );
+
+        $this->assertSame(180, $result['data']['cost_index']);
+        $this->assertSame('FUEL BURN BASED ON: CI180', $result['source_fragments']['fuel_cost_index']);
+    }
+
     public function test_it_extracts_scaled_and_exact_pound_quantities(): void
     {
         $result = (new FlightFuelExtractor)->extract(<<<'TEXT'
@@ -20,6 +58,7 @@ TAXI 002.0 TTL RMP 216.8 EST LANDING FUEL: 019713
 TEXT);
 
         $this->assertSame([
+            'cost_index' => null,
             'ramp' => ['amount' => 216800.0, 'unit' => 'lb'],
             'taxi' => ['amount' => 2000.0, 'unit' => 'lb'],
             'takeoff' => ['amount' => 214829.0, 'unit' => 'lb'],

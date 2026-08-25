@@ -47,6 +47,7 @@ class BuildFlightPlanDataTest extends TestCase
                 'distance_nautical_miles' => 5549,
             ],
             fuel: [
+                'cost_index' => 200,
                 'ramp' => ['amount' => 216800.0, 'unit' => 'lb'],
                 'taxi' => ['amount' => 2000.0, 'unit' => 'lb'],
                 'takeoff' => ['amount' => 214829.0, 'unit' => 'lb'],
@@ -121,6 +122,7 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame('KLAX', $flightPlan->route->departure->value);
         $this->assertSame(5549, $flightPlan->route->distanceNauticalMiles);
         $this->assertSame(216800.0, $flightPlan->fuelPlan?->ramp?->amount);
+        $this->assertSame(200, $flightPlan->fuelPlan?->costIndex);
         $this->assertTrue($flightPlan->maintenanceLog?->sectionPresent);
         $this->assertSame('28-22-01', $flightPlan->maintenanceLog->items[0]->number);
         $this->assertSame('Alex Morgan', $flightPlan->crewMembers[0]->name);

@@ -23,6 +23,7 @@ use App\Enums\AltitudeUnit;
 use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
 use App\Services\FlightPlan\FlightInitFieldNormalizer;
+use App\Services\FlightPlan\FuelPlanFieldNormalizer;
 use App\ValueObjects\AirportCode;
 use App\ValueObjects\FuelQuantity;
 use App\ValueObjects\InitialAltitude;
@@ -37,6 +38,7 @@ class BuildFlightPlanPageData
 {
     public function __construct(
         private readonly FlightInitFieldNormalizer $flightInitFieldNormalizer = new FlightInitFieldNormalizer,
+        private readonly FuelPlanFieldNormalizer $fuelPlanFieldNormalizer = new FuelPlanFieldNormalizer,
     ) {}
 
     /** @param array<string, mixed>|null $result */
@@ -123,7 +125,9 @@ class BuildFlightPlanPageData
     /** @param array<string, mixed> $data */
     private function fuelPlan(array $data): ?FuelPlanData
     {
+        $costIndex = $this->fuelPlanFieldNormalizer->costIndex($data['costIndex'] ?? null);
         $quantities = [
+            'costIndex' => $costIndex,
             'ramp' => $this->fuelQuantity($data['ramp'] ?? null),
             'taxi' => $this->fuelQuantity($data['taxi'] ?? null),
             'takeoff' => $this->fuelQuantity($data['takeoff'] ?? null),
@@ -134,7 +138,7 @@ class BuildFlightPlanPageData
             'estimatedLanding' => $this->fuelQuantity($data['estimatedLanding'] ?? null),
         ];
 
-        if (array_filter($quantities, static fn (?FuelQuantity $quantity): bool => $quantity !== null) === []) {
+        if (array_filter($quantities, static fn (mixed $value): bool => $value !== null) === []) {
             return null;
         }
 

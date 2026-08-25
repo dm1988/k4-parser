@@ -8,7 +8,7 @@ class FlightFuelExtractor
 {
     /**
      * @return array{
-     *     data: array{ramp: array{amount: float, unit: string}|null, taxi: array{amount: float, unit: string}|null, takeoff: array{amount: float, unit: string}|null, trip: array{amount: float, unit: string}|null, contingency: null, alternate: array{amount: float, unit: string}|null, final_reserve: array{amount: float, unit: string}|null, estimated_landing: array{amount: float, unit: string}|null},
+     *     data: array{cost_index: ?int, ramp: array{amount: float, unit: string}|null, taxi: array{amount: float, unit: string}|null, takeoff: array{amount: float, unit: string}|null, trip: array{amount: float, unit: string}|null, contingency: null, alternate: array{amount: float, unit: string}|null, final_reserve: array{amount: float, unit: string}|null, estimated_landing: array{amount: float, unit: string}|null},
      *     source_fragments: array<string, string>
      * }
      */
@@ -19,6 +19,7 @@ class FlightFuelExtractor
 
         return [
             'data' => [
+                'cost_index' => $this->costIndex($text),
                 'ramp' => $this->scaledQuantity($text, '/TTL\s+RMP\s+([\d,.]+)/i', $unit),
                 'taxi' => $this->scaledQuantity($text, '/TAXI\s+([\d,.]+)/i', $unit),
                 'takeoff' => $this->exactQuantity($text, '/TAKEOFF\s+FUEL\s+([\d,]+)/i', $unit),
@@ -29,10 +30,33 @@ class FlightFuelExtractor
                 'estimated_landing' => $this->exactQuantity($text, '/EST\s+LANDING\s+FUEL:\s*([\d,]+)/i', $unit),
             ],
             'source_fragments' => array_filter([
+                'fuel_cost_index' => $this->costIndexFragment($text),
                 'fuel_summary' => $summary,
                 'fuel_unit' => $unit,
             ], static fn (?string $value): bool => $value !== null),
         ];
+    }
+
+    private function costIndex(string $text): ?int
+    {
+        $matches = [];
+
+        if (preg_match('/\bFUEL\s+BURN\s+BASED\s+ON:\s*CI\s*(\d{1,3})(?!\d)/i', $text, $matches) !== 1) {
+            return null;
+        }
+
+        return (int) $matches[1];
+    }
+
+    private function costIndexFragment(string $text): ?string
+    {
+        $matches = [];
+
+        if (preg_match('/\bFUEL\s+BURN\s+BASED\s+ON:\s*CI\s*\d{1,3}(?!\d)/i', $text, $matches) !== 1) {
+            return null;
+        }
+
+        return Str::squish($matches[0]);
     }
 
     private function detectUnit(string $text): ?string
