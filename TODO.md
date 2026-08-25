@@ -162,11 +162,31 @@ PDF regression outcome: Cost-index extraction accepts collapsed parser text such
 
 Commit message: `fix: extract and render FMS cost index`
   
-## 3. Remove Extract route button
-View results on PDF upload when parsing completes
+## 3. [x] Completed: Remove Extract route button
+- Removes need for user to make an unnecessary additional action (click/tap)
+- View results on PDF upload when parsing completes
+- Render a preloader using the wire:loading livewire directive
+- resources/views/livewire/flight-plan-brief.blade.php
 
-## 4. Large upload button
+Outcome: Selecting a flight release PDF now starts extraction automatically after Livewire finishes the temporary upload. The separate Extract route button and submit form were removed, while the upload input retains an accessible combined uploading-and-processing status and existing recoverable validation errors.
+
+Commit message: `refactor: extract flight plan immediately after upload`
+
+## 4. [x] Completed: Large upload button
 - Similar to extract schedule upload button
+- Use same icon
+- `Drop your flight plan here`
+- `Upload on PDF flight plan. Click to browse your files.`
+- Centered layout
+- Only focus on the upload section for now. Retain index page as is
+
+Outcome: The flight-plan upload is now a centered, large dashed dropzone matching the schedule extractor's upload treatment and icon. It retains the automatic PDF processing flow, accessible file input, visible focus state, loading status, validation errors, responsive sizing, and dark-mode styling without changing the index or results layouts.
+
+Follow-up outcome: Selecting a file now disables the upload input for the full Livewire request and replaces the dropzone prompt with a centered spinner and processing status, preventing duplicate selections while the PDF uploads and parses.
+
+Follow-up outcome: A successful extraction now dispatches a browser event after the results render, smoothly scrolling to the new `release-summary` anchor while leaving validation and extraction failures at the upload control.
+
+Commit message: `style: enlarge flight plan upload target`
 
 ## 5. Implement Weather
 

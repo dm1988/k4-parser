@@ -83,6 +83,7 @@ class FlightPlanBrief extends Component
 
         $this->reset('flightRelease');
         $this->resetValidation();
+        $this->dispatch('scroll-to-release-summary');
 
         if ($this->shouldPromptForCoffee->handle($user)) {
             $this->dispatch('open-modal', name: 'buy-me-a-coffee');
@@ -92,6 +93,10 @@ class FlightPlanBrief extends Component
     public function updatedFlightRelease(): void
     {
         $this->resetValidation('flightRelease');
+
+        if ($this->flightRelease !== null) {
+            $this->extractFlightPlan();
+        }
     }
 
     public function extractAnotherFlightPlan(): void

@@ -42,10 +42,17 @@ class FlightPlanBriefTest extends TestCase
             ->assertSet('flightPlanKey', null)
             ->assertSeeHtml('wire:key="flight-plan-brief-upload"')
             ->assertSeeHtml('wire:target="flightRelease"')
-            ->assertSeeHtml('wire:target="extractFlightPlan"')
-            ->assertSeeText('Uploading PDF…')
+            ->assertDontSeeHtml('wire:submit="extractFlightPlan"')
+            ->assertDontSeeHtml('wire:target="extractFlightPlan"')
+            ->assertSeeText('Drop your flight plan here')
+            ->assertSeeText('Upload one PDF flight plan. Click to browse your files.')
+            ->assertSeeHtml('class="absolute inset-0 h-full w-full cursor-pointer opacity-0"')
+            ->assertSeeHtml('wire:loading.attr="disabled"')
+            ->assertSeeHtml('wire:loading.flex')
+            ->assertSeeHtml('min-h-48')
             ->assertSeeText('Processing flight plan…')
-            ->assertSeeText('Extract route')
+            ->assertSeeText('Please wait while your PDF is uploaded and parsed.')
+            ->assertDontSeeText('Extract route')
             ->assertDontSeeText('Extracted flight plan');
 
         $this->assertFalse($component->viewData('isResultsView'));
@@ -116,13 +123,8 @@ class FlightPlanBriefTest extends TestCase
             ->assertHasErrors(['flightRelease' => 'required'])
             ->assertSee('Upload a flight release PDF to extract the route.')
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.txt', 8, 'text/plain'))
-            ->call('extractFlightPlan')
             ->assertHasErrors(['flightRelease' => 'mimes'])
             ->assertSee('Only PDF flight release uploads are supported.');
-
-        $component
-            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->assertHasNoErrors('flightRelease');
 
         $this->assertSame(0, ExtractRequest::query()->count());
     }
@@ -154,11 +156,12 @@ class FlightPlanBriefTest extends TestCase
         $component = Livewire::actingAs($user)
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->call('extractFlightPlan')
             ->assertHasNoErrors()
             ->assertNoRedirect()
             ->assertSet('flightRelease', null)
+            ->assertDispatched('scroll-to-release-summary')
             ->assertSeeHtml('wire:key="flight-plan-brief-results"')
+            ->assertSeeHtml('id="release-summary"')
             ->assertDontSeeText('Flight release PDF')
             ->assertSeeText('Extract another flight plan')
             ->assertSeeHtml('aria-label="Release summary"')
@@ -224,7 +227,7 @@ class FlightPlanBriefTest extends TestCase
             ->call('extractAnotherFlightPlan')
             ->assertSet('flightRelease', null)
             ->assertSet('flightPlanKey', null)
-            ->assertSeeText('Flight release PDF')
+            ->assertSeeText('Drop your flight plan here')
             ->assertDontSeeText('Extracted flight plan');
 
         $this->assertFalse($component->viewData('isResultsView'));
@@ -273,7 +276,6 @@ class FlightPlanBriefTest extends TestCase
                 120,
                 'application/pdf',
             ))
-            ->call('extractFlightPlan')
             ->assertSet('activeTask', FlightPlanTask::Overview->value)
             ->assertSeeInOrder(array_map(
                 static fn (FlightPlanTask $task): string => $task->label(),
@@ -370,8 +372,7 @@ class FlightPlanBriefTest extends TestCase
 
         $component = Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
-            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->call('extractFlightPlan');
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'));
 
         $flightPlanKey = $component->get('flightPlanKey');
 
@@ -442,7 +443,6 @@ class FlightPlanBriefTest extends TestCase
         Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->call('extractFlightPlan')
             ->call('selectTask', FlightPlanTask::Etops->value)
             ->assertSet('activeTask', FlightPlanTask::Etops->value)
             ->assertSeeHtml('wire:key="flight-plan-task-panel-etops"')
@@ -506,7 +506,6 @@ class FlightPlanBriefTest extends TestCase
         Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->call('extractFlightPlan')
             ->call('selectTask', FlightPlanTask::Fms->value)
             ->assertSet('activeTask', FlightPlanTask::Fms->value)
             ->assertSeeText('FMS route setup')
@@ -600,8 +599,7 @@ class FlightPlanBriefTest extends TestCase
 
         $component = Livewire::actingAs($user)
             ->test(FlightPlanBrief::class)
-            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->call('extractFlightPlan');
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'));
 
         $flightPlanKey = $component->get('flightPlanKey');
 
@@ -696,7 +694,6 @@ class FlightPlanBriefTest extends TestCase
         Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->call('extractFlightPlan')
             ->call('selectTask', FlightPlanTask::MaintenanceLog->value)
             ->assertSeeText('No maintenance items listed')
             ->assertSeeText('0 source-listed items')
@@ -764,8 +761,7 @@ class FlightPlanBriefTest extends TestCase
 
         $component = Livewire::actingAs($user)
             ->test(FlightPlanBrief::class)
-            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->call('extractFlightPlan');
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'));
 
         $flightPlanKey = $component->get('flightPlanKey');
 
@@ -875,8 +871,7 @@ class FlightPlanBriefTest extends TestCase
 
         $component = Livewire::actingAs($user)
             ->test(FlightPlanBrief::class)
-            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->call('extractFlightPlan');
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'));
 
         $flightPlanKey = $component->get('flightPlanKey');
 
@@ -961,7 +956,6 @@ class FlightPlanBriefTest extends TestCase
         Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->call('extractFlightPlan')
             ->call('selectTask', FlightPlanTask::Envelope->value)
             ->assertSeeText('Not supported yet')
             ->assertSeeText('Envelope requires confirmed fixtures and typed extraction')
@@ -1015,7 +1009,6 @@ class FlightPlanBriefTest extends TestCase
         Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->call('extractFlightPlan')
             ->call('selectTask', FlightPlanTask::MaintenanceLog->value)
             ->assertSeeText('Flight details')
             ->assertSeeText('May 25, 2026')
@@ -1113,7 +1106,6 @@ class FlightPlanBriefTest extends TestCase
         $component = Livewire::actingAs($user)
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->call('extractFlightPlan')
             ->assertSet('activeTask', FlightPlanTask::Overview->value)
             ->assertSeeText('Flight and aircraft')
             ->assertSeeText('CKS241')
@@ -1228,7 +1220,6 @@ class FlightPlanBriefTest extends TestCase
         $component = Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->call('extractFlightPlan')
             ->assertSet('activeTask', FlightPlanTask::Overview->value)
             ->assertSeeText('Not present in this release')
             ->assertSeeText('No alternate airport listed.')
@@ -1274,7 +1265,6 @@ class FlightPlanBriefTest extends TestCase
         $component = Livewire::actingAs($user)
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->call('extractFlightPlan')
             ->assertSeeText('Operational support status');
 
         $flightPlanKey = $component->get('flightPlanKey');
@@ -1325,7 +1315,6 @@ class FlightPlanBriefTest extends TestCase
         Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->call('extractFlightPlan')
             ->assertSeeText('Airport details unavailable.')
             ->assertSeeText('No alternate airport listed.')
             ->assertDontSeeText('Departure runway')
@@ -1366,7 +1355,6 @@ class FlightPlanBriefTest extends TestCase
         Livewire::actingAs($user)
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', $file)
-            ->call('extractFlightPlan')
             ->assertHasNoErrors()
             ->assertSeeText('Operational support status');
 
@@ -1406,7 +1394,6 @@ class FlightPlanBriefTest extends TestCase
         Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->call('extractFlightPlan')
             ->assertNoRedirect()
             ->assertSet('flightRelease', null)
             ->assertSet('flightPlanKey', null)
@@ -1432,7 +1419,6 @@ class FlightPlanBriefTest extends TestCase
         Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->call('extractFlightPlan')
             ->assertNoRedirect()
             ->assertSet('flightRelease', null)
             ->assertSet('flightPlanKey', null)
@@ -1466,7 +1452,6 @@ class FlightPlanBriefTest extends TestCase
         Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
-            ->call('extractFlightPlan')
             ->assertNoRedirect()
             ->assertSet('flightRelease', null)
             ->assertSet('flightPlanKey', null)

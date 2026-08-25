@@ -7,7 +7,7 @@
 @php($availability = $model->availabilityFor($activeTask))
 
 <div {{ $attributes->merge(['class' => 'flex min-w-0 flex-col gap-4']) }}>
-    <x-flight-release.release-header :model="$model" />
+    <x-flight-release.release-header id="release-summary" class="scroll-mt-6" :model="$model" />
 
     <div class="min-w-0 overflow-hidden rounded-xl border border-[#1B365D]/10 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
         <x-flight-release.task-navigator
