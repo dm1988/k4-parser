@@ -204,9 +204,31 @@ Outcome: Weather extraction now uses the confirmed takeoff-and-landing weather b
 
 Commit message: `feat: add weather task`
 
-### follow up: Preserve TAF new lines in weather reports
-currently: new lines are stripped when extracted PDF text normalizes removing weather blocks. This removes key TAF formatting data. Cannot easily reintroduce new line breaks
-Plan: plan steps needed to preserve line breaks
+### [x] Completed: Follow up - Preserve TAF new lines in weather reports
+
+Investigation outcome:
+- `FlightPlanTextExtractor` does not collapse whitespace; it removes only null bytes from `smalot/pdfparser` output, and the parser retains page text line breaks where the PDF exposes them.
+- `WeatherExtractor::airportWeather()` currently calls `Str::squish()` on every METAR/SPECI and TAF report. This is the point that irreversibly collapses TAF continuation lines.
+- The weather fixture already contains a multiline departure TAF, but `WeatherExtractorTest` expects the flattened form, so the existing test codifies the bug.
+- The Weather Blade view already uses a `<pre>` element with `whitespace-pre-wrap`; DTOs, serialization, cache rehydration, and the view model pass report strings through unchanged. No presentation or schema change is required.
+- A PDF whose extracted text is already flat contains no reliable layout signal from which to reconstruct line breaks. Flattened input must remain supported as flat text; the extractor must not invent TAF formatting.
+
+Implementation plan:
+1. Add a focused report-normalization method in `WeatherExtractor` that normalizes line endings to `\n`, trims report boundaries, removes the trailing parser marker without consuming a preceding newline, collapses horizontal whitespace per line, removes empty boundary lines, and preserves internal line breaks.
+2. Use line-preserving normalization for extracted weather reports instead of `Str::squish()`. Apply the same deterministic rule to METAR/SPECI and TAF strings so raw report handling has one contract, while leaving private source-fragment normalization unchanged unless exact evidence formatting is separately required.
+3. Update the sanitized weather fixture, if needed, to cover multiple TAF continuation groups such as `FM`, `TEMPO`, and `BECMG`, plus CRLF input. Do not infer breaks from those tokens; assert only breaks present in source text.
+4. Update `WeatherExtractorTest` to assert exact multiline TAF output, exact flattened fallback output, normalized CRLF/LF behavior, preserved report boundaries between consecutive reports, horizontal-space cleanup, trailing marker removal, and deduplication after normalization.
+5. Add a narrow pipeline/rendering regression assertion showing the multiline string survives typed DTO construction, serialization/cache rehydration, the view model, and escaped `<pre>` rendering. Reuse existing tests at the smallest layers rather than duplicating the full extraction suite.
+6. Run the focused weather extractor, DTO/aggregate rehydration, view-model, and Livewire weather tests through Sail; then run Pint for changed PHP files and Larastan once at the final integration checkpoint.
+
+Done when: Parser-provided TAF line breaks survive extraction through rendering exactly as normalized `\n` separators, flattened PDFs remain readable without fabricated formatting, adjacent reports are not merged, and focused regressions pass.
+
+Outcome: Weather reports now normalize CRLF/CR to LF, clean horizontal whitespace per line, remove trailing parser markers, and retain every source-provided internal line break through the typed payload and `<pre>` rendering. When a PDF exposes a TAF as flattened text, recognized ICAO change groups (`FM`, `BECMG`, `TEMPO`, and `PROB30/40`, including combined probability/temporary groups) begin on separate lines; this reconstruction is scoped to TAFs and leaves METAR/SPECI reports unchanged. Focused regressions cover the supplied two-TAF KCVG shape, existing multiline TAFs, consecutive report boundaries, deduplication after normalization, change-group formatting, and rendered multiline output.
+
+### Follow up - RAIM not found
+-Currently RAIM info is not always extracted or found
+-Sample `PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION
+VALID FROM 0715Z TO 0935Z`
 
 ## 6. Implement Weight & Balance
 

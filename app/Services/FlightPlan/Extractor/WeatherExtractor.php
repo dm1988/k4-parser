@@ -85,15 +85,17 @@ class WeatherExtractor
 
             $start = $match[0][1];
             $end = $matches[$index + 1][0][1] ?? strlen($section);
-            $report = trim(substr($section, $start, $end - $start));
-            $report = preg_replace('/\h*[?$]\h*$/', '', $report) ?? $report;
-            $report = Str::squish($report);
+            $isTaf = Str::upper($match['type'][0]) === 'TAF';
+            $report = $this->normalizeReport(
+                substr($section, $start, $end - $start),
+                formatTafContinuations: $isTaf,
+            );
 
             if ($report === '') {
                 continue;
             }
 
-            if (Str::upper($match['type'][0]) === 'TAF') {
+            if ($isTaf) {
                 $tafs[] = $report;
             } else {
                 $metars[] = $report;
@@ -105,6 +107,26 @@ class WeatherExtractor
             'metars' => array_values(array_unique($metars)),
             'tafs' => array_values(array_unique($tafs)),
         ];
+    }
+
+    private function normalizeReport(string $report, bool $formatTafContinuations): string
+    {
+        $report = trim(str_replace(["\r\n", "\r"], "\n", $report));
+        $report = preg_replace('/\h*[?$]\h*\z/u', '', $report) ?? $report;
+        $report = implode("\n", array_map(
+            static fn (string $line): string => preg_replace('/\h+/u', ' ', trim($line)) ?? trim($line),
+            explode("\n", trim($report)),
+        ));
+
+        if (! $formatTafContinuations) {
+            return $report;
+        }
+
+        return preg_replace(
+            '/(?<=[^\h\n])\h*(?=(?:FM\d{6}|BECMG\h+\d{4}\/\d{4}|(?<!PROB30 )(?<!PROB40 )TEMPO\h+\d{4}\/\d{4}|PROB(?:30|40)(?:\h+TEMPO)?\h+\d{4}\/\d{4})\b)/u',
+            "\n",
+            $report,
+        ) ?? $report;
     }
 
     private function raim(string $text): ?string

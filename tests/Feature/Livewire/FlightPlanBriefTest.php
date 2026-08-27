@@ -477,7 +477,7 @@ class FlightPlanBriefTest extends TestCase
                     'METAR PANC 250553Z 22006KT 10SM FEW060 14/06 A2991',
                     'SPECI PANC 250520Z 24008KT 8SM -RA BKN050 13/07 A2992',
                 ],
-                'tafs' => ['TAF PANC 250521Z 2506/2612 28006KT P6SM BKN070'],
+                'tafs' => ["TAF PANC 250521Z 2506/2612 28006KT P6SM BKN070\nFM250800 21005KT P6SM SCT080"],
             ],
             'destination' => [
                 'airport' => 'KMIA',
@@ -512,6 +512,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('METAR PANC 250553Z 22006KT 10SM FEW060 14/06 A2991')
             ->assertSeeText('SPECI PANC 250520Z 24008KT 8SM -RA BKN050 13/07 A2992')
             ->assertSeeText('TAF PANC 250521Z 2506/2612 28006KT P6SM BKN070')
+            ->assertSeeHtml("TAF PANC 250521Z 2506/2612 28006KT P6SM BKN070\nFM250800 21005KT P6SM SCT080")
             ->assertSeeText('METAR KMIA 250553Z 00000KT 10SM SCT250 25/22 A3003')
             ->assertSeeText('TAF KMIA 250539Z 2506/2612 VRB05KT P6SM FEW030 SCT250')
             ->assertSeeText('METAR KRSW 250553Z AUTO 11003KT 10SM CLR 23/22 A3005')
