@@ -102,6 +102,20 @@ class BuildFlightPlanDataTest extends TestCase
                 'filed_initial_altitude' => 'S0890',
                 'fms_initial_altitude' => 'F290',
             ],
+            weather: [
+                'departure' => [
+                    'airport' => 'KLAX',
+                    'metars' => ['METAR KLAX 242153Z 27011KT 10SM FEW020 19/11 A3000'],
+                    'tafs' => ['TAF KLAX 241739Z 2418/2524 25007KT P6SM OVC020'],
+                ],
+                'destination' => [
+                    'airport' => 'RKSI',
+                    'metars' => ['METAR RKSI 242130Z 10003KT 5000 BR NSC 18/17 Q1012 NOSIG'],
+                    'tafs' => [],
+                ],
+                'alternate' => null,
+                'raim' => 'PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION VALID FROM 0200Z TO 0420Z',
+            ],
             waypoints: [
                 ['identifier' => 'FIX01', 'coordinate' => 'N01 02.3 E004 05.6', 'time' => '005', 'total_time' => '00.11', 'remaining_fuel' => '0000'],
                 ['identifier' => 'FIX01', 'coordinate' => 'N02 03.4 E005 06.7', 'time' => null, 'total_time' => null, 'remaining_fuel' => null],
@@ -143,6 +157,10 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame(0.0, $flightPlan->waypoints[0]->remainingFuel?->amount);
         $this->assertSame('lb', $flightPlan->waypoints[0]->remainingFuel?->unit);
         $this->assertNull($flightPlan->waypoints[1]->legDurationMinutes);
+        $this->assertSame('KLAX', $flightPlan->weather?->departure?->airport->value);
+        $this->assertSame('TAF KLAX 241739Z 2418/2524 25007KT P6SM OVC020', $flightPlan->weather?->departure?->tafs[0]);
+        $this->assertSame('RKSI', $flightPlan->weather?->destination?->airport->value);
+        $this->assertNull($flightPlan->weather?->alternate);
     }
 
     public function test_it_omits_the_fuel_plan_when_no_fuel_was_normalized(): void

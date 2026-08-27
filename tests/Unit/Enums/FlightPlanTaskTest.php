@@ -46,6 +46,7 @@ class FlightPlanTaskTest extends TestCase
             FlightPlanTask::SlotTimes,
             FlightPlanTask::FuelScore,
             FlightPlanTask::Etops,
+            FlightPlanTask::Weather,
         ], $customViews);
     }
 }

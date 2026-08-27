@@ -364,7 +364,7 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame([
             ['label' => 'GENDEC', 'availability' => FlightPlanTaskAvailability::NotSupported],
             ['label' => 'Flight plan filing', 'availability' => FlightPlanTaskAvailability::NotSupported],
-            ['label' => 'Weather / RAIM', 'availability' => FlightPlanTaskAvailability::NotSupported],
+            ['label' => 'Weather / RAIM', 'availability' => FlightPlanTaskAvailability::NotPresent],
             ['label' => 'Maintenance', 'availability' => FlightPlanTaskAvailability::Available],
         ], $viewModel->overviewUnsupportedIndicators());
     }
@@ -399,6 +399,54 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertTrue($viewModel->maintenanceItems()[0]['copyable']);
         $this->assertTrue($viewModel->maintenanceItems()[1]['copyable']);
         $this->assertSame('CP · YIP', $viewModel->crewMembers()[0]['details']);
+    }
+
+    #[Test]
+    public function it_groups_raw_weather_reports_by_airport_role_without_interpretation(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['weather'] = [
+            'departure' => [
+                'airport' => 'PANC',
+                'metars' => ['METAR PANC 250553Z 22006KT 10SM FEW060 14/06 A2991'],
+                'tafs' => ['TAF PANC 250521Z 2506/2612 28006KT P6SM BKN070'],
+            ],
+            'destination' => [
+                'airport' => 'KMIA',
+                'metars' => ['METAR KMIA 250553Z 00000KT 10SM SCT250 25/22 A3003'],
+                'tafs' => [],
+            ],
+            'alternate' => null,
+            'raim' => 'PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION VALID FROM 1020Z TO 1240Z',
+        ];
+
+        $viewModel = $this->viewModel($payload);
+
+        $this->assertSame([
+            [
+                'role' => 'Departure',
+                'airport' => 'PANC',
+                'metars' => ['METAR PANC 250553Z 22006KT 10SM FEW060 14/06 A2991'],
+                'tafs' => ['TAF PANC 250521Z 2506/2612 28006KT P6SM BKN070'],
+            ],
+            [
+                'role' => 'Destination',
+                'airport' => 'KMIA',
+                'metars' => ['METAR KMIA 250553Z 00000KT 10SM SCT250 25/22 A3003'],
+                'tafs' => [],
+            ],
+            [
+                'role' => 'Alternate',
+                'airport' => 'KRSW',
+                'metars' => [],
+                'tafs' => [],
+            ],
+        ], $viewModel->weatherAirportGroups());
+        $this->assertSame(
+            'PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION VALID FROM 1020Z TO 1240Z',
+            $viewModel->weatherRaim(),
+        );
+        $this->assertSame(FlightPlanTaskAvailability::Available, $viewModel->availabilityFor(FlightPlanTask::Weather));
     }
 
     #[Test]

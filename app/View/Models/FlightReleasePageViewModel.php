@@ -309,7 +309,7 @@ readonly class FlightReleasePageViewModel
         return [
             ['label' => 'GENDEC', 'availability' => FlightPlanTaskAvailability::NotSupported],
             ['label' => 'Flight plan filing', 'availability' => FlightPlanTaskAvailability::NotSupported],
-            ['label' => 'Weather / RAIM', 'availability' => FlightPlanTaskAvailability::NotSupported],
+            ['label' => 'Weather / RAIM', 'availability' => $this->availabilityFor(FlightPlanTask::Weather)],
             [
                 'label' => 'Maintenance',
                 'availability' => $this->hasMaintenanceSection()
@@ -322,6 +322,40 @@ readonly class FlightReleasePageViewModel
     public function maintenanceEtopsLabel(): string
     {
         return $this->pageData?->flightPlan->maintenanceLog?->etopsApplicability->label() ?? 'Not confirmed';
+    }
+
+    /**
+     * @return list<array{role: string, airport: ?string, metars: list<string>, tafs: list<string>}>
+     */
+    public function weatherAirportGroups(): array
+    {
+        $weather = $this->pageData?->flightPlan->weather;
+
+        return [
+            [
+                'role' => 'Departure',
+                'airport' => $weather?->departure?->airport->value ?? $this->departure(),
+                'metars' => $weather?->departure->metars ?? [],
+                'tafs' => $weather?->departure->tafs ?? [],
+            ],
+            [
+                'role' => 'Destination',
+                'airport' => $weather?->destination?->airport->value ?? $this->destination(),
+                'metars' => $weather?->destination->metars ?? [],
+                'tafs' => $weather?->destination->tafs ?? [],
+            ],
+            [
+                'role' => 'Alternate',
+                'airport' => $weather?->alternate?->airport->value ?? $this->alternate(),
+                'metars' => $weather?->alternate->metars ?? [],
+                'tafs' => $weather?->alternate->tafs ?? [],
+            ],
+        ];
+    }
+
+    public function weatherRaim(): ?string
+    {
+        return $this->pageData?->flightPlan->weather?->raim;
     }
 
     public function hasMaintenanceSection(): bool

@@ -3,6 +3,7 @@
 namespace App\DTOs;
 
 use App\DTOs\Etops\EtopsData;
+use App\DTOs\Weather\WeatherData;
 use JsonSerializable;
 
 final readonly class FlightPlanData implements JsonSerializable
@@ -20,6 +21,7 @@ final readonly class FlightPlanData implements JsonSerializable
         public ?EnvelopeData $envelope = null,
         public ?FlightInitData $flightInit = null,
         public ?EtopsData $etops = null,
+        public ?WeatherData $weather = null,
         public array $crewMembers = [],
         public array $waypoints = [],
     ) {}
@@ -34,6 +36,7 @@ final readonly class FlightPlanData implements JsonSerializable
      *     envelope: array<string, mixed>|null,
      *     flightInit: array{sectionPresent: bool, acarsInitDate: ?string, filedInitialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null, fmsInitialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null}|null,
      *     etops: array<string, mixed>|null,
+     *     weather: array<string, mixed>|null,
      *     crewMembers: list<array{name: string, role: ?string, base: ?string, employeeNumber: ?string}>,
      *     waypoints: list<array{identifier: string, coordinate: string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: array{amount: float, unit: 'kg'|'lb'}|null}>
      * }
@@ -49,6 +52,7 @@ final readonly class FlightPlanData implements JsonSerializable
             'envelope' => $this->envelope?->toArray(),
             'flightInit' => $this->flightInit?->toArray(),
             'etops' => $this->etops?->toArray(),
+            'weather' => $this->weather?->toArray(),
             'crewMembers' => array_map(
                 static fn (CrewMemberData $member): array => $member->toArray(),
                 $this->crewMembers,
@@ -70,6 +74,7 @@ final readonly class FlightPlanData implements JsonSerializable
      *     envelope: array<string, mixed>|null,
      *     flightInit: array{sectionPresent: bool, acarsInitDate: ?string, filedInitialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null, fmsInitialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null}|null,
      *     etops: array<string, mixed>|null,
+     *     weather: array<string, mixed>|null,
      *     crewMembers: list<array{name: string, role: ?string, base: ?string, employeeNumber: ?string}>,
      *     waypoints: list<array{identifier: string, coordinate: string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: array{amount: float, unit: 'kg'|'lb'}|null}>
      * }

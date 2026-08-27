@@ -15,6 +15,7 @@ use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use App\Services\FlightPlan\Extractor\FlightScheduleExtractor;
 use App\Services\FlightPlan\Extractor\MaintenanceLogExtractor;
 use App\Services\FlightPlan\Extractor\WaypointExtractor;
+use App\Services\FlightPlan\Extractor\WeatherExtractor;
 use App\Services\Schedule\Extractor\CrewListParser;
 use Illuminate\Contracts\Cache\Repository;
 use Smalot\PdfParser\Parser;
@@ -77,6 +78,20 @@ class ExtractFlightPlanDataTest extends TestCase
             ]],
             'source_fragments' => ['computed_flight_plan_waypoints' => 'bounded waypoint evidence'],
         ]);
+        $weatherExtractor = $this->createMock(WeatherExtractor::class);
+        $weatherExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
+            'data' => [
+                'departure' => [
+                    'airport' => 'KLAX',
+                    'metars' => ['METAR KLAX 242153Z 27011KT 10SM FEW020 19/11 A3000'],
+                    'tafs' => ['TAF KLAX 241739Z 2418/2524 25007KT P6SM OVC020'],
+                ],
+                'destination' => null,
+                'alternate' => null,
+                'raim' => 'PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION VALID FROM 0200Z TO 0420Z',
+            ],
+            'source_fragments' => ['weather_departure' => 'private weather evidence'],
+        ]);
 
         $parsed = (new ExtractFlightPlanData(
             $textExtractor,
@@ -89,6 +104,7 @@ class ExtractFlightPlanDataTest extends TestCase
             $envelopeExtractor,
             $flightInitExtractor,
             $waypointExtractor,
+            $weatherExtractor,
         ))->extractFile('/tmp/release.pdf');
 
         $this->assertInstanceOf(ParsedFlightPlanData::class, $parsed);
@@ -109,6 +125,8 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame('DEST RKSI 033.4 01.48 290 0896 P078', $parsed->sourceFragments['flight_init_fms_initial_altitude']);
         $this->assertSame('DP550', $parsed->waypoints[0]['identifier']);
         $this->assertSame('bounded waypoint evidence', $parsed->sourceFragments['computed_flight_plan_waypoints']);
+        $this->assertSame('KLAX', $parsed->weather['departure']['airport']);
+        $this->assertSame('private weather evidence', $parsed->sourceFragments['weather_departure']);
         $this->assertSame('ETP1', $parsed->etops['etps'][0]['label']);
         $this->assertSame('N40 31.1 W131 22.6', $parsed->etops['eent_coordinates']);
         $this->assertSame('N45 19.3 E151 36.4', $parsed->etops['eexp_coordinates']);

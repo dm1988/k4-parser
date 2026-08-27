@@ -19,6 +19,8 @@ use App\DTOs\MaintenanceLogData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
 use App\DTOs\WaypointData;
+use App\DTOs\Weather\AirportWeatherData;
+use App\DTOs\Weather\WeatherData;
 use App\Enums\AltitudeUnit;
 use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
@@ -102,6 +104,7 @@ class BuildFlightPlanPageData
             envelope: $this->envelope($data['envelope'] ?? null),
             flightInit: $this->flightInit($data['flightInit'] ?? null),
             etops: $this->etops($data['etops'] ?? null),
+            weather: $this->weather($data['weather'] ?? null),
             crewMembers: $this->crewMembers($data['crewMembers'] ?? null),
             waypoints: $this->waypoints($data['waypoints'] ?? null),
         );
@@ -278,6 +281,39 @@ class BuildFlightPlanPageData
             filedInitialAltitude: $this->initialAltitude($value['filedInitialAltitude'] ?? null),
             fmsInitialAltitude: $this->initialAltitude($value['fmsInitialAltitude'] ?? null),
         );
+    }
+
+    private function weather(mixed $value): ?WeatherData
+    {
+        if (! is_array($value)) {
+            return null;
+        }
+
+        $weather = new WeatherData(
+            departure: $this->airportWeather($value['departure'] ?? null),
+            destination: $this->airportWeather($value['destination'] ?? null),
+            alternate: $this->airportWeather($value['alternate'] ?? null),
+            raim: $this->nullableString($value['raim'] ?? null),
+        );
+
+        return $weather->hasReports() || $weather->raim !== null ? $weather : null;
+    }
+
+    private function airportWeather(mixed $value): ?AirportWeatherData
+    {
+        if (! is_array($value) || ! is_string($value['airport'] ?? null)) {
+            return null;
+        }
+
+        try {
+            return new AirportWeatherData(
+                airport: new AirportCode($value['airport']),
+                metars: $this->strings($value['metars'] ?? null),
+                tafs: $this->strings($value['tafs'] ?? null),
+            );
+        } catch (InvalidArgumentException) {
+            return null;
+        }
     }
 
     private function initialAltitude(mixed $value): ?InitialAltitude

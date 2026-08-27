@@ -46,7 +46,9 @@ final readonly class FlightPlanPageData
             FlightPlanTask::Etops => $this->hasEtopsData()
                 ? FlightPlanTaskAvailability::Available
                 : FlightPlanTaskAvailability::NotPresent,
-            FlightPlanTask::Weather,
+            FlightPlanTask::Weather => $this->flightPlan->weather === null
+                ? FlightPlanTaskAvailability::NotPresent
+                : FlightPlanTaskAvailability::Available,
             FlightPlanTask::WeightAndBalance => FlightPlanTaskAvailability::NotSupported,
             FlightPlanTask::Envelope => $this->envelopeAvailability(),
         };

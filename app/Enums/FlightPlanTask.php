@@ -73,7 +73,8 @@ enum FlightPlanTask: string
             self::Fms,
             self::SlotTimes,
             self::FuelScore,
-            self::Etops => true,
+            self::Etops,
+            self::Weather => true,
             default => false,
         };
     }

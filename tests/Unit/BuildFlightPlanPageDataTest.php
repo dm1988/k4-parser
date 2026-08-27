@@ -74,9 +74,32 @@ class BuildFlightPlanPageDataTest extends TestCase
             FlightPlanTask::SlotTimes->value => FlightPlanTaskAvailability::Available,
             FlightPlanTask::FuelScore->value => FlightPlanTaskAvailability::Available,
             FlightPlanTask::Etops->value => FlightPlanTaskAvailability::Available,
-            FlightPlanTask::Weather->value => FlightPlanTaskAvailability::NotSupported,
+            FlightPlanTask::Weather->value => FlightPlanTaskAvailability::NotPresent,
             FlightPlanTask::WeightAndBalance->value => FlightPlanTaskAvailability::NotSupported,
         ], $pageData->taskAvailability());
+    }
+
+    public function test_it_rehydrates_weather_reports_and_rejects_malformed_airport_groups(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['weather'] = [
+            'departure' => [
+                'airport' => 'PANC',
+                'metars' => ['METAR PANC 250553Z 22006KT 10SM FEW060 14/06 A2991', '', 42],
+                'tafs' => ['TAF PANC 250521Z 2506/2612 28006KT P6SM BKN070'],
+            ],
+            'destination' => ['airport' => 'invalid', 'metars' => ['ignored'], 'tafs' => []],
+            'alternate' => null,
+            'raim' => 'PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION VALID FROM 1020Z TO 1240Z',
+        ];
+
+        $pageData = (new BuildFlightPlanPageData)->handle($payload);
+
+        $this->assertNotNull($pageData);
+        $this->assertSame('PANC', $pageData->flightPlan->weather?->departure?->airport->value);
+        $this->assertSame(['METAR PANC 250553Z 22006KT 10SM FEW060 14/06 A2991'], $pageData->flightPlan->weather?->departure?->metars);
+        $this->assertNull($pageData->flightPlan->weather?->destination);
+        $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::Weather));
     }
 
     public function test_it_preserves_a_sparse_normalized_result_and_ignores_malformed_optional_legacy_data(): void

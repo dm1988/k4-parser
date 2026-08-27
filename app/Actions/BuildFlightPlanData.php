@@ -20,6 +20,8 @@ use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
 use App\DTOs\SlotTimeData;
 use App\DTOs\WaypointData;
+use App\DTOs\Weather\AirportWeatherData;
+use App\DTOs\Weather\WeatherData;
 use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
 use App\Services\FlightPlan\FlightInitFieldNormalizer;
@@ -81,6 +83,7 @@ class BuildFlightPlanData
             envelope: $this->envelope($parsed),
             flightInit: $this->flightInit($parsed),
             etops: $this->etops($parsed),
+            weather: $this->weather($parsed),
             crewMembers: $this->crewMembers($parsed->crewMembers),
             waypoints: $this->waypoints($parsed),
         );
@@ -297,6 +300,35 @@ class BuildFlightPlanData
             filedInitialAltitude: $this->flightInitFieldNormalizer->filedInitialAltitude($flightInit['filed_initial_altitude'] ?? null),
             fmsInitialAltitude: $this->flightInitFieldNormalizer->fmsInitialAltitude($flightInit['fms_initial_altitude'] ?? null),
         );
+    }
+
+    private function weather(ParsedFlightPlanData $parsed): ?WeatherData
+    {
+        $weather = new WeatherData(
+            departure: $this->airportWeather($parsed->weather['departure'] ?? null),
+            destination: $this->airportWeather($parsed->weather['destination'] ?? null),
+            alternate: $this->airportWeather($parsed->weather['alternate'] ?? null),
+            raim: $this->nullableString($parsed->weather['raim'] ?? null),
+        );
+
+        return $weather->hasReports() || $weather->raim !== null ? $weather : null;
+    }
+
+    private function airportWeather(mixed $value): ?AirportWeatherData
+    {
+        if (! is_array($value) || ! is_string($value['airport'] ?? null)) {
+            return null;
+        }
+
+        try {
+            return new AirportWeatherData(
+                airport: new AirportCode($value['airport']),
+                metars: $this->strings($value['metars'] ?? null),
+                tafs: $this->strings($value['tafs'] ?? null),
+            );
+        } catch (InvalidArgumentException) {
+            return null;
+        }
     }
 
     private function etops(ParsedFlightPlanData $parsed): ?EtopsData

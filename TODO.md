@@ -188,18 +188,19 @@ Follow-up outcome: A successful extraction now dispatches a browser event after 
 
 Commit message: `style: enlarge flight plan upload target`
 
-## 5. Implement Weather
+## 5. [x] Completed: Implement Weather
 
 Goal: Organize confirmed weather by airport and route while retaining the source report.
 
-- Add sanitized fixtures for METAR, TAF, RAIM, and any supported enroute/significant-weather sections.
-- Prefer a proven aviation-weather parser or narrowly scoped parsing; do not build speculative meteorological interpretation.
-- Model airport, observation/validity times, raw report, parsed conditions, and source evidence.
-- Group departure, destination, alternate, and enroute weather.
-- Define warning thresholds with product/domain review before showing operational cautions.
-- Test report variants, amendments, missing airports/times, invalid reports, UTC boundaries, and unsupported content.
+- Use fixtures that can be expanded upon after a MVP weather implementation
+- Show raw blocks for departure, destination, and alternate airport for METAR, TAF, RAIM. Keep extraction light weight and narrowly scoped
+- Use narrowly scoped parsing; do not build speculative meteorological interpretation. Show raw weather output blocks. For instance, whole METAR section or entire TAF section per airport
 
-Done when: parsed fields can always be compared with the retained raw report and warnings have documented rules.
+- Group departure, destination, alternate weather.
+
+Done when: all METAR and TAF blocks are shown for departure, destination, and alternate airports.
+
+Outcome: Weather extraction now uses the confirmed takeoff-and-landing weather block structure from stored flight releases. It retains every supported METAR/SPECI and TAF report as normalized raw text, groups reports by departure, destination, and alternate (`OTHER`) airport, and preserves the confirmed release-level RAIM validity statement. Typed weather DTOs carry the reports through the normalized aggregate, cached payload, defensive page rehydration, task availability, and overview status. The dedicated responsive Weather task renders every report, explicit per-airport missing states, and a no-interpretation warning without deriving conditions, suitability, or dispatch decisions. Sanitized expandable fixtures and focused extractor, DTO, aggregate, cache-rehydration, view-model, enum, and Livewire coverage verify multiline and flattened parser text, missing roles, malformed cached groups, and unsupported input.
 
 Commit message: `feat: add weather task`
 

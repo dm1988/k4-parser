@@ -14,6 +14,7 @@ final readonly class ParsedFlightPlanData
      * @param  array{section_present?: bool, source_type?: string, report_reference?: ?string, airport?: ?string, planned_runway?: ?string, outside_air_temperature_celsius?: ?float, wind?: ?string, qnh_inches_mercury?: ?float, qnh_hectopascals?: ?int, maximum_runway_takeoff_weight?: array{amount: int, unit: string}|null, flap_setting?: ?string, anti_ice?: ?bool, v1_knots?: ?int, rotate_knots?: ?int, v2_knots?: ?int, planned_takeoff_weight?: array{amount: int, unit: string}|null, maximum_field_takeoff_weight?: array{amount: int, unit: string}|null, source_warnings?: list<string>}  $envelope
      * @param  array{section_present?: bool, acars_init_date?: ?string, filed_initial_altitude?: ?string, fms_initial_altitude?: ?string}  $flightInit
      * @param  array{etps?: list<array{label: string, airports: string, coordinates: string, scenario: string}>, eent_coordinates?: ?string, eexp_coordinates?: ?string}  $etops
+     * @param  array{departure?: array{airport: string, metars: list<string>, tafs: list<string>}|null, destination?: array{airport: string, metars: list<string>, tafs: list<string>}|null, alternate?: array{airport: string, metars: list<string>, tafs: list<string>}|null, raim?: ?string}  $weather
      * @param  array<string, string|list<array{direction: string, airport: string, time: string}>>  $sourceFragments
      * @param  array<string, mixed>  $legacy
      * @param  list<array{coordinate: string, identifier: string, time: ?string, total_time: ?string, remaining_fuel: ?string}>  $waypoints
@@ -28,6 +29,7 @@ final readonly class ParsedFlightPlanData
         public array $envelope = [],
         public array $flightInit = [],
         public array $etops = [],
+        public array $weather = [],
         public array $sourceFragments = [],
         public array $legacy = [],
         public array $waypoints = [],
