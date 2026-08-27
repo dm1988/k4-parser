@@ -225,10 +225,14 @@ Done when: Parser-provided TAF line breaks survive extraction through rendering 
 
 Outcome: Weather reports now normalize CRLF/CR to LF, clean horizontal whitespace per line, remove trailing parser markers, and retain every source-provided internal line break through the typed payload and `<pre>` rendering. When a PDF exposes a TAF as flattened text, recognized ICAO change groups (`FM`, `BECMG`, `TEMPO`, and `PROB30/40`, including combined probability/temporary groups) begin on separate lines; this reconstruction is scoped to TAFs and leaves METAR/SPECI reports unchanged. Focused regressions cover the supplied two-TAF KCVG shape, existing multiline TAFs, consecutive report boundaries, deduplication after normalization, change-group formatting, and rendered multiline output.
 
-### Follow up - RAIM not found
--Currently RAIM info is not always extracted or found
--Sample `PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION
+### [x] Completed: Follow up - RAIM not found
+
+Problem: RAIM info is not always extracted or found.
+
+Sample: `PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION
 VALID FROM 0715Z TO 0935Z`
+
+Outcome: RAIM extraction now accepts parser-flattened releases where the `VALID` label is concatenated to `NAVIGATION` and the following NOTAM section is concatenated directly after the ending `Z` time. It still requires exact four-digit UTC validity times and does not consume adjacent section text. Verified against the supplied KCVG release shape with focused positive and malformed-boundary regressions.
 
 ## 6. Implement Weight & Balance
 
@@ -337,8 +341,8 @@ Commit message: `refactor: complete flight plan workspace migration`
 - Add B44 tag if B44 release
 - Future task: B44 info
 
-## Maintenance task
-- NEF determine and NEF badge
+## Maintenance task: NEF Badges
+- Currently non equipment furnishings (NEF) are being extracted as MELs. There is no distinction between the two. CDLs are properly being distinguished. 
 
 -------------------
 **Branch Merge**

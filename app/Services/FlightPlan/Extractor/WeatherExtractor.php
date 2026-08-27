@@ -134,7 +134,7 @@ class WeatherExtractor
         $matches = [];
 
         if (preg_match(
-            '/PASSED\s+RAIM\s+REQUIREMENTS\s+FOR\s+PRIMARY\s+NAVIGATION\s*VALID\s+FROM\s+(?<from>\d{4}Z)\s+TO\s+(?<to>\d{4}Z)\b/i',
+            '/PASSED\s+RAIM\s+REQUIREMENTS\s+FOR\s+PRIMARY\s+NAVIGATION\s*VALID\s+FROM\s+(?<from>\d{4}Z)\s+TO\s+(?<to>\d{4}Z)(?!\d)/i',
             $text,
             $matches,
         ) !== 1) {

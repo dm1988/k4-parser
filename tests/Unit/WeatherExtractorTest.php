@@ -122,6 +122,33 @@ class WeatherExtractorTest extends TestCase
         ], $data['tafs']);
     }
 
+    public function test_it_extracts_raim_when_flattened_text_is_concatenated_with_the_next_section(): void
+    {
+        $result = (new WeatherExtractor)->extract(
+            'STAB POSITION INDICATORS(O)PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION'
+            .'VALID FROM 0715Z TO 0935ZI0001/23 NOTAMN Q) KZID',
+        );
+
+        $this->assertSame(
+            'PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION VALID FROM 0715Z TO 0935Z',
+            $result['data']['raim'],
+        );
+        $this->assertSame(
+            'PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION VALID FROM 0715Z TO 0935Z',
+            $result['source_fragments']['weather_raim'],
+        );
+    }
+
+    public function test_it_rejects_raim_with_an_overlong_utc_time(): void
+    {
+        $result = (new WeatherExtractor)->extract(
+            'PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION VALID FROM 0715Z TO 0935Z1',
+        );
+
+        $this->assertNull($result['data']['raim']);
+        $this->assertArrayNotHasKey('weather_raim', $result['source_fragments']);
+    }
+
     public function test_it_does_not_infer_reports_from_unconfirmed_weather_or_raim_text(): void
     {
         $result = (new WeatherExtractor)->extract(
