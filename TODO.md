@@ -70,171 +70,7 @@ Icons  use hero icons returned in FlightPlanTask enum
 
 # Tasks
 
-## 1. [x] Completed: Flight Init — Normalize initial altitude units
-
-Goal: Represent the confirmed initial altitude as a typed numeric value with an explicit unit instead of displaying the source flight-level code unchanged.
-
-Current behavior: A metric initial altitude such as `S0890` is rendered verbatim. The value represents 8,900 meters, but the extractor does not currently separate the altitude from its unit.
-  
-- Add a sanitized, source-backed fixture containing a confirmed metric initial altitude, as well as feet. Implement an `isFlightLevel` bool.
-- Introduce an altitude unit enum supporting feet, and meters.
-- Extract the altitude as an integer and preserve its confirmed source unit.
-- Render the normalized altitude with an explicit unit while retaining the original source evidence.
-- Test metric and feet inputs, malformed values, and missing initial altitude data.
-
-- Flight level text sample in feet representing FL330: -N0497F330 
-- Flight level text sample in meters: -K0920S0890
-
-Outcome: Initial altitude is normalized into a typed integer value with an explicit feet or meters unit and an `isFlightLevel` flag. Flight levels render in operational notation, such as `FL270` for feet and `FL089M` for meters; non-flight-level values retain explicit `ft` or `m` units. Original ICAO codes remain in private source evidence. Sanitized feet and metric fixtures cover confirmed inputs, with focused coverage for malformed and missing values.
-
-Done when: Flight Init displays a typed initial altitude with its correct unit, and unsupported or absent values are reported without inference.
-
-Commit message: `fix: normalize flight init altitude units`
-
-Follow up: 
-1. [x] Render FL if flight level. If Meters append M. i.e. FL270 for flight level in feet or FL089M for flight level in meters.
-
-### [x] Completed: Follow up - initial altitude in ft
-Problem: FMS only accepts Cruise altitude entry in feet
-
-Currently: Filed initial altitude exists in the code base already but not identified as such.
-2 initial altitudes are given in a flight release, one filed, and one for FMS initialization given in flight level thousands of feet. This last case is not handled.
-
-Sample text from release: 
-```text
-         BURN    TIME   FL   DIST  WIND
-
-DEST RKSI 033.4   01.48  290  0896  P078   BASIC OPTG WEIGHT  310710
-```
-Current naming convention: 'initial_altitude' => $this->formatInitialAltitude($matches[2]),
-
-
-- From the sample text, the FMS init flight level is FL290
-- Mapping:
-Overview and Jepp PD-Pro: Filed initial altitude
-FMS: FMS initial altitude
-
-Fix: Extract flight level from seperate section. 
-   - Create seperate initial altitude in Flight init DTO
-   - Distinguish between FMS initial altitude and filed initial altitude. Rename objects as necessary
-   - Extract flight init flight level in services
-   - Identify filed initial altitude
-   - Distinguish UI labels
-
-Outcome: The ICAO FPL value is retained as the typed filed initial altitude for Overview and Jepp PD-Pro. The destination-summary FL column is independently extracted as a feet-based typed FMS initial altitude and rendered only in FMS. The Flight Init task renders neither altitude.
-
-### Failed tests
-Tests\Feature\Livewire\FlightPlanBriefTest - 2 failues in flight level
-
-## 2. [x] Completed: FMS task view
-
-### [x] Bug fixed: Distance not rendered
-- Distance extraction now finds every `TOTAL DIST/DEST` occurrence regardless of stripped preceding whitespace and returns the value only when all captured distances agree.
-- Verified leading-zero distance `TOTAL DIST/DEST 0896` as 896 NM and `TOTAL DIST/DEST 3597` as 3,597 NM.
-
-### [x] Completed: Cost index missing
-Currently:
-- No evidence of extraction.
-- No fixtures in place. Cost index not found in DTOs
-- Cost index is needed in FMS task
-- Not rendered
-
-Cost index is found within the fuel burn section. Logically belongs in the Fuel Plan Data.
-app/DTOs/FuelPlanData.php
-app/Services/FlightPlan/Extractor/FlightFuelExtractor.php
-
-Fix:
-- DTO fixture
-- Implement extraction logical
-- Cost index range 0-999
-- Implement UI render within FMS task only
-- Sample text
-```text
-FUEL BURN BASED ON:  CI200
-```
-- Update tests
-
-Outcome: Cost index is extracted from the fuel-burn basis as a typed integer in the confirmed 0–999 range, retained with private source evidence, serialized through `FuelPlanData`, restored from cached page data, and rendered only in the FMS task. Missing, malformed, and out-of-range values remain unavailable without inference. A sanitized fuel fixture and focused extractor, DTO, aggregate, cache-rehydration, view-model, and Livewire coverage verify the complete path.
-
-Follow-up outcome: Cost-index normalization now lives in `FuelPlanFieldNormalizer`; both build actions delegate to the service instead of owning duplicated domain logic.
-
-PDF regression outcome: Cost-index extraction accepts collapsed parser text such as `CI180TAXI` while still rejecting values with more than three digits. The supplied `CKS025625KLAX.pdf` now extracts cost index 180 with retained source evidence.
-
-Commit message: `fix: extract and render FMS cost index`
-  
-## 3. [x] Completed: Remove Extract route button
-- Removes need for user to make an unnecessary additional action (click/tap)
-- View results on PDF upload when parsing completes
-- Render a preloader using the wire:loading livewire directive
-- resources/views/livewire/flight-plan-brief.blade.php
-
-Outcome: Selecting a flight release PDF now starts extraction automatically after Livewire finishes the temporary upload. The separate Extract route button and submit form were removed, while the upload input retains an accessible combined uploading-and-processing status and existing recoverable validation errors.
-
-Commit message: `refactor: extract flight plan immediately after upload`
-
-## 4. [x] Completed: Large upload button
-- Similar to extract schedule upload button
-- Use same icon
-- `Drop your flight plan here`
-- `Upload on PDF flight plan. Click to browse your files.`
-- Centered layout
-- Only focus on the upload section for now. Retain index page as is
-
-Outcome: The flight-plan upload is now a centered, large dashed dropzone matching the schedule extractor's upload treatment and icon. It retains the automatic PDF processing flow, accessible file input, visible focus state, loading status, validation errors, responsive sizing, and dark-mode styling without changing the index or results layouts.
-
-Follow-up outcome: Selecting a file now disables the upload input for the full Livewire request and replaces the dropzone prompt with a centered spinner and processing status, preventing duplicate selections while the PDF uploads and parses.
-
-Follow-up outcome: A successful extraction now dispatches a browser event after the results render, smoothly scrolling to the new `release-summary` anchor while leaving validation and extraction failures at the upload control.
-
-Commit message: `style: enlarge flight plan upload target`
-
-## 5. [x] Completed: Implement Weather
-
-Goal: Organize confirmed weather by airport and route while retaining the source report.
-
-- Use fixtures that can be expanded upon after a MVP weather implementation
-- Show raw blocks for departure, destination, and alternate airport for METAR, TAF, RAIM. Keep extraction light weight and narrowly scoped
-- Use narrowly scoped parsing; do not build speculative meteorological interpretation. Show raw weather output blocks. For instance, whole METAR section or entire TAF section per airport
-
-- Group departure, destination, alternate weather.
-
-Done when: all METAR and TAF blocks are shown for departure, destination, and alternate airports.
-
-Outcome: Weather extraction now uses the confirmed takeoff-and-landing weather block structure from stored flight releases. It retains every supported METAR/SPECI and TAF report as normalized raw text, groups reports by departure, destination, and alternate (`OTHER`) airport, and preserves the confirmed release-level RAIM validity statement. Typed weather DTOs carry the reports through the normalized aggregate, cached payload, defensive page rehydration, task availability, and overview status. The dedicated responsive Weather task renders every report, explicit per-airport missing states, and a no-interpretation warning without deriving conditions, suitability, or dispatch decisions. Sanitized expandable fixtures and focused extractor, DTO, aggregate, cache-rehydration, view-model, enum, and Livewire coverage verify multiline and flattened parser text, missing roles, malformed cached groups, and unsupported input.
-
-Commit message: `feat: add weather task`
-
-### [x] Completed: Follow up - Preserve TAF new lines in weather reports
-
-Investigation outcome:
-- `FlightPlanTextExtractor` does not collapse whitespace; it removes only null bytes from `smalot/pdfparser` output, and the parser retains page text line breaks where the PDF exposes them.
-- `WeatherExtractor::airportWeather()` currently calls `Str::squish()` on every METAR/SPECI and TAF report. This is the point that irreversibly collapses TAF continuation lines.
-- The weather fixture already contains a multiline departure TAF, but `WeatherExtractorTest` expects the flattened form, so the existing test codifies the bug.
-- The Weather Blade view already uses a `<pre>` element with `whitespace-pre-wrap`; DTOs, serialization, cache rehydration, and the view model pass report strings through unchanged. No presentation or schema change is required.
-- A PDF whose extracted text is already flat contains no reliable layout signal from which to reconstruct line breaks. Flattened input must remain supported as flat text; the extractor must not invent TAF formatting.
-
-Implementation plan:
-1. Add a focused report-normalization method in `WeatherExtractor` that normalizes line endings to `\n`, trims report boundaries, removes the trailing parser marker without consuming a preceding newline, collapses horizontal whitespace per line, removes empty boundary lines, and preserves internal line breaks.
-2. Use line-preserving normalization for extracted weather reports instead of `Str::squish()`. Apply the same deterministic rule to METAR/SPECI and TAF strings so raw report handling has one contract, while leaving private source-fragment normalization unchanged unless exact evidence formatting is separately required.
-3. Update the sanitized weather fixture, if needed, to cover multiple TAF continuation groups such as `FM`, `TEMPO`, and `BECMG`, plus CRLF input. Do not infer breaks from those tokens; assert only breaks present in source text.
-4. Update `WeatherExtractorTest` to assert exact multiline TAF output, exact flattened fallback output, normalized CRLF/LF behavior, preserved report boundaries between consecutive reports, horizontal-space cleanup, trailing marker removal, and deduplication after normalization.
-5. Add a narrow pipeline/rendering regression assertion showing the multiline string survives typed DTO construction, serialization/cache rehydration, the view model, and escaped `<pre>` rendering. Reuse existing tests at the smallest layers rather than duplicating the full extraction suite.
-6. Run the focused weather extractor, DTO/aggregate rehydration, view-model, and Livewire weather tests through Sail; then run Pint for changed PHP files and Larastan once at the final integration checkpoint.
-
-Done when: Parser-provided TAF line breaks survive extraction through rendering exactly as normalized `\n` separators, flattened PDFs remain readable without fabricated formatting, adjacent reports are not merged, and focused regressions pass.
-
-Outcome: Weather reports now normalize CRLF/CR to LF, clean horizontal whitespace per line, remove trailing parser markers, and retain every source-provided internal line break through the typed payload and `<pre>` rendering. When a PDF exposes a TAF as flattened text, recognized ICAO change groups (`FM`, `BECMG`, `TEMPO`, and `PROB30/40`, including combined probability/temporary groups) begin on separate lines; this reconstruction is scoped to TAFs and leaves METAR/SPECI reports unchanged. Focused regressions cover the supplied two-TAF KCVG shape, existing multiline TAFs, consecutive report boundaries, deduplication after normalization, change-group formatting, and rendered multiline output.
-
-### [x] Completed: Follow up - RAIM not found
-
-Problem: RAIM info is not always extracted or found.
-
-Sample: `PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION
-VALID FROM 0715Z TO 0935Z`
-
-Outcome: RAIM extraction now accepts parser-flattened releases where the `VALID` label is concatenated to `NAVIGATION` and the following NOTAM section is concatenated directly after the ending `Z` time. It still requires exact four-digit UTC validity times and does not consume adjacent section text. Verified against the supplied KCVG release shape with focused positive and malformed-boundary regressions.
-
-## 6. Current focus: Implement Weight & Balance
+## 6. [x] Completed: Implement Weight & Balance
 * If any ambiguity exists, clarify before proceeding.
 
 Goal: Present confirmed weights and source status without performing an unauthorized calculation.
@@ -264,16 +100,43 @@ MIN FUEL  222.5   15.07                    EST LANDING WEIGHT 371893EXTRA     00
 ```
 - Deferred limits entirely until db structure exists
 - Mass units must not be converted. Units listed in release are in pounds.
-- Every weight be source-extracted only, with no derived arithmetic—including zero-fuel, ramp, takeoff, and landing weights
+- Every displayed weight is source-extracted except planned ramp weight, which is derived server-side from confirmed zero-fuel weight and ramp fuel in the same unit.
 - Source status labels:
   - Confirmed
   - Conflict
   - Not present
   - Limit unavailable
+- Additional clarification: 
+  - Derrive Ramp weight by adding zero fuel weight and ramp fuel. A seperate service may be the most appropriate place after source data is available. 
+  - Source values that disagree should show conflict. 
+  - Use source status per field.
 
 Done when: every comparison is based on confirmed source values and no browser-side arithmetic changes the dispatch result.
 
+Outcome: Basic operating weight, planned payload, takeoff fuel, zero-fuel weight, takeoff gross weight, and estimated landing weight are normalized as typed mass fields with independent source statuses. Matching duplicate source values are confirmed; disagreements render as conflicts without exposing an uncertain value. Planned ramp weight is derived server-side only from confirmed zero-fuel weight and ramp fuel sharing the same unit, with no unit conversion or browser arithmetic. Actual values remain excluded, database-backed limits remain typed but hidden until available, and private source fragments are not serialized into the Livewire payload. Sanitized fixtures and focused extractor, DTO, builder, cache-rehydration, view-model, and Livewire tests cover confirmed, zero, conflict, incomplete, and unit-mismatch paths.
+
 Commit message: `feat: add weight and balance task`
+
+### [x] Completed: Follow up - UI improvements
+UI improvements to enhance usability and visual hierarchy in the **Weight & Balance** task workspace:
+
+**Visual Hierarchy & Categorization**
+
+- **Group by Operational Phase:** Instead of displaying all six metrics in a generic grid, group them logically into distinct phases:
+  - **Base & Payload:** Basic Operating Weight + Planned Payload $\rightarrow$ Planned Zero-Fuel Weight.
+  - **Departure:** Planned Ramp Weight and Planned Takeoff Gross Weight (with Planned Takeoff Fuel paired alongside).
+  - **Arrival:** Planned Estimated Landing Weight.
+
+**Grid & Spacing Optimization**
+
+- **Consistent 3-Column Layout:** Use a balanced 3-column grid on desktop (e.g., Base Data | Departure | Arrival) to prevent awkward trailing single cards like Planned Estimated Landing Weight.
+- **Card Footers for Context:** Move explanatory micro-copy (such as *"Derived server-side..."*) directly inside the footer of the specific card it references rather than letting it sit below the entire grid block.
+
+**Data Density & Typography**
+
+- **Unit De-emphasis:** Reduce the visual weight of the unit label (`LB`) relative to the numerical values (e.g., smaller font size or muted color) so the flight crew can scan numbers quickly.
+
+Outcome: The task workspace now uses three balanced desktop columns for Base & Payload, Departure, and Arrival. Each phase keeps its related planned masses together, the ramp derivation explanation is attached to the ramp-weight card footer, and mass units use smaller muted typography so numeric values remain visually dominant. Confirmed badges and unavailable-limit placeholders remain hidden; conflict and missing-source statuses continue to render per field.
 
 ## 7. Add task: review MEL / CDL
 - Use counter badge
@@ -492,25 +355,167 @@ Outcome update: Available tasks no longer render redundant status badges or dots
 
 ## Completed: Critical — Recover six missing MELs from CKS093312ZSOF 2.pdf
 
-Investigation outcome: The release contains eight operational MEL records under `MEL/CDL`, but `MaintenanceLogExtractor` returns only `22-99-02` / DMI `100230537` and `22-99-01` / DMI `100230538`. The following six source-backed MELs are omitted:
 
-| MEL number | DMI | Source description |
-| --- | --- | --- |
-| `25-20-1-NEF-16` | `100224958` | MISCELLANEOUS INTERIOR TRIM (NON-STRUCTURAL PANELS AND MOLDINGS) |
-| `23-27-1-2` | `100230493` | DATA COMMUNICATION MANAGEMENT SYSTEM (ETOPS) ACPT/CANC/RJCT SWITCH LIGHTS |
-| `47-11-1-1` | `100230523` | NITROGEN GENERATION SYSTEM (NGS) NITROGEN GENERATION PERFORMANCE |
-| `25-25-3-3` | `100230529` | SUPERNUMERARY SEATS (777F) LEG RESTS (M) |
-| `22-11-7` | `100230535` | AUTOMATIC LANDING SYSTEM (AUTOLAND) (LMP) AUTOMATIC LANDING SYSTEM (AUTOLAND) |
-| `27-02-3` | `100230536` | PRIMARY FLIGHT COMPUTER CHANNELS (LMP) (M) |
+## 1. [x] Completed: Flight Init — Normalize initial altitude units
 
-Root cause: Both the operational-item matcher and `validNumber()` require the third MEL/CDL number segment to contain 2–4 characters and allow only one optional suffix. These six confirmed source formats use a one-character third segment, and `25-20-1-NEF-16` contains two additional segments, so they are rejected before DTO construction. Separately, the maintenance-section header regex accepts bare `MAINTENANCE`, causing this fixture's retained evidence to begin at the unrelated phrase `MAINTENANCE WRITE UP IS` instead of the actual `MEL/CDL` heading.
+Goal: Represent the confirmed initial altitude as a typed numeric value with an explicit unit instead of displaying the source flight-level code unchanged.
 
-Required outcome:
+Current behavior: A metric initial altitude such as `S0890` is rendered verbatim. The value represents 8,900 meters, but the extractor does not currently separate the altitude from its unit.
+  
+- Add a sanitized, source-backed fixture containing a confirmed metric initial altitude, as well as feet. Implement an `isFlightLevel` bool.
+- Introduce an altitude unit enum supporting feet, and meters.
+- Extract the altitude as an integer and preserve its confirmed source unit.
+- Render the normalized altitude with an explicit unit while retaining the original source evidence.
+- Test metric and feet inputs, malformed values, and missing initial altitude data.
 
-- Support the confirmed variable-length MEL/CDL number formats without accepting arbitrary prose as an item number.
-- Anchor operational extraction to the actual `MEL/CDL` section when the release uses that heading.
-- Extract all eight records once, retaining DMI and description evidence across the page break.
-- Add a sanitized fixture covering these exact number shapes, page-header interruption, and adjacent flattened records.
-- Test malformed numbers, duplicate records, conflicting duplicates, and section-start false positives.
+- Flight level text sample in feet representing FL330: -N0497F330 
+- Flight level text sample in meters: -K0920S0890
 
-Commit message: `fix: recover operational MEL records`
+Outcome: Initial altitude is normalized into a typed integer value with an explicit feet or meters unit and an `isFlightLevel` flag. Flight levels render in operational notation, such as `FL270` for feet and `FL089M` for meters; non-flight-level values retain explicit `ft` or `m` units. Original ICAO codes remain in private source evidence. Sanitized feet and metric fixtures cover confirmed inputs, with focused coverage for malformed and missing values.
+
+Done when: Flight Init displays a typed initial altitude with its correct unit, and unsupported or absent values are reported without inference.
+
+Commit message: `fix: normalize flight init altitude units`
+
+Follow up: 
+1. [x] Render FL if flight level. If Meters append M. i.e. FL270 for flight level in feet or FL089M for flight level in meters.
+
+### [x] Completed: Follow up - initial altitude in ft
+Problem: FMS only accepts Cruise altitude entry in feet
+
+Currently: Filed initial altitude exists in the code base already but not identified as such.
+2 initial altitudes are given in a flight release, one filed, and one for FMS initialization given in flight level thousands of feet. This last case is not handled.
+
+Sample text from release: 
+```text
+         BURN    TIME   FL   DIST  WIND
+
+DEST RKSI 033.4   01.48  290  0896  P078   BASIC OPTG WEIGHT  310710
+```
+Current naming convention: 'initial_altitude' => $this->formatInitialAltitude($matches[2]),
+
+
+- From the sample text, the FMS init flight level is FL290
+- Mapping:
+Overview and Jepp PD-Pro: Filed initial altitude
+FMS: FMS initial altitude
+
+Fix: Extract flight level from seperate section. 
+   - Create seperate initial altitude in Flight init DTO
+   - Distinguish between FMS initial altitude and filed initial altitude. Rename objects as necessary
+   - Extract flight init flight level in services
+   - Identify filed initial altitude
+   - Distinguish UI labels
+
+Outcome: The ICAO FPL value is retained as the typed filed initial altitude for Overview and Jepp PD-Pro. The destination-summary FL column is independently extracted as a feet-based typed FMS initial altitude and rendered only in FMS. The Flight Init task renders neither altitude.
+
+### Failed tests
+Tests\Feature\Livewire\FlightPlanBriefTest - 2 failues in flight level
+
+## 2. [x] Completed: FMS task view
+
+### [x] Bug fixed: Distance not rendered
+- Distance extraction now finds every `TOTAL DIST/DEST` occurrence regardless of stripped preceding whitespace and returns the value only when all captured distances agree.
+- Verified leading-zero distance `TOTAL DIST/DEST 0896` as 896 NM and `TOTAL DIST/DEST 3597` as 3,597 NM.
+
+### [x] Completed: Cost index missing
+Currently:
+- No evidence of extraction.
+- No fixtures in place. Cost index not found in DTOs
+- Cost index is needed in FMS task
+- Not rendered
+
+Cost index is found within the fuel burn section. Logically belongs in the Fuel Plan Data.
+app/DTOs/FuelPlanData.php
+app/Services/FlightPlan/Extractor/FlightFuelExtractor.php
+
+Fix:
+- DTO fixture
+- Implement extraction logical
+- Cost index range 0-999
+- Implement UI render within FMS task only
+- Sample text
+```text
+FUEL BURN BASED ON:  CI200
+```
+- Update tests
+
+Outcome: Cost index is extracted from the fuel-burn basis as a typed integer in the confirmed 0–999 range, retained with private source evidence, serialized through `FuelPlanData`, restored from cached page data, and rendered only in the FMS task. Missing, malformed, and out-of-range values remain unavailable without inference. A sanitized fuel fixture and focused extractor, DTO, aggregate, cache-rehydration, view-model, and Livewire coverage verify the complete path.
+
+Follow-up outcome: Cost-index normalization now lives in `FuelPlanFieldNormalizer`; both build actions delegate to the service instead of owning duplicated domain logic.
+
+PDF regression outcome: Cost-index extraction accepts collapsed parser text such as `CI180TAXI` while still rejecting values with more than three digits. The supplied `CKS025625KLAX.pdf` now extracts cost index 180 with retained source evidence.
+
+Commit message: `fix: extract and render FMS cost index`
+  
+## 3. [x] Completed: Remove Extract route button
+- Removes need for user to make an unnecessary additional action (click/tap)
+- View results on PDF upload when parsing completes
+- Render a preloader using the wire:loading livewire directive
+- resources/views/livewire/flight-plan-brief.blade.php
+
+Outcome: Selecting a flight release PDF now starts extraction automatically after Livewire finishes the temporary upload. The separate Extract route button and submit form were removed, while the upload input retains an accessible combined uploading-and-processing status and existing recoverable validation errors.
+
+Commit message: `refactor: extract flight plan immediately after upload`
+
+## 4. [x] Completed: Large upload button
+- Similar to extract schedule upload button
+- Use same icon
+- `Drop your flight plan here`
+- `Upload on PDF flight plan. Click to browse your files.`
+- Centered layout
+- Only focus on the upload section for now. Retain index page as is
+
+Outcome: The flight-plan upload is now a centered, large dashed dropzone matching the schedule extractor's upload treatment and icon. It retains the automatic PDF processing flow, accessible file input, visible focus state, loading status, validation errors, responsive sizing, and dark-mode styling without changing the index or results layouts.
+
+Follow-up outcome: Selecting a file now disables the upload input for the full Livewire request and replaces the dropzone prompt with a centered spinner and processing status, preventing duplicate selections while the PDF uploads and parses.
+
+Follow-up outcome: A successful extraction now dispatches a browser event after the results render, smoothly scrolling to the new `release-summary` anchor while leaving validation and extraction failures at the upload control.
+
+Commit message: `style: enlarge flight plan upload target`
+
+## 5. [x] Completed: Implement Weather
+
+Goal: Organize confirmed weather by airport and route while retaining the source report.
+
+- Use fixtures that can be expanded upon after a MVP weather implementation
+- Show raw blocks for departure, destination, and alternate airport for METAR, TAF, RAIM. Keep extraction light weight and narrowly scoped
+- Use narrowly scoped parsing; do not build speculative meteorological interpretation. Show raw weather output blocks. For instance, whole METAR section or entire TAF section per airport
+
+- Group departure, destination, alternate weather.
+
+Done when: all METAR and TAF blocks are shown for departure, destination, and alternate airports.
+
+Outcome: Weather extraction now uses the confirmed takeoff-and-landing weather block structure from stored flight releases. It retains every supported METAR/SPECI and TAF report as normalized raw text, groups reports by departure, destination, and alternate (`OTHER`) airport, and preserves the confirmed release-level RAIM validity statement. Typed weather DTOs carry the reports through the normalized aggregate, cached payload, defensive page rehydration, task availability, and overview status. The dedicated responsive Weather task renders every report, explicit per-airport missing states, and a no-interpretation warning without deriving conditions, suitability, or dispatch decisions. Sanitized expandable fixtures and focused extractor, DTO, aggregate, cache-rehydration, view-model, enum, and Livewire coverage verify multiline and flattened parser text, missing roles, malformed cached groups, and unsupported input.
+
+Commit message: `feat: add weather task`
+
+### [x] Completed: Follow up - Preserve TAF new lines in weather reports
+
+Investigation outcome:
+- `FlightPlanTextExtractor` does not collapse whitespace; it removes only null bytes from `smalot/pdfparser` output, and the parser retains page text line breaks where the PDF exposes them.
+- `WeatherExtractor::airportWeather()` currently calls `Str::squish()` on every METAR/SPECI and TAF report. This is the point that irreversibly collapses TAF continuation lines.
+- The weather fixture already contains a multiline departure TAF, but `WeatherExtractorTest` expects the flattened form, so the existing test codifies the bug.
+- The Weather Blade view already uses a `<pre>` element with `whitespace-pre-wrap`; DTOs, serialization, cache rehydration, and the view model pass report strings through unchanged. No presentation or schema change is required.
+- A PDF whose extracted text is already flat contains no reliable layout signal from which to reconstruct line breaks. Flattened input must remain supported as flat text; the extractor must not invent TAF formatting.
+
+Implementation plan:
+1. Add a focused report-normalization method in `WeatherExtractor` that normalizes line endings to `\n`, trims report boundaries, removes the trailing parser marker without consuming a preceding newline, collapses horizontal whitespace per line, removes empty boundary lines, and preserves internal line breaks.
+2. Use line-preserving normalization for extracted weather reports instead of `Str::squish()`. Apply the same deterministic rule to METAR/SPECI and TAF strings so raw report handling has one contract, while leaving private source-fragment normalization unchanged unless exact evidence formatting is separately required.
+3. Update the sanitized weather fixture, if needed, to cover multiple TAF continuation groups such as `FM`, `TEMPO`, and `BECMG`, plus CRLF input. Do not infer breaks from those tokens; assert only breaks present in source text.
+4. Update `WeatherExtractorTest` to assert exact multiline TAF output, exact flattened fallback output, normalized CRLF/LF behavior, preserved report boundaries between consecutive reports, horizontal-space cleanup, trailing marker removal, and deduplication after normalization.
+5. Add a narrow pipeline/rendering regression assertion showing the multiline string survives typed DTO construction, serialization/cache rehydration, the view model, and escaped `<pre>` rendering. Reuse existing tests at the smallest layers rather than duplicating the full extraction suite.
+6. Run the focused weather extractor, DTO/aggregate rehydration, view-model, and Livewire weather tests through Sail; then run Pint for changed PHP files and Larastan once at the final integration checkpoint.
+
+Done when: Parser-provided TAF line breaks survive extraction through rendering exactly as normalized `\n` separators, flattened PDFs remain readable without fabricated formatting, adjacent reports are not merged, and focused regressions pass.
+
+Outcome: Weather reports now normalize CRLF/CR to LF, clean horizontal whitespace per line, remove trailing parser markers, and retain every source-provided internal line break through the typed payload and `<pre>` rendering. When a PDF exposes a TAF as flattened text, recognized ICAO change groups (`FM`, `BECMG`, `TEMPO`, and `PROB30/40`, including combined probability/temporary groups) begin on separate lines; this reconstruction is scoped to TAFs and leaves METAR/SPECI reports unchanged. Focused regressions cover the supplied two-TAF KCVG shape, existing multiline TAFs, consecutive report boundaries, deduplication after normalization, change-group formatting, and rendered multiline output.
+
+### [x] Completed: Follow up - RAIM not found
+
+Problem: RAIM info is not always extracted or found.
+
+Sample: `PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION
+VALID FROM 0715Z TO 0935Z`
+
+Outcome: RAIM extraction now accepts parser-flattened releases where the `VALID` label is concatenated to `NAVIGATION` and the following NOTAM section is concatenated directly after the ending `Z` time. It still requires exact four-digit UTC validity times and does not consume adjacent section text. Verified against the supplied KCVG release shape with focused positive and malformed-boundary regressions.

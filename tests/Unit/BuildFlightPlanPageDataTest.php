@@ -75,7 +75,7 @@ class BuildFlightPlanPageDataTest extends TestCase
             FlightPlanTask::FuelScore->value => FlightPlanTaskAvailability::Available,
             FlightPlanTask::Etops->value => FlightPlanTaskAvailability::Available,
             FlightPlanTask::Weather->value => FlightPlanTaskAvailability::NotPresent,
-            FlightPlanTask::WeightAndBalance->value => FlightPlanTaskAvailability::NotSupported,
+            FlightPlanTask::WeightAndBalance->value => FlightPlanTaskAvailability::NotPresent,
         ], $pageData->taskAvailability());
     }
 

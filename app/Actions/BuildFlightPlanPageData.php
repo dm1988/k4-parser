@@ -21,9 +21,12 @@ use App\DTOs\ScheduleData;
 use App\DTOs\WaypointData;
 use App\DTOs\Weather\AirportWeatherData;
 use App\DTOs\Weather\WeatherData;
+use App\DTOs\WeightBalance\WeightBalanceData;
+use App\DTOs\WeightBalance\WeightBalanceFieldData;
 use App\Enums\AltitudeUnit;
 use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
+use App\Enums\WeightBalanceSourceStatus;
 use App\Services\FlightPlan\FlightInitFieldNormalizer;
 use App\Services\FlightPlan\FuelPlanFieldNormalizer;
 use App\ValueObjects\AirportCode;
@@ -105,6 +108,7 @@ class BuildFlightPlanPageData
             flightInit: $this->flightInit($data['flightInit'] ?? null),
             etops: $this->etops($data['etops'] ?? null),
             weather: $this->weather($data['weather'] ?? null),
+            weightBalance: $this->weightBalance($data['weightBalance'] ?? null),
             crewMembers: $this->crewMembers($data['crewMembers'] ?? null),
             waypoints: $this->waypoints($data['waypoints'] ?? null),
         );
@@ -297,6 +301,55 @@ class BuildFlightPlanPageData
         );
 
         return $weather->hasReports() || $weather->raim !== null ? $weather : null;
+    }
+
+    private function weightBalance(mixed $value): ?WeightBalanceData
+    {
+        if (! is_array($value)) {
+            return null;
+        }
+
+        return new WeightBalanceData(
+            basicOperatingWeight: $this->weightBalanceField($value['basicOperatingWeight'] ?? null),
+            plannedPayload: $this->weightBalanceField($value['plannedPayload'] ?? null),
+            plannedTakeoffFuel: $this->weightBalanceField($value['plannedTakeoffFuel'] ?? null),
+            plannedZeroFuelWeight: $this->weightBalanceField($value['plannedZeroFuelWeight'] ?? null),
+            plannedRampWeight: $this->weightBalanceField($value['plannedRampWeight'] ?? null),
+            plannedTakeoffGrossWeight: $this->weightBalanceField($value['plannedTakeoffGrossWeight'] ?? null),
+            plannedEstimatedLandingWeight: $this->weightBalanceField($value['plannedEstimatedLandingWeight'] ?? null),
+        );
+    }
+
+    private function weightBalanceField(mixed $value): WeightBalanceFieldData
+    {
+        if (! is_array($value)) {
+            return new WeightBalanceFieldData(null, WeightBalanceSourceStatus::NotPresent);
+        }
+
+        $sourceStatus = is_string($value['sourceStatus'] ?? null)
+            ? WeightBalanceSourceStatus::tryFrom($value['sourceStatus'])
+            : null;
+        $limitStatus = is_string($value['limitStatus'] ?? null)
+            ? WeightBalanceSourceStatus::tryFrom($value['limitStatus'])
+            : null;
+        $plannedValue = $this->weightQuantity($value['plannedValue'] ?? null);
+        $permittedLimit = $this->weightQuantity($value['permittedLimit'] ?? null);
+
+        if ($sourceStatus !== WeightBalanceSourceStatus::Confirmed) {
+            $plannedValue = null;
+        }
+
+        if ($limitStatus !== WeightBalanceSourceStatus::Confirmed) {
+            $permittedLimit = null;
+        }
+
+        return new WeightBalanceFieldData(
+            plannedValue: $plannedValue,
+            sourceStatus: $sourceStatus ?? WeightBalanceSourceStatus::NotPresent,
+            permittedLimit: $permittedLimit,
+            limitStatus: $limitStatus ?? WeightBalanceSourceStatus::LimitUnavailable,
+            derived: ($value['derived'] ?? false) === true && $plannedValue !== null,
+        );
     }
 
     private function airportWeather(mixed $value): ?AirportWeatherData

@@ -175,7 +175,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertDontSeeHtml('aria-label="Available"')
             ->assertDontSeeText('Available')
             ->assertSeeHtml('aria-label="Not present"')
-            ->assertSeeHtml('aria-label="Not supported"')
+            ->assertDontSeeHtml('aria-label="Not supported"')
             ->assertSeeHtml('h-2.5 w-2.5 ring-1 ring-inset ring-black/10 dark:ring-white/10')
             ->assertDispatched('open-modal', name: 'buy-me-a-coffee')
             ->call('selectTask', FlightPlanTask::Fms->value)
@@ -1017,6 +1017,64 @@ class FlightPlanBriefTest extends TestCase
             ->assertDontSeeText('Not present in this release');
     }
 
+    public function test_weight_and_balance_renders_planned_values_independent_statuses_and_server_derived_ramp_weight(): void
+    {
+        Storage::fake('user_flight_releases');
+
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')->andReturn($this->parsedFlightPlan(
+                fuel: [
+                    'ramp' => ['amount' => 225500.0, 'unit' => 'lb'],
+                    'taxi' => null,
+                    'takeoff' => ['amount' => 223489.0, 'unit' => 'lb'],
+                    'trip' => null,
+                    'contingency' => null,
+                    'alternate' => null,
+                    'final_reserve' => null,
+                    'estimated_landing' => null,
+                ],
+                weightBalance: [
+                    'basic_operating_weight' => ['amount' => 335858, 'unit' => 'lb', 'status' => 'confirmed'],
+                    'planned_payload' => ['amount' => null, 'unit' => 'lb', 'status' => 'conflict'],
+                    'planned_zero_fuel_weight' => ['amount' => 353858, 'unit' => 'lb', 'status' => 'confirmed'],
+                    'planned_takeoff_gross_weight' => ['amount' => 577347, 'unit' => 'lb', 'status' => 'confirmed'],
+                    'planned_estimated_landing_weight' => ['amount' => 371893, 'unit' => 'lb', 'status' => 'confirmed'],
+                ],
+            ));
+        });
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'formatForIcaoDisplay')
+                ->with('DCT Q139 TEST')
+                ->andReturn('DCT Q139 TEST');
+        });
+
+        Livewire::actingAs(User::factory()->admin()->create())
+            ->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->call('selectTask', FlightPlanTask::WeightAndBalance->value)
+            ->assertSet('activeTask', FlightPlanTask::WeightAndBalance->value)
+            ->assertSeeText('Planned source values')
+            ->assertSeeText('Base & Payload')
+            ->assertSeeText('Departure')
+            ->assertSeeText('Arrival')
+            ->assertSeeText('Basic operating weight')
+            ->assertSeeText('335,858')
+            ->assertSeeText('Payload')
+            ->assertSeeText('Conflict')
+            ->assertSeeText('Zero-fuel weight')
+            ->assertSeeText('Takeoff fuel')
+            ->assertSeeText('223,489')
+            ->assertSeeText('Ramp weight')
+            ->assertSeeText('579,358')
+            ->assertSeeText('Takeoff gross weight')
+            ->assertSeeText('Estimated landing weight')
+            ->assertSeeText('LB')
+            ->assertSeeText('Derived server-side from confirmed zero-fuel weight and ramp fuel.')
+            ->assertDontSeeText('Permitted limit')
+            ->assertDontSeeText('Limit unavailable')
+            ->assertDontSeeText('Confirmed');
+    }
+
     public function test_maintenance_log_exposes_shared_context_when_the_item_section_is_absent(): void
     {
         Storage::fake('user_flight_releases');
@@ -1562,6 +1620,7 @@ class FlightPlanBriefTest extends TestCase
         ?array $flightInit = null,
         ?array $waypoints = null,
         ?array $weather = null,
+        ?array $weightBalance = null,
     ): ParsedFlightPlanData {
         $legacy ??= $this->flightPlan();
 
@@ -1613,6 +1672,7 @@ class FlightPlanBriefTest extends TestCase
                 'eexp_coordinates' => is_string($legacy['eexp_coordinates'] ?? null) ? $legacy['eexp_coordinates'] : null,
             ],
             weather: $weather ?? [],
+            weightBalance: $weightBalance ?? [],
             legacy: $legacy,
             waypoints: $waypoints ?? [],
         );

@@ -116,6 +116,13 @@ class BuildFlightPlanDataTest extends TestCase
                 'alternate' => null,
                 'raim' => 'PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION VALID FROM 0200Z TO 0420Z',
             ],
+            weightBalance: [
+                'basic_operating_weight' => ['amount' => 335858, 'unit' => 'lb', 'status' => 'confirmed'],
+                'planned_payload' => ['amount' => 18000, 'unit' => 'lb', 'status' => 'confirmed'],
+                'planned_zero_fuel_weight' => ['amount' => 353858, 'unit' => 'lb', 'status' => 'confirmed'],
+                'planned_takeoff_gross_weight' => ['amount' => 577347, 'unit' => 'lb', 'status' => 'confirmed'],
+                'planned_estimated_landing_weight' => ['amount' => 371893, 'unit' => 'lb', 'status' => 'confirmed'],
+            ],
             waypoints: [
                 ['identifier' => 'FIX01', 'coordinate' => 'N01 02.3 E004 05.6', 'time' => '005', 'total_time' => '00.11', 'remaining_fuel' => '0000'],
                 ['identifier' => 'FIX01', 'coordinate' => 'N02 03.4 E005 06.7', 'time' => null, 'total_time' => null, 'remaining_fuel' => null],
@@ -161,6 +168,10 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame('TAF KLAX 241739Z 2418/2524 25007KT P6SM OVC020', $flightPlan->weather?->departure?->tafs[0]);
         $this->assertSame('RKSI', $flightPlan->weather?->destination?->airport->value);
         $this->assertNull($flightPlan->weather?->alternate);
+        $this->assertSame(335858, $flightPlan->weightBalance?->basicOperatingWeight->plannedValue?->amount);
+        $this->assertSame(214829, $flightPlan->weightBalance?->plannedTakeoffFuel->plannedValue?->amount);
+        $this->assertSame(570658, $flightPlan->weightBalance?->plannedRampWeight->plannedValue?->amount);
+        $this->assertTrue($flightPlan->weightBalance?->plannedRampWeight->derived);
     }
 
     public function test_it_omits_the_fuel_plan_when_no_fuel_was_normalized(): void

@@ -64,18 +64,6 @@ enum FlightPlanTask: string
 
     public function hasCustomView(): bool
     {
-        return match ($this) {
-            self::Overview,
-            self::JeppPdPro,
-            self::MaintenanceLog,
-            self::Envelope,
-            self::FlightInit,
-            self::Fms,
-            self::SlotTimes,
-            self::FuelScore,
-            self::Etops,
-            self::Weather => true,
-            default => false,
-        };
+        return true;
     }
 }

@@ -18,6 +18,7 @@ class ExtractFlightPlanData
         private readonly FlightInitExtractor $flightInitExtractor,
         private readonly WaypointExtractor $waypointExtractor,
         private readonly WeatherExtractor $weatherExtractor,
+        private readonly WeightBalanceExtractor $weightBalanceExtractor = new WeightBalanceExtractor,
     ) {}
 
     public function extractFile(string $filePath): ParsedFlightPlanData
@@ -37,6 +38,7 @@ class ExtractFlightPlanData
         $flightInit = $this->flightInitExtractor->extract($text);
         $waypoints = $this->waypointExtractor->extract($text);
         $weather = $this->weatherExtractor->extract($text);
+        $weightBalance = $this->weightBalanceExtractor->extract($text);
 
         return new ParsedFlightPlanData(
             identity: $identity['data'],
@@ -67,6 +69,7 @@ class ExtractFlightPlanData
                 'eexp_coordinates' => $route['eexp_coordinates'],
             ],
             weather: $weather['data'],
+            weightBalance: $weightBalance['data'],
             waypoints: $waypoints['data'],
             sourceFragments: [
                 ...$identity['source_fragments'],
@@ -79,6 +82,7 @@ class ExtractFlightPlanData
                 'flight_init_filed_initial_altitude' => $route['filed_initial_altitude_source'],
                 ...$waypoints['source_fragments'],
                 ...$weather['source_fragments'],
+                ...$weightBalance['source_fragments'],
             ],
             legacy: $route,
         );

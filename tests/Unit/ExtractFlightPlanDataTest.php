@@ -16,6 +16,7 @@ use App\Services\FlightPlan\Extractor\FlightScheduleExtractor;
 use App\Services\FlightPlan\Extractor\MaintenanceLogExtractor;
 use App\Services\FlightPlan\Extractor\WaypointExtractor;
 use App\Services\FlightPlan\Extractor\WeatherExtractor;
+use App\Services\FlightPlan\Extractor\WeightBalanceExtractor;
 use App\Services\Schedule\Extractor\CrewListParser;
 use Illuminate\Contracts\Cache\Repository;
 use Smalot\PdfParser\Parser;
@@ -92,6 +93,13 @@ class ExtractFlightPlanDataTest extends TestCase
             ],
             'source_fragments' => ['weather_departure' => 'private weather evidence'],
         ]);
+        $weightBalanceExtractor = $this->createMock(WeightBalanceExtractor::class);
+        $weightBalanceExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
+            'data' => [
+                'basic_operating_weight' => ['amount' => 335858, 'unit' => 'lb', 'status' => 'confirmed'],
+            ],
+            'source_fragments' => ['weight_balance_basic_operating_weight' => 'private weight evidence'],
+        ]);
 
         $parsed = (new ExtractFlightPlanData(
             $textExtractor,
@@ -105,6 +113,7 @@ class ExtractFlightPlanDataTest extends TestCase
             $flightInitExtractor,
             $waypointExtractor,
             $weatherExtractor,
+            $weightBalanceExtractor,
         ))->extractFile('/tmp/release.pdf');
 
         $this->assertInstanceOf(ParsedFlightPlanData::class, $parsed);
@@ -127,6 +136,8 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame('bounded waypoint evidence', $parsed->sourceFragments['computed_flight_plan_waypoints']);
         $this->assertSame('KLAX', $parsed->weather['departure']['airport']);
         $this->assertSame('private weather evidence', $parsed->sourceFragments['weather_departure']);
+        $this->assertSame(335858, $parsed->weightBalance['basic_operating_weight']['amount']);
+        $this->assertSame('private weight evidence', $parsed->sourceFragments['weight_balance_basic_operating_weight']);
         $this->assertSame('ETP1', $parsed->etops['etps'][0]['label']);
         $this->assertSame('N40 31.1 W131 22.6', $parsed->etops['eent_coordinates']);
         $this->assertSame('N45 19.3 E151 36.4', $parsed->etops['eexp_coordinates']);

@@ -60,8 +60,10 @@ TEXT);
         $this->assertSame([
             'cost_index' => null,
             'ramp' => ['amount' => 216800.0, 'unit' => 'lb'],
+            'ramp_status' => 'confirmed',
             'taxi' => ['amount' => 2000.0, 'unit' => 'lb'],
             'takeoff' => ['amount' => 214829.0, 'unit' => 'lb'],
+            'takeoff_status' => 'confirmed',
             'trip' => ['amount' => 195116.0, 'unit' => 'lb'],
             'contingency' => null,
             'alternate' => ['amount' => 5600.0, 'unit' => 'lb'],
@@ -77,6 +79,8 @@ TEXT);
         $this->assertNull($result['data']['ramp']);
         $this->assertNull($result['data']['taxi']);
         $this->assertNull($result['data']['takeoff']);
+        $this->assertSame('not_present', $result['data']['ramp_status']);
+        $this->assertSame('not_present', $result['data']['takeoff_status']);
     }
 
     public function test_it_normalizes_kilogram_fuel_tables(): void
@@ -88,5 +92,17 @@ TEXT);
         $this->assertSame(['amount' => 98300.0, 'unit' => 'kg'], $result['data']['ramp']);
         $this->assertSame(['amount' => 1500.0, 'unit' => 'kg'], $result['data']['taxi']);
         $this->assertSame(['amount' => 96800.0, 'unit' => 'kg'], $result['data']['takeoff']);
+    }
+
+    public function test_it_marks_disagreeing_ramp_and_takeoff_fuel_sources_as_conflicts(): void
+    {
+        $result = (new FlightFuelExtractor)->extract(
+            'INC BURN/1000 LBS: 0314 TTL RMP 216.8 TTL RMP 217.0 TAKEOFF FUEL 214829 TAKEOFF FUEL 214900',
+        );
+
+        $this->assertNull($result['data']['ramp']);
+        $this->assertSame('conflict', $result['data']['ramp_status']);
+        $this->assertNull($result['data']['takeoff']);
+        $this->assertSame('conflict', $result['data']['takeoff_status']);
     }
 }

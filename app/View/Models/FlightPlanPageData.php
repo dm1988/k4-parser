@@ -49,7 +49,9 @@ final readonly class FlightPlanPageData
             FlightPlanTask::Weather => $this->flightPlan->weather === null
                 ? FlightPlanTaskAvailability::NotPresent
                 : FlightPlanTaskAvailability::Available,
-            FlightPlanTask::WeightAndBalance => FlightPlanTaskAvailability::NotSupported,
+            FlightPlanTask::WeightAndBalance => $this->flightPlan->weightBalance?->hasSourceData() === true
+                ? FlightPlanTaskAvailability::Available
+                : FlightPlanTaskAvailability::NotPresent,
             FlightPlanTask::Envelope => $this->envelopeAvailability(),
         };
     }

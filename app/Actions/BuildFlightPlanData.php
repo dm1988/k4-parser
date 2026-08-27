@@ -26,6 +26,7 @@ use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
 use App\Services\FlightPlan\FlightInitFieldNormalizer;
 use App\Services\FlightPlan\FuelPlanFieldNormalizer;
+use App\Services\FlightPlan\WeightBalanceDataBuilder;
 use App\ValueObjects\AirportCode;
 use App\ValueObjects\FlightTime;
 use App\ValueObjects\FuelQuantity;
@@ -40,10 +41,13 @@ class BuildFlightPlanData
     public function __construct(
         private readonly FlightInitFieldNormalizer $flightInitFieldNormalizer = new FlightInitFieldNormalizer,
         private readonly FuelPlanFieldNormalizer $fuelPlanFieldNormalizer = new FuelPlanFieldNormalizer,
+        private readonly WeightBalanceDataBuilder $weightBalanceDataBuilder = new WeightBalanceDataBuilder,
     ) {}
 
     public function handle(ParsedFlightPlanData $parsed): FlightPlanData
     {
+        $fuelPlan = $this->fuelPlan($parsed);
+
         return new FlightPlanData(
             identity: new FlightIdentityData(
                 flightNumber: $parsed->identity['flight_number'] ?? null,
@@ -78,12 +82,13 @@ class BuildFlightPlanData
                 arrivalStar: $parsed->route['arrival_star'] ?? null,
                 distanceNauticalMiles: $parsed->route['distance_nautical_miles'] ?? null,
             ),
-            fuelPlan: $this->fuelPlan($parsed),
+            fuelPlan: $fuelPlan,
             maintenanceLog: $this->maintenanceLog($parsed),
             envelope: $this->envelope($parsed),
             flightInit: $this->flightInit($parsed),
             etops: $this->etops($parsed),
             weather: $this->weather($parsed),
+            weightBalance: $this->weightBalanceDataBuilder->build($parsed->weightBalance, $fuelPlan, $parsed->fuel),
             crewMembers: $this->crewMembers($parsed->crewMembers),
             waypoints: $this->waypoints($parsed),
         );
@@ -171,8 +176,8 @@ class BuildFlightPlanData
         $waypoints = [];
 
         foreach ($parsed->waypoints as $waypoint) {
-            $identifier = $this->nullableString($waypoint['identifier'] ?? null);
-            $coordinate = $this->nullableString($waypoint['coordinate'] ?? null);
+            $identifier = $this->nullableString($waypoint['identifier']);
+            $coordinate = $this->nullableString($waypoint['coordinate']);
 
             if ($identifier === null || $coordinate === null) {
                 continue;

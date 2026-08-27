@@ -8,7 +8,7 @@ class FlightFuelExtractor
 {
     /**
      * @return array{
-     *     data: array{cost_index: ?int, ramp: array{amount: float, unit: string}|null, taxi: array{amount: float, unit: string}|null, takeoff: array{amount: float, unit: string}|null, trip: array{amount: float, unit: string}|null, contingency: null, alternate: array{amount: float, unit: string}|null, final_reserve: array{amount: float, unit: string}|null, estimated_landing: array{amount: float, unit: string}|null},
+     *     data: array{cost_index: ?int, ramp: array{amount: float, unit: string}|null, ramp_status: string, taxi: array{amount: float, unit: string}|null, takeoff: array{amount: float, unit: string}|null, takeoff_status: string, trip: array{amount: float, unit: string}|null, contingency: null, alternate: array{amount: float, unit: string}|null, final_reserve: array{amount: float, unit: string}|null, estimated_landing: array{amount: float, unit: string}|null},
      *     source_fragments: array<string, string>
      * }
      */
@@ -21,8 +21,10 @@ class FlightFuelExtractor
             'data' => [
                 'cost_index' => $this->costIndex($text),
                 'ramp' => $this->scaledQuantity($text, '/TTL\s+RMP\s+([\d,.]+)/i', $unit),
+                'ramp_status' => $this->quantityStatus($text, '/TTL\s+RMP\s+([\d,.]+)/i', $unit, 1000),
                 'taxi' => $this->scaledQuantity($text, '/TAXI\s+([\d,.]+)/i', $unit),
                 'takeoff' => $this->exactQuantity($text, '/TAKEOFF\s+FUEL\s+([\d,]+)/i', $unit),
+                'takeoff_status' => $this->quantityStatus($text, '/TAKEOFF\s+FUEL\s+([\d,]+)/i', $unit, 1),
                 'trip' => $this->exactQuantity($text, '/EST\s+FUEL\s+BURN\s+([\d,]+)/i', $unit),
                 'contingency' => null,
                 'alternate' => $this->scaledQuantity($text, '/ALTN\s+[A-Z]{4}\s+([\d,.]+)/i', $unit),
@@ -91,22 +93,43 @@ class FlightFuelExtractor
             return null;
         }
 
-        $matches = [];
+        $amounts = $this->quantityAmounts($text, $pattern, $unit, $scale);
 
-        if (preg_match($pattern, $text, $matches) !== 1) {
-            return null;
-        }
-
-        $amount = str_replace(',', '', $matches[1]);
-
-        if (! is_numeric($amount)) {
+        if (count($amounts) !== 1) {
             return null;
         }
 
         return [
-            'amount' => (float) $amount * $scale,
+            'amount' => $amounts[0],
             'unit' => $unit,
         ];
+    }
+
+    private function quantityStatus(string $text, string $pattern, ?string $unit, int $scale): string
+    {
+        $amounts = $this->quantityAmounts($text, $pattern, $unit, $scale);
+
+        return match (count($amounts)) {
+            0 => 'not_present',
+            1 => 'confirmed',
+            default => 'conflict',
+        };
+    }
+
+    /** @return list<float> */
+    private function quantityAmounts(string $text, string $pattern, ?string $unit, int $scale): array
+    {
+        if ($unit === null) {
+            return [];
+        }
+
+        $matches = [];
+        preg_match_all($pattern, $text, $matches, PREG_SET_ORDER);
+
+        return array_values(array_unique(array_map(
+            static fn (array $match): float => (float) str_replace(',', '', $match[1]) * $scale,
+            $matches,
+        ), SORT_REGULAR));
     }
 
     private function summaryFragment(string $text): ?string

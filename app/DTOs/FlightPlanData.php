@@ -4,6 +4,7 @@ namespace App\DTOs;
 
 use App\DTOs\Etops\EtopsData;
 use App\DTOs\Weather\WeatherData;
+use App\DTOs\WeightBalance\WeightBalanceData;
 use JsonSerializable;
 
 final readonly class FlightPlanData implements JsonSerializable
@@ -22,25 +23,12 @@ final readonly class FlightPlanData implements JsonSerializable
         public ?FlightInitData $flightInit = null,
         public ?EtopsData $etops = null,
         public ?WeatherData $weather = null,
+        public ?WeightBalanceData $weightBalance = null,
         public array $crewMembers = [],
         public array $waypoints = [],
     ) {}
 
-    /**
-     * @return array{
-     *     identity: array<string, string|null>,
-     *     schedule: array<string, string|list<string>|null>,
-     *     route: array<string, int|string|null>,
-     *     fuelPlan: array<string, array{amount: float, unit: 'kg'|'lb'}|int|null>|null,
-     *     maintenanceLog: array{sectionPresent: bool, etopsApplicability: string, items: list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string}>}|null,
-     *     envelope: array<string, mixed>|null,
-     *     flightInit: array{sectionPresent: bool, acarsInitDate: ?string, filedInitialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null, fmsInitialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null}|null,
-     *     etops: array<string, mixed>|null,
-     *     weather: array<string, mixed>|null,
-     *     crewMembers: list<array{name: string, role: ?string, base: ?string, employeeNumber: ?string}>,
-     *     waypoints: list<array{identifier: string, coordinate: string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: array{amount: float, unit: 'kg'|'lb'}|null}>
-     * }
-     */
+    /** @return array<string, mixed> */
     public function toArray(): array
     {
         return [
@@ -53,6 +41,7 @@ final readonly class FlightPlanData implements JsonSerializable
             'flightInit' => $this->flightInit?->toArray(),
             'etops' => $this->etops?->toArray(),
             'weather' => $this->weather?->toArray(),
+            'weightBalance' => $this->weightBalance?->toArray(),
             'crewMembers' => array_map(
                 static fn (CrewMemberData $member): array => $member->toArray(),
                 $this->crewMembers,
@@ -64,21 +53,7 @@ final readonly class FlightPlanData implements JsonSerializable
         ];
     }
 
-    /**
-     * @return array{
-     *     identity: array<string, string|null>,
-     *     schedule: array<string, string|list<string>|null>,
-     *     route: array<string, int|string|null>,
-     *     fuelPlan: array<string, array{amount: float, unit: 'kg'|'lb'}|int|null>|null,
-     *     maintenanceLog: array{sectionPresent: bool, etopsApplicability: string, items: list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string}>}|null,
-     *     envelope: array<string, mixed>|null,
-     *     flightInit: array{sectionPresent: bool, acarsInitDate: ?string, filedInitialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null, fmsInitialAltitude: array{value: int, unit: string, isFlightLevel: bool}|null}|null,
-     *     etops: array<string, mixed>|null,
-     *     weather: array<string, mixed>|null,
-     *     crewMembers: list<array{name: string, role: ?string, base: ?string, employeeNumber: ?string}>,
-     *     waypoints: list<array{identifier: string, coordinate: string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: array{amount: float, unit: 'kg'|'lb'}|null}>
-     * }
-     */
+    /** @return array<string, mixed> */
     public function jsonSerialize(): array
     {
         return $this->toArray();
