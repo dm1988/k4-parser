@@ -117,7 +117,7 @@ class MaintenanceLogExtractorTest extends TestCase
 
         $this->assertTrue($result['data']['section_present']);
         $this->assertCount(8, $items);
-        $this->assertSame(array_fill(0, 8, 'MEL'), array_column($items, 'type'));
+        $this->assertSame(['NEF', ...array_fill(0, 7, 'MEL')], array_column($items, 'type'));
         $this->assertSame([
             '25-20-1-NEF-16',
             '23-27-1-2',
@@ -188,17 +188,20 @@ MAINTENANCE LOG
 MEL ??? | DESCRIPTION: Invalid item.
 MEL 25-20-1-NEF-16 | STATUS: OPEN | DESCRIPTION: Interior trim panel deferred.
 MEL 25-20-1-NEF-16 | STATUS: OPEN | DESCRIPTION: Interior trim panel deferred.
+MEL 25-20-1-NEF2 | STATUS: OPEN | DESCRIPTION: A near match remains MEL.
 END MAINTENANCE LOG
 TEXT);
 
-        $this->assertCount(1, $result['data']['items']);
+        $this->assertCount(2, $result['data']['items']);
         $this->assertSame('25-20-1-NEF-16', $result['data']['items'][0]['number']);
+        $this->assertSame('NEF', $result['data']['items'][0]['type']);
+        $this->assertSame('MEL', $result['data']['items'][1]['type']);
     }
 
     public function test_it_rejects_conflicting_duplicate_items(): void
     {
         $this->expectException(FlightPlanDataConflictException::class);
-        $this->expectExceptionMessage('Conflicting flight release values were found for maintenance item MEL 25-20-1-NEF-16.');
+        $this->expectExceptionMessage('Conflicting flight release values were found for maintenance item NEF 25-20-1-NEF-16.');
 
         $this->extractor()->extract(<<<'TEXT'
 MAINTENANCE LOG

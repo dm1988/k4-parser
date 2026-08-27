@@ -90,7 +90,7 @@ class MaintenanceLogExtractor
      */
     private function items(string $section): array
     {
-        $pattern = '/(?:\A|\R|\bITEM\h+)(?<type>MEL|CDL|DMI)\h+'
+        $pattern = '/(?:\A|\R|\bITEM\h+)(?<type>MEL|CDL|NEF|DMI)\h+'
             .'(?:(?:ITEM|NO\.?)\h*)?(?<number>[A-Z0-9][A-Z0-9.-]*)'
             .'|(?<marker>[MC])\s+(?<operational_number>'.self::MEL_CDL_NUMBER_PATTERN.')'
             .'(?=\s*DMI\h+\d{6,}\b)/i';
@@ -114,6 +114,7 @@ class MaintenanceLogExtractor
                 };
             $numberValue = $match['number'][0] ?? $match['operational_number'][0] ?? null;
             $number = is_string($numberValue) ? Str::upper(rtrim($numberValue, '.')) : '';
+            $type = $this->normalizedType($type, $number);
 
             if ($type === null || $number === '' || ! $this->validNumber($type, $number)) {
                 continue;
@@ -178,7 +179,7 @@ class MaintenanceLogExtractor
         ?string $reference,
     ): ?string {
         $description = preg_replace(
-            '/^(?:'.preg_quote($type->value, '/').'|[MC])\h*'.preg_quote($number, '/').'/i',
+            '/^(?:MEL|CDL|NEF|DMI|[MC])\h*'.preg_quote($number, '/').'/i',
             '',
             $source,
         );
@@ -210,8 +211,19 @@ class MaintenanceLogExtractor
         return match ($type) {
             MaintenanceItemType::Mel,
             MaintenanceItemType::Cdl => preg_match('/^'.self::MEL_CDL_NUMBER_PATTERN.'$/', $number) === 1,
+            MaintenanceItemType::Nef => preg_match('/^'.self::MEL_CDL_NUMBER_PATTERN.'$/', $number) === 1
+                && preg_match('/(?:^|-)NEF(?:-|$)/', $number) === 1,
             MaintenanceItemType::Dmi => preg_match('/^[A-Z0-9]{2,}(?:-[A-Z0-9]+)*$/', $number) === 1,
         };
+    }
+
+    private function normalizedType(?MaintenanceItemType $type, string $number): ?MaintenanceItemType
+    {
+        if ($type === MaintenanceItemType::Mel && preg_match('/(?:^|-)NEF(?:-|$)/', $number) === 1) {
+            return MaintenanceItemType::Nef;
+        }
+
+        return $type;
     }
 
     /** @param list<string> $labels */

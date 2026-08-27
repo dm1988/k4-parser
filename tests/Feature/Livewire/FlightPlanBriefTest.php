@@ -642,6 +642,15 @@ class FlightPlanBriefTest extends TestCase
                                 'limitations' => null,
                                 'procedures' => null,
                             ],
+                            [
+                                'type' => 'NEF',
+                                'number' => '25-20-1-NEF-16',
+                                'description' => 'Miscellaneous interior trim panel deferred.',
+                                'reference' => '100224958',
+                                'status' => null,
+                                'limitations' => null,
+                                'procedures' => null,
+                            ],
                         ],
                     ],
                 ));
@@ -680,8 +689,8 @@ class FlightPlanBriefTest extends TestCase
                 'Aircraft number',
                 'Trip number',
             ])
-            ->assertSeeText('3 source-listed items')
-            ->assertSeeText('1 MEL · 1 CDL · 1 DMI')
+            ->assertSeeText('4 source-listed items')
+            ->assertSeeText('1 MEL · 1 CDL · 1 DMI · 1 NEF')
             ->assertSeeText('1 OPEN · 1 DEFERRED')
             ->assertSeeText('28-22-01')
             ->assertSeeText('1042')
@@ -692,6 +701,11 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('DMI-2099')
             ->assertDontSeeHtml('data-copy-target="maintenance-item-number-3"')
             ->assertDontSeeHtml('data-copy-label="DMI DMI-2099 number"')
+            ->assertSeeText('25-20-1-NEF-16')
+            ->assertSeeHtml('data-copy-target="maintenance-item-number-4"')
+            ->assertSeeHtml('data-copy-label="NEF 25-20-1-NEF-16 number"')
+            ->assertSeeHtml('bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100')
+            ->assertSeeHtml('title="Non-Essential Equipment &amp; Furnishings — NEF items are strictly cosmetic')
             ->assertSeeText('Forward cargo door fairing segment missing.')
             ->assertSeeText('Source-listed operational limitation.')
             ->assertSeeText('Source-listed operations procedure.')

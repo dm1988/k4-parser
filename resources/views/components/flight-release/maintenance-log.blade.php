@@ -88,7 +88,7 @@
         @elseif ($model->maintenanceItems() === [])
             <x-flight-release.empty-state
                 title="No maintenance items listed"
-                message="The confirmed maintenance section is present and contains no supported MEL, CDL, or DMI items."
+                message="The confirmed maintenance section is present and contains no supported MEL, CDL, NEF, or DMI items."
                 icon="clipboard-document-check"
                 class="min-h-44 rounded-lg bg-[#F8F9FA] dark:bg-slate-800/60"
             />
@@ -99,7 +99,10 @@
                         <article class="overflow-hidden rounded-xl border border-[#1B365D]/10 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
                             <header class="flex flex-wrap items-start justify-between gap-3 border-b border-[#1B365D]/10 bg-[#F8F9FA] px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
                                 <div class="flex min-w-0 items-center gap-2">
-                                    <span class="rounded-full bg-[#1B365D] px-2.5 py-1 text-[10px] font-bold tracking-[0.12em] text-white dark:bg-slate-950">{{ $item['type'] }}</span>
+                                    <span
+                                        class="rounded-full px-2.5 py-1 text-[10px] font-bold tracking-[0.12em] {{ $item['typeBadgeColor'] }}"
+                                        title="{{ $item['typeTitle'] }} — {{ $item['typeDescription'] }}"
+                                    >{{ $item['type'] }}</span>
                                     <h4 id="maintenance-item-number-{{ $loop->iteration }}" class="break-all font-mono text-sm font-bold text-[#1B365D] dark:text-slate-100">{{ $item['number'] }}</h4>
                                     @if ($item['copyable'])
                                         <x-flight-release.copy-button

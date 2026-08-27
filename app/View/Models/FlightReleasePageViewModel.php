@@ -491,19 +491,22 @@ readonly class FlightReleasePageViewModel
     }
 
     /**
-     * @return list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string, copyable: bool}>
+     * @return list<array{type: string, typeTitle: string, typeDescription: string, typeBadgeColor: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string, copyable: bool}>
      */
     public function maintenanceItems(): array
     {
         return array_map(static fn (MaintenanceItemData $item): array => [
             'type' => $item->type->value,
+            'typeTitle' => $item->type->title(),
+            'typeDescription' => $item->type->description(),
+            'typeBadgeColor' => $item->type->badgeColor(),
             'number' => $item->number,
             'description' => $item->description,
             'reference' => $item->reference,
             'status' => $item->status,
             'limitations' => $item->limitations,
             'procedures' => $item->procedures,
-            'copyable' => in_array($item->type, [MaintenanceItemType::Mel, MaintenanceItemType::Cdl], true),
+            'copyable' => in_array($item->type, [MaintenanceItemType::Mel, MaintenanceItemType::Cdl, MaintenanceItemType::Nef], true),
         ], $this->pageData?->flightPlan->maintenanceLog->items ?? []);
     }
 

@@ -138,31 +138,78 @@ UI improvements to enhance usability and visual hierarchy in the **Weight & Bala
 
 Outcome: The task workspace now uses three balanced desktop columns for Base & Payload, Departure, and Arrival. Each phase keeps its related planned masses together, the ramp derivation explanation is attached to the ramp-weight card footer, and mass units use smaller muted typography so numeric values remain visually dominant. Confirmed badges and unavailable-limit placeholders remain hidden; conflict and missing-source statuses continue to render per field.
 
-## 7. Add task: review MEL / CDL
+## 7. [x] Completed: Maintenance task: NEF Badges
+Goal: render a source backed NEF badge instead of a MEL badge on NEF maintenance items.
+
+Currently: non equipment furnishings (NEF) are being extracted as MELs. There is no distinction between the two. CDLs are properly being distinguished. 
+
+- NEFs have `NEF` in the MEL number
+- Sample: `M 25-20-1-NEF-16DMI 100224958 MISCELLANEOUS INTERIOR TRIM (NON-STRUCTURAL PANELS AND MOLDINGS)`
+- app/Services/FlightPlan/Extractor/MaintenanceLogExtractor.php
+  - validNumber function add NEF
+- `tests/Fixtures/FlightPlan/maintenance-log/zsof-variable-mel-numbers.txt` provides a testing sample
+- NEF should numbers remain copyable like MEL/CDL numbers
+- Retain summary heading as is, do not include `NEF`
+
+### In enum add, color, title, and description. Title is Deferred Maintenance Item, Non-Essential Equipment & Furnishings, etc
+
+Badge colors and description:
+Red: MEL (Minimum Equipment List)
+* Description: MEL items involve required aircraft systems or instruments. They carry strict operational constraints, specific flight conditions (e.g., "Day VFR only"), and hard calendar deadlines.
+
+Orange: CDL (Configuration Deviation List)
+
+* Description: CDL items involve missing external parts (like a missing aerodynamic fairing, static wick, or flap seal). They directly impact performance, fuel burn, or weight limitations. 
+
+Yellow: DMI (Deferred Maintenance Item)
+
+* Description: DMI is a broad category used for tracking parts on order, planned maintenance tasks, or open discrepancies that do not ground the aircraft but need attention.
+
+Gray: NEF (Non-Essential Equipment & Furnishings)
+
+* Description: NEF items are strictly cosmetic or passenger-convenience features (like a broken passenger seat recline or a chipped galley trim). They have zero impact on safety, airworthiness, or performance. 
+
+Outcome: Maintenance numbers containing a complete `NEF` segment are normalized to the typed NEF item type before validation, deduplication, and conflict detection. `MaintenanceItemType` now owns the operational title, description, and light/dark badge color for MEL, CDL, DMI, and NEF; NEF uses a neutral gray badge. The maintenance presenter exposes this enum metadata, NEF numbers remain copyable, and the existing `MEL / CDL` summary heading is retained. Focused extractor, enum, view-model, and Livewire coverage verifies classification boundaries, conflict labels, metadata, badge rendering, and cache-backed presentation.
+
+Commit message: `feat: distinguish NEF maintenance badges`
+
+## 8. Add task: Review MEL / CDL
+- Fixtures already in place
+- Icon: wrench
 - Use counter badge
-- Show task at top if items exist
+- Show task at top if MEL items exist
 - Have task at bottom if 0
 
-## 8. Jepp PD Pro task view
+## 9. UI: Jepp PD Pro task view
 - Within the task view: Move route section above ETOPS critical points section
 - resources/views/components/flight-release/jepp-pd-pro.blade.php
 
 - Bug fixed: Planned runway extraction now permits a missing SID/STAR and stops at the next planned-runway header, newline, or asterisk divider. Verified against `CKS093312ZSOF 2.pdf`: runway 33 with no SID, and arrival runway 33L with OLMEN OLME2E.
 
-## 9. Action oriented labels on Overview
+## 10. UI: Action oriented labels on Overview
 - Flight and aircraft card footer: ACARS Initialize Flight ->
 - Route card: Program FMS ->
 - Schedule and slots -> review slot times
 - Fuel card: Score fuel ->
 - ETOPs evidence card: Review ETOPs ->
 
-## 10. ETOPs badge on section flight info header
-- Below duration and horizontal flight line, centered
+## 11. ETOPs 
+- Determine if a flight qualifies as ETOPS
+- ETOPs if text: `ETOPS 180  ETOPS ALTERNATE AIRPORTS` found
+- Extract ETOPS duration value, usually 180 or 210
+- Add badge on section flight info header
+- Badge label `ETOPS {duration}`
+- Placement: below duration and horizontal flight line, centered
 
-## 11. Cleanup
-- Move 2 maintenance DTOs into Maintenance DTO subfolder
+## 12. Hide ETOPs card if non ETOPS flight
+- Currently ETOPS card always displayed rendering:
+ETOPS evidence
+Confirmed release fields
+Not present in this release
+- Fix: Visually minimize ETOPs presence. If non ETOPS flight, remove from large card in workspace and render in the `Operational support status` section with a `Non ETOPS` badge
 
-## 12. Feat: GENDEC available determination
+
+## 13. Feat: GENDEC available determination
 - Create service to determine gendec availablity
 - Search for General Declaration page
 - Sample text:
@@ -181,7 +228,12 @@ Date:
 24May2026
 Arrival At:
 
-## 13. Bug: Loose crew name regex extraction
+## 14. Feat: Determine B43 or B44 release
+- Add B44 tag if B44 release
+- B44 criteria: Text found in release: `RELEASED IAW OPS SPEC B044`
+- Future task: B44 info
+
+## 15. Bug: Loose crew name regex extraction
 - Crew details are extracted within name:
 1. `Additional` extracted as name: PAYNE R ADDNTL
 2. `IRP` extracted as name: GONZALEZ D IRP
@@ -194,14 +246,23 @@ Arrival At:
 
 Regression outcome: The flattened release-manifest parser now retains a final employee record when the PDF appends empty `IRP`, `MX`, `LM`, and `ACM` role-column placeholders before `CIRCLE THE APPROPRIATE STATUS`. Verified against the supplied release and captured in a deidentified fixture: the PIC, SIC/FO, and final IRP are all extracted without treating placeholder roles as part of a crew name.
 
-## 14. Hide ETOPs card if non ETOPS flight
-- Currently ETOPS card always displayed rendering:
-ETOPS evidence
-Confirmed release fields
-Not present in this release
-- Fix: Visually minimize ETOPs presence. If non ETOPS flight, remove from large card in workspace and render in the `Operational support status` section with a `Non ETOPS` badge
+## 16. Implement weight limits in aircraft table and provide 747 AC seeder
+- Weight limits do not exist in DB
+- Create a list of fields to be added
+- Add 747 ac seeder
 
-## 15. Remove compatibility paths and complete release verification
+### 17. Reserve fuel
+- Create distinction between Alternate airport burn and Reserve fuel calculation. 
+- Differed due to needing aircraft type fixture and distintion between 747 and 777 aircraft type
+- Requires full fleet in production database.
+- coincides with future 747 seeder into production
+- will have to add migration for reserve fuel additive
+
+## 18. Cleanup
+- Move 2 maintenance DTOs into Maintenance DTO subfolder
+- Identify DTOs and Services that would benefit from improved folder structure
+
+## 19. Remove compatibility paths and complete release verification
 
 Goal: Finish the migration only after every active front-end consumer uses typed page data.
 
@@ -218,24 +279,6 @@ Done when: no UI depends on the flat compatibility payload, all enabled tasks ha
 
 Commit message: `refactor: complete flight plan workspace migration`
 
-## 16. Implement weight limits in aircraft table and provide 747 AC seeder
-- Weight limits do not exist in DB
-- Create a list of fields to be added
-- Add 747 ac seeder
-
-### 17. Reserve fuel
-- Create distinction between Alternate airport burn and Reserve fuel calculation. 
-- Differed due to needing aircraft type fixture and distintion between 747 and 777 aircraft type
-- Requires full fleet in production database.
-- coincides with future 747 seeder into production
-- will have to add migration for reserve fuel additive
-
-## 18. Feat: Determine B43 or B44 release
-- Add B44 tag if B44 release
-- Future task: B44 info
-
-## 19. Maintenance task: NEF Badges
-- Currently non equipment furnishings (NEF) are being extracted as MELs. There is no distinction between the two. CDLs are properly being distinguished. 
 
 -------------------
 **Branch Merge**

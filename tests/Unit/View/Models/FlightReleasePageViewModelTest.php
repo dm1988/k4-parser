@@ -396,6 +396,9 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('1 MEL · 1 CDL', $viewModel->maintenanceTypeSummary());
         $this->assertSame('1 OPEN · 1 DEFERRED', $viewModel->maintenanceStatusSummary());
         $this->assertSame('28-22-01', $viewModel->maintenanceItems()[0]['number']);
+        $this->assertSame('Minimum Equipment List', $viewModel->maintenanceItems()[0]['typeTitle']);
+        $this->assertStringContainsString('required aircraft systems', $viewModel->maintenanceItems()[0]['typeDescription']);
+        $this->assertStringContainsString('bg-red-100', $viewModel->maintenanceItems()[0]['typeBadgeColor']);
         $this->assertTrue($viewModel->maintenanceItems()[0]['copyable']);
         $this->assertTrue($viewModel->maintenanceItems()[1]['copyable']);
         $this->assertSame('CP · YIP', $viewModel->crewMembers()[0]['details']);
