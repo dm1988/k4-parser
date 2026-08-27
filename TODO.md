@@ -234,15 +234,42 @@ VALID FROM 0715Z TO 0935Z`
 
 Outcome: RAIM extraction now accepts parser-flattened releases where the `VALID` label is concatenated to `NAVIGATION` and the following NOTAM section is concatenated directly after the ending `Z` time. It still requires exact four-digit UTC validity times and does not consume adjacent section text. Verified against the supplied KCVG release shape with focused positive and malformed-boundary regressions.
 
-## 6. Implement Weight & Balance
+## 6. Current focus: Implement Weight & Balance
+* If any ambiguity exists, clarify before proceeding.
 
-Goal: Present confirmed weights, indices, and source status without performing an unauthorized calculation.
+Goal: Present confirmed weights and source status without performing an unauthorized calculation.
 
-- Add sanitized fixtures for basic operating weight, payload, fuel, zero-fuel/ramp/takeoff/landing weights and indices, limits, and source statuses.
-- Introduce typed mass and index/CG values with explicit units and finite, non-negative validation where appropriate.
-- Reuse fuel values and aircraft identity; corroborate duplicated values and reject material conflicts.
+- Add sanitized fixtures for:
+  - basic operating weight
+  - planned payload
+  - fuel, Fixtures for fuel already exist. Ensure coverage.
+  - zero-fuel weight
+  - ramp weight
+  - takeoff gross weight
+  - estimated landing weight
+  - limits - to be provided by db. Not yet implemented.
+- Introduce typed mass values with explicit units and finite, non-negative validation where appropriate.
+- Reuse fuel values and aircraft identity; corroborate duplicated values.
 - Separate actual/planned values, permitted limits, and source-provided status.
-- Test unit variants, zero values, boundaries, conflicts, absent indices/limits, and incomplete sections.
+- Actual values are not implemented at this time. Render only planned values and limits to user.
+- Test unit variants, zero values, boundaries, conflicts, and incomplete sections.
+
+- unsanitized release text for weights:
+```text
+BASIC OPTG WEIGHT  335858ALTN RKTU 005.2   00.19  170  0070  P012   PAYLOAD            018000HOLDING   005.9   00.30                    ZERO FUEL WEIGHT   353858RESERVE   006.0   00.28                    TAKEOFF FUEL       223489ADDNL     000.0   00.00                    TAKEOFF GROSS WT   577347BALLAST   000.0                            EST FUEL BURN      205454 ◀
+KALITTA BRIEF PAGE 8 OF 197
+PAGE 8 OF 197
+
+MIN FUEL  222.5   15.07                    EST LANDING WEIGHT 371893EXTRA     000.0   00.00                    INC BURN/1000 LBS:  0376R/R PAD   001.0   00.04                    FUEL BURN BASED ON:  CI180TAXI      002.0   00.00TTL RMP   225.5   15.11                    EST LANDING FUEL:  018035REFILE FLT 524   ORG NUZAN   / DEST PANC                  FUEL  TIME  DIST              
+```
+- Deferred limits entirely until db structure exists
+- Mass units must not be converted. Units listed in release are in pounds.
+- Every weight be source-extracted only, with no derived arithmetic—including zero-fuel, ramp, takeoff, and landing weights
+- Source status labels:
+  - Confirmed
+  - Conflict
+  - Not present
+  - Limit unavailable
 
 Done when: every comparison is based on confirmed source values and no browser-side arithmetic changes the dispatch result.
 
@@ -328,20 +355,23 @@ Done when: no UI depends on the flat compatibility payload, all enabled tasks ha
 
 Commit message: `refactor: complete flight plan workspace migration`
 
-## 16. 747 AC seeder
+## 16. Implement weight limits in aircraft table and provide 747 AC seeder
+- Weight limits do not exist in DB
+- Create a list of fields to be added
 - Add 747 ac seeder
-### Reserve fuel
+
+### 17. Reserve fuel
 - Create distinction between Alternate airport burn and Reserve fuel calculation. 
 - Differed due to needing aircraft type fixture and distintion between 747 and 777 aircraft type
 - Requires full fleet in production database.
 - coincides with future 747 seeder into production
 - will have to add migration for reserve fuel additive
 
-## Feat: Determine B43 or B44 release
+## 18. Feat: Determine B43 or B44 release
 - Add B44 tag if B44 release
 - Future task: B44 info
 
-## Maintenance task: NEF Badges
+## 19. Maintenance task: NEF Badges
 - Currently non equipment furnishings (NEF) are being extracted as MELs. There is no distinction between the two. CDLs are properly being distinguished. 
 
 -------------------
