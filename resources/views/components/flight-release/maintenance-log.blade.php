@@ -62,15 +62,7 @@
         </section>
     @endif
 
-    <aside class="rounded-lg border border-amber-300/70 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-100">
-        <div class="flex items-start gap-3">
-            <x-heroicon-o-exclamation-triangle class="h-5 w-5 shrink-0" />
-            <div class="flex min-w-0 flex-col gap-1">
-                <p class="font-bold">No airworthiness determination</p>
-                <p class="leading-5">This view repeats source-listed maintenance information and does not determine dispatchability. Review the controlling maintenance record and procedures.</p>
-            </div>
-        </div>
-    </aside>
+    <x-flight-release.maintenance-caution />
 
     <section aria-labelledby="maintenance-items-heading" class="flex min-w-0 flex-col gap-3">
         <div>
@@ -93,71 +85,10 @@
                 class="min-h-44 rounded-lg bg-[#F8F9FA] dark:bg-slate-800/60"
             />
         @else
-            <ol class="flex min-w-0 flex-col gap-3">
-                @foreach ($model->maintenanceItems() as $item)
-                    <li>
-                        <article class="overflow-hidden rounded-xl border border-[#1B365D]/10 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                            <header class="flex flex-wrap items-start justify-between gap-3 border-b border-[#1B365D]/10 bg-[#F8F9FA] px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
-                                <div class="flex min-w-0 items-center gap-2">
-                                    <span
-                                        class="rounded-full px-2.5 py-1 text-[10px] font-bold tracking-[0.12em] {{ $item['typeBadgeColor'] }}"
-                                        title="{{ $item['typeTitle'] }} — {{ $item['typeDescription'] }}"
-                                    >{{ $item['type'] }}</span>
-                                    <h4 id="maintenance-item-number-{{ $loop->iteration }}" class="break-all font-mono text-sm font-bold text-[#1B365D] dark:text-slate-100">{{ $item['number'] }}</h4>
-                                    @if ($item['copyable'])
-                                        <x-flight-release.copy-button
-                                            :target="'maintenance-item-number-'.$loop->iteration"
-                                            :label="$item['type'].' '.$item['number'].' number'"
-                                            :status="'maintenance-item-number-'.$loop->iteration.'-status'"
-                                            :compact="true"
-                                        />
-                                        <span
-                                            id="maintenance-item-number-{{ $loop->iteration }}-status"
-                                            role="status"
-                                            aria-live="polite"
-                                            class="sr-only"
-                                        ></span>
-                                    @endif
-                                </div>
-                                @if ($item['status'])
-                                    <span class="rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700 dark:bg-slate-700 dark:text-slate-200">{{ $item['status'] }}</span>
-                                @endif
-                            </header>
-
-                            <div class="flex min-w-0 flex-col gap-4 p-4">
-                                <div class="flex min-w-0 flex-col gap-1">
-                                    <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-[#4A5568] dark:text-slate-400">Description</p>
-                                    <p class="break-words text-sm leading-6 text-[#0B0E14] dark:text-slate-100">{{ $item['description'] }}</p>
-                                </div>
-
-                                @if ($item['reference'])
-                                    <div class="flex min-w-0 flex-col gap-1">
-                                        <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-[#4A5568] dark:text-slate-400">DMI / reference</p>
-                                        <p class="break-all font-mono text-sm font-bold text-[#1B365D] dark:text-sky-300">{{ $item['reference'] }}</p>
-                                    </div>
-                                @endif
-
-                                @if ($item['limitations'] || $item['procedures'])
-                                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                        @if ($item['limitations'])
-                                            <div class="flex min-w-0 flex-col gap-1 rounded-lg border border-amber-300/60 bg-amber-50 p-3 dark:border-amber-400/20 dark:bg-amber-400/10">
-                                                <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-800 dark:text-amber-200">Source limitation</p>
-                                                <p class="break-words text-sm leading-5 text-amber-950 dark:text-amber-100">{{ $item['limitations'] }}</p>
-                                            </div>
-                                        @endif
-                                        @if ($item['procedures'])
-                                            <div class="flex min-w-0 flex-col gap-1 rounded-lg border border-[#1B365D]/10 bg-[#F8F9FA] p-3 dark:border-slate-700 dark:bg-slate-800">
-                                                <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-[#4A5568] dark:text-slate-400">Source procedure</p>
-                                                <p class="break-words text-sm leading-5 text-[#0B0E14] dark:text-slate-100">{{ $item['procedures'] }}</p>
-                                            </div>
-                                        @endif
-                                    </div>
-                                @endif
-                            </div>
-                        </article>
-                    </li>
-                @endforeach
-            </ol>
+            <x-flight-release.maintenance-items
+                :items="$model->maintenanceItems()"
+                id-prefix="maintenance-item-number"
+            />
         @endif
     </section>
 

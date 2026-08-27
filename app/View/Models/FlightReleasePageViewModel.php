@@ -36,6 +36,36 @@ readonly class FlightReleasePageViewModel
         return $this->pageData !== null;
     }
 
+    /** @return list<FlightPlanTask> */
+    public function tasks(): array
+    {
+        $reviewTask = FlightPlanTask::ReviewMelCdl;
+        $tasks = array_values(array_filter(
+            FlightPlanTask::cases(),
+            static fn (FlightPlanTask $task): bool => $task !== $reviewTask,
+        ));
+
+        if ($this->maintenanceItemCount() === 0) {
+            return [...$tasks, $reviewTask];
+        }
+
+        return [
+            FlightPlanTask::Overview,
+            $reviewTask,
+            ...array_values(array_filter(
+                $tasks,
+                static fn (FlightPlanTask $task): bool => $task !== FlightPlanTask::Overview,
+            )),
+        ];
+    }
+
+    public function taskCounter(FlightPlanTask $task): ?int
+    {
+        return $task === FlightPlanTask::ReviewMelCdl
+            ? $this->maintenanceItemCount()
+            : null;
+    }
+
     public function flightNumber(): ?string
     {
         return $this->pageData?->flightPlan->identity->flightNumber;
@@ -389,9 +419,14 @@ readonly class FlightReleasePageViewModel
 
     public function maintenanceItemCountLabel(): string
     {
-        $count = count($this->pageData?->flightPlan->maintenanceLog->items ?? []);
+        $count = $this->maintenanceItemCount();
 
         return $count.' source-listed '.($count === 1 ? 'item' : 'items');
+    }
+
+    public function maintenanceItemCount(): int
+    {
+        return count($this->pageData?->flightPlan->maintenanceLog->items ?? []);
     }
 
     public function maintenanceTypeSummary(): ?string

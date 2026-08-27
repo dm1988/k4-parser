@@ -20,6 +20,13 @@ class FlightPlanTaskTest extends TestCase
     }
 
     #[Test]
+    public function it_exposes_the_review_mel_cdl_navigation_metadata(): void
+    {
+        $this->assertSame('Review MEL / CDL', FlightPlanTask::ReviewMelCdl->label());
+        $this->assertSame('wrench-screwdriver', FlightPlanTask::ReviewMelCdl->icon());
+    }
+
+    #[Test]
     public function it_identifies_tasks_that_require_airport_data(): void
     {
         $this->assertTrue(FlightPlanTask::JeppPdPro->requiresAirports());
@@ -38,6 +45,7 @@ class FlightPlanTaskTest extends TestCase
 
         $this->assertSame([
             FlightPlanTask::Overview,
+            FlightPlanTask::ReviewMelCdl,
             FlightPlanTask::JeppPdPro,
             FlightPlanTask::MaintenanceLog,
             FlightPlanTask::Envelope,

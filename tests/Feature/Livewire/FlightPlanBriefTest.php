@@ -279,8 +279,12 @@ class FlightPlanBriefTest extends TestCase
             ->assertSet('activeTask', FlightPlanTask::Overview->value)
             ->assertSeeInOrder(array_map(
                 static fn (FlightPlanTask $task): string => $task->label(),
-                FlightPlanTask::cases(),
+                array_values(array_filter(
+                    FlightPlanTask::cases(),
+                    static fn (FlightPlanTask $task): bool => $task !== FlightPlanTask::ReviewMelCdl,
+                )),
             ))
+            ->assertSeeText(FlightPlanTask::ReviewMelCdl->label())
             ->assertSeeInOrder([
                 'Task',
                 FlightPlanTask::Overview->label(),
@@ -668,6 +672,12 @@ class FlightPlanBriefTest extends TestCase
         $flightPlanKey = $component->get('flightPlanKey');
 
         $component
+            ->assertSeeHtmlInOrder([
+                'wire:key="flight-plan-task-nav-overview"',
+                'wire:key="flight-plan-task-nav-review_mel_cdl"',
+                'wire:key="flight-plan-task-nav-jepp_pd_pro"',
+            ])
+            ->assertSeeHtml('aria-label="Review MEL / CDL: 4 items"')
             ->call('selectTask', FlightPlanTask::MaintenanceLog->value)
             ->assertSet('activeTask', FlightPlanTask::MaintenanceLog->value)
             ->assertSeeHtml('wire:key="flight-plan-task-panel-maintenance_log"')
@@ -737,6 +747,25 @@ class FlightPlanBriefTest extends TestCase
             ->assertSet('activeTask', FlightPlanTask::MaintenanceLog->value)
             ->assertSeeText('28-22-01');
 
+        $component
+            ->call('selectTask', FlightPlanTask::ReviewMelCdl->value)
+            ->assertSet('activeTask', FlightPlanTask::ReviewMelCdl->value)
+            ->assertSeeHtml('wire:key="flight-plan-task-panel-review_mel_cdl"')
+            ->assertSeeText('4 source-listed items')
+            ->assertSeeText('28-22-01')
+            ->assertSeeText('52-10-02')
+            ->assertSeeText('DMI-2099')
+            ->assertSeeText('25-20-1-NEF-16')
+            ->assertSeeHtml('data-copy-target="review-maintenance-item-1"')
+            ->assertSeeHtml('data-copy-target="review-maintenance-item-2"')
+            ->assertDontSeeHtml('data-copy-target="review-maintenance-item-3"')
+            ->assertSeeHtml('data-copy-target="review-maintenance-item-4"')
+            ->assertSeeText('Source-listed operational limitation.')
+            ->assertSeeText('Source-listed operations procedure.')
+            ->assertSeeText('No airworthiness determination')
+            ->assertSeeText('does not determine dispatchability')
+            ->assertSeeText('remain private to this extraction result');
+
         $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
     }
 
@@ -763,6 +792,11 @@ class FlightPlanBriefTest extends TestCase
         Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->assertSeeHtmlInOrder([
+                'wire:key="flight-plan-task-nav-weight_and_balance"',
+                'wire:key="flight-plan-task-nav-review_mel_cdl"',
+            ])
+            ->assertSeeHtml('aria-label="Review MEL / CDL: 0 items"')
             ->call('selectTask', FlightPlanTask::MaintenanceLog->value)
             ->assertSeeText('No maintenance items listed')
             ->assertSeeText('0 source-listed items')

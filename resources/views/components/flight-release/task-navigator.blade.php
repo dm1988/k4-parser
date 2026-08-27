@@ -20,6 +20,7 @@
     <div class="flex gap-1 overflow-x-auto p-2 lg:flex-col lg:overflow-visible lg:p-3">
         @foreach ($tasks as $task)
             @php($isActive = $task === $activeTask)
+            @php($taskCounter = $model->taskCounter($task))
             <button
                 type="button"
                 wire:key="flight-plan-task-nav-{{ $task->value }}"
@@ -43,6 +44,12 @@
                     ])
                 />
                 <span class="whitespace-nowrap lg:min-w-0 lg:flex-1 lg:whitespace-normal">{{ $task->label() }}</span>
+                @if ($taskCounter !== null)
+                    <span
+                        class="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums {{ $isActive ? 'bg-[#C5A059] text-[#0B0E14]' : 'bg-[#1B365D]/10 text-[#1B365D] dark:bg-slate-700 dark:text-slate-100' }}"
+                        aria-label="{{ $task->label() }}: {{ $taskCounter }} {{ \Illuminate\Support\Str::plural('item', $taskCounter) }}"
+                    >{{ $taskCounter }}</span>
+                @endif
                 <x-flight-release.status
                     :availability="$model->availabilityFor($task)"
                     dot

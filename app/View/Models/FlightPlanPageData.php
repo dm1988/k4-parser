@@ -37,6 +37,9 @@ final readonly class FlightPlanPageData
             FlightPlanTask::MaintenanceLog,
             FlightPlanTask::FlightInit,
             FlightPlanTask::Fms => FlightPlanTaskAvailability::Available,
+            FlightPlanTask::ReviewMelCdl => $this->flightPlan->maintenanceLog->items === []
+                ? FlightPlanTaskAvailability::NotPresent
+                : FlightPlanTaskAvailability::Available,
             FlightPlanTask::SlotTimes => $this->flightPlan->schedule->slots === []
                 ? FlightPlanTaskAvailability::NotPresent
                 : FlightPlanTaskAvailability::Available,

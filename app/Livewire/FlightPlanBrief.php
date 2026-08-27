@@ -126,7 +126,7 @@ class FlightPlanBrief extends Component
             'activeTaskCase' => FlightPlanTask::from($this->activeTask),
             'model' => $viewModel,
             'isResultsView' => $viewModel->hasFlightPlan(),
-            'tasks' => FlightPlanTask::cases(),
+            'tasks' => $viewModel->tasks(),
         ]);
     }
 

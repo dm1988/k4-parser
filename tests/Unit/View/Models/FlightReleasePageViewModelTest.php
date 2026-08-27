@@ -405,6 +405,24 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
+    public function it_prioritizes_the_review_task_and_exposes_the_combined_maintenance_counter(): void
+    {
+        $viewModel = $this->viewModel($this->resultPayload());
+
+        $this->assertSame(FlightPlanTask::Overview, $viewModel->tasks()[0]);
+        $this->assertSame(FlightPlanTask::ReviewMelCdl, $viewModel->tasks()[1]);
+        $this->assertSame(2, $viewModel->taskCounter(FlightPlanTask::ReviewMelCdl));
+        $this->assertNull($viewModel->taskCounter(FlightPlanTask::MaintenanceLog));
+
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['maintenanceLog']['items'] = [];
+        $emptyViewModel = $this->viewModel($payload);
+
+        $this->assertSame(FlightPlanTask::ReviewMelCdl, $emptyViewModel->tasks()[array_key_last($emptyViewModel->tasks())]);
+        $this->assertSame(0, $emptyViewModel->taskCounter(FlightPlanTask::ReviewMelCdl));
+    }
+
+    #[Test]
     public function it_groups_raw_weather_reports_by_airport_role_without_interpretation(): void
     {
         $payload = $this->resultPayload();

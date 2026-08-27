@@ -7,6 +7,7 @@ use Illuminate\Support\Str;
 enum FlightPlanTask: string
 {
     case Overview = 'overview';
+    case ReviewMelCdl = 'review_mel_cdl';
     case JeppPdPro = 'jepp_pd_pro';
     case MaintenanceLog = 'maintenance_log';
     case Envelope = 'envelope';
@@ -22,6 +23,7 @@ enum FlightPlanTask: string
     {
         return match ($this) {
             self::Overview => 'Overview',
+            self::ReviewMelCdl => 'Review MEL / CDL',
             self::JeppPdPro => 'Jepp PD-Pro',
             self::MaintenanceLog => 'Maintenance Log',
             self::Envelope => 'Envelope',
@@ -39,6 +41,7 @@ enum FlightPlanTask: string
     {
         return match ($this) {
             self::Overview => 'home',
+            self::ReviewMelCdl => 'wrench-screwdriver',
             self::JeppPdPro => 'paper-airplane',
             self::MaintenanceLog => 'clipboard-document-list',
             self::Envelope => 'document-chart-bar',

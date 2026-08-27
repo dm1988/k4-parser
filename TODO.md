@@ -11,6 +11,7 @@
 4. Mark completed by [x] and replacing `Current focus: ` with `Completed: `
 5. Reference `# Codex Usage Rules` in AGENTS.md
 6. Create a commit message for each task
+7. Each task should consist of: Goal, Current implementation, Problem. Optionally add references and constraints.
 
 # Flight Plan Brief Roadmap
 
@@ -173,16 +174,70 @@ Outcome: Maintenance numbers containing a complete `NEF` segment are normalized 
 
 Commit message: `feat: distinguish NEF maintenance badges`
 
-## 8. Add task: Review MEL / CDL
-- Fixtures already in place
-- Icon: wrench
-- Use counter badge
-- Show task at top if MEL items exist
+## 8. [x] Completed: Add task: Review MEL / CDL
+Goal: add Review MEL / CDL including MEL,NEF,CDL, and DMI list. Copyable fields: MEL,NEF, and CDL. Keep formatting similar to Maintenance log section under Maintenance log task. Retain applicable caution messages
+
+- Currently: structure already in place found in maintenance log task. MEL list is in non reuseable blade component
+- Fix: Seperate MEL/CDL list into it's own reuseable component
+- Hero icon: wrench-screwdriver
+- Use counter badge totaling MEL, NEF, DMI, and CDL counts
+- Show task directly below Overview if items exist; Overview always remains first
 - Have task at bottom if 0
 
+Implementation plan:
+
+1. Add `ReviewMelCdl` to `FlightPlanTask` with the `Review MEL / CDL` label, `wrench-screwdriver` icon, dedicated Blade component, and availability derived from maintenance-item presence.
+2. Add task-ordering logic outside Blade:
+   - Place Review MEL / CDL directly below Overview when any MEL, CDL, NEF, or DMI item exists; Overview always remains first.
+   - Place Review MEL / CDL last when the combined item count is zero.
+   - Preserve the relative order of every existing task.
+3. Extract the maintenance-item list from `maintenance-log.blade.php` into a reusable Blade component that accepts presented maintenance items as a prop.
+   - Preserve type badges, statuses, descriptions, references, limitations, and procedures.
+   - Keep MEL, CDL, and NEF numbers copyable.
+   - Keep DMI numbers non-copyable.
+   - Preserve responsive behavior, dark-mode styling, keyboard access, accessible labels, and copy status announcements.
+4. Replace the inline list in the Maintenance Log task with the reusable component without changing its current behavior.
+5. Create the Review MEL / CDL task view using the reusable item-list component.
+   - Display all MEL, CDL, NEF, and DMI items.
+   - Retain the `No airworthiness determination` caution.
+   - Retain applicable source-evidence and privacy messaging.
+   - Provide an honest empty state when no supported items exist.
+   - Do not duplicate flight context or crew information from the Maintenance Log task.
+6. Add a numeric navigator badge containing the combined MEL, CDL, NEF, and DMI count. Keep it visually and accessibly distinct from the existing availability indicator.
+7. Add focused PHPUnit coverage for:
+   - Enum label, icon, component mapping, and task registration.
+   - Review MEL / CDL appearing first when items exist and last when none exist.
+   - The combined navigator counter.
+   - Rendering all four maintenance item types.
+   - Copy controls for MEL, CDL, and NEF, and no copy control for DMI.
+   - Statuses, limitations, procedures, caution messaging, source evidence, and the empty state.
+   - Maintenance Log continuing to render the extracted shared component correctly.
+8. Run the focused enum and Livewire tests, run Pint after PHP changes, and run Larastan once at the final integration checkpoint.
+9. After verification, replace `Current focus:` with `Completed:`, record the outcome in this task, and add its commit message.
+
+References:
+app/Actions/BuildFlightPlanPageData.php
+app/DTOs/MaintenanceItemData.php
+app/Enums/MaintenanceItemType.php
+app/Enums/FlightPlanTask.php
+app/View/Models/FlightPlanPageData.php
+app/View/Models/FlightReleasePageViewModel.php
+resources/views/components/flight-release/task-navigator.blade.php
+resources/views/components/flight-release/maintenance-log.blade.php
+resources/views/components/flight-release/workspace.blade.php
+tests/Unit/Enums/FlightPlanTaskTest.php
+tests/Feature/Livewire/FlightPlanBriefTest.php
+
+Outcome: Added a dedicated Review MEL / CDL task with the `wrench-screwdriver` icon and a combined MEL, CDL, NEF, and DMI counter badge. Overview always remains first; the review task appears directly below it when source-listed maintenance items exist and moves to the bottom when the count is zero. The Maintenance Log and review task now share reusable maintenance-item and airworthiness-caution Blade components while preserving badges, statuses, descriptions, references, limitations, procedures, dark-mode styling, and accessible copy controls for MEL, CDL, and NEF only. Review availability is source-backed, empty releases remain explicit, and source evidence stays private. Focused enum, view-model, and Livewire coverage verifies metadata, ordering, counts, all item types, copy behavior, caution messaging, empty state, and Maintenance Log compatibility. Pint and the final Larastan checkpoint pass.
+
+Commit message: `feat: add MEL and CDL review task`
+
 ## 9. UI: Jepp PD Pro task view
-- Within the task view: Move route section above ETOPS critical points section
-- resources/views/components/flight-release/jepp-pd-pro.blade.php
+Goal:
+Within the task view: Move route section above ETOPS critical points section
+
+References:
+resources/views/components/flight-release/jepp-pd-pro.blade.php
 
 - Bug fixed: Planned runway extraction now permits a missing SID/STAR and stops at the next planned-runway header, newline, or asterisk divider. Verified against `CKS093312ZSOF 2.pdf`: runway 33 with no SID, and arrival runway 33L with OLMEN OLME2E.
 
@@ -206,6 +261,7 @@ Commit message: `feat: distinguish NEF maintenance badges`
 ETOPS evidence
 Confirmed release fields
 Not present in this release
+- ETOPs task renders on non-ETOPS flight
 - Fix: Visually minimize ETOPs presence. If non ETOPS flight, remove from large card in workspace and render in the `Operational support status` section with a `Non ETOPS` badge
 
 
@@ -285,6 +341,11 @@ Commit message: `refactor: complete flight plan workspace migration`
 -------------------
 
 # After branch merge tasks
+
+## Reorganize overview task
+- Remove duplicate data that exists in flight strip header
+- Show MELs/CDLs if they exist
+- Show ETOPS info if it exists
 
 ## Add task: Takeoff and Landing Report
 
