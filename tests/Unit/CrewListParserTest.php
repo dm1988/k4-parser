@@ -15,7 +15,7 @@ class CrewListParserTest extends TestCase
             'w Jesper Brandt Jensen 71022 (OP ete)',
             'Xx Julio Rodriguez Batista 71559 FO EYW',
             'aXe Cameron Stovold 71835 DH LAX',
-            '* David Gonzalez 72860 INZe) AUS',
+            '* David Gonzalez 93614 INZe) AUS',
         ]);
 
         $this->assertCount(4, $crew);
@@ -38,7 +38,7 @@ class CrewListParserTest extends TestCase
         $this->assertTrue($crew[2]['deadheading']);
 
         $this->assertSame('David Gonzalez', $crew[3]['name']);
-        $this->assertSame('72860', $crew[3]['employee_id']);
+        $this->assertSame('93614', $crew[3]['employee_id']);
         $this->assertNull($crew[3]['role']);
         $this->assertSame('AUS', $crew[3]['base']);
         $this->assertFalse($crew[3]['deadheading']);
@@ -50,7 +50,7 @@ class CrewListParserTest extends TestCase
             'w Jesper Brandt Jensen 71022 (OP ete)',
             'w Julio Rodriguez Batista 71559 FO EYW',
             'aXe Cameron Stovold 71835 DH LAX',
-            '* David Gonzalez 72860 INZe) AUS',
+            '* David Gonzalez 93614 INZe) AUS',
         ]);
 
         $this->assertCount(4, $summary['crew']);
@@ -90,7 +90,7 @@ class CrewListParserTest extends TestCase
             'aXe Giwoong Shim 72368 FO PHX',
             'x Hani El Mir 70326 FME MLB',
             'aXe Renato Pezzulo 73441 AFO ney',
-            '* David Gonzalez 72860 AFO INOS',
+            '* David Gonzalez 93614 AFO INOS',
             'aXe Henry Garcia Santos 2847 LM YIP',
         ]);
 
@@ -169,5 +169,16 @@ class CrewListParserTest extends TestCase
 
         $this->assertSame('DE LA CRUZ J', $additionalCaptain[0]['name']);
         $this->assertSame(CrewPosition::AdditionalCaptain->value, $additionalCaptain[0]['role']);
+    }
+
+    public function test_it_parses_the_final_member_before_flattened_empty_role_columns(): void
+    {
+        $crew = app(CrewListParser::class)->parseReleaseManifestLine(
+            '4827 PIC THATCHER A 93614 SIC/FO GONZALEZ D ADDNTL CAPT 84726 IRP MCCLINTOCK A IRP MX LM ACM ACM CIRCLE THE APPROPRIATE STATUS',
+        );
+
+        $this->assertSame(['THATCHER A', 'GONZALEZ D', 'MCCLINTOCK A'], array_column($crew, 'name'));
+        $this->assertSame(['4827', '93614', '84726'], array_column($crew, 'employee_id'));
+        $this->assertSame(['PIC', 'SIC/FO', 'IRP'], array_column($crew, 'role'));
     }
 }

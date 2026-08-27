@@ -204,6 +204,10 @@ Outcome: Weather extraction now uses the confirmed takeoff-and-landing weather b
 
 Commit message: `feat: add weather task`
 
+### follow up: Preserve TAF new lines in weather reports
+currently: new lines are stripped when extracted PDF text normalizes removing weather blocks. This removes key TAF formatting data. Cannot easily reintroduce new line breaks
+Plan: plan steps needed to preserve line breaks
+
 ## 6. Implement Weight & Balance
 
 Goal: Present confirmed weights, indices, and source status without performing an unauthorized calculation.
@@ -271,6 +275,8 @@ Arrival At:
 - Stop crew name parsing on line break
 - Add a high mins flag to the DTO contract
 - Front end display as a caution
+
+Regression outcome: The flattened release-manifest parser now retains a final employee record when the PDF appends empty `IRP`, `MX`, `LM`, and `ACM` role-column placeholders before `CIRCLE THE APPROPRIATE STATUS`. Verified against the supplied release and captured in a deidentified fixture: the PIC, SIC/FO, and final IRP are all extracted without treating placeholder roles as part of a crew name.
 
 ## 14. Hide ETOPs card if non ETOPS flight
 - Currently ETOPS card always displayed rendering:

@@ -44,7 +44,9 @@ class CrewListParser
         $recordPattern = '/(?<!\d)(?<employee_id>\d{4,6})\h+'
             .'(?<role>'.$rolePattern.')\h+'
             .'(?<name>[A-Z][A-Z\'’\-]*(?:\h+[A-Z][A-Z\'’\-]*)+?)'
-            .'(?=\h+\d{4,6}\h+(?:'.$rolePattern.')\h+|\h*$)/u';
+            .'(?=\h+\d{4,6}\h+(?:'.$rolePattern.')\h+'
+            .'|\h+(?:(?:IRP|MX|LM|ACM)\h+)+CIRCLE\h+THE\h+APPROPRIATE\h+STATUS\b'
+            .'|\h*$)/u';
         $matches = [];
 
         if (preg_match_all($recordPattern, trim($line), $matches, PREG_SET_ORDER) < 1) {

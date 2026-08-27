@@ -63,7 +63,7 @@ class FlightInitFieldNormalizerTest extends TestCase
         $normalizer = new FlightInitFieldNormalizer;
 
         $this->assertSame('4827', $normalizer->employeeNumber(' 4827 '));
-        $this->assertSame('72860', $normalizer->employeeNumber('72860'));
+        $this->assertSame('93614', $normalizer->employeeNumber('93614'));
         $this->assertSame('123456', $normalizer->employeeNumber('123456'));
         $this->assertNull($normalizer->employeeNumber('123'));
         $this->assertNull($normalizer->employeeNumber('1234567'));

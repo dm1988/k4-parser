@@ -94,6 +94,19 @@ TEXT);
         $this->assertStringContainsString('4387 PIC MORGAN A', $result['source_fragments']['flight_crew']);
     }
 
+    public function test_it_retains_the_final_relief_pilot_before_flattened_role_placeholders(): void
+    {
+        $result = $this->extractor()->extract($this->fixture('release-manifest-trailing-placeholders'));
+
+        $this->assertSame([
+            ['name' => 'THATCHER A', 'role' => 'PIC', 'base' => null, 'employee_number' => '4827'],
+            ['name' => 'GONZALEZ D', 'role' => 'SIC/FO', 'base' => null, 'employee_number' => '93614'],
+            ['name' => 'MCCLINTOCK A', 'role' => 'IRP', 'base' => null, 'employee_number' => '84726'],
+        ], $result['data']);
+        $this->assertStringContainsString('84726 IRP MCCLINTOCK A', $result['source_fragments']['flight_crew']);
+        $this->assertStringNotContainsString('FUEL SUMMARY', $result['source_fragments']['flight_crew']);
+    }
+
     private function extractor(): FlightCrewExtractor
     {
         return new FlightCrewExtractor(new CrewListParser);
