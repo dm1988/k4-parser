@@ -232,7 +232,7 @@ Outcome: Added a dedicated Review MEL / CDL task with the `wrench-screwdriver` i
 
 Commit message: `feat: add MEL and CDL review task`
 
-## 9. UI: Jepp PD Pro task view
+## 9. [x] Completed: UI: Jepp PD Pro task view
 Goal:
 Within the task view: Move route section above ETOPS critical points section
 
@@ -240,6 +240,10 @@ References:
 resources/views/components/flight-release/jepp-pd-pro.blade.php
 
 - Bug fixed: Planned runway extraction now permits a missing SID/STAR and stops at the next planned-runway header, newline, or asterisk divider. Verified against `CKS093312ZSOF 2.pdf`: runway 33 with no SID, and arrival runway 33L with OLMEN OLME2E.
+
+Outcome: The Jepp PD-Pro task now presents the copyable route immediately after airport details and before ETOPS critical points. Focused Livewire coverage verifies the operational section order.
+
+Commit message: `fix: prioritize route in Jepp PD-Pro task`
 
 ## 10. UI: Action oriented labels on Overview
 - Flight and aircraft card footer: ACARS Initialize Flight ->

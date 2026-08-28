@@ -113,6 +113,52 @@
         </div>
     </details>
 
+    <div class="border-t border-[#1B365D]/8 dark:border-slate-700">
+        <div class="flex items-center justify-between gap-3 bg-[#F8F9FA] px-4 py-2 dark:bg-slate-800">
+            <div class="flex items-center gap-2">
+                <x-heroicon-o-map class="h-4 w-4 text-[#1B365D] dark:text-slate-300" />
+                <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568] dark:text-slate-400">
+                    Route
+                </span>
+            </div>
+            <x-flight-release.copy-button
+                target="flight-route-output"
+                label="Route"
+                status="route-status"
+                text="Copy route"
+            />
+        </div>
+
+        <div class="px-4 py-3">
+            <p class="break-words font-mono text-xs leading-relaxed text-[#0B0E14] dark:text-slate-100">
+                @foreach ($model->routeTokens() as $token)
+                    <x-flight-release.route-token
+                        :value="$token['value']"
+                        :type="$token['type']"
+                        :class="$token['class']"
+                    />
+                    @if (! $loop->last)
+                        <span class="text-[#0B0E14] dark:text-slate-100"> </span>
+                    @endif
+                @endforeach
+            </p>
+
+            <textarea
+                id="flight-route-output"
+                readonly
+                rows="4"
+                class="sr-only"
+            >{{ $model->route() }}</textarea>
+
+            <p
+                id="route-status"
+                role="status"
+                aria-live="polite"
+                class="mt-2 min-h-4 text-[11px] text-[#4A5568] opacity-0 transition-opacity duration-300 dark:text-slate-400"
+            ></p>
+        </div>
+    </div>
+
     @if ($model->hasEtopsData())
         <section class="border-t border-[#1B365D]/8 dark:border-slate-700">
             <div class="flex items-center gap-2 bg-[#F8F9FA] px-4 py-2 dark:bg-slate-800">
@@ -172,49 +218,4 @@
         </section>
     @endif
 
-    <div class="border-t border-[#1B365D]/8 dark:border-slate-700">
-        <div class="flex items-center justify-between gap-3 bg-[#F8F9FA] px-4 py-2 dark:bg-slate-800">
-            <div class="flex items-center gap-2">
-                <x-heroicon-o-map class="h-4 w-4 text-[#1B365D] dark:text-slate-300" />
-                <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568] dark:text-slate-400">
-                    Route
-                </span>
-            </div>
-            <x-flight-release.copy-button
-                target="flight-route-output"
-                label="Route"
-                status="route-status"
-                text="Copy route"
-            />
-        </div>
-
-        <div class="px-4 py-3">
-            <p class="break-words font-mono text-xs leading-relaxed text-[#0B0E14] dark:text-slate-100">
-                @foreach ($model->routeTokens() as $token)
-                    <x-flight-release.route-token
-                        :value="$token['value']"
-                        :type="$token['type']"
-                        :class="$token['class']"
-                    />
-                    @if (! $loop->last)
-                        <span class="text-[#0B0E14] dark:text-slate-100"> </span>
-                    @endif
-                @endforeach
-            </p>
-
-            <textarea
-                id="flight-route-output"
-                readonly
-                rows="4"
-                class="sr-only"
-            >{{ $model->route() }}</textarea>
-
-            <p
-                id="route-status"
-                role="status"
-                aria-live="polite"
-                class="mt-2 min-h-4 text-[11px] text-[#4A5568] opacity-0 transition-opacity duration-300 dark:text-slate-400"
-            ></p>
-        </div>
-    </div>
 </section>

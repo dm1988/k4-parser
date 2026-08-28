@@ -313,6 +313,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeHtml('wire:key="flight-plan-task-panel-jepp_pd_pro"')
             ->assertSeeText('Extracted flight plan')
             ->assertSeeText('Departure runway')
+            ->assertSeeTextInOrder(['Route', 'ETOPS critical points'])
             ->assertSeeText('ETOPS critical points')
             ->assertSeeText('DCT Q139 TEST')
             ->assertDontSeeText('Not supported yet')
