@@ -27,6 +27,16 @@ class FlightPlanTaskTest extends TestCase
     }
 
     #[Test]
+    public function it_exposes_action_oriented_overview_labels(): void
+    {
+        $this->assertSame('ACARS Initialize Flight', FlightPlanTask::FlightInit->actionLabel());
+        $this->assertSame('Program FMS', FlightPlanTask::Fms->actionLabel());
+        $this->assertSame('Review Slot Times', FlightPlanTask::SlotTimes->actionLabel());
+        $this->assertSame('Score Fuel', FlightPlanTask::FuelScore->actionLabel());
+        $this->assertSame('Review ETOPS', FlightPlanTask::Etops->actionLabel());
+    }
+
+    #[Test]
     public function it_identifies_tasks_that_require_airport_data(): void
     {
         $this->assertTrue(FlightPlanTask::JeppPdPro->requiresAirports());

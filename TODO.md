@@ -245,12 +245,26 @@ Outcome: The Jepp PD-Pro task now presents the copyable route immediately after 
 
 Commit message: `fix: prioritize route in Jepp PD-Pro task`
 
-## 10. UI: Action oriented labels on Overview
+## 10. [x] Completed: UI: Action oriented labels on Overview
+Currently: `Open ` is prefixed followed by the Flight task enum label.
+
+Goal: Customize labels giving action oriented labels within the overview task.
+
+Implementation:
+- In enum, create action labels
 - Flight and aircraft card footer: ACARS Initialize Flight ->
 - Route card: Program FMS ->
-- Schedule and slots -> review slot times
+- Schedule and slots: Review slot times ->
 - Fuel card: Score fuel ->
 - ETOPs evidence card: Review ETOPs ->
+
+References:
+resources/views/components/flight-release/overview-card.blade.php
+app/Enums/FlightPlanTask.php
+
+Outcome: Overview card footers now use task-owned action labels instead of the generic `Open {task}` prefix. Flight initialization, FMS programming, slot review, fuel scoring, and ETOPS review display distinct operational calls to action while preserving accessible task navigation.
+
+Commit message: `feat: add action labels to overview cards`
 
 ## 11. ETOPs 
 - Determine if a flight qualifies as ETOPS

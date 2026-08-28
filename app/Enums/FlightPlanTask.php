@@ -37,6 +37,24 @@ enum FlightPlanTask: string
         };
     }
 
+    public function actionLabel(): string
+    {
+        return match ($this) {
+            self::Overview => 'Review Overview',
+            self::ReviewMelCdl => 'Review MEL / CDL',
+            self::JeppPdPro => 'Check Jepp PD-Pro',
+            self::MaintenanceLog => 'Check Maintenance Log',
+            self::Envelope => 'Inspect Envelope',
+            self::FlightInit => 'ACARS Initialize Flight',
+            self::Fms => 'Program FMS',
+            self::SlotTimes => 'Review Slot Times',
+            self::FuelScore => 'Score Fuel',
+            self::Etops => 'Review ETOPS',
+            self::Weather => 'Check Weather Briefing',
+            self::WeightAndBalance => 'Verify Weight & Balance',
+        };
+    }
+
     public function icon(): string
     {
         return match ($this) {

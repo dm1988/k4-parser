@@ -1285,6 +1285,11 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('120,000 LB')
             ->assertSeeText('2 approved UTC slots')
             ->assertSeeText('1 critical point · EENT · EEXP')
+            ->assertSeeText('ACARS Initialize Flight')
+            ->assertSeeText('Program FMS')
+            ->assertSeeText('Review Slot Times')
+            ->assertSeeText('Score Fuel')
+            ->assertSeeText('Review ETOPS')
             ->assertSeeText('Operational support status')
             ->assertSeeText('GENDEC')
             ->assertSeeText('Flight plan filing')
@@ -1306,7 +1311,7 @@ class FlightPlanBriefTest extends TestCase
             $component
                 ->call('selectTask', FlightPlanTask::Overview->value)
                 ->assertSeeHtml('wire:key="flight-plan-overview-card-'.$task->value.'"')
-                ->assertSeeHtml('aria-label="Open '.$task->label().' task"')
+                ->assertSeeHtml('aria-label="'.$task->actionLabel().'"')
                 ->call('selectTask', $task->value)
                 ->assertSet('activeTask', $task->value);
         }
