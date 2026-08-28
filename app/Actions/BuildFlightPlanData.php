@@ -338,6 +338,12 @@ class BuildFlightPlanData
 
     private function etops(ParsedFlightPlanData $parsed): ?EtopsData
     {
+        $qualificationApplicability = is_string($parsed->etops['applicability'] ?? null)
+            ? EtopsApplicability::tryFrom($parsed->etops['applicability'])
+            : null;
+        $ratingMinutes = is_int($parsed->etops['rating_minutes'] ?? null)
+            ? $parsed->etops['rating_minutes']
+            : null;
         $entryPoint = $this->etopsPoint('EENT', $parsed->etops['eent_coordinates'] ?? null, 0);
         $equalTimePoints = [];
         $scenarios = [];
@@ -380,17 +386,21 @@ class BuildFlightPlanData
             $sequence,
         );
 
-        if ($entryPoint === null && $equalTimePoints === [] && $exitPoint === null) {
+        if ($entryPoint === null && $equalTimePoints === [] && $exitPoint === null && $ratingMinutes === null) {
             return null;
         }
 
-        $applicability = is_string($parsed->maintenance['etops_applicability'] ?? null)
+        $maintenanceApplicability = is_string($parsed->maintenance['etops_applicability'] ?? null)
             ? EtopsApplicability::tryFrom($parsed->maintenance['etops_applicability'])
             : null;
 
         return new EtopsData(
-            sectionPresent: true,
-            applicability: $applicability ?? EtopsApplicability::Unknown,
+            sectionPresent: ($parsed->etops['section_present'] ?? false) === true
+                || $entryPoint !== null
+                || $equalTimePoints !== []
+                || $exitPoint !== null,
+            applicability: $qualificationApplicability ?? $maintenanceApplicability ?? EtopsApplicability::Unknown,
+            ratingMinutes: $ratingMinutes,
             entryPoint: $entryPoint,
             exitPoint: $exitPoint,
             equalTimePoints: $equalTimePoints,

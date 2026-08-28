@@ -64,7 +64,8 @@ final readonly class FlightPlanPageData
         $etops = $this->flightPlan->etops;
 
         return $etops !== null && (
-            $etops->entryPoint !== null
+            $etops->ratingMinutes !== null
+            || $etops->entryPoint !== null
             || $etops->equalTimePoints !== []
             || $etops->exitPoint !== null
         );

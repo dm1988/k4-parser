@@ -585,6 +585,9 @@ class BuildFlightPlanPageData
         return new EtopsData(
             sectionPresent: ($value['sectionPresent'] ?? false) === true,
             applicability: $applicability ?? EtopsApplicability::Unknown,
+            ratingMinutes: is_int($value['ratingMinutes'] ?? null) && $value['ratingMinutes'] > 0
+                ? $value['ratingMinutes']
+                : null,
             entryPoint: $this->etopsPoint($value['entryPoint'] ?? null),
             exitPoint: $this->etopsPoint($value['exitPoint'] ?? null),
             equalTimePoints: $equalTimePoints,

@@ -2,7 +2,6 @@
 
 namespace Tests\Unit;
 
-use App\Enums\EtopsApplicability;
 use App\Exceptions\FlightPlanDataConflictException;
 use App\Services\FlightPlan\Extractor\MaintenanceLogExtractor;
 use PHPUnit\Framework\TestCase;
@@ -16,12 +15,10 @@ class MaintenanceLogExtractorTest extends TestCase
 
         $this->assertTrue($empty['data']['section_present']);
         $this->assertSame([], $empty['data']['items']);
-        $this->assertSame(EtopsApplicability::ConfirmedNonEtops->value, $empty['data']['etops_applicability']);
         $this->assertArrayHasKey('maintenance_log', $empty['source_fragments']);
 
         $this->assertFalse($absent['data']['section_present']);
         $this->assertSame([], $absent['data']['items']);
-        $this->assertSame(EtopsApplicability::Unknown->value, $absent['data']['etops_applicability']);
         $this->assertSame([], $absent['source_fragments']);
     }
 
@@ -44,11 +41,10 @@ class MaintenanceLogExtractorTest extends TestCase
         $this->assertArrayHasKey('maintenance_item_1', $result['source_fragments']);
     }
 
-    public function test_it_extracts_multiple_item_types_and_numeric_etops_evidence(): void
+    public function test_it_extracts_multiple_item_types(): void
     {
         $result = $this->extractor()->extract($this->fixture('multiple-items'));
 
-        $this->assertSame(EtopsApplicability::ConfirmedEtops->value, $result['data']['etops_applicability']);
         $this->assertCount(3, $result['data']['items']);
         $this->assertSame(['MEL', 'CDL', 'DMI'], array_column($result['data']['items'], 'type'));
         $this->assertSame('MC-771', $result['data']['items'][2]['reference']);
@@ -209,16 +205,6 @@ MEL 25-20-1-NEF-16 | STATUS: OPEN | DESCRIPTION: First description.
 MEL 25-20-1-NEF-16 | STATUS: OPEN | DESCRIPTION: Conflicting description.
 END MAINTENANCE LOG
 TEXT);
-    }
-
-    public function test_etops_applicability_requires_explicit_or_operational_evidence(): void
-    {
-        $extractor = $this->extractor();
-
-        $this->assertSame(EtopsApplicability::ConfirmedEtops, $extractor->etopsApplicability('ETOPS FLIGHT: YES'));
-        $this->assertSame(EtopsApplicability::ConfirmedNonEtops, $extractor->etopsApplicability('ETOPS FLIGHT: NO'));
-        $this->assertSame(EtopsApplicability::ConfirmedEtops, $extractor->etopsApplicability('ETOPS 180'));
-        $this->assertSame(EtopsApplicability::Unknown, $extractor->etopsApplicability('ETOPS information unavailable'));
     }
 
     private function extractor(): MaintenanceLogExtractor

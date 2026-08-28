@@ -46,6 +46,7 @@ class EtopsDataTest extends TestCase
         $data = new EtopsData(
             sectionPresent: true,
             applicability: EtopsApplicability::ConfirmedEtops,
+            ratingMinutes: 180,
             entryPoint: $entry,
             exitPoint: $exit,
             equalTimePoints: [$firstEtp, $secondEtp],
@@ -56,6 +57,7 @@ class EtopsDataTest extends TestCase
         $serialized = $data->toArray();
 
         $this->assertSame('confirmed_etops', $serialized['applicability']);
+        $this->assertSame(180, $serialized['ratingMinutes']);
         $this->assertSame(['latitude' => 'N40 31.1', 'longitude' => 'W131 22.6'], $serialized['entryPoint']['coordinate']);
         $this->assertSame(['ETP1', 'ETP1'], array_column($serialized['equalTimePoints'], 'label'));
         $this->assertSame([2, 3], array_column($serialized['equalTimePoints'], 'sequence'));
@@ -110,5 +112,13 @@ class EtopsDataTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         new EtopsPointData('EENT', new EtopsCoordinateData('N40 31.1', 'W131 22.6'), -1);
+    }
+
+    public function test_it_rejects_an_invalid_etops_rating(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('ETOPS rating must be between 1 and 999 minutes.');
+
+        new EtopsData(true, EtopsApplicability::ConfirmedEtops, ratingMinutes: 0);
     }
 }

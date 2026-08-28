@@ -48,6 +48,11 @@
                     <div class="h-2.5 w-2.5 shrink-0 rounded-full border-2 border-[#C5A059] bg-white dark:bg-slate-800"></div>
                     <div class="h-px flex-1 bg-[#1B365D]/20 dark:bg-slate-600"></div>
                 </div>
+                @if ($model->etopsBadgeLabel())
+                    <span class="inline-flex rounded-full bg-[#C5A059]/20 px-2 py-0.5 font-mono text-[10px] font-bold text-[#1B365D] dark:bg-[#C5A059]/15 dark:text-[#E7C873]">
+                        {{ $model->etopsBadgeLabel() }}
+                    </span>
+                @endif
             </div>
 
             <div class="shrink-0 text-right">

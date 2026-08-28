@@ -2,7 +2,6 @@
 
 namespace App\Services\FlightPlan\Extractor;
 
-use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
 use App\Exceptions\FlightPlanDataConflictException;
 use Illuminate\Support\Str;
@@ -15,7 +14,7 @@ class MaintenanceLogExtractor
 
     /**
      * @return array{
-     *     data: array{section_present: bool, etops_applicability: string, items: list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string}>},
+     *     data: array{section_present: bool, items: list<array{type: string, number: string, description: string, reference: ?string, status: ?string, limitations: ?string, procedures: ?string}>},
      *     source_fragments: array<string, string>
      * }
      */
@@ -34,7 +33,6 @@ class MaintenanceLogExtractor
         return [
             'data' => [
                 'section_present' => $maintenanceSection !== null,
-                'etops_applicability' => $this->etopsApplicability($text)->value,
                 'items' => array_map(
                     static fn (array $item): array => $item['data'],
                     $items,
@@ -42,27 +40,6 @@ class MaintenanceLogExtractor
             ],
             'source_fragments' => $sourceFragments,
         ];
-    }
-
-    public function etopsApplicability(string $text): EtopsApplicability
-    {
-        $explicit = [];
-
-        if (preg_match('/\bETOPS(?:\h+FLIGHT)?\h*[:=-]\h*(YES|Y|NO|N)\b/i', $text, $explicit) === 1) {
-            return in_array(Str::upper($explicit[1]), ['YES', 'Y'], true)
-                ? EtopsApplicability::ConfirmedEtops
-                : EtopsApplicability::ConfirmedNonEtops;
-        }
-
-        if (preg_match('/\bNO\h+ETOPS\b/i', $text) === 1) {
-            return EtopsApplicability::ConfirmedNonEtops;
-        }
-
-        if (preg_match('/\bETOPS\h+(?:\d{2,3}\h*\/\h*)?\d{2,3}\b/i', $text) === 1) {
-            return EtopsApplicability::ConfirmedEtops;
-        }
-
-        return EtopsApplicability::Unknown;
     }
 
     /** @return array{body: string, source: string}|null */

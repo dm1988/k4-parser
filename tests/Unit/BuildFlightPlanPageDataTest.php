@@ -155,7 +155,8 @@ class BuildFlightPlanPageDataTest extends TestCase
         $payload = $this->resultPayload();
         $payload['flight_plan_data']['etops'] = [
             'sectionPresent' => true,
-            'applicability' => 'unknown',
+            'applicability' => 'confirmed_etops',
+            'ratingMinutes' => 210,
             'entryPoint' => [
                 'label' => 'EENT',
                 'coordinate' => ['latitude' => 'N40 31.1', 'longitude' => 'W131 22.6'],
@@ -172,6 +173,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertNotNull($pageData);
         $this->assertSame([], $pageData->flightPlan->etops?->equalTimePoints);
         $this->assertNotNull($pageData->flightPlan->etops->entryPoint);
+        $this->assertSame(210, $pageData->flightPlan->etops->ratingMinutes);
         $this->assertTrue($pageData->hasEtopsData());
         $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::Etops));
     }

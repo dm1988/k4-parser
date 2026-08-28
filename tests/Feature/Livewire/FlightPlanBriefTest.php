@@ -432,12 +432,16 @@ class FlightPlanBriefTest extends TestCase
         $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
     }
 
-    public function test_etops_uses_a_dedicated_typed_layout_without_inferring_approval(): void
+    public function test_etops_uses_a_dedicated_typed_layout_and_renders_the_source_rating_in_the_header(): void
     {
         Storage::fake('user_flight_releases');
 
         $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
-            $this->expectOnce($mock, 'extractFile')->andReturn($this->parsedFlightPlan());
+            $this->expectOnce($mock, 'extractFile')->andReturn($this->parsedFlightPlan(etops: [
+                'section_present' => true,
+                'applicability' => 'confirmed_etops',
+                'rating_minutes' => 180,
+            ]));
         });
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
             $this->expectOnce($mock, 'formatForIcaoDisplay')
@@ -448,11 +452,12 @@ class FlightPlanBriefTest extends TestCase
         Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->assertSeeText('ETOPS 180')
             ->call('selectTask', FlightPlanTask::Etops->value)
             ->assertSet('activeTask', FlightPlanTask::Etops->value)
             ->assertSeeHtml('wire:key="flight-plan-task-panel-etops"')
             ->assertSeeText('ETOPS source data')
-            ->assertSeeText('Not confirmed')
+            ->assertSeeText('Yes')
             ->assertSeeText('Boundary points')
             ->assertSeeText('EENT')
             ->assertSee('value="N40 31.1 W131 22.6"', escape: false)
@@ -1672,6 +1677,7 @@ class FlightPlanBriefTest extends TestCase
         ?array $maintenance = null,
         ?array $envelope = null,
         ?array $flightInit = null,
+        ?array $etops = null,
         ?array $waypoints = null,
         ?array $weather = null,
         ?array $weightBalance = null,
@@ -1721,6 +1727,7 @@ class FlightPlanBriefTest extends TestCase
             envelope: $envelope ?? [],
             flightInit: $flightInit ?? [],
             etops: [
+                ...($etops ?? []),
                 'etps' => is_array($legacy['etps'] ?? null) ? $legacy['etps'] : [],
                 'eent_coordinates' => is_string($legacy['eent_coordinates'] ?? null) ? $legacy['eent_coordinates'] : null,
                 'eexp_coordinates' => is_string($legacy['eexp_coordinates'] ?? null) ? $legacy['eexp_coordinates'] : null,

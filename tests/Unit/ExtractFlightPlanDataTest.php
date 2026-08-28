@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\DTOs\ParsedFlightPlanData;
 use App\Services\Clients\AirportLookupClient;
 use App\Services\FlightPlan\Extractor\EnvelopeExtractor;
+use App\Services\FlightPlan\Extractor\Etops\EtopsQualificationExtractor;
 use App\Services\FlightPlan\Extractor\ExtractFlightPlanData;
 use App\Services\FlightPlan\Extractor\FlightCrewExtractor;
 use App\Services\FlightPlan\Extractor\FlightFuelExtractor;
@@ -100,6 +101,15 @@ class ExtractFlightPlanDataTest extends TestCase
             ],
             'source_fragments' => ['weight_balance_basic_operating_weight' => 'private weight evidence'],
         ]);
+        $etopsQualificationExtractor = $this->createMock(EtopsQualificationExtractor::class);
+        $etopsQualificationExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
+            'data' => [
+                'section_present' => true,
+                'applicability' => 'confirmed_etops',
+                'rating_minutes' => 180,
+            ],
+            'source_fragments' => ['etops_qualification' => 'ETOPS 180 ETOPS ALTERNATE AIRPORTS'],
+        ]);
 
         $parsed = (new ExtractFlightPlanData(
             $textExtractor,
@@ -114,6 +124,7 @@ class ExtractFlightPlanDataTest extends TestCase
             $waypointExtractor,
             $weatherExtractor,
             $weightBalanceExtractor,
+            $etopsQualificationExtractor,
         ))->extractFile('/tmp/release.pdf');
 
         $this->assertInstanceOf(ParsedFlightPlanData::class, $parsed);
@@ -141,6 +152,9 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame('ETP1', $parsed->etops['etps'][0]['label']);
         $this->assertSame('N40 31.1 W131 22.6', $parsed->etops['eent_coordinates']);
         $this->assertSame('N45 19.3 E151 36.4', $parsed->etops['eexp_coordinates']);
+        $this->assertSame(180, $parsed->etops['rating_minutes']);
+        $this->assertSame('confirmed_etops', $parsed->etops['applicability']);
+        $this->assertSame('ETOPS 180 ETOPS ALTERNATE AIRPORTS', $parsed->sourceFragments['etops_qualification']);
         $this->assertSame('FL 340', $parsed->legacy['initial_altitude']);
     }
 

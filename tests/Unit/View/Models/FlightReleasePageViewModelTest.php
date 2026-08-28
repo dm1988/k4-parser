@@ -651,7 +651,8 @@ class FlightReleasePageViewModelTest extends TestCase
         $viewModel = $this->viewModel($this->resultPayload());
 
         $this->assertTrue($viewModel->hasEtopsData());
-        $this->assertSame('Not confirmed', $viewModel->etopsApplicabilityLabel());
+        $this->assertSame('Yes', $viewModel->etopsApplicabilityLabel());
+        $this->assertSame('ETOPS 180', $viewModel->etopsBadgeLabel());
         $this->assertSame([
             ['label' => 'EENT', 'coordinates' => 'N40 31.1 W131 22.6'],
             ['label' => 'EEXP', 'coordinates' => 'N45 19.3 E151 36.4'],
@@ -804,7 +805,8 @@ class FlightReleasePageViewModelTest extends TestCase
                 ],
                 'etops' => [
                     'sectionPresent' => true,
-                    'applicability' => 'unknown',
+                    'applicability' => 'confirmed_etops',
+                    'ratingMinutes' => 180,
                     'entryPoint' => [
                         'label' => 'EENT',
                         'coordinate' => ['latitude' => 'N40 31.1', 'longitude' => 'W131 22.6'],

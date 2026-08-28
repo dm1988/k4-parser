@@ -63,6 +63,7 @@ class FlightPlanResultSerializerTest extends TestCase
             etops: new EtopsData(
                 sectionPresent: true,
                 applicability: EtopsApplicability::Unknown,
+                ratingMinutes: 180,
                 entryPoint: new EtopsPointData(
                     'EENT',
                     new EtopsCoordinateData('N40 31.1', 'W131 22.6'),
@@ -134,6 +135,7 @@ class FlightPlanResultSerializerTest extends TestCase
         $this->assertSame('11', $result['flight_plan_data']['flightInit']['acarsInitDate']);
         $this->assertSame(612400, $result['flight_plan_data']['envelope']['plannedTakeoffWeight']['amount']);
         $this->assertSame('N40 31.1', $result['flight_plan_data']['etops']['entryPoint']['coordinate']['latitude']);
+        $this->assertSame(180, $result['flight_plan_data']['etops']['ratingMinutes']);
         $this->assertSame('FIX01', $result['flight_plan_data']['waypoints'][0]['identifier']);
         $this->assertSame(0.0, $result['flight_plan_data']['waypoints'][0]['remainingFuel']['amount']);
         $this->assertArrayNotHasKey('crewMembers', $result['flight_plan_data']['maintenanceLog']);

@@ -3,6 +3,7 @@
 namespace App\Services\FlightPlan\Extractor;
 
 use App\DTOs\ParsedFlightPlanData;
+use App\Services\FlightPlan\Extractor\Etops\EtopsQualificationExtractor;
 
 class ExtractFlightPlanData
 {
@@ -19,6 +20,7 @@ class ExtractFlightPlanData
         private readonly WaypointExtractor $waypointExtractor,
         private readonly WeatherExtractor $weatherExtractor,
         private readonly WeightBalanceExtractor $weightBalanceExtractor = new WeightBalanceExtractor,
+        private readonly EtopsQualificationExtractor $etopsQualificationExtractor = new EtopsQualificationExtractor,
     ) {}
 
     public function extractFile(string $filePath): ParsedFlightPlanData
@@ -39,6 +41,7 @@ class ExtractFlightPlanData
         $waypoints = $this->waypointExtractor->extract($text);
         $weather = $this->weatherExtractor->extract($text);
         $weightBalance = $this->weightBalanceExtractor->extract($text);
+        $etopsQualification = $this->etopsQualificationExtractor->extract($text);
 
         return new ParsedFlightPlanData(
             identity: $identity['data'],
@@ -56,7 +59,10 @@ class ExtractFlightPlanData
             ],
             fuel: $fuel['data'],
             crewMembers: $crew['data'],
-            maintenance: $maintenance['data'],
+            maintenance: [
+                ...$maintenance['data'],
+                'etops_applicability' => $etopsQualification['data']['applicability'],
+            ],
             envelope: $envelope['data'],
             flightInit: [
                 ...$flightInit['data'],
@@ -64,6 +70,7 @@ class ExtractFlightPlanData
                 'filed_initial_altitude' => $route['filed_initial_altitude_source'],
             ],
             etops: [
+                ...$etopsQualification['data'],
                 'etps' => $route['etps'],
                 'eent_coordinates' => $route['eent_coordinates'],
                 'eexp_coordinates' => $route['eexp_coordinates'],
@@ -83,6 +90,7 @@ class ExtractFlightPlanData
                 ...$waypoints['source_fragments'],
                 ...$weather['source_fragments'],
                 ...$weightBalance['source_fragments'],
+                ...$etopsQualification['source_fragments'],
             ],
             legacy: $route,
         );

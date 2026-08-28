@@ -26,8 +26,8 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - The current results UI renders airports, runways, procedures, route tokens, and typed ETOPS data through `FlightReleasePageViewModel`.
 - The release header preserves the explicit tail label and falls back to the confirmed flight date when a departure timestamp is unavailable.
 - Normalized today: flight/trip/recall identity, aircraft and tail, flight date, airports, route, runways, SID/STAR, distance, ETD/ETA, approved slot instants, release-level fuel, and current ETOPS boundary/equal-time points and scenario text.
-- Still legacy-only: airport enrichment, initial altitude, and duration.
-- Not yet confirmed from fixtures: release revision, additional fuel, and most fields for Weather, and Weight & Balance.
+- Still legacy-only: airport enrichment and duration.
+- Not yet confirmed from fixtures: release revision, additional fuel.
 
 ### Branch completion criteria
 - Weather task completed
@@ -42,7 +42,6 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 ### Product and UI rules
 
-- Keep the task order fixed: Overview, Jepp PD-Pro, Maintenance Log, Envelope, Flight Init, FMS, Slot Times, Fuel Score, ETOPS, Weather, Weight & Balance.
 - Use Aviation Blue for structure, Compass Gold for primary emphasis, and the existing light/dark theme tokens.
 - Keep operational values compact and scannable; use monospaced text for codes, times, routes, coordinates, and numeric planning values.
 - Label every time basis and fuel unit. Never silently mix UTC/local or pounds/kilograms.
@@ -51,186 +50,7 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Reuse Blade components and view data; do not parse, normalize, query, or authorize inside Blade.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
-### Navigation map
-
-| Order | Task             | Suggested icon              | Current availability                |
-| ----: | ---------------- | --------------------------- | ----------------------------------- |
-|     1 | Overview         | `home`                      | Core data ready                     |
-|     2 | Jepp PD-Pro      | `paper-airplane`            | Source-backed task view ready       |
-|     3 | Maintenance Log  | `clipboard-document-list`   | Source-backed task view ready       |
-|     4 | Envelope         | `document-chart-bar`        | Source-backed task view ready       |
-|     5 | Flight Init      | `bolt`                      | Core data ready                     |
-|     6 | FMS              | `calculator`                | Core route data ready               |
-|     7 | Slot Times       | `clock`                     | Basic source-backed approved slots  |
-|     8 | Fuel Score       | `gauge` or closest Heroicon | Source-backed summary and waypoint  |
-|     9 | ETOPS            | `globe-alt`                 | Source-backed task view ready       |
-|    10 | Weather          | `cloud`                     | Awaiting confirmed fixtures         |
-|    11 | Weight & Balance | `scale`                     | Awaiting confirmed fixtures         |
-
-Icons  use hero icons returned in FlightPlanTask enum
-
 # Tasks
-
-## 6. [x] Completed: Implement Weight & Balance
-* If any ambiguity exists, clarify before proceeding.
-
-Goal: Present confirmed weights and source status without performing an unauthorized calculation.
-
-- Add sanitized fixtures for:
-  - basic operating weight
-  - planned payload
-  - fuel, Fixtures for fuel already exist. Ensure coverage.
-  - zero-fuel weight
-  - ramp weight
-  - takeoff gross weight
-  - estimated landing weight
-  - limits - to be provided by db. Not yet implemented.
-- Introduce typed mass values with explicit units and finite, non-negative validation where appropriate.
-- Reuse fuel values and aircraft identity; corroborate duplicated values.
-- Separate actual/planned values, permitted limits, and source-provided status.
-- Actual values are not implemented at this time. Render only planned values and limits to user.
-- Test unit variants, zero values, boundaries, conflicts, and incomplete sections.
-
-- unsanitized release text for weights:
-```text
-BASIC OPTG WEIGHT  335858ALTN RKTU 005.2   00.19  170  0070  P012   PAYLOAD            018000HOLDING   005.9   00.30                    ZERO FUEL WEIGHT   353858RESERVE   006.0   00.28                    TAKEOFF FUEL       223489ADDNL     000.0   00.00                    TAKEOFF GROSS WT   577347BALLAST   000.0                            EST FUEL BURN      205454 ◀
-KALITTA BRIEF PAGE 8 OF 197
-PAGE 8 OF 197
-
-MIN FUEL  222.5   15.07                    EST LANDING WEIGHT 371893EXTRA     000.0   00.00                    INC BURN/1000 LBS:  0376R/R PAD   001.0   00.04                    FUEL BURN BASED ON:  CI180TAXI      002.0   00.00TTL RMP   225.5   15.11                    EST LANDING FUEL:  018035REFILE FLT 524   ORG NUZAN   / DEST PANC                  FUEL  TIME  DIST              
-```
-- Deferred limits entirely until db structure exists
-- Mass units must not be converted. Units listed in release are in pounds.
-- Every displayed weight is source-extracted except planned ramp weight, which is derived server-side from confirmed zero-fuel weight and ramp fuel in the same unit.
-- Source status labels:
-  - Confirmed
-  - Conflict
-  - Not present
-  - Limit unavailable
-- Additional clarification: 
-  - Derrive Ramp weight by adding zero fuel weight and ramp fuel. A seperate service may be the most appropriate place after source data is available. 
-  - Source values that disagree should show conflict. 
-  - Use source status per field.
-
-Done when: every comparison is based on confirmed source values and no browser-side arithmetic changes the dispatch result.
-
-Outcome: Basic operating weight, planned payload, takeoff fuel, zero-fuel weight, takeoff gross weight, and estimated landing weight are normalized as typed mass fields with independent source statuses. Matching duplicate source values are confirmed; disagreements render as conflicts without exposing an uncertain value. Planned ramp weight is derived server-side only from confirmed zero-fuel weight and ramp fuel sharing the same unit, with no unit conversion or browser arithmetic. Actual values remain excluded, database-backed limits remain typed but hidden until available, and private source fragments are not serialized into the Livewire payload. Sanitized fixtures and focused extractor, DTO, builder, cache-rehydration, view-model, and Livewire tests cover confirmed, zero, conflict, incomplete, and unit-mismatch paths.
-
-Commit message: `feat: add weight and balance task`
-
-### [x] Completed: Follow up - UI improvements
-UI improvements to enhance usability and visual hierarchy in the **Weight & Balance** task workspace:
-
-**Visual Hierarchy & Categorization**
-
-- **Group by Operational Phase:** Instead of displaying all six metrics in a generic grid, group them logically into distinct phases:
-  - **Base & Payload:** Basic Operating Weight + Planned Payload $\rightarrow$ Planned Zero-Fuel Weight.
-  - **Departure:** Planned Ramp Weight and Planned Takeoff Gross Weight (with Planned Takeoff Fuel paired alongside).
-  - **Arrival:** Planned Estimated Landing Weight.
-
-**Grid & Spacing Optimization**
-
-- **Consistent 3-Column Layout:** Use a balanced 3-column grid on desktop (e.g., Base Data | Departure | Arrival) to prevent awkward trailing single cards like Planned Estimated Landing Weight.
-- **Card Footers for Context:** Move explanatory micro-copy (such as *"Derived server-side..."*) directly inside the footer of the specific card it references rather than letting it sit below the entire grid block.
-
-**Data Density & Typography**
-
-- **Unit De-emphasis:** Reduce the visual weight of the unit label (`LB`) relative to the numerical values (e.g., smaller font size or muted color) so the flight crew can scan numbers quickly.
-
-Outcome: The task workspace now uses three balanced desktop columns for Base & Payload, Departure, and Arrival. Each phase keeps its related planned masses together, the ramp derivation explanation is attached to the ramp-weight card footer, and mass units use smaller muted typography so numeric values remain visually dominant. Confirmed badges and unavailable-limit placeholders remain hidden; conflict and missing-source statuses continue to render per field.
-
-## 7. [x] Completed: Maintenance task: NEF Badges
-Goal: render a source backed NEF badge instead of a MEL badge on NEF maintenance items.
-
-Currently: non equipment furnishings (NEF) are being extracted as MELs. There is no distinction between the two. CDLs are properly being distinguished. 
-
-- NEFs have `NEF` in the MEL number
-- Sample: `M 25-20-1-NEF-16DMI 100224958 MISCELLANEOUS INTERIOR TRIM (NON-STRUCTURAL PANELS AND MOLDINGS)`
-- app/Services/FlightPlan/Extractor/MaintenanceLogExtractor.php
-  - validNumber function add NEF
-- `tests/Fixtures/FlightPlan/maintenance-log/zsof-variable-mel-numbers.txt` provides a testing sample
-- NEF should numbers remain copyable like MEL/CDL numbers
-- Retain summary heading as is, do not include `NEF`
-
-### In enum add, color, title, and description. Title is Deferred Maintenance Item, Non-Essential Equipment & Furnishings, etc
-
-Badge colors and description:
-Red: MEL (Minimum Equipment List)
-* Description: MEL items involve required aircraft systems or instruments. They carry strict operational constraints, specific flight conditions (e.g., "Day VFR only"), and hard calendar deadlines.
-
-Orange: CDL (Configuration Deviation List)
-
-* Description: CDL items involve missing external parts (like a missing aerodynamic fairing, static wick, or flap seal). They directly impact performance, fuel burn, or weight limitations. 
-
-Yellow: DMI (Deferred Maintenance Item)
-
-* Description: DMI is a broad category used for tracking parts on order, planned maintenance tasks, or open discrepancies that do not ground the aircraft but need attention.
-
-Gray: NEF (Non-Essential Equipment & Furnishings)
-
-* Description: NEF items are strictly cosmetic or passenger-convenience features (like a broken passenger seat recline or a chipped galley trim). They have zero impact on safety, airworthiness, or performance. 
-
-Outcome: Maintenance numbers containing a complete `NEF` segment are normalized to the typed NEF item type before validation, deduplication, and conflict detection. `MaintenanceItemType` now owns the operational title, description, and light/dark badge color for MEL, CDL, DMI, and NEF; NEF uses a neutral gray badge. The maintenance presenter exposes this enum metadata, NEF numbers remain copyable, and the existing `MEL / CDL` summary heading is retained. Focused extractor, enum, view-model, and Livewire coverage verifies classification boundaries, conflict labels, metadata, badge rendering, and cache-backed presentation.
-
-Commit message: `feat: distinguish NEF maintenance badges`
-
-## 8. [x] Completed: Add task: Review MEL / CDL
-Goal: add Review MEL / CDL including MEL,NEF,CDL, and DMI list. Copyable fields: MEL,NEF, and CDL. Keep formatting similar to Maintenance log section under Maintenance log task. Retain applicable caution messages
-
-- Currently: structure already in place found in maintenance log task. MEL list is in non reuseable blade component
-- Fix: Seperate MEL/CDL list into it's own reuseable component
-- Hero icon: wrench-screwdriver
-- Use counter badge totaling MEL, NEF, DMI, and CDL counts
-- Show task directly below Overview if items exist; Overview always remains first
-- Have task at bottom if 0
-
-Implementation plan:
-
-1. Add `ReviewMelCdl` to `FlightPlanTask` with the `Review MEL / CDL` label, `wrench-screwdriver` icon, dedicated Blade component, and availability derived from maintenance-item presence.
-2. Add task-ordering logic outside Blade:
-   - Place Review MEL / CDL directly below Overview when any MEL, CDL, NEF, or DMI item exists; Overview always remains first.
-   - Place Review MEL / CDL last when the combined item count is zero.
-   - Preserve the relative order of every existing task.
-3. Extract the maintenance-item list from `maintenance-log.blade.php` into a reusable Blade component that accepts presented maintenance items as a prop.
-   - Preserve type badges, statuses, descriptions, references, limitations, and procedures.
-   - Keep MEL, CDL, and NEF numbers copyable.
-   - Keep DMI numbers non-copyable.
-   - Preserve responsive behavior, dark-mode styling, keyboard access, accessible labels, and copy status announcements.
-4. Replace the inline list in the Maintenance Log task with the reusable component without changing its current behavior.
-5. Create the Review MEL / CDL task view using the reusable item-list component.
-   - Display all MEL, CDL, NEF, and DMI items.
-   - Retain the `No airworthiness determination` caution.
-   - Retain applicable source-evidence and privacy messaging.
-   - Provide an honest empty state when no supported items exist.
-   - Do not duplicate flight context or crew information from the Maintenance Log task.
-6. Add a numeric navigator badge containing the combined MEL, CDL, NEF, and DMI count. Keep it visually and accessibly distinct from the existing availability indicator.
-7. Add focused PHPUnit coverage for:
-   - Enum label, icon, component mapping, and task registration.
-   - Review MEL / CDL appearing first when items exist and last when none exist.
-   - The combined navigator counter.
-   - Rendering all four maintenance item types.
-   - Copy controls for MEL, CDL, and NEF, and no copy control for DMI.
-   - Statuses, limitations, procedures, caution messaging, source evidence, and the empty state.
-   - Maintenance Log continuing to render the extracted shared component correctly.
-8. Run the focused enum and Livewire tests, run Pint after PHP changes, and run Larastan once at the final integration checkpoint.
-9. After verification, replace `Current focus:` with `Completed:`, record the outcome in this task, and add its commit message.
-
-References:
-app/Actions/BuildFlightPlanPageData.php
-app/DTOs/MaintenanceItemData.php
-app/Enums/MaintenanceItemType.php
-app/Enums/FlightPlanTask.php
-app/View/Models/FlightPlanPageData.php
-app/View/Models/FlightReleasePageViewModel.php
-resources/views/components/flight-release/task-navigator.blade.php
-resources/views/components/flight-release/maintenance-log.blade.php
-resources/views/components/flight-release/workspace.blade.php
-tests/Unit/Enums/FlightPlanTaskTest.php
-tests/Feature/Livewire/FlightPlanBriefTest.php
-
-Outcome: Added a dedicated Review MEL / CDL task with the `wrench-screwdriver` icon and a combined MEL, CDL, NEF, and DMI counter badge. Overview always remains first; the review task appears directly below it when source-listed maintenance items exist and moves to the bottom when the count is zero. The Maintenance Log and review task now share reusable maintenance-item and airworthiness-caution Blade components while preserving badges, statuses, descriptions, references, limitations, procedures, dark-mode styling, and accessible copy controls for MEL, CDL, and NEF only. Review availability is source-backed, empty releases remain explicit, and source evidence stays private. Focused enum, view-model, and Livewire coverage verifies metadata, ordering, counts, all item types, copy behavior, caution messaging, empty state, and Maintenance Log compatibility. Pint and the final Larastan checkpoint pass.
-
-Commit message: `feat: add MEL and CDL review task`
 
 ## 9. [x] Completed: UI: Jepp PD Pro task view
 Goal:
@@ -266,13 +86,30 @@ Outcome: Overview card footers now use task-owned action labels instead of the g
 
 Commit message: `feat: add action labels to overview cards`
 
-## 11. ETOPs 
+## 11. [x] Completed: ETOPs
+Currently: ETOPS status is assumed through ETOPS data extraction. ETOPS time to alternate is not extracted or exposed.
+
+Goal:
 - Determine if a flight qualifies as ETOPS
+- Extract and expose ETOPS time rating
+- Render an ETOPS badge in flight header
+
+Implementation:
 - ETOPs if text: `ETOPS 180  ETOPS ALTERNATE AIRPORTS` found
 - Extract ETOPS duration value, usually 180 or 210
 - Add badge on section flight info header
 - Badge label `ETOPS {duration}`
 - Placement: below duration and horizontal flight line, centered
+
+References:
+
+Outcome: ETOPS qualification and its minute rating are now extracted from the bounded `ETOPS {rating} ETOPS ALTERNATE AIRPORTS` source heading by a dedicated ETOPS extractor. The confirmed applicability and validated rating survive typed DTO construction, cache serialization, and cache rehydration without exposing private source evidence. Confirmed ETOPS releases render a centered `ETOPS {rating}` badge below the flight-duration line in the release header; unrelated ETOPS text and invalid zero ratings do not create the badge.
+
+Follow-up outcome: ETOPS applicability detection now belongs to the ETOPS qualification extractor, including explicit yes/no, `NO ETOPS`, and operational numeric evidence. Maintenance extraction is limited to maintenance sections and items; the extraction orchestrator composes ETOPS applicability into the existing normalized maintenance contract for compatibility.
+
+Regex follow-up outcome: ETOPS rating extraction now accepts parser-flattened headings concatenated between a preceding coordinate and the following airport token, such as `N36430E127299ETOPS 180 ETOPS ALTERNATE AIRPORTSSFO/KSFO`, while retaining letter and airport-token boundaries. Verified against the extracted text shape from `CKS025625KLAX.pdf`.
+
+Commit message: `feat: extract and display ETOPS rating`
 
 ## 12. Hide ETOPs card if non ETOPS flight
 - Currently ETOPS card always displayed rendering:
@@ -347,6 +184,19 @@ Goal: Finish the migration only after every active front-end consumer uses typed
 - Run Pint after PHP changes and JavaScript tests after interaction changes.
 - At the final integration checkpoint, run the full PHPUnit suite, production Vite build, JavaScript suite, and Larastan once.
 - Perform manual responsive, keyboard, screen-reader-label, light/dark, and representative-PDF smoke tests.
+- Remove hasCustom view from Tasks enum.
+- Move ETOPs functions out of MaintenanceLogExtractor into ETOPs services. i.e. etopsApplicability
+- These 2 etops if conditions not possible:
+        if (preg_match('/\bETOPS(?:\h+FLIGHT)?\h*[:=-]\h*(YES|Y|NO|N)\b/i', $text, $explicit) === 1) {
+            return in_array(Str::upper($explicit[1]), ['YES', 'Y'], true)
+                ? EtopsApplicability::ConfirmedEtops
+                : EtopsApplicability::ConfirmedNonEtops;
+        }
+
+        if (preg_match('/\bNO\h+ETOPS\b/i', $text) === 1) {
+            return EtopsApplicability::ConfirmedNonEtops;
+        }
+- 
 - Update this file with actual outcomes and remove completed implementation detail instead of adding duplicate plans.
 
 Done when: no UI depends on the flat compatibility payload, all enabled tasks have honest availability states, and the full integration checkpoint passes.
@@ -641,3 +491,165 @@ Sample: `PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION
 VALID FROM 0715Z TO 0935Z`
 
 Outcome: RAIM extraction now accepts parser-flattened releases where the `VALID` label is concatenated to `NAVIGATION` and the following NOTAM section is concatenated directly after the ending `Z` time. It still requires exact four-digit UTC validity times and does not consume adjacent section text. Verified against the supplied KCVG release shape with focused positive and malformed-boundary regressions.
+
+
+## 6. [x] Completed: Implement Weight & Balance
+* If any ambiguity exists, clarify before proceeding.
+
+Goal: Present confirmed weights and source status without performing an unauthorized calculation.
+
+- Add sanitized fixtures for:
+  - basic operating weight
+  - planned payload
+  - fuel, Fixtures for fuel already exist. Ensure coverage.
+  - zero-fuel weight
+  - ramp weight
+  - takeoff gross weight
+  - estimated landing weight
+  - limits - to be provided by db. Not yet implemented.
+- Introduce typed mass values with explicit units and finite, non-negative validation where appropriate.
+- Reuse fuel values and aircraft identity; corroborate duplicated values.
+- Separate actual/planned values, permitted limits, and source-provided status.
+- Actual values are not implemented at this time. Render only planned values and limits to user.
+- Test unit variants, zero values, boundaries, conflicts, and incomplete sections.
+
+- unsanitized release text for weights:
+```text
+BASIC OPTG WEIGHT  335858ALTN RKTU 005.2   00.19  170  0070  P012   PAYLOAD            018000HOLDING   005.9   00.30                    ZERO FUEL WEIGHT   353858RESERVE   006.0   00.28                    TAKEOFF FUEL       223489ADDNL     000.0   00.00                    TAKEOFF GROSS WT   577347BALLAST   000.0                            EST FUEL BURN      205454 ◀
+KALITTA BRIEF PAGE 8 OF 197
+PAGE 8 OF 197
+
+MIN FUEL  222.5   15.07                    EST LANDING WEIGHT 371893EXTRA     000.0   00.00                    INC BURN/1000 LBS:  0376R/R PAD   001.0   00.04                    FUEL BURN BASED ON:  CI180TAXI      002.0   00.00TTL RMP   225.5   15.11                    EST LANDING FUEL:  018035REFILE FLT 524   ORG NUZAN   / DEST PANC                  FUEL  TIME  DIST              
+```
+- Deferred limits entirely until db structure exists
+- Mass units must not be converted. Units listed in release are in pounds.
+- Every displayed weight is source-extracted except planned ramp weight, which is derived server-side from confirmed zero-fuel weight and ramp fuel in the same unit.
+- Source status labels:
+  - Confirmed
+  - Conflict
+  - Not present
+  - Limit unavailable
+- Additional clarification: 
+  - Derrive Ramp weight by adding zero fuel weight and ramp fuel. A seperate service may be the most appropriate place after source data is available. 
+  - Source values that disagree should show conflict. 
+  - Use source status per field.
+
+Done when: every comparison is based on confirmed source values and no browser-side arithmetic changes the dispatch result.
+
+Outcome: Basic operating weight, planned payload, takeoff fuel, zero-fuel weight, takeoff gross weight, and estimated landing weight are normalized as typed mass fields with independent source statuses. Matching duplicate source values are confirmed; disagreements render as conflicts without exposing an uncertain value. Planned ramp weight is derived server-side only from confirmed zero-fuel weight and ramp fuel sharing the same unit, with no unit conversion or browser arithmetic. Actual values remain excluded, database-backed limits remain typed but hidden until available, and private source fragments are not serialized into the Livewire payload. Sanitized fixtures and focused extractor, DTO, builder, cache-rehydration, view-model, and Livewire tests cover confirmed, zero, conflict, incomplete, and unit-mismatch paths.
+
+Commit message: `feat: add weight and balance task`
+
+### [x] Completed: Follow up - UI improvements
+UI improvements to enhance usability and visual hierarchy in the **Weight & Balance** task workspace:
+
+**Visual Hierarchy & Categorization**
+
+- **Group by Operational Phase:** Instead of displaying all six metrics in a generic grid, group them logically into distinct phases:
+  - **Base & Payload:** Basic Operating Weight + Planned Payload $\rightarrow$ Planned Zero-Fuel Weight.
+  - **Departure:** Planned Ramp Weight and Planned Takeoff Gross Weight (with Planned Takeoff Fuel paired alongside).
+  - **Arrival:** Planned Estimated Landing Weight.
+
+**Grid & Spacing Optimization**
+
+- **Consistent 3-Column Layout:** Use a balanced 3-column grid on desktop (e.g., Base Data | Departure | Arrival) to prevent awkward trailing single cards like Planned Estimated Landing Weight.
+- **Card Footers for Context:** Move explanatory micro-copy (such as *"Derived server-side..."*) directly inside the footer of the specific card it references rather than letting it sit below the entire grid block.
+
+**Data Density & Typography**
+
+- **Unit De-emphasis:** Reduce the visual weight of the unit label (`LB`) relative to the numerical values (e.g., smaller font size or muted color) so the flight crew can scan numbers quickly.
+
+Outcome: The task workspace now uses three balanced desktop columns for Base & Payload, Departure, and Arrival. Each phase keeps its related planned masses together, the ramp derivation explanation is attached to the ramp-weight card footer, and mass units use smaller muted typography so numeric values remain visually dominant. Confirmed badges and unavailable-limit placeholders remain hidden; conflict and missing-source statuses continue to render per field.
+
+## 7. [x] Completed: Maintenance task: NEF Badges
+Goal: render a source backed NEF badge instead of a MEL badge on NEF maintenance items.
+
+Currently: non equipment furnishings (NEF) are being extracted as MELs. There is no distinction between the two. CDLs are properly being distinguished. 
+
+- NEFs have `NEF` in the MEL number
+- Sample: `M 25-20-1-NEF-16DMI 100224958 MISCELLANEOUS INTERIOR TRIM (NON-STRUCTURAL PANELS AND MOLDINGS)`
+- app/Services/FlightPlan/Extractor/MaintenanceLogExtractor.php
+  - validNumber function add NEF
+- `tests/Fixtures/FlightPlan/maintenance-log/zsof-variable-mel-numbers.txt` provides a testing sample
+- NEF should numbers remain copyable like MEL/CDL numbers
+- Retain summary heading as is, do not include `NEF`
+
+### In enum add, color, title, and description. Title is Deferred Maintenance Item, Non-Essential Equipment & Furnishings, etc
+
+Badge colors and description:
+Red: MEL (Minimum Equipment List)
+* Description: MEL items involve required aircraft systems or instruments. They carry strict operational constraints, specific flight conditions (e.g., "Day VFR only"), and hard calendar deadlines.
+
+Orange: CDL (Configuration Deviation List)
+
+* Description: CDL items involve missing external parts (like a missing aerodynamic fairing, static wick, or flap seal). They directly impact performance, fuel burn, or weight limitations. 
+
+Yellow: DMI (Deferred Maintenance Item)
+
+* Description: DMI is a broad category used for tracking parts on order, planned maintenance tasks, or open discrepancies that do not ground the aircraft but need attention.
+
+Gray: NEF (Non-Essential Equipment & Furnishings)
+
+* Description: NEF items are strictly cosmetic or passenger-convenience features (like a broken passenger seat recline or a chipped galley trim). They have zero impact on safety, airworthiness, or performance. 
+
+Outcome: Maintenance numbers containing a complete `NEF` segment are normalized to the typed NEF item type before validation, deduplication, and conflict detection. `MaintenanceItemType` now owns the operational title, description, and light/dark badge color for MEL, CDL, DMI, and NEF; NEF uses a neutral gray badge. The maintenance presenter exposes this enum metadata, NEF numbers remain copyable, and the existing `MEL / CDL` summary heading is retained. Focused extractor, enum, view-model, and Livewire coverage verifies classification boundaries, conflict labels, metadata, badge rendering, and cache-backed presentation.
+
+Commit message: `feat: distinguish NEF maintenance badges`
+
+## 8. [x] Completed: Add task: Review MEL / CDL
+Goal: add Review MEL / CDL including MEL,NEF,CDL, and DMI list. Copyable fields: MEL,NEF, and CDL. Keep formatting similar to Maintenance log section under Maintenance log task. Retain applicable caution messages
+
+- Currently: structure already in place found in maintenance log task. MEL list is in non reuseable blade component
+- Fix: Seperate MEL/CDL list into it's own reuseable component
+- Hero icon: wrench-screwdriver
+- Use counter badge totaling MEL, NEF, DMI, and CDL counts
+- Show task directly below Overview if items exist; Overview always remains first
+- Have task at bottom if 0
+
+Implementation plan:
+
+1. Add `ReviewMelCdl` to `FlightPlanTask` with the `Review MEL / CDL` label, `wrench-screwdriver` icon, dedicated Blade component, and availability derived from maintenance-item presence.
+2. Add task-ordering logic outside Blade:
+   - Place Review MEL / CDL directly below Overview when any MEL, CDL, NEF, or DMI item exists; Overview always remains first.
+   - Place Review MEL / CDL last when the combined item count is zero.
+   - Preserve the relative order of every existing task.
+3. Extract the maintenance-item list from `maintenance-log.blade.php` into a reusable Blade component that accepts presented maintenance items as a prop.
+   - Preserve type badges, statuses, descriptions, references, limitations, and procedures.
+   - Keep MEL, CDL, and NEF numbers copyable.
+   - Keep DMI numbers non-copyable.
+   - Preserve responsive behavior, dark-mode styling, keyboard access, accessible labels, and copy status announcements.
+4. Replace the inline list in the Maintenance Log task with the reusable component without changing its current behavior.
+5. Create the Review MEL / CDL task view using the reusable item-list component.
+   - Display all MEL, CDL, NEF, and DMI items.
+   - Retain the `No airworthiness determination` caution.
+   - Retain applicable source-evidence and privacy messaging.
+   - Provide an honest empty state when no supported items exist.
+   - Do not duplicate flight context or crew information from the Maintenance Log task.
+6. Add a numeric navigator badge containing the combined MEL, CDL, NEF, and DMI count. Keep it visually and accessibly distinct from the existing availability indicator.
+7. Add focused PHPUnit coverage for:
+   - Enum label, icon, component mapping, and task registration.
+   - Review MEL / CDL appearing first when items exist and last when none exist.
+   - The combined navigator counter.
+   - Rendering all four maintenance item types.
+   - Copy controls for MEL, CDL, and NEF, and no copy control for DMI.
+   - Statuses, limitations, procedures, caution messaging, source evidence, and the empty state.
+   - Maintenance Log continuing to render the extracted shared component correctly.
+8. Run the focused enum and Livewire tests, run Pint after PHP changes, and run Larastan once at the final integration checkpoint.
+9. After verification, replace `Current focus:` with `Completed:`, record the outcome in this task, and add its commit message.
+
+References:
+app/Actions/BuildFlightPlanPageData.php
+app/DTOs/MaintenanceItemData.php
+app/Enums/MaintenanceItemType.php
+app/Enums/FlightPlanTask.php
+app/View/Models/FlightPlanPageData.php
+app/View/Models/FlightReleasePageViewModel.php
+resources/views/components/flight-release/task-navigator.blade.php
+resources/views/components/flight-release/maintenance-log.blade.php
+resources/views/components/flight-release/workspace.blade.php
+tests/Unit/Enums/FlightPlanTaskTest.php
+tests/Feature/Livewire/FlightPlanBriefTest.php
+
+Outcome: Added a dedicated Review MEL / CDL task with the `wrench-screwdriver` icon and a combined MEL, CDL, NEF, and DMI counter badge. Overview always remains first; the review task appears directly below it when source-listed maintenance items exist and moves to the bottom when the count is zero. The Maintenance Log and review task now share reusable maintenance-item and airworthiness-caution Blade components while preserving badges, statuses, descriptions, references, limitations, procedures, dark-mode styling, and accessible copy controls for MEL, CDL, and NEF only. Review availability is source-backed, empty releases remain explicit, and source evidence stays private. Focused enum, view-model, and Livewire coverage verifies metadata, ordering, counts, all item types, copy behavior, caution messaging, empty state, and Maintenance Log compatibility. Pint and the final Larastan checkpoint pass.
+
+Commit message: `feat: add MEL and CDL review task`

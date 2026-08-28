@@ -305,6 +305,9 @@ class BuildFlightPlanDataTest extends TestCase
     {
         $flightPlan = (new BuildFlightPlanData)->handle($this->partialParsedData(
             etops: [
+                'section_present' => true,
+                'applicability' => 'confirmed_etops',
+                'rating_minutes' => 180,
                 'etps' => [[
                     'label' => 'ETP1',
                     'airports' => 'KSFO-PACD',
@@ -323,7 +326,8 @@ class BuildFlightPlanDataTest extends TestCase
 
         $this->assertNotNull($flightPlan->etops);
         $this->assertTrue($flightPlan->etops->sectionPresent);
-        $this->assertSame('unknown', $flightPlan->etops->applicability->value);
+        $this->assertSame('confirmed_etops', $flightPlan->etops->applicability->value);
+        $this->assertSame(180, $flightPlan->etops->ratingMinutes);
         $this->assertSame('N40 31.1', $flightPlan->etops->entryPoint?->coordinate->latitude);
         $this->assertSame('W131 22.6', $flightPlan->etops->entryPoint->coordinate->longitude);
         $this->assertSame('N45 19.3', $flightPlan->etops->exitPoint?->coordinate->latitude);

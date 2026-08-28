@@ -12,6 +12,7 @@ use App\DTOs\SlotTimeData;
 use App\DTOs\WaypointData;
 use App\DTOs\WeightBalance\WeightBalanceFieldData;
 use App\Enums\AltitudeUnit;
+use App\Enums\EtopsApplicability;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
 use App\Enums\MaintenanceItemType;
@@ -982,6 +983,17 @@ readonly class FlightReleasePageViewModel
     public function duration(): string
     {
         return $this->pageData->duration ?? '';
+    }
+
+    public function etopsBadgeLabel(): ?string
+    {
+        $etops = $this->pageData?->flightPlan->etops;
+
+        if ($etops?->applicability !== EtopsApplicability::ConfirmedEtops || $etops->ratingMinutes === null) {
+            return null;
+        }
+
+        return 'ETOPS '.$etops->ratingMinutes;
     }
 
     public function route(): string
