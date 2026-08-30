@@ -111,19 +111,82 @@ Regex follow-up outcome: ETOPS rating extraction now accepts parser-flattened he
 
 Commit message: `feat: extract and display ETOPS rating`
 
-## 12. Hide ETOPs card if non ETOPS flight
-- Currently ETOPS card always displayed rendering:
-ETOPS evidence
-Confirmed release fields
-Not present in this release
-- ETOPs task renders on non-ETOPS flight
-- Fix: Visually minimize ETOPs presence. If non ETOPS flight, remove from large card in workspace and render in the `Operational support status` section with a `Non ETOPS` badge
+## 12. Current focus: Hide ETOPs card if non ETOPS flight
+
+Goal:
+- Keep the large, actionable `ETOPS evidence` overview card for confirmed ETOPS flights.
+- For a confirmed non-ETOPS flight, remove that large card and show a compact `ETOPS` indicator with a `Non ETOPS` status in `Operational support status`.
+- Preserve an explicit distinction between confirmed non-ETOPS and unknown or incomplete ETOPS extraction.
+
+Current implementation:
+- `resources/views/components/flight-release/overview.blade.php` always renders the `ETOPS evidence` overview card.
+- The card uses `availabilityFor(FlightPlanTask::Etops)` and `overviewEtopsSummary()`; without extracted ETOPS route data it displays `Confirmed release fields` with `Not present in this release`.
+- `FlightPlanPageData::availabilityFor()` derives ETOPS task availability from `hasEtopsData()`, which checks extracted rating, entry, equal-time points, and exit data rather than the applicability state.
+- The normalized ETOPS DTO already exposes `EtopsApplicability` as `confirmed_etops`, `confirmed_non_etops`, or `unknown`.
+- `Operational support status` is populated by `FlightReleasePageViewModel::overviewUnsupportedIndicators()` and already renders compact status rows.
+
+Problem:
+- Confirmed non-ETOPS releases receive the same prominent ETOPS workspace card as ETOPS releases, even though there is no ETOPS review workflow to perform.
+- The current empty-state copy suggests missing extraction rather than an intentional non-ETOPS classification.
+- Treating missing ETOPS route data as equivalent to confirmed non-ETOPS would hide extraction uncertainty and could misrepresent a release.
+
+Plan:
+- Add view-model helpers that expose the authoritative ETOPS applicability state and whether the large overview card should render.
+- Render the large `ETOPS evidence` card only when applicability is `confirmed_etops`; retain its existing task link, availability, and summary behavior.
+- Add an `ETOPS` row to `overviewUnsupportedIndicators()` only when applicability is `confirmed_non_etops`, using a compact status label that reads `Non ETOPS`.
+- Keep `unknown` distinct from confirmed non-ETOPS. Do not render a `Non ETOPS` badge for unknown data; preserve an unconfirmed/not-present state where ETOPS status is otherwise surfaced.
+- Add focused view-model and Livewire feature coverage for confirmed ETOPS, confirmed non-ETOPS, and unknown applicability, asserting both the presence and absence of the large card and compact indicator.
+- Remove ETOPS task navigation and the ETOPS detail view when determined to be non-ETOPS
+
+Constraints:
+- Use the normalized `EtopsData::applicability` value as the source of truth; do not infer non-ETOPS from absent rating, ETP, entry, or exit fields.
+- Preserve responsive layout and accessibility semantics when the overview grid contains one fewer card.
+
+References:
+- `resources/views/components/flight-release/overview.blade.php`
+- `app/View/Models/FlightReleasePageViewModel.php`
+- `app/View/Models/FlightPlanPageData.php`
+- `app/Enums/EtopsApplicability.php`
+- `tests/Feature/Livewire/FlightPlanBriefTest.php`
 
 
 ## 13. Feat: GENDEC available determination
-- Create service to determine gendec availablity
-- Search for General Declaration page
-- Sample text:
+
+Goal:
+- Determine whether the uploaded release contains a General Declaration (GENDEC) page.
+- Expose the determination through the normalized, typed flight-plan result and cached result payload.
+- Replace the hard-coded `GENDEC` `Not supported` overview indicator with `Available` or `Not present` based on extracted evidence.
+
+Current implementation:
+- `FlightReleasePageViewModel::overviewUnsupportedIndicators()` always reports `GENDEC` as `FlightPlanTaskAvailability::NotSupported`.
+- `ExtractFlightPlanData` receives the complete text extracted from every PDF page, but no dedicated service inspects it for a General Declaration section.
+- `ParsedFlightPlanData`, `FlightPlanData`, result serialization, and cache rehydration do not contain GENDEC availability data.
+- The Overview already renders compact availability values in `Operational support status`; no separate GENDEC task or workspace view currently exists.
+
+Problem:
+- Releases containing a usable General Declaration page are presented as unsupported.
+- A loose search for `General Declaration` could produce false positives from incidental references or document indexes.
+- Adding detection only to the live extraction path would lose the result after serialization and produce different behavior for cached releases.
+
+Plan:
+- Add a dedicated GENDEC extractor service that returns a normalized `section_present` boolean and a minimal source fragment for test/debug evidence.
+- Detect a bounded General Declaration page signature rather than a single phrase. Require the `General Declaration` heading and nearby structural labels such as `(Outward/Inward)`, `Owner or Operator`, `Marks of Nationality and Registration`, `Departure from`, `Flight No`, `Date`, and `Arrival At`.
+- Make the signature tolerant of PDF extraction whitespace, line breaks, and adjacent flattened labels while keeping the search within a limited section window.
+- Invoke the extractor once from `ExtractFlightPlanData` using the already extracted full document text.
+- Carry the availability through `ParsedFlightPlanData`, a typed GENDEC/general-declaration DTO on `FlightPlanData`, `toArray()`, `FlightPlanResultSerializer`, and `BuildFlightPlanPageData` cache rehydration.
+- Update `FlightReleasePageViewModel::overviewUnsupportedIndicators()` so GENDEC maps to `Available` when the section is present and `NotPresent` otherwise.
+- Keep GENDEC in `Operational support status`; do not add task navigation or a workspace view until GENDEC content needs to be displayed or acted upon.
+- Add focused extractor tests for the representative page, whitespace/flattening variants, a missing page, and incidental `General Declaration` text without the required field structure.
+- Add DTO/build/serialization round-trip coverage and focused view-model or Livewire assertions for both `Available` and `Not present` overview states.
+
+Constraints:
+- Treat the document signature as evidence of page availability only; do not validate, interpret, or expose crew, passenger, nationality, registration, or customs data in this task.
+- Do not retain the full General Declaration page in the public cached result or rendered HTML; source evidence should remain in the existing private extraction evidence path.
+- Preserve compatibility when older cached results do not contain the new field by defaulting GENDEC to `Not present`.
+- Use the existing `FlightPlanTaskAvailability` labels and status component rather than introducing a GENDEC-specific badge vocabulary.
+
+Representative source signature (PDF extraction may flatten whitespace and labels):
+```text
 General Declaration
 (Outward/Inward)
 Owner or Operator:
@@ -138,6 +201,19 @@ K4256
 Date:
 24May2026
 Arrival At:
+```
+
+References:
+- `app/Services/FlightPlan/Extractor/ExtractFlightPlanData.php`
+- `app/DTOs/ParsedFlightPlanData.php`
+- `app/DTOs/FlightPlanData.php`
+- `app/Actions/BuildFlightPlanData.php`
+- `app/Actions/BuildFlightPlanPageData.php`
+- `app/Services/FlightPlan/FlightPlanResultSerializer.php`
+- `app/View/Models/FlightReleasePageViewModel.php`
+- `resources/views/components/flight-release/overview.blade.php`
+- `tests/Unit/View/Models/FlightReleasePageViewModelTest.php`
+- `tests/Feature/Livewire/FlightPlanBriefTest.php`
 
 ## 14. Feat: Determine B43 or B44 release
 - Add B44 tag if B44 release
