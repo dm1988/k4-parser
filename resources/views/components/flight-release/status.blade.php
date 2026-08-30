@@ -3,11 +3,17 @@
     'label' => null,
     'compact' => false,
     'dot' => false,
+    'showAvailable' => false,
 ])
 
-@if ($availability !== \App\Enums\FlightPlanTaskAvailability::Available)
+@if ($availability !== \App\Enums\FlightPlanTaskAvailability::Available || $showAvailable)
     @php
         $presentation = match ($availability) {
+        \App\Enums\FlightPlanTaskAvailability::Available => [
+            'label' => 'Available',
+            'class' => 'bg-[#1B365D]/10 text-[#1B365D] dark:bg-blue-400/15 dark:text-blue-200',
+            'dotClass' => 'bg-[#1B365D] dark:bg-blue-300',
+        ],
         \App\Enums\FlightPlanTaskAvailability::NotPresent => [
             'label' => 'Not present',
             'class' => 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',

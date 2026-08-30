@@ -38,6 +38,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame(['FIX01', 'FIX01'], array_column($pageData->flightPlan->waypoints, 'identifier'));
         $this->assertSame(11, $pageData->flightPlan->waypoints[0]->cumulativeDurationMinutes);
         $this->assertSame(0.0, $pageData->flightPlan->waypoints[0]->remainingFuel?->amount);
+        $this->assertTrue($pageData->flightPlan->generalDeclaration->sectionPresent);
     }
 
     public function test_normalized_core_values_take_precedence_over_conflicting_flat_compatibility_values(): void
@@ -112,6 +113,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $payload['flight_plan_data']['maintenanceLog'] = null;
         $payload['flight_plan_data']['envelope'] = null;
         unset($payload['flight_plan_data']['flightInit']);
+        unset($payload['flight_plan_data']['generalDeclaration']);
         unset($payload['flight_plan_data']['crewMembers'][0]['employeeNumber']);
         $payload['departure_airport'] = 'invalid';
         $payload['initial_altitude'] = [];
@@ -130,6 +132,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertNull($pageData->flightPlan->flightInit?->filedInitialAltitude);
         $this->assertNull($pageData->flightPlan->flightInit?->fmsInitialAltitude);
         $this->assertNull($pageData->flightPlan->etops);
+        $this->assertFalse($pageData->flightPlan->generalDeclaration->sectionPresent);
         $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::JeppPdPro));
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::SlotTimes));
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::FuelScore));
@@ -366,6 +369,7 @@ class BuildFlightPlanPageDataTest extends TestCase
                         'remarks' => null,
                     ]],
                 ],
+                'generalDeclaration' => ['sectionPresent' => true],
                 'crewMembers' => [[
                     'name' => 'Alex Morgan',
                     'role' => 'CP',

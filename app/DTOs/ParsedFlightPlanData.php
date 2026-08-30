@@ -15,6 +15,7 @@ final readonly class ParsedFlightPlanData
      * @param  array{section_present?: bool, acars_init_date?: ?string, filed_initial_altitude?: ?string, fms_initial_altitude?: ?string}  $flightInit
      * @param  array{section_present?: bool, applicability?: string, rating_minutes?: ?int, etps?: list<array{label: string, airports: string, coordinates: string, scenario: string}>, eent_coordinates?: ?string, eexp_coordinates?: ?string}  $etops
      * @param  array{departure?: array{airport: string, metars: list<string>, tafs: list<string>}|null, destination?: array{airport: string, metars: list<string>, tafs: list<string>}|null, alternate?: array{airport: string, metars: list<string>, tafs: list<string>}|null, raim?: ?string}  $weather
+     * @param  array{section_present?: bool}  $generalDeclaration
      * @param  array<string, array{amount?: ?int, unit?: string, status?: string}>  $weightBalance
      * @param  array<string, string|list<array{direction: string, airport: string, time: string}>>  $sourceFragments
      * @param  array<string, mixed>  $legacy
@@ -32,6 +33,7 @@ final readonly class ParsedFlightPlanData
         public array $etops = [],
         public array $weather = [],
         public array $weightBalance = [],
+        public array $generalDeclaration = [],
         public array $sourceFragments = [],
         public array $legacy = [],
         public array $waypoints = [],

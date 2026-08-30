@@ -14,6 +14,7 @@ use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightInitData;
 use App\DTOs\FlightPlanData;
 use App\DTOs\FuelPlanData;
+use App\DTOs\GeneralDeclarationData;
 use App\DTOs\MaintenanceItemData;
 use App\DTOs\MaintenanceLogData;
 use App\DTOs\RouteData;
@@ -109,8 +110,16 @@ class BuildFlightPlanPageData
             etops: $this->etops($data['etops'] ?? null),
             weather: $this->weather($data['weather'] ?? null),
             weightBalance: $this->weightBalance($data['weightBalance'] ?? null),
+            generalDeclaration: $this->generalDeclaration($data['generalDeclaration'] ?? null),
             crewMembers: $this->crewMembers($data['crewMembers'] ?? null),
             waypoints: $this->waypoints($data['waypoints'] ?? null),
+        );
+    }
+
+    private function generalDeclaration(mixed $value): GeneralDeclarationData
+    {
+        return new GeneralDeclarationData(
+            sectionPresent: is_array($value) && ($value['sectionPresent'] ?? false) === true,
         );
     }
 

@@ -1307,6 +1307,7 @@ class FlightPlanBriefTest extends TestCase
                         'section_present' => true,
                         'applicability' => 'confirmed_etops',
                     ],
+                    generalDeclaration: ['section_present' => true],
                 ));
         });
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
@@ -1342,6 +1343,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('Review ETOPS')
             ->assertSeeText('Operational support status')
             ->assertSeeText('GENDEC')
+            ->assertSeeText('Available')
             ->assertSeeText('Flight plan filing')
             ->assertSeeText('Weather / RAIM')
             ->assertSeeText('Maintenance')
@@ -1729,6 +1731,7 @@ class FlightPlanBriefTest extends TestCase
         ?array $waypoints = null,
         ?array $weather = null,
         ?array $weightBalance = null,
+        ?array $generalDeclaration = null,
     ): ParsedFlightPlanData {
         $legacy ??= $this->flightPlan();
 
@@ -1782,6 +1785,7 @@ class FlightPlanBriefTest extends TestCase
             ],
             weather: $weather ?? [],
             weightBalance: $weightBalance ?? [],
+            generalDeclaration: $generalDeclaration ?? [],
             legacy: $legacy,
             waypoints: $waypoints ?? [],
         );

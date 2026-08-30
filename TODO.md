@@ -156,7 +156,7 @@ Outcome: Confirmed ETOPS releases retain the actionable Overview card, task navi
 Commit message: `feat: hide ETOPS task for non-ETOPS flights`
 
 
-## 13. Feat: GENDEC available determination
+## 13. [x] Completed: Feat: GENDEC available determination
 
 Goal:
 - Determine whether the uploaded release contains a General Declaration (GENDEC) page.
@@ -220,6 +220,10 @@ References:
 - `resources/views/components/flight-release/overview.blade.php`
 - `tests/Unit/View/Models/FlightReleasePageViewModelTest.php`
 - `tests/Feature/Livewire/FlightPlanBriefTest.php`
+
+Outcome: GENDEC availability is now determined from a bounded, ordered General Declaration signature instead of a loose phrase match. Detection tolerates line breaks, irregular whitespace, and flattened labels such as `Flight No:K4256Date:` while rejecting incidental references and labels outside the section window. The typed boolean survives result serialization and cache rehydration, with older cached results defaulting to `Not present`. Only minimal signature evidence stays in the private extraction evidence path; crew, passenger, passport, customs, and full-page content are not exposed in the cached payload or rendered HTML. The Overview now uses the shared availability status component to show `Available` or `Not present`, with no new task or workspace.
+
+Commit message: `feat: determine GENDEC availability`
 
 ## 14. Feat: Determine B43 or B44 release
 - Add B44 tag if B44 release
@@ -285,6 +289,8 @@ Done when: no UI depends on the flat compatibility payload, all enabled tasks ha
 
 Commit message: `refactor: complete flight plan workspace migration`
 
+## 20. Remove from overview: `Flight plan filing`
+- Found in section: Operational support status
 
 -------------------
 **Branch Merge**

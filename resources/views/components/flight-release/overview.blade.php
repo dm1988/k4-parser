@@ -89,6 +89,7 @@
                         :availability="$indicator['availability']"
                         :label="$indicator['statusLabel'] ?? null"
                         :compact="true"
+                        :show-available="true"
                     />
                 </div>
             @endforeach

@@ -362,11 +362,25 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame(37.5, $viewModel->slotTimes()[1]['plannedPosition']);
         $this->assertSame('1 critical point · EENT · EEXP', $viewModel->overviewEtopsSummary());
         $this->assertSame([
-            ['label' => 'GENDEC', 'availability' => FlightPlanTaskAvailability::NotSupported],
+            ['label' => 'GENDEC', 'availability' => FlightPlanTaskAvailability::NotPresent],
             ['label' => 'Flight plan filing', 'availability' => FlightPlanTaskAvailability::NotSupported],
             ['label' => 'Weather / RAIM', 'availability' => FlightPlanTaskAvailability::NotPresent],
             ['label' => 'Maintenance', 'availability' => FlightPlanTaskAvailability::Available],
         ], $viewModel->overviewUnsupportedIndicators());
+    }
+
+    #[Test]
+    public function it_reports_a_detected_general_declaration_as_available(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['generalDeclaration'] = ['sectionPresent' => true];
+
+        $viewModel = $this->viewModel($payload);
+
+        $this->assertSame([
+            'label' => 'GENDEC',
+            'availability' => FlightPlanTaskAvailability::Available,
+        ], $viewModel->overviewUnsupportedIndicators()[0]);
     }
 
     #[Test]

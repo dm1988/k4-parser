@@ -14,6 +14,7 @@ use App\Services\FlightPlan\Extractor\FlightInitExtractor;
 use App\Services\FlightPlan\Extractor\FlightPlanTextExtractor;
 use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use App\Services\FlightPlan\Extractor\FlightScheduleExtractor;
+use App\Services\FlightPlan\Extractor\GeneralDeclarationExtractor;
 use App\Services\FlightPlan\Extractor\MaintenanceLogExtractor;
 use App\Services\FlightPlan\Extractor\WaypointExtractor;
 use App\Services\FlightPlan\Extractor\WeatherExtractor;
@@ -110,6 +111,11 @@ class ExtractFlightPlanDataTest extends TestCase
             ],
             'source_fragments' => ['etops_qualification' => 'ETOPS 180 ETOPS ALTERNATE AIRPORTS'],
         ]);
+        $generalDeclarationExtractor = $this->createMock(GeneralDeclarationExtractor::class);
+        $generalDeclarationExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
+            'data' => ['section_present' => true],
+            'source_fragments' => ['general_declaration_signature' => 'private GENDEC signature'],
+        ]);
 
         $parsed = (new ExtractFlightPlanData(
             $textExtractor,
@@ -125,6 +131,7 @@ class ExtractFlightPlanDataTest extends TestCase
             $weatherExtractor,
             $weightBalanceExtractor,
             $etopsQualificationExtractor,
+            $generalDeclarationExtractor,
         ))->extractFile('/tmp/release.pdf');
 
         $this->assertInstanceOf(ParsedFlightPlanData::class, $parsed);
@@ -155,6 +162,8 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame(180, $parsed->etops['rating_minutes']);
         $this->assertSame('confirmed_etops', $parsed->etops['applicability']);
         $this->assertSame('ETOPS 180 ETOPS ALTERNATE AIRPORTS', $parsed->sourceFragments['etops_qualification']);
+        $this->assertTrue($parsed->generalDeclaration['section_present']);
+        $this->assertSame('private GENDEC signature', $parsed->sourceFragments['general_declaration_signature']);
         $this->assertSame('FL 340', $parsed->legacy['initial_altitude']);
     }
 

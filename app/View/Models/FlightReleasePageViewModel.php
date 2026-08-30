@@ -357,7 +357,12 @@ readonly class FlightReleasePageViewModel
     public function overviewUnsupportedIndicators(): array
     {
         $indicators = [
-            ['label' => 'GENDEC', 'availability' => FlightPlanTaskAvailability::NotSupported],
+            [
+                'label' => 'GENDEC',
+                'availability' => $this->pageData?->flightPlan->generalDeclaration->sectionPresent === true
+                    ? FlightPlanTaskAvailability::Available
+                    : FlightPlanTaskAvailability::NotPresent,
+            ],
             ['label' => 'Flight plan filing', 'availability' => FlightPlanTaskAvailability::NotSupported],
             ['label' => 'Weather / RAIM', 'availability' => $this->availabilityFor(FlightPlanTask::Weather)],
             [

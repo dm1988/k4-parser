@@ -13,6 +13,7 @@ use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightInitData;
 use App\DTOs\FlightPlanData;
 use App\DTOs\FuelPlanData;
+use App\DTOs\GeneralDeclarationData;
 use App\DTOs\MaintenanceItemData;
 use App\DTOs\MaintenanceLogData;
 use App\DTOs\ParsedFlightPlanData;
@@ -89,6 +90,9 @@ class BuildFlightPlanData
             etops: $this->etops($parsed),
             weather: $this->weather($parsed),
             weightBalance: $this->weightBalanceDataBuilder->build($parsed->weightBalance, $fuelPlan, $parsed->fuel),
+            generalDeclaration: new GeneralDeclarationData(
+                sectionPresent: ($parsed->generalDeclaration['section_present'] ?? false) === true,
+            ),
             crewMembers: $this->crewMembers($parsed->crewMembers),
             waypoints: $this->waypoints($parsed),
         );

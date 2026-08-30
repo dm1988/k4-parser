@@ -123,6 +123,7 @@ class BuildFlightPlanDataTest extends TestCase
                 'planned_takeoff_gross_weight' => ['amount' => 577347, 'unit' => 'lb', 'status' => 'confirmed'],
                 'planned_estimated_landing_weight' => ['amount' => 371893, 'unit' => 'lb', 'status' => 'confirmed'],
             ],
+            generalDeclaration: ['section_present' => true],
             waypoints: [
                 ['identifier' => 'FIX01', 'coordinate' => 'N01 02.3 E004 05.6', 'time' => '005', 'total_time' => '00.11', 'remaining_fuel' => '0000'],
                 ['identifier' => 'FIX01', 'coordinate' => 'N02 03.4 E005 06.7', 'time' => null, 'total_time' => null, 'remaining_fuel' => null],
@@ -172,6 +173,7 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame(214829, $flightPlan->weightBalance?->plannedTakeoffFuel->plannedValue?->amount);
         $this->assertSame(570658, $flightPlan->weightBalance?->plannedRampWeight->plannedValue?->amount);
         $this->assertTrue($flightPlan->weightBalance?->plannedRampWeight->derived);
+        $this->assertTrue($flightPlan->generalDeclaration->sectionPresent);
     }
 
     public function test_it_omits_the_fuel_plan_when_no_fuel_was_normalized(): void
