@@ -43,7 +43,7 @@ readonly class FlightReleasePageViewModel
         $reviewTask = FlightPlanTask::ReviewMelCdl;
         $tasks = array_values(array_filter(
             FlightPlanTask::cases(),
-            static fn (FlightPlanTask $task): bool => $task !== $reviewTask,
+            fn (FlightPlanTask $task): bool => $task !== $reviewTask && $this->isTaskVisible($task),
         ));
 
         if ($this->maintenanceItemCount() === 0) {
@@ -58,6 +58,24 @@ readonly class FlightReleasePageViewModel
                 static fn (FlightPlanTask $task): bool => $task !== FlightPlanTask::Overview,
             )),
         ];
+    }
+
+    public function isTaskVisible(FlightPlanTask $task): bool
+    {
+        return $task !== FlightPlanTask::Etops
+            || $this->etopsApplicability() === EtopsApplicability::ConfirmedEtops;
+    }
+
+    public function shouldShowEtopsOverviewCard(): bool
+    {
+        return $this->etopsApplicability() === EtopsApplicability::ConfirmedEtops;
+    }
+
+    public function etopsApplicability(): EtopsApplicability
+    {
+        $etops = $this->pageData?->flightPlan->etops;
+
+        return $etops === null ? EtopsApplicability::Unknown : $etops->applicability;
     }
 
     public function taskCounter(FlightPlanTask $task): ?int
@@ -334,11 +352,11 @@ readonly class FlightReleasePageViewModel
     }
 
     /**
-     * @return list<array{label: string, availability: FlightPlanTaskAvailability}>
+     * @return list<array{label: string, availability: FlightPlanTaskAvailability, statusLabel?: string}>
      */
     public function overviewUnsupportedIndicators(): array
     {
-        return [
+        $indicators = [
             ['label' => 'GENDEC', 'availability' => FlightPlanTaskAvailability::NotSupported],
             ['label' => 'Flight plan filing', 'availability' => FlightPlanTaskAvailability::NotSupported],
             ['label' => 'Weather / RAIM', 'availability' => $this->availabilityFor(FlightPlanTask::Weather)],
@@ -349,6 +367,16 @@ readonly class FlightReleasePageViewModel
                     : FlightPlanTaskAvailability::NotPresent,
             ],
         ];
+
+        if ($this->etopsApplicability() === EtopsApplicability::ConfirmedNonEtops) {
+            array_unshift($indicators, [
+                'label' => 'ETOPS',
+                'availability' => FlightPlanTaskAvailability::NotPresent,
+                'statusLabel' => 'Non ETOPS',
+            ]);
+        }
+
+        return $indicators;
     }
 
     public function maintenanceEtopsLabel(): string

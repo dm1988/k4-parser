@@ -342,6 +342,22 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame('ETP1', $flightPlan->etops->scenarios[0]->equalTimePointLabel);
     }
 
+    public function test_it_preserves_confirmed_non_etops_without_route_data(): void
+    {
+        $flightPlan = (new BuildFlightPlanData)->handle($this->partialParsedData(
+            etops: [
+                'section_present' => true,
+                'applicability' => 'confirmed_non_etops',
+            ],
+        ));
+
+        $this->assertNotNull($flightPlan->etops);
+        $this->assertTrue($flightPlan->etops->sectionPresent);
+        $this->assertSame('confirmed_non_etops', $flightPlan->etops->applicability->value);
+        $this->assertNull($flightPlan->etops->ratingMinutes);
+        $this->assertSame([], $flightPlan->etops->equalTimePoints);
+    }
+
     public function test_it_omits_malformed_etops_values_instead_of_failing_the_release(): void
     {
         $flightPlan = (new BuildFlightPlanData)->handle($this->partialParsedData(

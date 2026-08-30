@@ -423,6 +423,47 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
+    public function it_uses_etops_applicability_to_control_overview_and_task_visibility(): void
+    {
+        $confirmedEtops = $this->viewModel($this->resultPayload());
+
+        $this->assertTrue($confirmedEtops->shouldShowEtopsOverviewCard());
+        $this->assertTrue($confirmedEtops->isTaskVisible(FlightPlanTask::Etops));
+        $this->assertContains(FlightPlanTask::Etops, $confirmedEtops->tasks());
+
+        $nonEtopsPayload = $this->resultPayload();
+        $nonEtopsPayload['flight_plan_data']['etops'] = [
+            'sectionPresent' => true,
+            'applicability' => 'confirmed_non_etops',
+            'ratingMinutes' => null,
+            'entryPoint' => null,
+            'exitPoint' => null,
+            'equalTimePoints' => [],
+            'alternates' => [],
+            'scenarios' => [],
+        ];
+        $confirmedNonEtops = $this->viewModel($nonEtopsPayload);
+
+        $this->assertFalse($confirmedNonEtops->shouldShowEtopsOverviewCard());
+        $this->assertFalse($confirmedNonEtops->isTaskVisible(FlightPlanTask::Etops));
+        $this->assertNotContains(FlightPlanTask::Etops, $confirmedNonEtops->tasks());
+        $this->assertSame([
+            'label' => 'ETOPS',
+            'availability' => FlightPlanTaskAvailability::NotPresent,
+            'statusLabel' => 'Non ETOPS',
+        ], $confirmedNonEtops->overviewUnsupportedIndicators()[0]);
+
+        $unknownPayload = $this->resultPayload();
+        $unknownPayload['flight_plan_data']['etops'] = null;
+        $unknown = $this->viewModel($unknownPayload);
+
+        $this->assertFalse($unknown->shouldShowEtopsOverviewCard());
+        $this->assertFalse($unknown->isTaskVisible(FlightPlanTask::Etops));
+        $this->assertNotContains(FlightPlanTask::Etops, $unknown->tasks());
+        $this->assertNotContains('ETOPS', array_column($unknown->overviewUnsupportedIndicators(), 'label'));
+    }
+
+    #[Test]
     public function it_groups_raw_weather_reports_by_airport_role_without_interpretation(): void
     {
         $payload = $this->resultPayload();

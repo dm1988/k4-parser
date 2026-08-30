@@ -36,3 +36,4 @@ testing_test_*
 testing_test_*
 testing_test_*
 testing_test_*
+.dockerignore

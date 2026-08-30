@@ -111,7 +111,7 @@ Regex follow-up outcome: ETOPS rating extraction now accepts parser-flattened he
 
 Commit message: `feat: extract and display ETOPS rating`
 
-## 12. Current focus: Hide ETOPs card if non ETOPS flight
+## 12. [x] Completed: Hide ETOPs card if non ETOPS flight
 
 Goal:
 - Keep the large, actionable `ETOPS evidence` overview card for confirmed ETOPS flights.
@@ -124,11 +124,13 @@ Current implementation:
 - `FlightPlanPageData::availabilityFor()` derives ETOPS task availability from `hasEtopsData()`, which checks extracted rating, entry, equal-time points, and exit data rather than the applicability state.
 - The normalized ETOPS DTO already exposes `EtopsApplicability` as `confirmed_etops`, `confirmed_non_etops`, or `unknown`.
 - `Operational support status` is populated by `FlightReleasePageViewModel::overviewUnsupportedIndicators()` and already renders compact status rows.
+- ETOPS task always renders in Task navigation left pane
 
 Problem:
 - Confirmed non-ETOPS releases receive the same prominent ETOPS workspace card as ETOPS releases, even though there is no ETOPS review workflow to perform.
 - The current empty-state copy suggests missing extraction rather than an intentional non-ETOPS classification.
 - Treating missing ETOPS route data as equivalent to confirmed non-ETOPS would hide extraction uncertainty and could misrepresent a release.
+- Tasks with no pertinent flight information clutter the workspace
 
 Plan:
 - Add view-model helpers that expose the authoritative ETOPS applicability state and whether the large overview card should render.
@@ -136,7 +138,7 @@ Plan:
 - Add an `ETOPS` row to `overviewUnsupportedIndicators()` only when applicability is `confirmed_non_etops`, using a compact status label that reads `Non ETOPS`.
 - Keep `unknown` distinct from confirmed non-ETOPS. Do not render a `Non ETOPS` badge for unknown data; preserve an unconfirmed/not-present state where ETOPS status is otherwise surfaced.
 - Add focused view-model and Livewire feature coverage for confirmed ETOPS, confirmed non-ETOPS, and unknown applicability, asserting both the presence and absence of the large card and compact indicator.
-- Remove ETOPS task navigation and the ETOPS detail view when determined to be non-ETOPS
+- Remove ETOPS task navigation and the ETOPS detail view unless applicability is `confirmed_etops`.
 
 Constraints:
 - Use the normalized `EtopsData::applicability` value as the source of truth; do not infer non-ETOPS from absent rating, ETP, entry, or exit fields.
@@ -148,6 +150,10 @@ References:
 - `app/View/Models/FlightPlanPageData.php`
 - `app/Enums/EtopsApplicability.php`
 - `tests/Feature/Livewire/FlightPlanBriefTest.php`
+
+Outcome: Confirmed ETOPS releases retain the actionable Overview card, task navigation, and detail workspace. Confirmed non-ETOPS releases now replace those surfaces with a compact `ETOPS` / `Non ETOPS` row in `Operational support status`. Unknown applicability remains distinct and does not claim `Non ETOPS`; because no ETOPS workflow is confirmed, its Overview card, task navigation, and detail workspace are also omitted. Direct attempts to select a hidden ETOPS task are rejected. Applicability-only ETOPS results now survive typed DTO construction and cache rehydration even when no rating or route points exist. Verified against `CKS093312ZSOF 2.pdf`, which contains only incidental maintenance references to ETOPS and no operational ETOPS qualification or route data.
+
+Commit message: `feat: hide ETOPS task for non-ETOPS flights`
 
 
 ## 13. Feat: GENDEC available determination

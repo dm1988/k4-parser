@@ -1,5 +1,6 @@
 @props([
     'availability',
+    'label' => null,
     'compact' => false,
     'dot' => false,
 ])
@@ -18,6 +19,7 @@
             'dotClass' => 'bg-amber-400 dark:bg-amber-300',
         ],
         };
+        $presentation['label'] = $label ?? $presentation['label'];
     @endphp
 
     <span

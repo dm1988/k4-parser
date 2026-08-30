@@ -110,7 +110,11 @@ class FlightPlanBrief extends Component
 
         $selectedTask = FlightPlanTask::tryFrom($task);
 
-        if ($selectedTask === null || $this->flightPlanKey === null) {
+        if (
+            $selectedTask === null
+            || $this->flightPlanKey === null
+            || ! $this->currentViewModel()->isTaskVisible($selectedTask)
+        ) {
             return;
         }
 
@@ -119,8 +123,7 @@ class FlightPlanBrief extends Component
 
     public function render(): View
     {
-        $pageData = $this->buildFlightPlanPageData->handle($this->currentFlightPlan());
-        $viewModel = new FlightReleasePageViewModel($pageData);
+        $viewModel = $this->currentViewModel();
 
         return view('livewire.flight-plan-brief', [
             'activeTaskCase' => FlightPlanTask::from($this->activeTask),
@@ -128,6 +131,13 @@ class FlightPlanBrief extends Component
             'isResultsView' => $viewModel->hasFlightPlan(),
             'tasks' => $viewModel->tasks(),
         ]);
+    }
+
+    private function currentViewModel(): FlightReleasePageViewModel
+    {
+        return new FlightReleasePageViewModel(
+            $this->buildFlightPlanPageData->handle($this->currentFlightPlan()),
+        );
     }
 
     /** @return array<string, mixed>|null */

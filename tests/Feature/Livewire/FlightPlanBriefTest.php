@@ -453,6 +453,8 @@ class FlightPlanBriefTest extends TestCase
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
             ->assertSeeText('ETOPS 180')
+            ->assertSeeHtml('wire:key="flight-plan-overview-card-etops"')
+            ->assertSeeHtml('wire:key="flight-plan-task-nav-etops"')
             ->call('selectTask', FlightPlanTask::Etops->value)
             ->assertSet('activeTask', FlightPlanTask::Etops->value)
             ->assertSeeHtml('wire:key="flight-plan-task-panel-etops"')
@@ -475,6 +477,45 @@ class FlightPlanBriefTest extends TestCase
             ->assertDontSeeText('Its dedicated operational layout is scheduled in the next focused task.');
 
         $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
+    }
+
+    public function test_confirmed_non_etops_hides_the_card_navigation_and_detail_workspace(): void
+    {
+        Storage::fake('user_flight_releases');
+        $legacy = [
+            ...$this->flightPlan(),
+            'etps' => [],
+            'eent_coordinates' => null,
+            'eexp_coordinates' => null,
+        ];
+
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock) use ($legacy): void {
+            $this->expectOnce($mock, 'extractFile')->andReturn($this->parsedFlightPlan(
+                legacy: $legacy,
+                etops: [
+                    'section_present' => true,
+                    'applicability' => 'confirmed_non_etops',
+                    'rating_minutes' => null,
+                ],
+            ));
+        });
+        $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'formatForIcaoDisplay')
+                ->with('DCT Q139 TEST')
+                ->andReturn('DCT Q139 TEST');
+        });
+
+        Livewire::actingAs(User::factory()->admin()->create())
+            ->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->assertSet('activeTask', FlightPlanTask::Overview->value)
+            ->assertDontSeeHtml('wire:key="flight-plan-overview-card-etops"')
+            ->assertDontSeeHtml('wire:key="flight-plan-task-nav-etops"')
+            ->assertSeeTextInOrder(['ETOPS', 'Non ETOPS'])
+            ->call('selectTask', FlightPlanTask::Etops->value)
+            ->assertSet('activeTask', FlightPlanTask::Overview->value)
+            ->assertDontSeeHtml('wire:key="flight-plan-task-panel-etops"')
+            ->assertDontSeeText('ETOPS source data');
     }
 
     public function test_weather_renders_all_raw_airport_reports_and_raim_without_interpretation(): void
@@ -1262,6 +1303,10 @@ class FlightPlanBriefTest extends TestCase
                         'filed_initial_altitude' => 'F330',
                         'fms_initial_altitude' => 'F290',
                     ],
+                    etops: [
+                        'section_present' => true,
+                        'applicability' => 'confirmed_etops',
+                    ],
                 ));
         });
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
@@ -1397,6 +1442,9 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('No alternate airport listed.')
             ->assertSeeText('GENDEC')
             ->assertSeeText('Weather / RAIM')
+            ->assertDontSeeText('Non ETOPS')
+            ->assertDontSeeHtml('wire:key="flight-plan-overview-card-etops"')
+            ->assertDontSeeHtml('wire:key="flight-plan-task-nav-etops"')
             ->assertDontSeeText('0 LB')
             ->assertDontSeeText('0 KG')
             ->assertDontSeeText('On plan')
@@ -1409,8 +1457,8 @@ class FlightPlanBriefTest extends TestCase
 
         $component
             ->call('selectTask', FlightPlanTask::Etops->value)
-            ->assertSet('activeTask', FlightPlanTask::Etops->value)
-            ->assertSeeText('Not present in this release')
+            ->assertSet('activeTask', FlightPlanTask::Overview->value)
+            ->assertDontSeeHtml('wire:key="flight-plan-task-panel-etops"')
             ->assertDontSeeText('ETOPS source data');
     }
 
@@ -1447,7 +1495,7 @@ class FlightPlanBriefTest extends TestCase
         $component
             ->call('$refresh')
             ->assertSet('flightPlanKey', $flightPlanKey)
-            ->assertSeeText('Flight release PDF')
+            ->assertSeeText('Drop your flight plan here')
             ->assertDontSeeText('Extracted flight plan');
 
         $this->assertFalse($component->viewData('isResultsView'));

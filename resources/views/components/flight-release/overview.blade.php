@@ -59,17 +59,19 @@
             </dl>
         </x-flight-release.overview-card>
 
-        <x-flight-release.overview-card
-            :task="\App\Enums\FlightPlanTask::Etops"
-            title="ETOPS evidence"
-            icon="globe-alt"
-            :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::Etops)"
-            class="xl:col-span-2"
-        >
-            <dl>
-                <x-flight-release.metric label="Confirmed release fields" :value="$model->overviewEtopsSummary()" empty-text="Not present in this release" />
-            </dl>
-        </x-flight-release.overview-card>
+        @if ($model->shouldShowEtopsOverviewCard())
+            <x-flight-release.overview-card
+                :task="\App\Enums\FlightPlanTask::Etops"
+                title="ETOPS evidence"
+                icon="globe-alt"
+                :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::Etops)"
+                class="xl:col-span-2"
+            >
+                <dl>
+                    <x-flight-release.metric label="Confirmed release fields" :value="$model->overviewEtopsSummary()" empty-text="Not present in this release" />
+                </dl>
+            </x-flight-release.overview-card>
+        @endif
     </div>
 
     <section aria-labelledby="overview-support-status-heading" class="overflow-hidden rounded-xl border border-[#1B365D]/10 bg-white dark:border-slate-700 dark:bg-slate-900">
@@ -83,7 +85,11 @@
             @foreach ($model->overviewUnsupportedIndicators() as $indicator)
                 <div class="flex items-center justify-between gap-3 bg-white px-4 py-3 dark:bg-slate-900">
                     <span class="text-sm font-semibold text-[#0B0E14] dark:text-slate-100">{{ $indicator['label'] }}</span>
-                    <x-flight-release.status :availability="$indicator['availability']" :compact="true" />
+                    <x-flight-release.status
+                        :availability="$indicator['availability']"
+                        :label="$indicator['statusLabel'] ?? null"
+                        :compact="true"
+                    />
                 </div>
             @endforeach
         </div>

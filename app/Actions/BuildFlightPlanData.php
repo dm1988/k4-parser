@@ -385,21 +385,27 @@ class BuildFlightPlanData
             $parsed->etops['eexp_coordinates'] ?? null,
             $sequence,
         );
-
-        if ($entryPoint === null && $equalTimePoints === [] && $exitPoint === null && $ratingMinutes === null) {
-            return null;
-        }
-
         $maintenanceApplicability = is_string($parsed->maintenance['etops_applicability'] ?? null)
             ? EtopsApplicability::tryFrom($parsed->maintenance['etops_applicability'])
             : null;
+        $applicability = $qualificationApplicability ?? $maintenanceApplicability ?? EtopsApplicability::Unknown;
+
+        if (
+            $entryPoint === null
+            && $equalTimePoints === []
+            && $exitPoint === null
+            && $ratingMinutes === null
+            && $applicability === EtopsApplicability::Unknown
+        ) {
+            return null;
+        }
 
         return new EtopsData(
             sectionPresent: ($parsed->etops['section_present'] ?? false) === true
                 || $entryPoint !== null
                 || $equalTimePoints !== []
                 || $exitPoint !== null,
-            applicability: $qualificationApplicability ?? $maintenanceApplicability ?? EtopsApplicability::Unknown,
+            applicability: $applicability,
             ratingMinutes: $ratingMinutes,
             entryPoint: $entryPoint,
             exitPoint: $exitPoint,
