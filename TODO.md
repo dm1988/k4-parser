@@ -52,110 +52,6 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 # Tasks
 
-## 9. [x] Completed: UI: Jepp PD Pro task view
-Goal:
-Within the task view: Move route section above ETOPS critical points section
-
-References:
-resources/views/components/flight-release/jepp-pd-pro.blade.php
-
-- Bug fixed: Planned runway extraction now permits a missing SID/STAR and stops at the next planned-runway header, newline, or asterisk divider. Verified against `CKS093312ZSOF 2.pdf`: runway 33 with no SID, and arrival runway 33L with OLMEN OLME2E.
-
-Outcome: The Jepp PD-Pro task now presents the copyable route immediately after airport details and before ETOPS critical points. Focused Livewire coverage verifies the operational section order.
-
-Commit message: `fix: prioritize route in Jepp PD-Pro task`
-
-## 10. [x] Completed: UI: Action oriented labels on Overview
-Currently: `Open ` is prefixed followed by the Flight task enum label.
-
-Goal: Customize labels giving action oriented labels within the overview task.
-
-Implementation:
-- In enum, create action labels
-- Flight and aircraft card footer: ACARS Initialize Flight ->
-- Route card: Program FMS ->
-- Schedule and slots: Review slot times ->
-- Fuel card: Score fuel ->
-- ETOPs evidence card: Review ETOPs ->
-
-References:
-resources/views/components/flight-release/overview-card.blade.php
-app/Enums/FlightPlanTask.php
-
-Outcome: Overview card footers now use task-owned action labels instead of the generic `Open {task}` prefix. Flight initialization, FMS programming, slot review, fuel scoring, and ETOPS review display distinct operational calls to action while preserving accessible task navigation.
-
-Commit message: `feat: add action labels to overview cards`
-
-## 11. [x] Completed: ETOPs
-Currently: ETOPS status is assumed through ETOPS data extraction. ETOPS time to alternate is not extracted or exposed.
-
-Goal:
-- Determine if a flight qualifies as ETOPS
-- Extract and expose ETOPS time rating
-- Render an ETOPS badge in flight header
-
-Implementation:
-- ETOPs if text: `ETOPS 180  ETOPS ALTERNATE AIRPORTS` found
-- Extract ETOPS duration value, usually 180 or 210
-- Add badge on section flight info header
-- Badge label `ETOPS {duration}`
-- Placement: below duration and horizontal flight line, centered
-
-References:
-
-Outcome: ETOPS qualification and its minute rating are now extracted from the bounded `ETOPS {rating} ETOPS ALTERNATE AIRPORTS` source heading by a dedicated ETOPS extractor. The confirmed applicability and validated rating survive typed DTO construction, cache serialization, and cache rehydration without exposing private source evidence. Confirmed ETOPS releases render a centered `ETOPS {rating}` badge below the flight-duration line in the release header; unrelated ETOPS text and invalid zero ratings do not create the badge.
-
-Follow-up outcome: ETOPS applicability detection now belongs to the ETOPS qualification extractor, including explicit yes/no, `NO ETOPS`, and operational numeric evidence. Maintenance extraction is limited to maintenance sections and items; the extraction orchestrator composes ETOPS applicability into the existing normalized maintenance contract for compatibility.
-
-Regex follow-up outcome: ETOPS rating extraction now accepts parser-flattened headings concatenated between a preceding coordinate and the following airport token, such as `N36430E127299ETOPS 180 ETOPS ALTERNATE AIRPORTSSFO/KSFO`, while retaining letter and airport-token boundaries. Verified against the extracted text shape from `CKS025625KLAX.pdf`.
-
-Commit message: `feat: extract and display ETOPS rating`
-
-## 12. [x] Completed: Hide ETOPs card if non ETOPS flight
-
-Goal:
-- Keep the large, actionable `ETOPS evidence` overview card for confirmed ETOPS flights.
-- For a confirmed non-ETOPS flight, remove that large card and show a compact `ETOPS` indicator with a `Non ETOPS` status in `Operational support status`.
-- Preserve an explicit distinction between confirmed non-ETOPS and unknown or incomplete ETOPS extraction.
-
-Current implementation:
-- `resources/views/components/flight-release/overview.blade.php` always renders the `ETOPS evidence` overview card.
-- The card uses `availabilityFor(FlightPlanTask::Etops)` and `overviewEtopsSummary()`; without extracted ETOPS route data it displays `Confirmed release fields` with `Not present in this release`.
-- `FlightPlanPageData::availabilityFor()` derives ETOPS task availability from `hasEtopsData()`, which checks extracted rating, entry, equal-time points, and exit data rather than the applicability state.
-- The normalized ETOPS DTO already exposes `EtopsApplicability` as `confirmed_etops`, `confirmed_non_etops`, or `unknown`.
-- `Operational support status` is populated by `FlightReleasePageViewModel::overviewUnsupportedIndicators()` and already renders compact status rows.
-- ETOPS task always renders in Task navigation left pane
-
-Problem:
-- Confirmed non-ETOPS releases receive the same prominent ETOPS workspace card as ETOPS releases, even though there is no ETOPS review workflow to perform.
-- The current empty-state copy suggests missing extraction rather than an intentional non-ETOPS classification.
-- Treating missing ETOPS route data as equivalent to confirmed non-ETOPS would hide extraction uncertainty and could misrepresent a release.
-- Tasks with no pertinent flight information clutter the workspace
-
-Plan:
-- Add view-model helpers that expose the authoritative ETOPS applicability state and whether the large overview card should render.
-- Render the large `ETOPS evidence` card only when applicability is `confirmed_etops`; retain its existing task link, availability, and summary behavior.
-- Add an `ETOPS` row to `overviewUnsupportedIndicators()` only when applicability is `confirmed_non_etops`, using a compact status label that reads `Non ETOPS`.
-- Keep `unknown` distinct from confirmed non-ETOPS. Do not render a `Non ETOPS` badge for unknown data; preserve an unconfirmed/not-present state where ETOPS status is otherwise surfaced.
-- Add focused view-model and Livewire feature coverage for confirmed ETOPS, confirmed non-ETOPS, and unknown applicability, asserting both the presence and absence of the large card and compact indicator.
-- Remove ETOPS task navigation and the ETOPS detail view unless applicability is `confirmed_etops`.
-
-Constraints:
-- Use the normalized `EtopsData::applicability` value as the source of truth; do not infer non-ETOPS from absent rating, ETP, entry, or exit fields.
-- Preserve responsive layout and accessibility semantics when the overview grid contains one fewer card.
-
-References:
-- `resources/views/components/flight-release/overview.blade.php`
-- `app/View/Models/FlightReleasePageViewModel.php`
-- `app/View/Models/FlightPlanPageData.php`
-- `app/Enums/EtopsApplicability.php`
-- `tests/Feature/Livewire/FlightPlanBriefTest.php`
-
-Outcome: Confirmed ETOPS releases retain the actionable Overview card, task navigation, and detail workspace. Confirmed non-ETOPS releases now replace those surfaces with a compact `ETOPS` / `Non ETOPS` row in `Operational support status`. Unknown applicability remains distinct and does not claim `Non ETOPS`; because no ETOPS workflow is confirmed, its Overview card, task navigation, and detail workspace are also omitted. Direct attempts to select a hidden ETOPS task are rejected. Applicability-only ETOPS results now survive typed DTO construction and cache rehydration even when no rating or route points exist. Verified against `CKS093312ZSOF 2.pdf`, which contains only incidental maintenance references to ETOPS and no operational ETOPS qualification or route data.
-
-Commit message: `feat: hide ETOPS task for non-ETOPS flights`
-
-
 ## 13. [x] Completed: Feat: GENDEC available determination
 
 Goal:
@@ -227,13 +123,65 @@ Follow-up outcome: Availability labels and badge/dot color classes now belong to
 
 Commit message: `feat: determine GENDEC availability`
 
-## 14. Feat: Determine B43 or B44 release
-- Add B44 tag if B44 release
-- B44 criteria: Text found in release: `RELEASED IAW OPS SPEC B044`
+## 14. Current focus: Feat: Determine B43 or B44 release
+Goal:
+- Determine whether the release explicitly identifies Operations Specification B043 or B044.
+- Render a compact amber `B44` tag at the top right of the Overview route card only for a confirmed B044 release.
+- Establish an extensible normalized structure for future B44-specific information without coupling that information to the header UI.
 
-Implementation:
-- Create seperate service
-- Structure for future task implementation: B44 info
+Current implementation:
+- The extracted release text is passed once through `ExtractFlightPlanData` and then shared with focused extractors.
+- No extractor currently owns Operations Specification classification.
+- `FlightPlanData` and its serialized cache payload do not expose a release authorization or Operations Specification value.
+- The Overview route card is rendered by `resources/views/components/flight-release/overview.blade.php` through the shared overview-card component, whose header currently places the task availability indicator at the top right.
+- Available private fixtures contain explicit `RELEASED IAW OPS SPEC B043` and `RELEASED IAW OPS SPEC B044` signatures; other fixtures contain neither signature.
+
+Problem:
+- B044 releases cannot currently be identified or surfaced to the user.
+- Treating every release without the B044 signature as B043 would misclassify releases whose Operations Specification is absent or could not be extracted.
+- A boolean such as `is_b44` would not preserve the distinction between confirmed B043 and unknown classification, and would not provide a useful home for future B44-specific fields.
+
+Plan:
+- Add a dedicated release-authorization extractor that consumes the already-extracted full text and matches the complete ordered signature case-insensitively with whitespace and line-break tolerance.
+- Classify only explicit `RELEASED IAW OPS SPEC B043` and `RELEASED IAW OPS SPEC B044` evidence. Represent no recognized signature as `unknown`; do not infer B043 from a missing B044 signature.
+- If both signatures are found in one release, raise a flight-plan data conflict instead of selecting one silently.
+- Introduce a string-backed Operations Specification enum with `B43`, `B44`, and `Unknown` states and a typed release-authorization DTO. Keep this DTO separate from flight identity so future B44-specific information can be added without expanding unrelated identity fields.
+- Carry the normalized release authorization through `ParsedFlightPlanData`, `BuildFlightPlanData`, `FlightPlanData::toArray()`, result serialization, and `BuildFlightPlanPageData` cache rehydration. Older cached payloads without the new field must rehydrate as `unknown`.
+- Preserve the matched signature as internal source evidence, but do not expose source fragments in the serialized cache or Livewire payload.
+- Add a view-model helper that returns `B44` only for the confirmed B44 enum state.
+- Extend the shared Overview card header with an optional badge slot so the route card can place the B44 tag at the top right without parsing or classification in Blade and without changing the other cards. Preserve the route task availability indicator alongside the optional badge.
+- Render the following badge only in the Overview route card for confirmed B44 releases. Confirmed B43 and unknown releases render no B44 tag:
+
+```blade
+<!-- B44 OpSpec Badge -->
+<span class="inline-flex items-center rounded-md bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-400 ring-1 ring-inset ring-amber-500/20" title="OpSpec B44 Authorized">
+    B44
+</span>
+```
+- Add focused extractor tests for B043, B044, case and whitespace variations, flattened PDF text, incidental or partial references, neither signature, and conflicting signatures.
+- Add focused orchestration, DTO/build, serialization, cache-rehydration, view-model, and Livewire tests proving the classification round trip, backward compatibility, source-evidence privacy, and B44-only Overview route-card tag behavior against representative fixtures. Assert that the badge is absent from the release header and from confirmed B43 and unknown releases.
+- Run the focused tests while implementing, Pint after PHP changes, and Larastan once at the final integration checkpoint.
+
+Constraints:
+- Use explicit source evidence as the authority; never derive the classification from unrelated release fields or from the absence of one signature.
+- Keep parsing and classification out of Blade and the view model.
+- Do not render the Operations Specification badge in the release header.
+- Do not add future B44 detail fields until their source signatures and product behavior are defined.
+
+References:
+- `app/Services/FlightPlan/Extractor/ExtractFlightPlanData.php`
+- `app/DTOs/ParsedFlightPlanData.php`
+- `app/DTOs/FlightPlanData.php`
+- `app/Actions/BuildFlightPlanData.php`
+- `app/Actions/BuildFlightPlanPageData.php`
+- `app/Services/FlightPlan/FlightPlanResultSerializer.php`
+- `app/View/Models/FlightReleasePageViewModel.php`
+- `resources/views/components/flight-release/overview.blade.php`
+- `resources/views/components/flight-release/overview-card.blade.php`
+- `tests/Unit/ExtractFlightPlanDataTest.php`
+- `tests/Feature/Livewire/FlightPlanBriefTest.php`
+
+Commit message: `feat: classify B43 and B44 flight releases`
 
 ## 15. Bug: Loose crew name regex extraction
 - Crew details are extracted within name:
@@ -746,3 +694,106 @@ tests/Feature/Livewire/FlightPlanBriefTest.php
 Outcome: Added a dedicated Review MEL / CDL task with the `wrench-screwdriver` icon and a combined MEL, CDL, NEF, and DMI counter badge. Overview always remains first; the review task appears directly below it when source-listed maintenance items exist and moves to the bottom when the count is zero. The Maintenance Log and review task now share reusable maintenance-item and airworthiness-caution Blade components while preserving badges, statuses, descriptions, references, limitations, procedures, dark-mode styling, and accessible copy controls for MEL, CDL, and NEF only. Review availability is source-backed, empty releases remain explicit, and source evidence stays private. Focused enum, view-model, and Livewire coverage verifies metadata, ordering, counts, all item types, copy behavior, caution messaging, empty state, and Maintenance Log compatibility. Pint and the final Larastan checkpoint pass.
 
 Commit message: `feat: add MEL and CDL review task`
+
+## 9. [x] Completed: UI: Jepp PD Pro task view
+Goal:
+Within the task view: Move route section above ETOPS critical points section
+
+References:
+resources/views/components/flight-release/jepp-pd-pro.blade.php
+
+- Bug fixed: Planned runway extraction now permits a missing SID/STAR and stops at the next planned-runway header, newline, or asterisk divider. Verified against `CKS093312ZSOF 2.pdf`: runway 33 with no SID, and arrival runway 33L with OLMEN OLME2E.
+
+Outcome: The Jepp PD-Pro task now presents the copyable route immediately after airport details and before ETOPS critical points. Focused Livewire coverage verifies the operational section order.
+
+Commit message: `fix: prioritize route in Jepp PD-Pro task`
+
+## 10. [x] Completed: UI: Action oriented labels on Overview
+Currently: `Open ` is prefixed followed by the Flight task enum label.
+
+Goal: Customize labels giving action oriented labels within the overview task.
+
+Implementation:
+- In enum, create action labels
+- Flight and aircraft card footer: ACARS Initialize Flight ->
+- Route card: Program FMS ->
+- Schedule and slots: Review slot times ->
+- Fuel card: Score fuel ->
+- ETOPs evidence card: Review ETOPs ->
+
+References:
+resources/views/components/flight-release/overview-card.blade.php
+app/Enums/FlightPlanTask.php
+
+Outcome: Overview card footers now use task-owned action labels instead of the generic `Open {task}` prefix. Flight initialization, FMS programming, slot review, fuel scoring, and ETOPS review display distinct operational calls to action while preserving accessible task navigation.
+
+Commit message: `feat: add action labels to overview cards`
+
+## 11. [x] Completed: ETOPs
+Currently: ETOPS status is assumed through ETOPS data extraction. ETOPS time to alternate is not extracted or exposed.
+
+Goal:
+- Determine if a flight qualifies as ETOPS
+- Extract and expose ETOPS time rating
+- Render an ETOPS badge in flight header
+
+Implementation:
+- ETOPs if text: `ETOPS 180  ETOPS ALTERNATE AIRPORTS` found
+- Extract ETOPS duration value, usually 180 or 210
+- Add badge on section flight info header
+- Badge label `ETOPS {duration}`
+- Placement: below duration and horizontal flight line, centered
+
+References:
+
+Outcome: ETOPS qualification and its minute rating are now extracted from the bounded `ETOPS {rating} ETOPS ALTERNATE AIRPORTS` source heading by a dedicated ETOPS extractor. The confirmed applicability and validated rating survive typed DTO construction, cache serialization, and cache rehydration without exposing private source evidence. Confirmed ETOPS releases render a centered `ETOPS {rating}` badge below the flight-duration line in the release header; unrelated ETOPS text and invalid zero ratings do not create the badge.
+
+Follow-up outcome: ETOPS applicability detection now belongs to the ETOPS qualification extractor, including explicit yes/no, `NO ETOPS`, and operational numeric evidence. Maintenance extraction is limited to maintenance sections and items; the extraction orchestrator composes ETOPS applicability into the existing normalized maintenance contract for compatibility.
+
+Regex follow-up outcome: ETOPS rating extraction now accepts parser-flattened headings concatenated between a preceding coordinate and the following airport token, such as `N36430E127299ETOPS 180 ETOPS ALTERNATE AIRPORTSSFO/KSFO`, while retaining letter and airport-token boundaries. Verified against the extracted text shape from `CKS025625KLAX.pdf`.
+
+Commit message: `feat: extract and display ETOPS rating`
+
+## 12. [x] Completed: Hide ETOPs card if non ETOPS flight
+
+Goal:
+- Keep the large, actionable `ETOPS evidence` overview card for confirmed ETOPS flights.
+- For a confirmed non-ETOPS flight, remove that large card and show a compact `ETOPS` indicator with a `Non ETOPS` status in `Operational support status`.
+- Preserve an explicit distinction between confirmed non-ETOPS and unknown or incomplete ETOPS extraction.
+
+Current implementation:
+- `resources/views/components/flight-release/overview.blade.php` always renders the `ETOPS evidence` overview card.
+- The card uses `availabilityFor(FlightPlanTask::Etops)` and `overviewEtopsSummary()`; without extracted ETOPS route data it displays `Confirmed release fields` with `Not present in this release`.
+- `FlightPlanPageData::availabilityFor()` derives ETOPS task availability from `hasEtopsData()`, which checks extracted rating, entry, equal-time points, and exit data rather than the applicability state.
+- The normalized ETOPS DTO already exposes `EtopsApplicability` as `confirmed_etops`, `confirmed_non_etops`, or `unknown`.
+- `Operational support status` is populated by `FlightReleasePageViewModel::overviewUnsupportedIndicators()` and already renders compact status rows.
+- ETOPS task always renders in Task navigation left pane
+
+Problem:
+- Confirmed non-ETOPS releases receive the same prominent ETOPS workspace card as ETOPS releases, even though there is no ETOPS review workflow to perform.
+- The current empty-state copy suggests missing extraction rather than an intentional non-ETOPS classification.
+- Treating missing ETOPS route data as equivalent to confirmed non-ETOPS would hide extraction uncertainty and could misrepresent a release.
+- Tasks with no pertinent flight information clutter the workspace
+
+Plan:
+- Add view-model helpers that expose the authoritative ETOPS applicability state and whether the large overview card should render.
+- Render the large `ETOPS evidence` card only when applicability is `confirmed_etops`; retain its existing task link, availability, and summary behavior.
+- Add an `ETOPS` row to `overviewUnsupportedIndicators()` only when applicability is `confirmed_non_etops`, using a compact status label that reads `Non ETOPS`.
+- Keep `unknown` distinct from confirmed non-ETOPS. Do not render a `Non ETOPS` badge for unknown data; preserve an unconfirmed/not-present state where ETOPS status is otherwise surfaced.
+- Add focused view-model and Livewire feature coverage for confirmed ETOPS, confirmed non-ETOPS, and unknown applicability, asserting both the presence and absence of the large card and compact indicator.
+- Remove ETOPS task navigation and the ETOPS detail view unless applicability is `confirmed_etops`.
+
+Constraints:
+- Use the normalized `EtopsData::applicability` value as the source of truth; do not infer non-ETOPS from absent rating, ETP, entry, or exit fields.
+- Preserve responsive layout and accessibility semantics when the overview grid contains one fewer card.
+
+References:
+- `resources/views/components/flight-release/overview.blade.php`
+- `app/View/Models/FlightReleasePageViewModel.php`
+- `app/View/Models/FlightPlanPageData.php`
+- `app/Enums/EtopsApplicability.php`
+- `tests/Feature/Livewire/FlightPlanBriefTest.php`
+
+Outcome: Confirmed ETOPS releases retain the actionable Overview card, task navigation, and detail workspace. Confirmed non-ETOPS releases now replace those surfaces with a compact `ETOPS` / `Non ETOPS` row in `Operational support status`. Unknown applicability remains distinct and does not claim `Non ETOPS`; because no ETOPS workflow is confirmed, its Overview card, task navigation, and detail workspace are also omitted. Direct attempts to select a hidden ETOPS task are rejected. Applicability-only ETOPS results now survive typed DTO construction and cache rehydration even when no rating or route points exist. Verified against `CKS093312ZSOF 2.pdf`, which contains only incidental maintenance references to ETOPS and no operational ETOPS qualification or route data.
+
+Commit message: `feat: hide ETOPS task for non-ETOPS flights`
