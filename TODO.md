@@ -223,12 +223,17 @@ References:
 
 Outcome: GENDEC availability is now determined from a bounded, ordered General Declaration signature instead of a loose phrase match. Detection tolerates line breaks, irregular whitespace, and flattened labels such as `Flight No:K4256Date:` while rejecting incidental references and labels outside the section window. The typed boolean survives result serialization and cache rehydration, with older cached results defaulting to `Not present`. Only minimal signature evidence stays in the private extraction evidence path; crew, passenger, passport, customs, and full-page content are not exposed in the cached payload or rendered HTML. The Overview now uses the shared availability status component to show `Available` or `Not present`, with no new task or workspace.
 
+Follow-up outcome: Availability labels and badge/dot color classes now belong to `FlightPlanTaskAvailability` instead of the Blade component. `NotPresent` renders with an explicit red warning palette in both full badges and compact dots, while the existing opt-in rendering behavior for `Available` remains unchanged.
+
 Commit message: `feat: determine GENDEC availability`
 
 ## 14. Feat: Determine B43 or B44 release
 - Add B44 tag if B44 release
 - B44 criteria: Text found in release: `RELEASED IAW OPS SPEC B044`
-- Future task: B44 info
+
+Implementation:
+- Create seperate service
+- Structure for future task implementation: B44 info
 
 ## 15. Bug: Loose crew name regex extraction
 - Crew details are extracted within name:

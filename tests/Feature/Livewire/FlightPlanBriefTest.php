@@ -1444,6 +1444,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('No alternate airport listed.')
             ->assertSeeText('GENDEC')
             ->assertSeeText('Weather / RAIM')
+            ->assertSeeHtml('bg-red-100 text-red-900 dark:bg-red-400/15 dark:text-red-200')
             ->assertDontSeeText('Non ETOPS')
             ->assertDontSeeHtml('wire:key="flight-plan-overview-card-etops"')
             ->assertDontSeeHtml('wire:key="flight-plan-task-nav-etops"')
