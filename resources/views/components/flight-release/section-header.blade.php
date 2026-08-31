@@ -2,6 +2,7 @@
     'title',
     'icon',
     'availability',
+    'absenceIsGood' => false,
 ])
 
 <header {{ $attributes->merge(['class' => 'flex flex-wrap items-start justify-between gap-3 border-b border-[#1B365D]/10 bg-[#F8F9FA] px-4 py-4 dark:border-slate-700 dark:bg-slate-800 sm:px-5']) }}>
@@ -15,5 +16,5 @@
         </div>
     </div>
 
-    <x-flight-release.status :availability="$availability" />
+    <x-flight-release.status :availability="$availability" :absence-is-good="$absenceIsGood" />
 </header>

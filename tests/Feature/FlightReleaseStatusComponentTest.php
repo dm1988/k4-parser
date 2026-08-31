@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\FlightPlanTaskAvailability;
+use App\Enums\TaskTone;
 use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
@@ -47,5 +48,37 @@ class FlightReleaseStatusComponentTest extends TestCase
         $this->assertStringNotContainsString('<span', $hiddenHtml);
         $this->assertStringContainsString('Available', $visibleHtml);
         $this->assertStringContainsString(FlightPlanTaskAvailability::Available->badgeColor(), $visibleHtml);
+    }
+
+    public function test_absence_is_good_uses_success_for_missing_and_warning_for_present(): void
+    {
+        $missingHtml = Blade::render(
+            '<x-flight-release.status :availability="$availability" :absence-is-good="true" />',
+            ['availability' => FlightPlanTaskAvailability::NotPresent],
+        );
+        $presentHtml = Blade::render(
+            '<x-flight-release.status :availability="$availability" :absence-is-good="true" />',
+            ['availability' => FlightPlanTaskAvailability::Available],
+        );
+
+        $this->assertStringContainsString('Not present', $missingHtml);
+        $this->assertStringContainsString(TaskTone::Success->badgeColor(), $missingHtml);
+        $this->assertStringContainsString('Available', $presentHtml);
+        $this->assertStringContainsString(TaskTone::Warning->badgeColor(), $presentHtml);
+    }
+
+    public function test_an_explicit_tone_overrides_the_availability_tone(): void
+    {
+        $html = Blade::render(
+            '<x-flight-release.status :availability="$availability" :tone="$tone" dot />',
+            [
+                'availability' => FlightPlanTaskAvailability::NotPresent,
+                'tone' => TaskTone::Neutral,
+            ],
+        );
+
+        $this->assertStringContainsString('aria-label="Not present"', $html);
+        $this->assertStringContainsString(TaskTone::Neutral->dotColor(), $html);
+        $this->assertStringNotContainsString(TaskTone::Danger->dotColor(), $html);
     }
 }

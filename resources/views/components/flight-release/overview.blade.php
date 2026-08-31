@@ -99,6 +99,8 @@
                         :label="$indicator['statusLabel'] ?? null"
                         :compact="true"
                         :show-available="true"
+                        :absence-is-good="$indicator['absenceIsGood'] ?? false"
+                        :tone="$indicator['tone'] ?? null"
                     />
                 </div>
             @endforeach

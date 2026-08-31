@@ -123,21 +123,12 @@ Follow-up outcome: Availability labels and badge/dot color classes now belong to
 
 Commit message: `feat: determine GENDEC availability`
 
-### Follow up: FlightPlanTaskAvailability Color classes
-Content / Tone Enum
+### [x] Completed follow up: FlightPlanTaskAvailability color classes
+Goal: Render contextual availability classes using success, danger, warning, or neutral tones.
 
-Currently: Hard coding a red badge color works for a missing gendec page, however, MEL items missing, as in no maintenance items exist, is a good thing. After removing presentation into the enum, custom formatting was removed.
+Outcome: Availability labels remain owned by `FlightPlanTaskAvailability`, while the new `TaskTone` enum owns badge and dot palettes. Default availability uses neutral for available, danger for not present, and warning for not supported. The Review MEL/CDL context treats a confirmed empty maintenance section as success and source-listed items as warning; a missing maintenance section remains danger rather than implying a clean release. Missing GENDEC and Weather / RAIM remain danger, and confirmed non-ETOPS uses an explicit neutral tone. The shared status component applies these contexts consistently to badges and accessible dots across Overview, task navigation, and section headers while preserving the default behavior that hides ordinary available statuses.
 
-Goal: Render contextual enum classes based on tones success, danger, warning, or neutral
-
-Implementation:
-1. TaskTone defining success, danger, warning, and neutral. Functions for badge color and dotColor.
-2. Update the Availability Enum to Accept Tone Context
-   - public function tone(bool $absenceIsGood = false): TaskTone
-3. Implement updated structure in codebase: MELs absent is good, GENDEC absence is bad, ETOPS in neutral, weather missing is bad,
-
-References:
-- app/Enums/FlightPlanTaskAvailability.php
+Commit message: `feat: add contextual flight task availability tones`
 
 ## 14. [x] Completed: Feat: Determine B43 or B44 release
 Goal:
@@ -210,6 +201,22 @@ Commit message: `refactor: complete flight plan workspace migration`
 
 ## 20. Remove from overview: `Flight plan filing`
 - Found in section: Operational support status
+
+## 21. Add B44 badge to Fuel Score in Task navigator
+- So B44 flight plan status is visible in all tasks
+
+Currently: B44 only shows on Overview view. When user navigates to another task, that potentially important info is no longer visible.
+
+Goal: Add B44 badge to Fuel Score in Task navigator when a flight plan is filed under OPSPEC B44.
+
+Implementation: Keep style the same as in the Route/FMS card found in the overview blade file. Consider creating a reusable card.
+
+References:
+app/Enums/OperationsSpecification.php
+app/DTOs/ReleaseAuthorizationData.php
+app/DTOs/FlightPlanData.php
+resources/views/components/flight-release/overview.blade.php
+resources/views/components/flight-release/task-navigator.blade.php
 
 -------------------
 **Branch Merge**

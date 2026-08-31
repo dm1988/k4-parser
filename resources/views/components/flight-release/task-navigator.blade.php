@@ -52,6 +52,7 @@
                 @endif
                 <x-flight-release.status
                     :availability="$model->availabilityFor($task)"
+                    :absence-is-good="$task->absenceIsGood()"
                     dot
                 />
             </button>

@@ -27,6 +27,7 @@
                 :title="$activeTask->label()"
                 :icon="$activeTask->icon()"
                 :availability="$availability"
+                :absence-is-good="$activeTask->absenceIsGood()"
             />
 
             @switch(true)

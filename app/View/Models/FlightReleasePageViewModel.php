@@ -18,6 +18,7 @@ use App\Enums\FlightPlanTaskAvailability;
 use App\Enums\MaintenanceItemType;
 use App\Enums\OperationsSpecification;
 use App\Enums\RouteTokenType;
+use App\Enums\TaskTone;
 use App\ValueObjects\FuelQuantity;
 use App\ValueObjects\InitialAltitude;
 use App\ValueObjects\WeightQuantity;
@@ -364,7 +365,7 @@ readonly class FlightReleasePageViewModel
     }
 
     /**
-     * @return list<array{label: string, availability: FlightPlanTaskAvailability, statusLabel?: string}>
+     * @return list<array{label: string, availability: FlightPlanTaskAvailability, statusLabel?: string, absenceIsGood?: bool, tone?: TaskTone}>
      */
     public function overviewUnsupportedIndicators(): array
     {
@@ -379,9 +380,10 @@ readonly class FlightReleasePageViewModel
             ['label' => 'Weather / RAIM', 'availability' => $this->availabilityFor(FlightPlanTask::Weather)],
             [
                 'label' => 'Maintenance',
-                'availability' => $this->hasMaintenanceSection()
+                'availability' => $this->maintenanceItemCount() > 0
                     ? FlightPlanTaskAvailability::Available
                     : FlightPlanTaskAvailability::NotPresent,
+                'absenceIsGood' => $this->hasMaintenanceSection(),
             ],
         ];
 
@@ -390,6 +392,7 @@ readonly class FlightReleasePageViewModel
                 'label' => 'ETOPS',
                 'availability' => FlightPlanTaskAvailability::NotPresent,
                 'statusLabel' => 'Non ETOPS',
+                'tone' => TaskTone::Neutral,
             ]);
         }
 

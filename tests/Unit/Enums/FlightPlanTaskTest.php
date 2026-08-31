@@ -24,6 +24,8 @@ class FlightPlanTaskTest extends TestCase
     {
         $this->assertSame('Review MEL / CDL', FlightPlanTask::ReviewMelCdl->label());
         $this->assertSame('wrench-screwdriver', FlightPlanTask::ReviewMelCdl->icon());
+        $this->assertTrue(FlightPlanTask::ReviewMelCdl->absenceIsGood());
+        $this->assertFalse(FlightPlanTask::MaintenanceLog->absenceIsGood());
     }
 
     #[Test]

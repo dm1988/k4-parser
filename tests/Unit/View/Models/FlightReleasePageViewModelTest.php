@@ -7,6 +7,7 @@ use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
 use App\Enums\OperationsSpecification;
 use App\Enums\RouteTokenType;
+use App\Enums\TaskTone;
 use App\View\Models\FlightReleasePageViewModel;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -391,7 +392,11 @@ class FlightReleasePageViewModelTest extends TestCase
             ['label' => 'GENDEC', 'availability' => FlightPlanTaskAvailability::NotPresent],
             ['label' => 'Flight plan filing', 'availability' => FlightPlanTaskAvailability::NotSupported],
             ['label' => 'Weather / RAIM', 'availability' => FlightPlanTaskAvailability::NotPresent],
-            ['label' => 'Maintenance', 'availability' => FlightPlanTaskAvailability::Available],
+            [
+                'label' => 'Maintenance',
+                'availability' => FlightPlanTaskAvailability::Available,
+                'absenceIsGood' => true,
+            ],
         ], $viewModel->overviewUnsupportedIndicators());
     }
 
@@ -460,6 +465,21 @@ class FlightReleasePageViewModelTest extends TestCase
 
         $this->assertSame(FlightPlanTask::ReviewMelCdl, $emptyViewModel->tasks()[array_key_last($emptyViewModel->tasks())]);
         $this->assertSame(0, $emptyViewModel->taskCounter(FlightPlanTask::ReviewMelCdl));
+        $this->assertSame([
+            'label' => 'Maintenance',
+            'availability' => FlightPlanTaskAvailability::NotPresent,
+            'absenceIsGood' => true,
+        ], $emptyViewModel->overviewUnsupportedIndicators()[3]);
+
+        $missingSectionPayload = $this->resultPayload();
+        $missingSectionPayload['flight_plan_data']['maintenanceLog'] = null;
+        $missingSectionViewModel = $this->viewModel($missingSectionPayload);
+
+        $this->assertSame([
+            'label' => 'Maintenance',
+            'availability' => FlightPlanTaskAvailability::NotPresent,
+            'absenceIsGood' => false,
+        ], $missingSectionViewModel->overviewUnsupportedIndicators()[3]);
     }
 
     #[Test]
@@ -491,6 +511,7 @@ class FlightReleasePageViewModelTest extends TestCase
             'label' => 'ETOPS',
             'availability' => FlightPlanTaskAvailability::NotPresent,
             'statusLabel' => 'Non ETOPS',
+            'tone' => TaskTone::Neutral,
         ], $confirmedNonEtops->overviewUnsupportedIndicators()[0]);
 
         $unknownPayload = $this->resultPayload();

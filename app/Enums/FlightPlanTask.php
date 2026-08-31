@@ -83,6 +83,11 @@ enum FlightPlanTask: string
         return in_array($this, [self::JeppPdPro, self::Fms], true);
     }
 
+    public function absenceIsGood(): bool
+    {
+        return $this === self::ReviewMelCdl;
+    }
+
     public function hasCustomView(): bool
     {
         return true;
