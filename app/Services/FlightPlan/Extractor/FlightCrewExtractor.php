@@ -13,7 +13,7 @@ class FlightCrewExtractor
 
     /**
      * @return array{
-     *     data: list<array{name: string, role: ?string, base: ?string, employee_number: string}>,
+     *     data: list<array{name: string, role: ?string, base: ?string, employee_number: string, high_mins: bool}>,
      *     source_fragments: array<string, string>
      * }
      */
@@ -41,11 +41,21 @@ class FlightCrewExtractor
                     'role' => $member['role'],
                     'base' => $member['base'],
                     'employee_number' => $member['employee_id'],
+                    'high_mins' => $member['high_mins'],
                 ];
-                $key = implode('|', array_map(
-                    static fn (?string $value): string => $value ?? '',
-                    $normalized,
-                ));
+                $key = implode('|', [
+                    $normalized['name'],
+                    $normalized['role'],
+                    $normalized['base'] ?? '',
+                    $normalized['employee_number'],
+                ]);
+
+                if (isset($members[$key])) {
+                    $members[$key]['high_mins'] = $members[$key]['high_mins'] || $normalized['high_mins'];
+
+                    continue;
+                }
+
                 $members[$key] = $normalized;
             }
 

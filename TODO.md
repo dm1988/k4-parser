@@ -52,7 +52,7 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 # Tasks
 
-## 13. [ ] Follow up: Feat: GENDEC available determination
+## 13. [x] Completed: Feat: GENDEC available determination
 
 Goal:
 - Determine whether the uploaded release contains a General Declaration (GENDEC) page.
@@ -140,7 +140,7 @@ Outcome: A dedicated release-authorization extractor now classifies only explici
 
 Commit message: `feat: classify B43 and B44 flight releases`
 
-## 15. Bug: Loose crew name regex extraction
+## 15. [x] Completed: Bug: Loose crew name regex extraction
 - Crew details are extracted within name:
 1. `Additional` extracted as name: PAYNE R ADDNTL
 2. `IRP` extracted as name: GONZALEZ D IRP
@@ -151,7 +151,9 @@ Commit message: `feat: classify B43 and B44 flight releases`
 - Add a high mins flag to the DTO contract
 - Front end display as a caution
 
-Regression outcome: The flattened release-manifest parser now retains a final employee record when the PDF appends empty `IRP`, `MX`, `LM`, and `ACM` role-column placeholders before `CIRCLE THE APPROPRIATE STATUS`. Verified against the supplied release and captured in a deidentified fixture: the PIC, SIC/FO, and final IRP are all extracted without treating placeholder roles as part of a crew name.
+Outcome: Release-manifest parsing now stops at physical line boundaries and removes trailing `ADDNTL`, `ADDNTL CAPT`, `IRP`, and `HIGH MINS` annotations from crew names. `HIGH MINS` is preserved as a typed boolean through extraction, DTO construction, result serialization, and cache rehydration, and affected crew render an amber caution badge in the Envelope and Flight Init crew lists. The existing flattened-placeholder regression remains covered so final employee records are retained before empty `IRP`, `MX`, `LM`, and `ACM` role columns.
+
+Commit message: `fix: tighten crew name extraction`
 
 ## 16. Implement weight limits in aircraft table and provide 747 AC seeder
 - Weight limits do not exist in DB
@@ -217,6 +219,19 @@ app/DTOs/ReleaseAuthorizationData.php
 app/DTOs/FlightPlanData.php
 resources/views/components/flight-release/overview.blade.php
 resources/views/components/flight-release/task-navigator.blade.php
+
+## 22. Slot times badge
+Currently: when slot times are not present, a warning badge shows. 
+Problem: This is not necessarily a bad thing
+
+Fix: Render gray or don't render a badge
+
+References:
+
+## 23. MEL CDL Badge
+Currently: when no MEL / CDLs present, success green badge is rendered drawing a users attention
+Problem: no need to draw a users attention
+Fix: Don't render when count is 0
 
 -------------------
 **Branch Merge**

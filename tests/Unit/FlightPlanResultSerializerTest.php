@@ -73,7 +73,7 @@ class FlightPlanResultSerializerTest extends TestCase
                     0,
                 ),
             ),
-            crewMembers: [new CrewMemberData('Alex Morgan', 'CP', 'YIP', '4827')],
+            crewMembers: [new CrewMemberData('Alex Morgan', 'CP', 'YIP', '4827', true)],
             waypoints: [new WaypointData('FIX01', 'N01 02.3 E004 05.6', 5, 11, FuelQuantity::pounds(0))],
             generalDeclaration: new GeneralDeclarationData(true),
             releaseAuthorization: new ReleaseAuthorizationData(OperationsSpecification::B44),
@@ -139,6 +139,7 @@ class FlightPlanResultSerializerTest extends TestCase
         $this->assertSame('28-22-01', $result['flight_plan_data']['maintenanceLog']['items'][0]['number']);
         $this->assertSame('Alex Morgan', $result['flight_plan_data']['crewMembers'][0]['name']);
         $this->assertSame('4827', $result['flight_plan_data']['crewMembers'][0]['employeeNumber']);
+        $this->assertTrue($result['flight_plan_data']['crewMembers'][0]['highMins']);
         $this->assertSame('11', $result['flight_plan_data']['flightInit']['acarsInitDate']);
         $this->assertSame(612400, $result['flight_plan_data']['envelope']['plannedTakeoffWeight']['amount']);
         $this->assertSame('N40 31.1', $result['flight_plan_data']['etops']['entryPoint']['coordinate']['latitude']);

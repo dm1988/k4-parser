@@ -498,6 +498,7 @@ class BuildFlightPlanPageData
                 role: $this->nullableString($member['role'] ?? null),
                 base: $this->nullableString($member['base'] ?? null),
                 employeeNumber: $this->flightInitFieldNormalizer->employeeNumber($member['employeeNumber'] ?? null),
+                highMins: ($member['highMins'] ?? false) === true,
             );
         }
 

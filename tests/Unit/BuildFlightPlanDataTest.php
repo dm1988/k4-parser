@@ -63,6 +63,7 @@ class BuildFlightPlanDataTest extends TestCase
                 'role' => 'CP',
                 'base' => 'YIP',
                 'employee_number' => '4827',
+                'high_mins' => true,
             ]],
             maintenance: [
                 'section_present' => true,
@@ -151,6 +152,7 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame('28-22-01', $flightPlan->maintenanceLog->items[0]->number);
         $this->assertSame('Alex Morgan', $flightPlan->crewMembers[0]->name);
         $this->assertSame('4827', $flightPlan->crewMembers[0]->employeeNumber);
+        $this->assertTrue($flightPlan->crewMembers[0]->highMins);
         $this->assertSame('11', $flightPlan->flightInit?->acarsInitDate);
         $this->assertSame(8900, $flightPlan->flightInit?->filedInitialAltitude?->value);
         $this->assertSame('meters', $flightPlan->flightInit?->filedInitialAltitude?->unit->value);

@@ -894,7 +894,7 @@ class FlightPlanBriefTest extends TestCase
                     ],
                     crewMembers: [
                         ['name' => 'MORGAN A', 'role' => 'PIC', 'base' => null, 'employee_number' => '4387'],
-                        ['name' => 'GONZALEZ D', 'role' => 'SIC/FO', 'base' => null, 'employee_number' => '72914'],
+                        ['name' => 'GONZALEZ D', 'role' => 'SIC/FO', 'base' => null, 'employee_number' => '72914', 'high_mins' => true],
                         ['name' => 'FOSTER B', 'role' => 'IRP', 'base' => null, 'employee_number' => '73521'],
                         ['name' => 'MCCULLOUGH M', 'role' => 'IRP', 'base' => null, 'employee_number' => '73642'],
                         ['name' => 'BENNETT B', 'role' => 'MX', 'base' => null, 'employee_number' => '5826'],
@@ -949,6 +949,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('4387')
             ->assertSeeText('GONZALEZ D')
             ->assertSeeText('72914')
+            ->assertSeeText('High mins')
             ->assertSeeText('FOSTER B')
             ->assertSeeText('73521')
             ->assertSeeText('MCCULLOUGH M')

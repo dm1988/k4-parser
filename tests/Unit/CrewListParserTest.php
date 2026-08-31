@@ -181,4 +181,27 @@ class CrewListParserTest extends TestCase
         $this->assertSame(['4827', '93614', '84726'], array_column($crew, 'employee_id'));
         $this->assertSame(['PIC', 'SIC/FO', 'IRP'], array_column($crew, 'role'));
     }
+
+    public function test_it_removes_manifest_annotations_from_names_and_flags_high_minimums_crew(): void
+    {
+        $crew = app(CrewListParser::class)->parse([
+            '4387 PIC PAYNE R ADDNTL',
+            '72914 SIC/FO GONZALEZ D IRP',
+            '73521 IRP FERGUSON S HIGH MINS',
+        ]);
+
+        $this->assertSame(['PAYNE R', 'GONZALEZ D', 'FERGUSON S'], array_column($crew, 'name'));
+        $this->assertSame([false, false, true], array_column($crew, 'high_mins'));
+    }
+
+    public function test_it_stops_manifest_name_parsing_at_a_line_break(): void
+    {
+        $crew = app(CrewListParser::class)->parseReleaseManifestLine(
+            "4387 PIC PAYNE R\nHIGH MINS",
+        );
+
+        $this->assertCount(1, $crew);
+        $this->assertSame('PAYNE R', $crew[0]['name']);
+        $this->assertFalse($crew[0]['high_mins']);
+    }
 }

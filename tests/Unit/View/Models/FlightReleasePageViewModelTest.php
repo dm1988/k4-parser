@@ -447,6 +447,7 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertTrue($viewModel->maintenanceItems()[0]['copyable']);
         $this->assertTrue($viewModel->maintenanceItems()[1]['copyable']);
         $this->assertSame('CP · YIP', $viewModel->crewMembers()[0]['details']);
+        $this->assertFalse($viewModel->crewMembers()[0]['highMins']);
     }
 
     #[Test]

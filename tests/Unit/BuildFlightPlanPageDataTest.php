@@ -33,6 +33,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame('28-22-01', $pageData->flightPlan->maintenanceLog->items[0]->number);
         $this->assertSame('Alex Morgan', $pageData->flightPlan->crewMembers[0]->name);
         $this->assertSame('4827', $pageData->flightPlan->crewMembers[0]->employeeNumber);
+        $this->assertTrue($pageData->flightPlan->crewMembers[0]->highMins);
         $this->assertSame('11', $pageData->flightPlan->flightInit?->acarsInitDate);
         $this->assertSame(612400, $pageData->flightPlan->envelope?->plannedTakeoffWeight?->amount);
         $this->assertSame(1015, $pageData->flightPlan->envelope->qnhHectopascals);
@@ -391,6 +392,7 @@ class BuildFlightPlanPageDataTest extends TestCase
                     'role' => 'CP',
                     'base' => 'YIP',
                     'employeeNumber' => '4827',
+                    'highMins' => true,
                 ]],
                 'waypoints' => [[
                     'identifier' => 'FIX01',

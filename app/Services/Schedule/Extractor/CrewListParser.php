@@ -9,7 +9,7 @@ class CrewListParser
 {
     /**
      * @param  array<int, string>|string  $input
-     * @return list<array{name: string, employee_id: string, crew_id: string, base: ?string, role: ?string, deadheading: bool}>
+     * @return list<array{name: string, employee_id: string, crew_id: string, base: ?string, role: ?string, deadheading: bool, high_mins: bool}>
      */
     public function parse(array|string $input): array
     {
@@ -36,10 +36,11 @@ class CrewListParser
     }
 
     /**
-     * @return list<array{name: string, employee_id: string, crew_id: string, base: null, role: string, deadheading: bool}>
+     * @return list<array{name: string, employee_id: string, crew_id: string, base: null, role: string, deadheading: bool, high_mins: bool}>
      */
     public function parseReleaseManifestLine(string $line): array
     {
+        $line = (preg_split('/\R/', $line, 2) ?: [$line])[0];
         $rolePattern = CrewPosition::regexPattern();
         $recordPattern = '/(?<!\d)(?<employee_id>\d{4,6})\h+'
             .'(?<role>'.$rolePattern.')\h+'
@@ -55,8 +56,9 @@ class CrewListParser
 
         return array_map(static function (array $match): array {
             $position = CrewPosition::from($match['role']);
+            $highMins = preg_match('/\h+HIGH\h+MINS$/', $match['name']) === 1;
             $name = Str::of($match['name'])
-                ->replaceMatches('/\h+ADDNTL\h+CAPT$/', '')
+                ->replaceMatches('/\h+(?:ADDNTL(?:\h+CAPT)?|IRP|HIGH\h+MINS)$/', '')
                 ->squish()
                 ->toString();
 
@@ -67,6 +69,7 @@ class CrewListParser
                 'base' => null,
                 'role' => $position->value,
                 'deadheading' => $position === CrewPosition::Deadhead,
+                'high_mins' => $highMins,
             ];
         }, $matches);
     }
@@ -74,7 +77,7 @@ class CrewListParser
     /**
      * @param  array<int, string>|string  $input
      * @return array{
-     *     crew: list<array{name: string, employee_id: string, crew_id: string, base: ?string, role: ?string, deadheading: bool}>,
+     *     crew: list<array{name: string, employee_id: string, crew_id: string, base: ?string, role: ?string, deadheading: bool, high_mins: bool}>,
      *     crew_count: ?int,
      *     operating_crew_count: ?int,
      *     deadheading_crew_count: ?int
@@ -119,7 +122,7 @@ class CrewListParser
     }
 
     /**
-     * @param  list<array{name: string, employee_id: string, crew_id: string, base: ?string, role: ?string, deadheading: bool}>  $crew
+     * @param  list<array{name: string, employee_id: string, crew_id: string, base: ?string, role: ?string, deadheading: bool, high_mins: bool}>  $crew
      * @return array{crew_count: ?int, operating_crew_count: ?int, deadheading_crew_count: ?int}
      */
     public function summarize(array $crew): array
@@ -149,10 +152,11 @@ class CrewListParser
     }
 
     /**
-     * @return array{name: string, employee_id: string, crew_id: string, base: ?string, role: ?string, deadheading: bool}|null
+     * @return array{name: string, employee_id: string, crew_id: string, base: ?string, role: ?string, deadheading: bool, high_mins: bool}|null
      */
     public function parseLine(string $line): ?array
     {
+        $line = (preg_split('/\R/', $line, 2) ?: [$line])[0];
         $line = trim((string) preg_replace('/\s+/', ' ', $line));
 
         if ($line === '' || preg_match('/\bName\s+Crew\s+Pos\s+Base\b/i', $line) === 1) {
@@ -185,6 +189,7 @@ class CrewListParser
             'base' => $base,
             'role' => $role,
             'deadheading' => $deadheading,
+            'high_mins' => false,
         ];
     }
 

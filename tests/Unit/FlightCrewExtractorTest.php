@@ -21,8 +21,8 @@ MEL 28-22-01 | DESCRIPTION: Center tank override pump inoperative.
 TEXT);
 
         $this->assertSame([
-            ['name' => 'Alex Morgan', 'role' => 'CP', 'base' => 'YIP', 'employee_number' => '4827'],
-            ['name' => 'Jordan Lee', 'role' => 'FO', 'base' => 'YIP', 'employee_number' => '93614'],
+            ['name' => 'Alex Morgan', 'role' => 'CP', 'base' => 'YIP', 'employee_number' => '4827', 'high_mins' => false],
+            ['name' => 'Jordan Lee', 'role' => 'FO', 'base' => 'YIP', 'employee_number' => '93614', 'high_mins' => false],
         ], $result['data']);
         $this->assertArrayHasKey('flight_crew', $result['source_fragments']);
         $this->assertStringNotContainsString('28-22-01', $result['source_fragments']['flight_crew']);
@@ -48,12 +48,12 @@ TEXT);
         $result = $this->extractor()->extract($this->fixture('release-manifest'));
 
         $this->assertSame([
-            ['name' => 'MORGAN A', 'role' => 'PIC', 'base' => null, 'employee_number' => '4387'],
-            ['name' => 'RIVERA D', 'role' => 'SIC/FO', 'base' => null, 'employee_number' => '72914'],
-            ['name' => 'FOSTER B', 'role' => 'IRP', 'base' => null, 'employee_number' => '73521'],
-            ['name' => 'MCCULLOUGH M', 'role' => 'IRP', 'base' => null, 'employee_number' => '73642'],
-            ['name' => 'BENNETT B', 'role' => 'MX', 'base' => null, 'employee_number' => '5826'],
-            ['name' => 'GARCIA T', 'role' => 'LM', 'base' => null, 'employee_number' => '1957'],
+            ['name' => 'MORGAN A', 'role' => 'PIC', 'base' => null, 'employee_number' => '4387', 'high_mins' => false],
+            ['name' => 'RIVERA D', 'role' => 'SIC/FO', 'base' => null, 'employee_number' => '72914', 'high_mins' => false],
+            ['name' => 'FOSTER B', 'role' => 'IRP', 'base' => null, 'employee_number' => '73521', 'high_mins' => false],
+            ['name' => 'MCCULLOUGH M', 'role' => 'IRP', 'base' => null, 'employee_number' => '73642', 'high_mins' => false],
+            ['name' => 'BENNETT B', 'role' => 'MX', 'base' => null, 'employee_number' => '5826', 'high_mins' => false],
+            ['name' => 'GARCIA T', 'role' => 'LM', 'base' => null, 'employee_number' => '1957', 'high_mins' => false],
         ], $result['data']);
         $this->assertArrayHasKey('flight_crew', $result['source_fragments']);
         $this->assertStringNotContainsString('FUEL SUMMARY', $result['source_fragments']['flight_crew']);
@@ -85,10 +85,10 @@ ACM ACM
 TEXT);
 
         $this->assertSame([
-            ['name' => 'MORGAN A', 'role' => 'PIC', 'base' => null, 'employee_number' => '4387'],
-            ['name' => 'RIVERA D', 'role' => 'SIC/FO', 'base' => null, 'employee_number' => '72914'],
-            ['name' => 'FOSTER B', 'role' => 'IRP', 'base' => null, 'employee_number' => '73521'],
-            ['name' => 'MCCULLOUGH M', 'role' => 'IRP', 'base' => null, 'employee_number' => '73642'],
+            ['name' => 'MORGAN A', 'role' => 'PIC', 'base' => null, 'employee_number' => '4387', 'high_mins' => false],
+            ['name' => 'RIVERA D', 'role' => 'SIC/FO', 'base' => null, 'employee_number' => '72914', 'high_mins' => false],
+            ['name' => 'FOSTER B', 'role' => 'IRP', 'base' => null, 'employee_number' => '73521', 'high_mins' => false],
+            ['name' => 'MCCULLOUGH M', 'role' => 'IRP', 'base' => null, 'employee_number' => '73642', 'high_mins' => false],
         ], $result['data']);
         $this->assertStringNotContainsString('Solar Radiation', $result['source_fragments']['flight_crew']);
         $this->assertStringContainsString('4387 PIC MORGAN A', $result['source_fragments']['flight_crew']);
@@ -99,12 +99,27 @@ TEXT);
         $result = $this->extractor()->extract($this->fixture('release-manifest-trailing-placeholders'));
 
         $this->assertSame([
-            ['name' => 'THATCHER A', 'role' => 'PIC', 'base' => null, 'employee_number' => '4827'],
-            ['name' => 'GONZALEZ D', 'role' => 'SIC/FO', 'base' => null, 'employee_number' => '93614'],
-            ['name' => 'MCCLINTOCK A', 'role' => 'IRP', 'base' => null, 'employee_number' => '84726'],
+            ['name' => 'THATCHER A', 'role' => 'PIC', 'base' => null, 'employee_number' => '4827', 'high_mins' => false],
+            ['name' => 'GONZALEZ D', 'role' => 'SIC/FO', 'base' => null, 'employee_number' => '93614', 'high_mins' => false],
+            ['name' => 'MCCLINTOCK A', 'role' => 'IRP', 'base' => null, 'employee_number' => '84726', 'high_mins' => false],
         ], $result['data']);
         $this->assertStringContainsString('84726 IRP MCCLINTOCK A', $result['source_fragments']['flight_crew']);
         $this->assertStringNotContainsString('FUEL SUMMARY', $result['source_fragments']['flight_crew']);
+    }
+
+    public function test_it_extracts_manifest_annotations_without_including_them_in_names(): void
+    {
+        $result = $this->extractor()->extract(<<<'TEXT'
+121-91 FLIGHT RELEASE I.F.R
+4387 PIC PAYNE R ADDNTL
+72914 SIC/FO GONZALEZ D IRP
+73521 IRP FERGUSON S HIGH MINS
+73521 IRP FERGUSON S
+FUEL SUMMARY
+TEXT);
+
+        $this->assertSame(['PAYNE R', 'GONZALEZ D', 'FERGUSON S'], array_column($result['data'], 'name'));
+        $this->assertSame([false, false, true], array_column($result['data'], 'high_mins'));
     }
 
     private function extractor(): FlightCrewExtractor

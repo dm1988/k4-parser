@@ -35,6 +35,12 @@
                         @if ($member['details'])
                             <span class="block font-mono text-xs text-[#4A5568] dark:text-slate-400">{{ $member['details'] }}</span>
                         @endif
+                        @if ($member['highMins'])
+                            <span class="mt-2 inline-flex w-fit items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-amber-900 dark:bg-amber-400/15 dark:text-amber-200">
+                                <x-heroicon-o-exclamation-triangle class="h-3.5 w-3.5" />
+                                High mins
+                            </span>
+                        @endif
                     </li>
                 @endforeach
             </ul>

@@ -502,7 +502,7 @@ readonly class FlightReleasePageViewModel
         return $this->maintenanceCountSummary($counts);
     }
 
-    /** @return list<array{name: string, details: ?string}> */
+    /** @return list<array{name: string, details: ?string, highMins: bool}> */
     public function crewMembers(): array
     {
         return array_map(static function (CrewMemberData $member): array {
@@ -514,6 +514,7 @@ readonly class FlightReleasePageViewModel
             return [
                 'name' => $member->name,
                 'details' => $details === [] ? null : implode(' · ', $details),
+                'highMins' => $member->highMins,
             ];
         }, $this->pageData?->flightPlan->crewMembers ?? []);
     }
@@ -557,7 +558,7 @@ readonly class FlightReleasePageViewModel
         ];
     }
 
-    /** @return list<array{name: string, details: ?string, employeeNumber: ?string}> */
+    /** @return list<array{name: string, details: ?string, employeeNumber: ?string, highMins: bool}> */
     public function flightInitCrewMembers(): array
     {
         return array_map(static function (CrewMemberData $member): array {
@@ -570,6 +571,7 @@ readonly class FlightReleasePageViewModel
                 'name' => $member->name,
                 'details' => $details === [] ? null : implode(' · ', $details),
                 'employeeNumber' => $member->employeeNumber,
+                'highMins' => $member->highMins,
             ];
         }, $this->pageData?->flightPlan->crewMembers ?? []);
     }
