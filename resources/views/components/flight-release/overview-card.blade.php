@@ -18,7 +18,12 @@
             </span>
             <span class="min-w-0 text-sm font-bold text-[#1B365D] dark:text-slate-100">{{ $title }}</span>
         </span>
-        <x-flight-release.status :availability="$availability" dot />
+        <span class="flex shrink-0 items-center gap-2">
+            @isset($badge)
+                {{ $badge }}
+            @endisset
+            <x-flight-release.status :availability="$availability" dot />
+        </span>
     </div>
 
     <div class="w-full flex-1">

@@ -24,6 +24,15 @@
             :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::Fms)"
             class="xl:col-span-3"
         >
+            <x-slot:badge>
+                @if ($model->b44BadgeLabel())
+                    <!-- B44 OpSpec Badge -->
+                    <span class="inline-flex items-center rounded-md bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-400 ring-1 ring-inset ring-amber-500/20" title="OpSpec B44 Authorized">
+                        {{ $model->b44BadgeLabel() }}
+                    </span>
+                @endif
+            </x-slot:badge>
+
             <dl class="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <x-flight-release.metric label="Departure" :value="$model->departure()" empty-text="Not present in this release" />
                 <x-flight-release.metric label="Destination" :value="$model->destination()" empty-text="Not present in this release" />

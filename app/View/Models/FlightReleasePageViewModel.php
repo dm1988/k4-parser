@@ -16,6 +16,7 @@ use App\Enums\EtopsApplicability;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
 use App\Enums\MaintenanceItemType;
+use App\Enums\OperationsSpecification;
 use App\Enums\RouteTokenType;
 use App\ValueObjects\FuelQuantity;
 use App\ValueObjects\InitialAltitude;
@@ -76,6 +77,17 @@ readonly class FlightReleasePageViewModel
         $etops = $this->pageData?->flightPlan->etops;
 
         return $etops === null ? EtopsApplicability::Unknown : $etops->applicability;
+    }
+
+    public function operationsSpecification(): OperationsSpecification
+    {
+        return $this->pageData?->flightPlan->releaseAuthorization->operationsSpecification
+            ?? OperationsSpecification::Unknown;
+    }
+
+    public function b44BadgeLabel(): ?string
+    {
+        return $this->operationsSpecification() === OperationsSpecification::B44 ? 'B44' : null;
     }
 
     public function taskCounter(FlightPlanTask $task): ?int

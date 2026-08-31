@@ -52,7 +52,7 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 # Tasks
 
-## 13. [x] Completed: Feat: GENDEC available determination
+## 13. [ ] Follow up: Feat: GENDEC available determination
 
 Goal:
 - Determine whether the uploaded release contains a General Declaration (GENDEC) page.
@@ -123,63 +123,29 @@ Follow-up outcome: Availability labels and badge/dot color classes now belong to
 
 Commit message: `feat: determine GENDEC availability`
 
-## 14. Current focus: Feat: Determine B43 or B44 release
+### Follow up: FlightPlanTaskAvailability Color classes
+Content / Tone Enum
+
+Currently: Hard coding a red badge color works for a missing gendec page, however, MEL items missing, as in no maintenance items exist, is a good thing. After removing presentation into the enum, custom formatting was removed.
+
+Goal: Render contextual enum classes based on tones success, danger, warning, or neutral
+
+Implementation:
+1. TaskTone defining success, danger, warning, and neutral. Functions for badge color and dotColor.
+2. Update the Availability Enum to Accept Tone Context
+   - public function tone(bool $absenceIsGood = false): TaskTone
+3. Implement updated structure in codebase: MELs absent is good, GENDEC absence is bad, ETOPS in neutral, weather missing is bad,
+
+References:
+- app/Enums/FlightPlanTaskAvailability.php
+
+## 14. [x] Completed: Feat: Determine B43 or B44 release
 Goal:
 - Determine whether the release explicitly identifies Operations Specification B043 or B044.
 - Render a compact amber `B44` tag at the top right of the Overview route card only for a confirmed B044 release.
 - Establish an extensible normalized structure for future B44-specific information without coupling that information to the header UI.
 
-Current implementation:
-- The extracted release text is passed once through `ExtractFlightPlanData` and then shared with focused extractors.
-- No extractor currently owns Operations Specification classification.
-- `FlightPlanData` and its serialized cache payload do not expose a release authorization or Operations Specification value.
-- The Overview route card is rendered by `resources/views/components/flight-release/overview.blade.php` through the shared overview-card component, whose header currently places the task availability indicator at the top right.
-- Available private fixtures contain explicit `RELEASED IAW OPS SPEC B043` and `RELEASED IAW OPS SPEC B044` signatures; other fixtures contain neither signature.
-
-Problem:
-- B044 releases cannot currently be identified or surfaced to the user.
-- Treating every release without the B044 signature as B043 would misclassify releases whose Operations Specification is absent or could not be extracted.
-- A boolean such as `is_b44` would not preserve the distinction between confirmed B043 and unknown classification, and would not provide a useful home for future B44-specific fields.
-
-Plan:
-- Add a dedicated release-authorization extractor that consumes the already-extracted full text and matches the complete ordered signature case-insensitively with whitespace and line-break tolerance.
-- Classify only explicit `RELEASED IAW OPS SPEC B043` and `RELEASED IAW OPS SPEC B044` evidence. Represent no recognized signature as `unknown`; do not infer B043 from a missing B044 signature.
-- If both signatures are found in one release, raise a flight-plan data conflict instead of selecting one silently.
-- Introduce a string-backed Operations Specification enum with `B43`, `B44`, and `Unknown` states and a typed release-authorization DTO. Keep this DTO separate from flight identity so future B44-specific information can be added without expanding unrelated identity fields.
-- Carry the normalized release authorization through `ParsedFlightPlanData`, `BuildFlightPlanData`, `FlightPlanData::toArray()`, result serialization, and `BuildFlightPlanPageData` cache rehydration. Older cached payloads without the new field must rehydrate as `unknown`.
-- Preserve the matched signature as internal source evidence, but do not expose source fragments in the serialized cache or Livewire payload.
-- Add a view-model helper that returns `B44` only for the confirmed B44 enum state.
-- Extend the shared Overview card header with an optional badge slot so the route card can place the B44 tag at the top right without parsing or classification in Blade and without changing the other cards. Preserve the route task availability indicator alongside the optional badge.
-- Render the following badge only in the Overview route card for confirmed B44 releases. Confirmed B43 and unknown releases render no B44 tag:
-
-```blade
-<!-- B44 OpSpec Badge -->
-<span class="inline-flex items-center rounded-md bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-400 ring-1 ring-inset ring-amber-500/20" title="OpSpec B44 Authorized">
-    B44
-</span>
-```
-- Add focused extractor tests for B043, B044, case and whitespace variations, flattened PDF text, incidental or partial references, neither signature, and conflicting signatures.
-- Add focused orchestration, DTO/build, serialization, cache-rehydration, view-model, and Livewire tests proving the classification round trip, backward compatibility, source-evidence privacy, and B44-only Overview route-card tag behavior against representative fixtures. Assert that the badge is absent from the release header and from confirmed B43 and unknown releases.
-- Run the focused tests while implementing, Pint after PHP changes, and Larastan once at the final integration checkpoint.
-
-Constraints:
-- Use explicit source evidence as the authority; never derive the classification from unrelated release fields or from the absence of one signature.
-- Keep parsing and classification out of Blade and the view model.
-- Do not render the Operations Specification badge in the release header.
-- Do not add future B44 detail fields until their source signatures and product behavior are defined.
-
-References:
-- `app/Services/FlightPlan/Extractor/ExtractFlightPlanData.php`
-- `app/DTOs/ParsedFlightPlanData.php`
-- `app/DTOs/FlightPlanData.php`
-- `app/Actions/BuildFlightPlanData.php`
-- `app/Actions/BuildFlightPlanPageData.php`
-- `app/Services/FlightPlan/FlightPlanResultSerializer.php`
-- `app/View/Models/FlightReleasePageViewModel.php`
-- `resources/views/components/flight-release/overview.blade.php`
-- `resources/views/components/flight-release/overview-card.blade.php`
-- `tests/Unit/ExtractFlightPlanDataTest.php`
-- `tests/Feature/Livewire/FlightPlanBriefTest.php`
+Outcome: A dedicated release-authorization extractor now classifies only explicit B043 and B044 Operations Specification signatures, tolerates parser whitespace and flattened text, preserves private source evidence internally, and rejects conflicting signatures. The normalized release uses a typed `B43`, `B44`, or `unknown` enum and release-authorization DTO across extraction, aggregate construction, serialization, and backward-compatible cache rehydration. Confirmed B044 releases render the requested amber `B44` badge at the top right of the Overview route card alongside its availability indicator; B043 and unknown releases render no badge, and the persistent release header remains unchanged. Focused PHPUnit coverage verifies extraction edge cases, typed round trips, source-evidence privacy, cache compatibility, and B44-only Overview rendering. Pint and Larastan pass.
 
 Commit message: `feat: classify B43 and B44 flight releases`
 

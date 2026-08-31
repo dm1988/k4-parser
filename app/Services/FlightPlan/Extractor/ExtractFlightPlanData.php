@@ -22,6 +22,7 @@ class ExtractFlightPlanData
         private readonly WeightBalanceExtractor $weightBalanceExtractor = new WeightBalanceExtractor,
         private readonly EtopsQualificationExtractor $etopsQualificationExtractor = new EtopsQualificationExtractor,
         private readonly GeneralDeclarationExtractor $generalDeclarationExtractor = new GeneralDeclarationExtractor,
+        private readonly ReleaseAuthorizationExtractor $releaseAuthorizationExtractor = new ReleaseAuthorizationExtractor,
     ) {}
 
     public function extractFile(string $filePath): ParsedFlightPlanData
@@ -44,6 +45,7 @@ class ExtractFlightPlanData
         $weightBalance = $this->weightBalanceExtractor->extract($text);
         $etopsQualification = $this->etopsQualificationExtractor->extract($text);
         $generalDeclaration = $this->generalDeclarationExtractor->extract($text);
+        $releaseAuthorization = $this->releaseAuthorizationExtractor->extract($text);
 
         return new ParsedFlightPlanData(
             identity: $identity['data'],
@@ -80,6 +82,7 @@ class ExtractFlightPlanData
             weather: $weather['data'],
             weightBalance: $weightBalance['data'],
             generalDeclaration: $generalDeclaration['data'],
+            releaseAuthorization: $releaseAuthorization['data'],
             waypoints: $waypoints['data'],
             sourceFragments: [
                 ...$identity['source_fragments'],
@@ -95,6 +98,7 @@ class ExtractFlightPlanData
                 ...$weightBalance['source_fragments'],
                 ...$etopsQualification['source_fragments'],
                 ...$generalDeclaration['source_fragments'],
+                ...$releaseAuthorization['source_fragments'],
             ],
             legacy: $route,
         );

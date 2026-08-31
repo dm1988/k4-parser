@@ -25,6 +25,7 @@ final readonly class FlightPlanData implements JsonSerializable
         public ?WeatherData $weather = null,
         public ?WeightBalanceData $weightBalance = null,
         public GeneralDeclarationData $generalDeclaration = new GeneralDeclarationData(false),
+        public ReleaseAuthorizationData $releaseAuthorization = new ReleaseAuthorizationData,
         public array $crewMembers = [],
         public array $waypoints = [],
     ) {}
@@ -44,6 +45,7 @@ final readonly class FlightPlanData implements JsonSerializable
             'weather' => $this->weather?->toArray(),
             'weightBalance' => $this->weightBalance?->toArray(),
             'generalDeclaration' => $this->generalDeclaration->toArray(),
+            'releaseAuthorization' => $this->releaseAuthorization->toArray(),
             'crewMembers' => array_map(
                 static fn (CrewMemberData $member): array => $member->toArray(),
                 $this->crewMembers,

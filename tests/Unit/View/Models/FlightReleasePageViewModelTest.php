@@ -5,6 +5,7 @@ namespace Tests\Unit\View\Models;
 use App\Actions\BuildFlightPlanPageData;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
+use App\Enums\OperationsSpecification;
 use App\Enums\RouteTokenType;
 use App\View\Models\FlightReleasePageViewModel;
 use PHPUnit\Framework\Attributes\Test;
@@ -28,6 +29,8 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame([], $viewModel->taskAvailability());
         $this->assertNull($viewModel->flightNumber());
         $this->assertNull($viewModel->flightDate());
+        $this->assertSame(OperationsSpecification::Unknown, $viewModel->operationsSpecification());
+        $this->assertNull($viewModel->b44BadgeLabel());
         $this->assertNull($viewModel->aircraftType());
         $this->assertNull($viewModel->tailNumber());
         $this->assertNull($viewModel->tripNumber());
@@ -71,6 +74,29 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('Confirmed release section', $viewModel->tlrSourceLabel());
         $this->assertNull($viewModel->tlrPlannedTakeoffWeight());
         $this->assertSame([], $viewModel->tlrWarnings());
+    }
+
+    #[Test]
+    public function it_exposes_the_b44_badge_label_only_for_confirmed_b44_releases(): void
+    {
+        $b44Payload = $this->resultPayload();
+        $b44Payload['flight_plan_data']['releaseAuthorization'] = ['operationsSpecification' => 'b44'];
+        $b44ViewModel = $this->viewModel($b44Payload);
+
+        $this->assertSame(OperationsSpecification::B44, $b44ViewModel->operationsSpecification());
+        $this->assertSame('B44', $b44ViewModel->b44BadgeLabel());
+
+        $b43Payload = $this->resultPayload();
+        $b43Payload['flight_plan_data']['releaseAuthorization'] = ['operationsSpecification' => 'b43'];
+        $b43ViewModel = $this->viewModel($b43Payload);
+
+        $this->assertSame(OperationsSpecification::B43, $b43ViewModel->operationsSpecification());
+        $this->assertNull($b43ViewModel->b44BadgeLabel());
+
+        $unknownViewModel = $this->viewModel($this->resultPayload());
+
+        $this->assertSame(OperationsSpecification::Unknown, $unknownViewModel->operationsSpecification());
+        $this->assertNull($unknownViewModel->b44BadgeLabel());
     }
 
     #[Test]

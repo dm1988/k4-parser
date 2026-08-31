@@ -16,6 +16,7 @@ use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use App\Services\FlightPlan\Extractor\FlightScheduleExtractor;
 use App\Services\FlightPlan\Extractor\GeneralDeclarationExtractor;
 use App\Services\FlightPlan\Extractor\MaintenanceLogExtractor;
+use App\Services\FlightPlan\Extractor\ReleaseAuthorizationExtractor;
 use App\Services\FlightPlan\Extractor\WaypointExtractor;
 use App\Services\FlightPlan\Extractor\WeatherExtractor;
 use App\Services\FlightPlan\Extractor\WeightBalanceExtractor;
@@ -116,6 +117,11 @@ class ExtractFlightPlanDataTest extends TestCase
             'data' => ['section_present' => true],
             'source_fragments' => ['general_declaration_signature' => 'private GENDEC signature'],
         ]);
+        $releaseAuthorizationExtractor = $this->createMock(ReleaseAuthorizationExtractor::class);
+        $releaseAuthorizationExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
+            'data' => ['operations_specification' => 'b44'],
+            'source_fragments' => ['release_authorization' => 'RELEASED IAW OPS SPEC B044'],
+        ]);
 
         $parsed = (new ExtractFlightPlanData(
             $textExtractor,
@@ -132,6 +138,7 @@ class ExtractFlightPlanDataTest extends TestCase
             $weightBalanceExtractor,
             $etopsQualificationExtractor,
             $generalDeclarationExtractor,
+            $releaseAuthorizationExtractor,
         ))->extractFile('/tmp/release.pdf');
 
         $this->assertInstanceOf(ParsedFlightPlanData::class, $parsed);
@@ -164,6 +171,8 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame('ETOPS 180 ETOPS ALTERNATE AIRPORTS', $parsed->sourceFragments['etops_qualification']);
         $this->assertTrue($parsed->generalDeclaration['section_present']);
         $this->assertSame('private GENDEC signature', $parsed->sourceFragments['general_declaration_signature']);
+        $this->assertSame('b44', $parsed->releaseAuthorization['operations_specification']);
+        $this->assertSame('RELEASED IAW OPS SPEC B044', $parsed->sourceFragments['release_authorization']);
         $this->assertSame('FL 340', $parsed->legacy['initial_altitude']);
     }
 

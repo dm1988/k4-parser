@@ -15,11 +15,13 @@ use App\DTOs\GeneralDeclarationData;
 use App\DTOs\MaintenanceItemData;
 use App\DTOs\MaintenanceLogData;
 use App\DTOs\ParsedFlightPlanData;
+use App\DTOs\ReleaseAuthorizationData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
 use App\DTOs\WaypointData;
 use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
+use App\Enums\OperationsSpecification;
 use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use App\Services\FlightPlan\FlightPlanResultSerializer;
 use App\ValueObjects\AirportCode;
@@ -74,6 +76,7 @@ class FlightPlanResultSerializerTest extends TestCase
             crewMembers: [new CrewMemberData('Alex Morgan', 'CP', 'YIP', '4827')],
             waypoints: [new WaypointData('FIX01', 'N01 02.3 E004 05.6', 5, 11, FuelQuantity::pounds(0))],
             generalDeclaration: new GeneralDeclarationData(true),
+            releaseAuthorization: new ReleaseAuthorizationData(OperationsSpecification::B44),
         );
         $parsed = new ParsedFlightPlanData(
             identity: [
@@ -113,6 +116,7 @@ class FlightPlanResultSerializerTest extends TestCase
                 'envelope_takeoff_landing_report' => 'private TLR evidence',
                 'computed_flight_plan_waypoints' => 'private waypoint row evidence',
                 'general_declaration_signature' => 'private GENDEC evidence',
+                'release_authorization' => 'private Operations Specification evidence',
             ],
             legacy: [
                 'departure_airport' => new AirportData('KLAX', 'LAX', 'Los Angeles International', 'Los Angeles', 'California', 'United States'),
@@ -142,6 +146,7 @@ class FlightPlanResultSerializerTest extends TestCase
         $this->assertSame('FIX01', $result['flight_plan_data']['waypoints'][0]['identifier']);
         $this->assertSame(0.0, $result['flight_plan_data']['waypoints'][0]['remainingFuel']['amount']);
         $this->assertTrue($result['flight_plan_data']['generalDeclaration']['sectionPresent']);
+        $this->assertSame('b44', $result['flight_plan_data']['releaseAuthorization']['operationsSpecification']);
         $this->assertArrayNotHasKey('crewMembers', $result['flight_plan_data']['maintenanceLog']);
         $this->assertArrayNotHasKey('source_fragments', $result);
         $this->assertStringNotContainsString('must not leak', json_encode($result, JSON_THROW_ON_ERROR));
@@ -149,5 +154,6 @@ class FlightPlanResultSerializerTest extends TestCase
         $this->assertStringNotContainsString('private TLR evidence', json_encode($result, JSON_THROW_ON_ERROR));
         $this->assertStringNotContainsString('private waypoint row evidence', json_encode($result, JSON_THROW_ON_ERROR));
         $this->assertStringNotContainsString('private GENDEC evidence', json_encode($result, JSON_THROW_ON_ERROR));
+        $this->assertStringNotContainsString('private Operations Specification evidence', json_encode($result, JSON_THROW_ON_ERROR));
     }
 }

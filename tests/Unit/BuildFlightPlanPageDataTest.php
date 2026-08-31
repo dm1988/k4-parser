@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Actions\BuildFlightPlanPageData;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
+use App\Enums\OperationsSpecification;
 use PHPUnit\Framework\TestCase;
 
 class BuildFlightPlanPageDataTest extends TestCase
@@ -39,6 +40,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame(11, $pageData->flightPlan->waypoints[0]->cumulativeDurationMinutes);
         $this->assertSame(0.0, $pageData->flightPlan->waypoints[0]->remainingFuel?->amount);
         $this->assertTrue($pageData->flightPlan->generalDeclaration->sectionPresent);
+        $this->assertSame(OperationsSpecification::B44, $pageData->flightPlan->releaseAuthorization->operationsSpecification);
     }
 
     public function test_normalized_core_values_take_precedence_over_conflicting_flat_compatibility_values(): void
@@ -114,6 +116,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $payload['flight_plan_data']['envelope'] = null;
         unset($payload['flight_plan_data']['flightInit']);
         unset($payload['flight_plan_data']['generalDeclaration']);
+        unset($payload['flight_plan_data']['releaseAuthorization']);
         unset($payload['flight_plan_data']['crewMembers'][0]['employeeNumber']);
         $payload['departure_airport'] = 'invalid';
         $payload['initial_altitude'] = [];
@@ -133,12 +136,24 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertNull($pageData->flightPlan->flightInit?->fmsInitialAltitude);
         $this->assertNull($pageData->flightPlan->etops);
         $this->assertFalse($pageData->flightPlan->generalDeclaration->sectionPresent);
+        $this->assertSame(OperationsSpecification::Unknown, $pageData->flightPlan->releaseAuthorization->operationsSpecification);
         $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::JeppPdPro));
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::SlotTimes));
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::FuelScore));
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::Etops));
         $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::MaintenanceLog));
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::Envelope));
+    }
+
+    public function test_it_defaults_malformed_release_authorization_to_unknown(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['releaseAuthorization'] = ['operationsSpecification' => 'unsupported'];
+
+        $pageData = (new BuildFlightPlanPageData)->handle($payload);
+
+        $this->assertNotNull($pageData);
+        $this->assertSame(OperationsSpecification::Unknown, $pageData->flightPlan->releaseAuthorization->operationsSpecification);
     }
 
     public function test_it_keeps_maintenance_context_available_without_a_dedicated_item_section(): void
@@ -370,6 +385,7 @@ class BuildFlightPlanPageDataTest extends TestCase
                     ]],
                 ],
                 'generalDeclaration' => ['sectionPresent' => true],
+                'releaseAuthorization' => ['operationsSpecification' => 'b44'],
                 'crewMembers' => [[
                     'name' => 'Alex Morgan',
                     'role' => 'CP',

@@ -17,6 +17,7 @@ use App\DTOs\GeneralDeclarationData;
 use App\DTOs\MaintenanceItemData;
 use App\DTOs\MaintenanceLogData;
 use App\DTOs\ParsedFlightPlanData;
+use App\DTOs\ReleaseAuthorizationData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
 use App\DTOs\SlotTimeData;
@@ -25,6 +26,7 @@ use App\DTOs\Weather\AirportWeatherData;
 use App\DTOs\Weather\WeatherData;
 use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
+use App\Enums\OperationsSpecification;
 use App\Services\FlightPlan\FlightInitFieldNormalizer;
 use App\Services\FlightPlan\FuelPlanFieldNormalizer;
 use App\Services\FlightPlan\WeightBalanceDataBuilder;
@@ -92,6 +94,13 @@ class BuildFlightPlanData
             weightBalance: $this->weightBalanceDataBuilder->build($parsed->weightBalance, $fuelPlan, $parsed->fuel),
             generalDeclaration: new GeneralDeclarationData(
                 sectionPresent: ($parsed->generalDeclaration['section_present'] ?? false) === true,
+            ),
+            releaseAuthorization: new ReleaseAuthorizationData(
+                operationsSpecification: OperationsSpecification::tryFrom(
+                    is_string($parsed->releaseAuthorization['operations_specification'] ?? null)
+                        ? $parsed->releaseAuthorization['operations_specification']
+                        : '',
+                ) ?? OperationsSpecification::Unknown,
             ),
             crewMembers: $this->crewMembers($parsed->crewMembers),
             waypoints: $this->waypoints($parsed),

@@ -177,6 +177,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeHtml('aria-label="Not present"')
             ->assertDontSeeHtml('aria-label="Not supported"')
             ->assertSeeHtml('h-2.5 w-2.5 ring-1 ring-inset ring-black/10 dark:ring-white/10')
+            ->assertDontSeeHtml('title="OpSpec B44 Authorized"')
             ->assertDispatched('open-modal', name: 'buy-me-a-coffee')
             ->call('selectTask', FlightPlanTask::Fms->value)
             ->assertSeeText('FMS route setup')
@@ -1308,6 +1309,7 @@ class FlightPlanBriefTest extends TestCase
                         'applicability' => 'confirmed_etops',
                     ],
                     generalDeclaration: ['section_present' => true],
+                    releaseAuthorization: ['operations_specification' => 'b44'],
                 ));
         });
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
@@ -1341,6 +1343,8 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('Review Slot Times')
             ->assertSeeText('Score Fuel')
             ->assertSeeText('Review ETOPS')
+            ->assertSeeHtml('title="OpSpec B44 Authorized"')
+            ->assertSeeHtml('bg-amber-500/10')
             ->assertSeeText('Operational support status')
             ->assertSeeText('GENDEC')
             ->assertSeeText('Available')
@@ -1367,6 +1371,8 @@ class FlightPlanBriefTest extends TestCase
                 ->call('selectTask', $task->value)
                 ->assertSet('activeTask', $task->value);
         }
+
+        $component->assertDontSeeHtml('title="OpSpec B44 Authorized"');
 
         $component
             ->call('selectTask', FlightPlanTask::SlotTimes->value)
@@ -1428,7 +1434,10 @@ class FlightPlanBriefTest extends TestCase
 
         $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock) use ($legacy): void {
             $this->expectOnce($mock, 'extractFile')
-                ->andReturn($this->parsedFlightPlan($legacy));
+                ->andReturn($this->parsedFlightPlan(
+                    legacy: $legacy,
+                    releaseAuthorization: ['operations_specification' => 'b43'],
+                ));
         });
         $this->mock(FlightRouteExtractor::class, function (MockInterface $mock): void {
             $this->expectOnce($mock, 'formatForIcaoDisplay')
@@ -1448,6 +1457,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertDontSeeText('Non ETOPS')
             ->assertDontSeeHtml('wire:key="flight-plan-overview-card-etops"')
             ->assertDontSeeHtml('wire:key="flight-plan-task-nav-etops"')
+            ->assertDontSeeHtml('title="OpSpec B44 Authorized"')
             ->assertDontSeeText('0 LB')
             ->assertDontSeeText('0 KG')
             ->assertDontSeeText('On plan')
@@ -1733,6 +1743,7 @@ class FlightPlanBriefTest extends TestCase
         ?array $weather = null,
         ?array $weightBalance = null,
         ?array $generalDeclaration = null,
+        ?array $releaseAuthorization = null,
     ): ParsedFlightPlanData {
         $legacy ??= $this->flightPlan();
 
@@ -1787,6 +1798,7 @@ class FlightPlanBriefTest extends TestCase
             weather: $weather ?? [],
             weightBalance: $weightBalance ?? [],
             generalDeclaration: $generalDeclaration ?? [],
+            releaseAuthorization: $releaseAuthorization ?? [],
             legacy: $legacy,
             waypoints: $waypoints ?? [],
         );

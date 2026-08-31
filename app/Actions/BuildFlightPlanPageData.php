@@ -17,6 +17,7 @@ use App\DTOs\FuelPlanData;
 use App\DTOs\GeneralDeclarationData;
 use App\DTOs\MaintenanceItemData;
 use App\DTOs\MaintenanceLogData;
+use App\DTOs\ReleaseAuthorizationData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
 use App\DTOs\WaypointData;
@@ -27,6 +28,7 @@ use App\DTOs\WeightBalance\WeightBalanceFieldData;
 use App\Enums\AltitudeUnit;
 use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
+use App\Enums\OperationsSpecification;
 use App\Enums\WeightBalanceSourceStatus;
 use App\Services\FlightPlan\FlightInitFieldNormalizer;
 use App\Services\FlightPlan\FuelPlanFieldNormalizer;
@@ -111,6 +113,7 @@ class BuildFlightPlanPageData
             weather: $this->weather($data['weather'] ?? null),
             weightBalance: $this->weightBalance($data['weightBalance'] ?? null),
             generalDeclaration: $this->generalDeclaration($data['generalDeclaration'] ?? null),
+            releaseAuthorization: $this->releaseAuthorization($data['releaseAuthorization'] ?? null),
             crewMembers: $this->crewMembers($data['crewMembers'] ?? null),
             waypoints: $this->waypoints($data['waypoints'] ?? null),
         );
@@ -120,6 +123,17 @@ class BuildFlightPlanPageData
     {
         return new GeneralDeclarationData(
             sectionPresent: is_array($value) && ($value['sectionPresent'] ?? false) === true,
+        );
+    }
+
+    private function releaseAuthorization(mixed $value): ReleaseAuthorizationData
+    {
+        $operationsSpecification = is_array($value)
+            ? OperationsSpecification::tryFrom($this->nullableString($value['operationsSpecification'] ?? null) ?? '')
+            : null;
+
+        return new ReleaseAuthorizationData(
+            operationsSpecification: $operationsSpecification ?? OperationsSpecification::Unknown,
         );
     }
 

@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Actions\BuildFlightPlanData;
 use App\DTOs\ParsedFlightPlanData;
+use App\Enums\OperationsSpecification;
 use PHPUnit\Framework\TestCase;
 
 class BuildFlightPlanDataTest extends TestCase
@@ -124,6 +125,7 @@ class BuildFlightPlanDataTest extends TestCase
                 'planned_estimated_landing_weight' => ['amount' => 371893, 'unit' => 'lb', 'status' => 'confirmed'],
             ],
             generalDeclaration: ['section_present' => true],
+            releaseAuthorization: ['operations_specification' => 'b44'],
             waypoints: [
                 ['identifier' => 'FIX01', 'coordinate' => 'N01 02.3 E004 05.6', 'time' => '005', 'total_time' => '00.11', 'remaining_fuel' => '0000'],
                 ['identifier' => 'FIX01', 'coordinate' => 'N02 03.4 E005 06.7', 'time' => null, 'total_time' => null, 'remaining_fuel' => null],
@@ -174,6 +176,7 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame(570658, $flightPlan->weightBalance?->plannedRampWeight->plannedValue?->amount);
         $this->assertTrue($flightPlan->weightBalance?->plannedRampWeight->derived);
         $this->assertTrue($flightPlan->generalDeclaration->sectionPresent);
+        $this->assertSame(OperationsSpecification::B44, $flightPlan->releaseAuthorization->operationsSpecification);
     }
 
     public function test_it_omits_the_fuel_plan_when_no_fuel_was_normalized(): void
@@ -378,6 +381,20 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertNull($flightPlan->etops);
     }
 
+    public function test_it_defaults_malformed_release_authorization_to_unknown(): void
+    {
+        foreach (['unsupported', 44, []] as $malformedValue) {
+            $flightPlan = (new BuildFlightPlanData)->handle($this->partialParsedData(
+                releaseAuthorization: ['operations_specification' => $malformedValue],
+            ));
+
+            $this->assertSame(
+                OperationsSpecification::Unknown,
+                $flightPlan->releaseAuthorization->operationsSpecification,
+            );
+        }
+    }
+
     /**
      * @param  array<string, mixed>  $identity
      * @param  array<string, mixed>  $schedule
@@ -392,6 +409,7 @@ class BuildFlightPlanDataTest extends TestCase
         array $fuel = [],
         array $etops = [],
         array $waypoints = [],
+        array $releaseAuthorization = [],
     ): ParsedFlightPlanData {
         return new ParsedFlightPlanData(
             identity: $identity,
@@ -404,6 +422,7 @@ class BuildFlightPlanDataTest extends TestCase
             fuel: $fuel,
             etops: $etops,
             waypoints: $waypoints,
+            releaseAuthorization: $releaseAuthorization,
         );
     }
 }
