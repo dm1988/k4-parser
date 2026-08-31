@@ -5,6 +5,7 @@ namespace App\Services\FlightPlan\Extractor;
 use App\Exceptions\FlightRouteNotFoundException;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Smalot\PdfParser\Parser;
 use Throwable;
 
@@ -13,6 +14,7 @@ class FlightPlanTextExtractor
     public function __construct(
         private readonly Parser $parser,
         private readonly Repository $cache,
+        private readonly PdfImagePageTextExtractor $imagePageTextExtractor = new PdfImagePageTextExtractor,
     ) {}
 
     public function extract(string $filePath): string
@@ -38,13 +40,30 @@ class FlightPlanTextExtractor
 
         $fileHash = hash_file('sha256', $filePath);
 
-        return $fileHash === false ? null : 'flight-plan-extractor:pdf-text:'.$fileHash;
+        return $fileHash === false ? null : 'flight-plan-extractor:v2:pdf-text:'.$fileHash;
     }
 
     private function read(string $filePath): string
     {
         try {
-            return str_replace("\x00", '', $this->parser->parseFile($filePath)->getText());
+            $document = $this->parser->parseFile($filePath);
+            $text = str_replace("\x00", '', $document->getText());
+
+            foreach ($document->getPages() as $pageIndex => $page) {
+                $pageText = str_replace("\x00", '', $page->getText());
+
+                if (Str::squish($pageText) !== '') {
+                    continue;
+                }
+
+                $ocrText = $this->imagePageTextExtractor->extract($filePath, $pageIndex);
+
+                if ($ocrText !== '') {
+                    $text .= "\n".$ocrText;
+                }
+            }
+
+            return $text;
         } catch (Throwable $throwable) {
             try {
                 Log::error('PDF parsing failed', [

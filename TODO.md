@@ -121,6 +121,8 @@ Outcome: GENDEC availability is now determined from a bounded, ordered General D
 
 Follow-up outcome: Availability labels and badge/dot color classes now belong to `FlightPlanTaskAvailability` instead of the Blade component. `NotPresent` renders with an explicit red warning palette in both full badges and compact dots, while the existing opt-in rendering behavior for `Available` remains unchanged.
 
+GENDEC image-page follow-up outcome: Flight release PDF pages that contain no extractable text now receive a targeted Tesseract OCR fallback before structured extraction. GENDEC detection validates the complete declaration label set within the bounded section without assuming a single-column label order, allowing image-only two-column forms such as `CKS027227SBKP.pdf` to resolve as present. The PDF text cache namespace was versioned so releases cached before this fix are reprocessed automatically.
+
 Commit message: `feat: determine GENDEC availability`
 
 ### [x] Completed follow up: FlightPlanTaskAvailability color classes
@@ -152,6 +154,8 @@ Commit message: `feat: classify B43 and B44 flight releases`
 - Front end display as a caution
 
 Outcome: Release-manifest parsing now stops at physical line boundaries and removes trailing `ADDNTL`, `ADDNTL CAPT`, `IRP`, and `HIGH MINS` annotations from crew names. `HIGH MINS` is preserved as a typed boolean through extraction, DTO construction, result serialization, and cache rehydration, and affected crew render an amber caution badge in the Envelope and Flight Init crew lists. The existing flattened-placeholder regression remains covered so final employee records are retained before empty `IRP`, `MX`, `LM`, and `ACM` role columns.
+
+Static-analysis follow-up outcome: Larastan test errors were resolved by preserving Livewire test component types across response assertions, removing nullsafe access only after PHPUnit assertions prove values are non-null, and dropping redundant nested assertions beneath an explicitly null `flightInit` value.
 
 Commit message: `fix: tighten crew name extraction`
 

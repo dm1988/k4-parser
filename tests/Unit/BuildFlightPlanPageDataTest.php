@@ -22,10 +22,10 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame('DCT Q139 TEST', $pageData->flightPlan->route->route);
         $this->assertSame(5549, $pageData->flightPlan->route->distanceNauticalMiles);
         $this->assertSame(200, $pageData->flightPlan->fuelPlan?->costIndex);
-        $this->assertSame(0.0, $pageData->flightPlan->fuelPlan?->contingency?->amount);
+        $this->assertSame(0.0, $pageData->flightPlan->fuelPlan->contingency?->amount);
         $this->assertSame('Ted Stevens Anchorage International Airport', $pageData->departureAirport?->name);
         $this->assertSame(34000, $pageData->flightPlan->flightInit?->filedInitialAltitude?->value);
-        $this->assertSame(29000, $pageData->flightPlan->flightInit?->fmsInitialAltitude?->value);
+        $this->assertSame(29000, $pageData->flightPlan->flightInit->fmsInitialAltitude?->value);
         $this->assertSame('12h10m', $pageData->duration);
         $this->assertSame('ETP1', $pageData->flightPlan->etops?->equalTimePoints[0]->label);
         $this->assertSame('N40 31.1', $pageData->flightPlan->etops->entryPoint?->coordinate->latitude);
@@ -34,7 +34,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame('Alex Morgan', $pageData->flightPlan->crewMembers[0]->name);
         $this->assertSame('4827', $pageData->flightPlan->crewMembers[0]->employeeNumber);
         $this->assertTrue($pageData->flightPlan->crewMembers[0]->highMins);
-        $this->assertSame('11', $pageData->flightPlan->flightInit?->acarsInitDate);
+        $this->assertSame('11', $pageData->flightPlan->flightInit->acarsInitDate);
         $this->assertSame(612400, $pageData->flightPlan->envelope?->plannedTakeoffWeight?->amount);
         $this->assertSame(1015, $pageData->flightPlan->envelope->qnhHectopascals);
         $this->assertSame(['FIX01', 'FIX01'], array_column($pageData->flightPlan->waypoints, 'identifier'));
@@ -101,8 +101,8 @@ class BuildFlightPlanPageDataTest extends TestCase
 
         $this->assertNotNull($pageData);
         $this->assertSame('PANC', $pageData->flightPlan->weather?->departure?->airport->value);
-        $this->assertSame(['METAR PANC 250553Z 22006KT 10SM FEW060 14/06 A2991'], $pageData->flightPlan->weather?->departure?->metars);
-        $this->assertNull($pageData->flightPlan->weather?->destination);
+        $this->assertSame(['METAR PANC 250553Z 22006KT 10SM FEW060 14/06 A2991'], $pageData->flightPlan->weather->departure->metars);
+        $this->assertNull($pageData->flightPlan->weather->destination);
         $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::Weather));
     }
 
@@ -133,8 +133,6 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertNull($pageData->flightPlan->flightInit);
         $this->assertNull($pageData->flightPlan->crewMembers[0]->employeeNumber);
         $this->assertNull($pageData->departureAirport);
-        $this->assertNull($pageData->flightPlan->flightInit?->filedInitialAltitude);
-        $this->assertNull($pageData->flightPlan->flightInit?->fmsInitialAltitude);
         $this->assertNull($pageData->flightPlan->etops);
         $this->assertFalse($pageData->flightPlan->generalDeclaration->sectionPresent);
         $this->assertSame(OperationsSpecification::Unknown, $pageData->flightPlan->releaseAuthorization->operationsSpecification);

@@ -147,18 +147,18 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame('KLAX', $flightPlan->route->departure->value);
         $this->assertSame(5549, $flightPlan->route->distanceNauticalMiles);
         $this->assertSame(216800.0, $flightPlan->fuelPlan?->ramp?->amount);
-        $this->assertSame(200, $flightPlan->fuelPlan?->costIndex);
+        $this->assertSame(200, $flightPlan->fuelPlan->costIndex);
         $this->assertTrue($flightPlan->maintenanceLog?->sectionPresent);
         $this->assertSame('28-22-01', $flightPlan->maintenanceLog->items[0]->number);
         $this->assertSame('Alex Morgan', $flightPlan->crewMembers[0]->name);
         $this->assertSame('4827', $flightPlan->crewMembers[0]->employeeNumber);
         $this->assertTrue($flightPlan->crewMembers[0]->highMins);
         $this->assertSame('11', $flightPlan->flightInit?->acarsInitDate);
-        $this->assertSame(8900, $flightPlan->flightInit?->filedInitialAltitude?->value);
-        $this->assertSame('meters', $flightPlan->flightInit?->filedInitialAltitude?->unit->value);
-        $this->assertTrue($flightPlan->flightInit?->filedInitialAltitude?->isFlightLevel);
-        $this->assertSame(29000, $flightPlan->flightInit?->fmsInitialAltitude?->value);
-        $this->assertSame('feet', $flightPlan->flightInit?->fmsInitialAltitude?->unit->value);
+        $this->assertSame(8900, $flightPlan->flightInit->filedInitialAltitude?->value);
+        $this->assertSame('meters', $flightPlan->flightInit->filedInitialAltitude->unit->value);
+        $this->assertTrue($flightPlan->flightInit->filedInitialAltitude->isFlightLevel);
+        $this->assertSame(29000, $flightPlan->flightInit->fmsInitialAltitude?->value);
+        $this->assertSame('feet', $flightPlan->flightInit->fmsInitialAltitude->unit->value);
         $this->assertSame(612400, $flightPlan->envelope->plannedTakeoffWeight?->amount);
         $this->assertNull($flightPlan->envelope->qnhInchesMercury);
         $this->assertSame(1015, $flightPlan->envelope->qnhHectopascals);
@@ -167,16 +167,16 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame(['FIX01', 'FIX01'], array_column($flightPlan->waypoints, 'identifier'));
         $this->assertSame(11, $flightPlan->waypoints[0]->cumulativeDurationMinutes);
         $this->assertSame(0.0, $flightPlan->waypoints[0]->remainingFuel?->amount);
-        $this->assertSame('lb', $flightPlan->waypoints[0]->remainingFuel?->unit);
+        $this->assertSame('lb', $flightPlan->waypoints[0]->remainingFuel->unit);
         $this->assertNull($flightPlan->waypoints[1]->legDurationMinutes);
         $this->assertSame('KLAX', $flightPlan->weather?->departure?->airport->value);
-        $this->assertSame('TAF KLAX 241739Z 2418/2524 25007KT P6SM OVC020', $flightPlan->weather?->departure?->tafs[0]);
-        $this->assertSame('RKSI', $flightPlan->weather?->destination?->airport->value);
-        $this->assertNull($flightPlan->weather?->alternate);
-        $this->assertSame(335858, $flightPlan->weightBalance?->basicOperatingWeight->plannedValue?->amount);
-        $this->assertSame(214829, $flightPlan->weightBalance?->plannedTakeoffFuel->plannedValue?->amount);
-        $this->assertSame(570658, $flightPlan->weightBalance?->plannedRampWeight->plannedValue?->amount);
-        $this->assertTrue($flightPlan->weightBalance?->plannedRampWeight->derived);
+        $this->assertSame('TAF KLAX 241739Z 2418/2524 25007KT P6SM OVC020', $flightPlan->weather->departure->tafs[0]);
+        $this->assertSame('RKSI', $flightPlan->weather->destination?->airport->value);
+        $this->assertNull($flightPlan->weather->alternate);
+        $this->assertSame(335858, $flightPlan->weightBalance->basicOperatingWeight->plannedValue?->amount);
+        $this->assertSame(214829, $flightPlan->weightBalance->plannedTakeoffFuel->plannedValue?->amount);
+        $this->assertSame(570658, $flightPlan->weightBalance->plannedRampWeight->plannedValue?->amount);
+        $this->assertTrue($flightPlan->weightBalance->plannedRampWeight->derived);
         $this->assertTrue($flightPlan->generalDeclaration->sectionPresent);
         $this->assertSame(OperationsSpecification::B44, $flightPlan->releaseAuthorization->operationsSpecification);
     }
@@ -305,7 +305,7 @@ class BuildFlightPlanDataTest extends TestCase
         ));
 
         $this->assertSame(147700.0, $flightPlan->waypoints[0]->remainingFuel?->amount);
-        $this->assertSame('lb', $flightPlan->waypoints[0]->remainingFuel?->unit);
+        $this->assertSame('lb', $flightPlan->waypoints[0]->remainingFuel->unit);
     }
 
     public function test_it_migrates_current_etops_values_without_changing_their_meaning(): void

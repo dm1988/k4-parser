@@ -317,15 +317,23 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeTextInOrder(['Route', 'ETOPS critical points'])
             ->assertSeeText('ETOPS critical points')
             ->assertSeeText('DCT Q139 TEST')
-            ->assertDontSeeText('Not supported yet')
+            ->assertDontSeeText('Not supported yet');
+
+        $component
             ->call('selectTask', FlightPlanTask::SlotTimes->value)
             ->assertSet('activeTask', FlightPlanTask::SlotTimes->value)
             ->assertSeeText('Not present in this release')
-            ->assertSeeText('Slot Times data was not found')
+            ->assertSeeText('Slot Times data was not found');
+
+        $component
             ->call('$refresh')
-            ->assertSet('activeTask', FlightPlanTask::SlotTimes->value)
+            ->assertSet('activeTask', FlightPlanTask::SlotTimes->value);
+
+        $component
             ->call('selectTask', 'untrusted-task')
-            ->assertSet('activeTask', FlightPlanTask::SlotTimes->value)
+            ->assertSet('activeTask', FlightPlanTask::SlotTimes->value);
+
+        $component
             ->call('selectTask', FlightPlanTask::Fms->value)
             ->assertSet('activeTask', FlightPlanTask::Fms->value)
             ->assertSeeText('FMS route setup')
@@ -506,14 +514,18 @@ class FlightPlanBriefTest extends TestCase
                 ->andReturn('DCT Q139 TEST');
         });
 
-        Livewire::actingAs(User::factory()->admin()->create())
-            ->test(FlightPlanBrief::class)
+        $component = Livewire::actingAs(User::factory()->admin()->create())
+            ->test(FlightPlanBrief::class);
+
+        $component
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
             ->assertSet('activeTask', FlightPlanTask::Overview->value)
             ->assertDontSeeHtml('wire:key="flight-plan-overview-card-etops"')
             ->assertDontSeeHtml('wire:key="flight-plan-task-nav-etops"')
             ->assertSeeTextInOrder(['ETOPS', 'Non ETOPS'])
-            ->assertSeeHtml('bg-[#1B365D]/10 text-[#1B365D] dark:bg-blue-400/15 dark:text-blue-200')
+            ->assertSeeHtml('bg-[#1B365D]/10 text-[#1B365D] dark:bg-blue-400/15 dark:text-blue-200');
+
+        $component
             ->call('selectTask', FlightPlanTask::Etops->value)
             ->assertSet('activeTask', FlightPlanTask::Overview->value)
             ->assertDontSeeHtml('wire:key="flight-plan-task-panel-etops"')

@@ -42,15 +42,20 @@ class GeneralDeclarationExtractor
 
     private function hasRequiredStructure(string $section): bool
     {
-        $pattern = '#\(\s*OUTWARD\s*/\s*INWARD\s*\)'
-            .'.*?\bOWNER\s+OR\s+OPERATOR\s*:'
-            .'.*?\bMARKS\s+OF\s+NATIONALITY\s+AND\s+REGISTRATION\s*:'
-            .'.*?\bDEPARTURE\s+FROM\s*:'
-            .'.*?\bFLIGHT\s+NO\s*:'
-            .'.*?DATE\s*:'
-            .'.*?\bARRIVAL\s+AT\s*:#is';
+        $patterns = [
+            '/\(\s*OUTWARD\s*\/\s*INWARD\s*\)/i',
+            '/\bOWNER\s+OR\s+OPERATOR\s*:/i',
+            '/\bMARKS\s+OF\s+NATIONALITY\s+AND\s+REGISTRATION\s*:/i',
+            '/\bDEPARTURE\s+FROM\s*:/i',
+            '/\bFLIGHT\s+NO\s*:/i',
+            '/DATE\s*:/i',
+            '/\bARRIVAL\s+AT\s*:/i',
+        ];
 
-        return preg_match($pattern, $section) === 1;
+        return array_all(
+            $patterns,
+            static fn (string $pattern): bool => preg_match($pattern, $section) === 1,
+        );
     }
 
     private function sourceFragment(string $section): string

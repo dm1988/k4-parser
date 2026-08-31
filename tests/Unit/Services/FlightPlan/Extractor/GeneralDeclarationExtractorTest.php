@@ -55,6 +55,17 @@ class GeneralDeclarationExtractorTest extends TestCase
         $this->assertTrue($result['data']['section_present']);
     }
 
+    public function test_it_detects_labels_extracted_in_two_column_reading_order(): void
+    {
+        $text = 'General Declaration (Outward/Inward) Owner or Operator: K4 '
+            .'Marks of Nationality and Registration: N000XX Flight No: K4000 Date: 24May2026 '
+            .'Departure from: Los Angeles Arrival At: Seoul';
+
+        $result = (new GeneralDeclarationExtractor)->extract($text);
+
+        $this->assertTrue($result['data']['section_present']);
+    }
+
     public function test_it_reports_a_missing_page(): void
     {
         $result = (new GeneralDeclarationExtractor)->extract('Operational flight release without a declaration page.');
