@@ -80,10 +80,10 @@ Identified cleanup, in implementation order:
 
    Verification follow-up outcome: `FlightReleaseControllerTest` now asserts the current automatic-upload dropzone copy and verifies that the obsolete `Extract route` control remains absent.
 
-   Static-analysis follow-up outcome: `FlightScheduleExtractor::extract()` now declares `slot_source_text` and each slot's nullable `tolerance_minutes` in its public return shape, matching the normalized data it always emits and removing the reported test-offset ambiguity.
+   Static-analysis follow-up outcome: `FlightScheduleExtractor::extract()` now declares `slot_source_text` and each slot's nullable `tolerance_minutes` in its public return shape, matching the normalized data it always emits and removing the reported test-offset ambiguity. The private sample ownership assertion now uses PHPUnit's object-property constraint, preserving the Maintenance/ETOPS boundary check without an always-false `property_exists()` call.
 
    Commit message: `refactor: correct flight plan domain ownership`
-2. **Split construction and presentation by subdomain.**
+2. [x] Completed: **Split construction and presentation by subdomain.**
    - Extract small builders/hydrators for ETOPS, Maintenance, Weather, Crew, Waypoints, and TLR, following the existing `WeightBalanceDataBuilder` pattern.
    - Reuse those collaborators from both initial construction and cached-payload rehydration so validation/defaulting rules have one implementation.
    - Require collaborators through constructor injection instead of defaulting parameters to `new ...`; keep direct construction in tests explicit when appropriate.
