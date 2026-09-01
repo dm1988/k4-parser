@@ -52,99 +52,14 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 # Tasks
 
-## 19. Remove compatibility paths and complete release verification
+## 19. [x] Completed: Remove compatibility paths and complete release verification
 
-Goal:
-- Finish the normalized flight-release migration only after every active UI consumer can be rebuilt from one typed cached contract, then run a release-quality verification checkpoint.
-
-Current implementation:
-- `FlightPlanResultSerializer` emits the nested `flight_plan_data` aggregate plus 16 flat compatibility keys; `HandleFlightPlanExtraction::RESULT_KEYS` independently mirrors that public allowlist.
-- `BuildFlightPlanPageData` now rehydrates airport enrichment and planned duration exclusively from `flight_plan_data`; root compatibility values remain emitted for later writer removal but have no active front-end reader.
-- `RouteData` owns enriched departure, destination, and alternate airport details, while `ScheduleData::blockDuration` owns the FPL planned duration. `ParsedFlightPlanData::$legacy` remains only for the compatibility-writer cleanup in the later sequence.
-- The orphaned `App\ValueObjects\FlightPlan` was removed during task 18; there is no legacy value-object reconstruction path to preserve or migrate.
-- ETOPS qualification is already in `Extractor/Etops/EtopsQualificationExtractor`, not `MaintenanceLogExtractor`. The questioned `ETOPS FLIGHT: NO` and `NO ETOPS` branches remain there and have explicit unit coverage; remove them only when representative source evidence proves those signatures invalid.
-- `FlightPlanPageData::availabilityFor()` marks several tasks available unconditionally, including Maintenance Log and Flight Init, while their normalized sections can be absent. Honest task availability therefore needs an explicit per-task audit before release.
-- Privacy, scoped cache access, upload deletion, authorization, feature gating, metrics, parser failures, and unexpected-error reporting have focused coverage. Cache expiry itself does not yet have an explicit `FlightPlanResultCacheTest` assertion.
-
-Problem:
-- Removing the flat payload now would discard airport details and displayed duration after cache rehydration.
-- The duplicated allowlist, serializer fields, parser `legacy` bag, and legacy-oriented tests make it easy to reintroduce a flat consumer.
-- Cached results written immediately before deployment need an explicit invalidation/version strategy once compatibility hydration is removed.
-- A passing unit suite alone does not verify production asset compilation, responsive interaction, accessibility, or representative PDF/OCR behavior.
-
-Removal sequence:
-1. [x] Completed: **Close the two remaining normalized-contract gaps.**
-   - Choose and document a typed owner for enriched departure/destination/alternate airport data; serialize it inside the normalized aggregate and rehydrate it without reading root keys.
-   - Reconcile the route-extractor `duration` with `ScheduleData::blockDuration`. Add parity fixtures first, then keep one typed source or introduce a clearly named typed planned-duration field if the source meanings differ.
-   - Add contract tests proving `FlightPlanPageData` and every visible task render identically from a payload containing only normalized data.
-
-   Outcome: `RouteData` now owns typed airport enrichment alongside the corresponding airport codes, and its serialized form carries departure, destination, and alternate details inside `flight_plan_data.route`. `FlightScheduleExtractor` remains the single parser for FPL planned duration, with `ScheduleData::blockDuration` now driving normalized serialization, page hydration, FMS presentation, and the temporary root compatibility value. Extraction no longer drops airport DTOs into legacy-only staging. Normalized-only contract tests prove page hydration and rendered HTML parity for every visible task, while conflicting root airport and duration values are ignored. Focused DTO, extractor, builder, serializer, view-model, task-rendering, and Livewire regressions pass after Pint.
-
-   Commit message: `refactor: normalize airport and duration ownership`
-2. [x] Completed: **Cut over readers before writers.**
-   - Remove obsolete normalized-vs-flat fallback fixtures now that `BuildFlightPlanPageData` reads airport data and duration only from `flight_plan_data`.
-   - Remove root compatibility values from test payload factories while retaining the regression assertion that conflicting root values are ignored.
-
-   Outcome: Shared page-data and presentation payload factories now contain only the normalized `flight_plan_data` contract. The obsolete mixed-payload versus normalized-only rendering comparison was removed, while the focused regression test still injects conflicting root values and proves the normalized airport, route, runway, and duration values win.
-
-   Commit message: `test: complete normalized reader cutover`
-3. [x] Completed: **Remove compatibility writers and staging.**
-
-   Outcome: `FlightPlanResultSerializer` now owns a single normalized public boundary containing only `flight_plan_data`; its route-extractor dependency, flat compatibility fields, and formatting helper were removed. `HandleFlightPlanExtraction` returns that serializer contract directly without a duplicated key allowlist. `ParsedFlightPlanData::$legacy` and route staging were removed, and compatibility-only mocks, fixtures, and assertions were replaced with normalized-contract coverage. Repository searches confirm no production or flight-plan test references remain for the removed staging property, writer allowlist, or route formatting method.
-
-   Commit message: `refactor: remove flight plan compatibility writers`
-4. [x] Completed: **Version the cache boundary.**
-   - Version the flight-plan result cache namespace or payload schema when the cutover ships so pre-cutover arrays cannot be silently interpreted by the new hydrator.
-   - Add explicit TTL-expiry, wrong-user, malformed-key, reset/forget, and old-schema rejection tests. It is acceptable for an in-flight pre-release result to return the user to the upload state after deployment; it is not acceptable to partially render mixed schemas.
-
-   Outcome: Flight-plan results now use the `flight_plan_results:v2` cache namespace, so unversioned pre-cutover payloads are invisible to the normalized hydrator and safely return users to the upload state. Focused cache tests cover the versioned opaque key, configured TTL expiry, user isolation, malformed keys, explicit forgetting, and rejection of a mixed legacy payload stored under the old namespace. The existing successful extraction/reset Livewire regression continues to prove that resetting the workspace forgets its cached result.
-
-   Commit message: `refactor: version flight plan result cache`
-5. [x] Completed: **Finish small compatibility-era UI cleanup.**
-   - Define the required typed evidence for every `FlightPlanTask` and test present, absent, unsupported, and confirmed-empty states. Remove unconditional availability where a task's source section can be absent, and keep Overview/shared-context exceptions explicit.
-   - Remove `FlightPlanTask::hasCustomView()`, its always-true unit assertion, and the unreachable fallback branch in `workspace.blade.php` after component coverage proves all visible task cases resolve.
-   - Keep ETOPS signature changes separate from the contract removal. If the two non-ETOPS signatures are invalid, add a sanitized representative fixture that demonstrates the false classification before deleting the branches and updating `EtopsQualificationExtractorTest`.
-
-   Outcome: Task availability now follows typed evidence for every task. Flight Init requires its confirmed section or crew data; Review MEL / CDL safely handles an absent or confirmed-empty maintenance section; and an explicitly present ETOPS section without supported detail reports `NotSupported`, while confirmed non-ETOPS remains `NotPresent`. Overview, FMS, Jepp PD-Pro, Maintenance Log, and Envelope remain explicit shared-context exceptions. Focused coverage exercises available, absent, unsupported, and confirmed-empty states. Every task already maps to a verified Blade component, and repository searches confirm the obsolete `hasCustomView()` API, assertion, and workspace fallback are absent. ETOPS extraction signatures were left unchanged.
-
-   Commit message: `refactor: finalize flight plan task availability`
-6. [x] Completed: **Lock the privacy boundary.**
-   - Assert `sourceFragments`, raw extracted page text, storage paths, and private evidence are absent from the serialized cache payload, Livewire snapshot, rendered HTML, logs, and validation/error responses.
-   - Keep the Livewire component state limited to the locked opaque result key and active task; rehydrated page/view data remains derived server-side.
-
-   Outcome: Flight-plan source fragments remain internal to extraction and are excluded from the normalized cache contract, Livewire state, and rendered HTML. Parser and extraction failure logs now contain only safe error classes and operational metadata—never private storage paths, filenames, raw parser messages, or document evidence. User-visible parser and unexpected-error responses are generic, and unexpected exceptions are reported through a sanitized boundary. Privacy sentinels cover cache serialization, the constrained Livewire state, rendered output, logs, and error bags.
-
-   Commit message: `fix: lock flight plan privacy boundary`
-
-Focused verification while implementing:
-- Contract and hydration: `ExtractFlightPlanDataTest`, `BuildFlightPlanDataTest`, `FlightPlanResultSerializerTest`, `BuildFlightPlanPageDataTest`, and DTO tests for each moved field.
-- Cache and privacy: `FlightPlanResultCacheTest` plus the successful extraction, missing-cache, reset, cross-user, source-fragment, and Livewire snapshot assertions in `FlightPlanBriefTest`.
-- Lifecycle and failure handling: the successful extraction, request metrics, route-not-found, logging failure, unexpected exception, and upload-deletion cases in `FlightPlanBriefTest`.
-- Access boundaries: `FlightReleaseControllerTest`, `FeatureRouteAuthorizationTest`, and the component action authorization case in `FlightPlanBriefTest`.
-- Presentation parity: `FlightReleasePageViewModelTest`, `FlightPlanTaskTest`, component tests, and the affected JavaScript test only when interaction code changes.
-
-Final integration checkpoint:
-1. Run `vendor/bin/sail bin pint --dirty --format agent` after the final PHP changes.
-2. Run the complete PHPUnit suite with `vendor/bin/sail artisan test --compact`.
-3. Run the JavaScript suite with `vendor/bin/sail npm test`.
-4. Build production assets with `vendor/bin/sail npm run build`.
-5. Run Larastan once with the project configuration.
-6. Add Larastan to CI or an equally enforced release workflow so the final static-analysis gate is repeatable rather than dependent on a manual checklist.
-7. Confirm the worktree contains no accidental generated assets, cache files, or unrelated changes.
-
-Manual release smoke tests:
-- Upload representative text-based and OCR/image-only PDFs, including GENDEC, B43/B44, non-ETOPS, ETOPS, missing optional sections, parser failure, and malformed/secured PDF cases.
-- Confirm automatic parsing after file selection, recoverable retry/reset behavior, task navigation, copy controls, and no reparsing during refresh/task changes.
-- Check mobile, tablet, and desktop layouts; keyboard-only operation; visible focus; accessible names/status announcements; screen-reader reading order; and light/dark themes.
-- Confirm request metrics and failure records contain operational metadata but no document content, and verify temporary uploads are deleted after both success and failure.
-
-Constraints:
-- Do not remove a compatibility field until a typed equivalent and parity test exist.
-- Do not keep a silent fallback for old cache schemas after the versioned cutover.
-- Run focused tests during each batch, Pint after PHP changes, JavaScript tests after interaction changes, and Larastan only at this final integration checkpoint.
-- Replace this plan with concise actual outcomes when completed instead of appending a duplicate implementation log.
-
-Done when: no UI depends on the flat compatibility payload, all enabled tasks have honest availability states, and the full integration checkpoint passes.
+Outcome:
+- The flight-release workspace now serializes, caches, hydrates, and renders exclusively from the typed `flight_plan_data` contract. Flat compatibility writers, readers, staging data, duplicated allowlists, and unreachable task-view fallbacks are removed.
+- Airport enrichment and planned duration have typed owners, task availability follows explicit normalized evidence, and the `flight_plan_results:v2` namespace rejects pre-cutover cache entries instead of partially hydrating them.
+- Source fragments, raw document evidence, filenames, storage paths, and parser details remain outside cache payloads, Livewire state, rendered HTML, logs, and user-facing errors.
+- Cache expiry and ownership boundaries, reset/forget behavior, old-schema rejection, lifecycle failures, authorization, upload deletion, rendering, and privacy boundaries have focused regression coverage.
+- The release checkpoint passes: Pint; 600 PHPUnit tests with 3,760 assertions; 12 JavaScript tests; the production Vite build; and Larastan with zero errors. Larastan is now an enforced CI job, and the generated asset build introduced no tracked artifacts.
 
 Commit message: `refactor: complete flight plan workspace migration`
 

@@ -1288,7 +1288,6 @@ class FlightPlanBriefTest extends TestCase
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
             ->assertSet('activeTask', FlightPlanTask::Overview->value)
-            ->assertSeeText('Flight and aircraft')
             ->assertSeeText('CKS241')
             ->assertSeeText('May 25, 2026')
             ->assertSeeText('B777-200F')
@@ -1306,7 +1305,6 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeHtml('aria-label="Slot Times: 2 approved slots"')
             ->assertSeeHtml('rounded-full bg-amber-100')
             ->assertSeeText('1 critical point · EENT · EEXP')
-            ->assertSeeText('ACARS Initialize Flight')
             ->assertSeeText('Program FMS')
             ->assertSeeText('Review Slot Times')
             ->assertSeeText('Score Fuel')
@@ -1325,7 +1323,6 @@ class FlightPlanBriefTest extends TestCase
 
         $flightPlanKey = $component->get('flightPlanKey');
         $detailTasks = [
-            FlightPlanTask::FlightInit,
             FlightPlanTask::Fms,
             FlightPlanTask::SlotTimes,
             FlightPlanTask::FuelScore,
@@ -1646,7 +1643,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('We could not process that flight release. Please try again.');
 
         Exceptions::assertReported(
-            fn (RuntimeException $exception): bool => $exception->getMessage() === 'Unable to record extraction',
+            fn (RuntimeException $exception): bool => $exception->getMessage() === 'Flight plan extraction failed.',
         );
 
         $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());

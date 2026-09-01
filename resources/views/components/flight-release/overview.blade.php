@@ -3,21 +3,6 @@
 <div {{ $attributes->merge(['class' => 'flex min-w-0 flex-col gap-5 p-3 sm:p-5']) }}>
     <div class="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
         <x-flight-release.overview-card
-            :task="\App\Enums\FlightPlanTask::FlightInit"
-            title="Flight and aircraft"
-            icon="bolt"
-            :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::FlightInit)"
-            class="xl:col-span-3"
-        >
-            <dl class="grid grid-cols-2 gap-2">
-                <x-flight-release.metric label="Flight" :value="$model->flightNumber()" empty-text="Not present in this release" />
-                <x-flight-release.metric label="Flight date" :value="$model->flightDate()" empty-text="Not present in this release" />
-                <x-flight-release.metric label="Aircraft" :value="$model->aircraftType()" empty-text="Not present in this release" />
-                <x-flight-release.metric label="Tail" :value="$model->tailNumber()" empty-text="Not present in this release" />
-            </dl>
-        </x-flight-release.overview-card>
-
-        <x-flight-release.overview-card
             :task="\App\Enums\FlightPlanTask::Fms"
             title="Route"
             icon="calculator"
