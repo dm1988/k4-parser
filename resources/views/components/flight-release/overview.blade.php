@@ -89,7 +89,7 @@
             </h3>
         </header>
 
-        <div class="grid grid-cols-1 gap-px bg-[#1B365D]/10 dark:bg-slate-700 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="grid grid-cols-1 gap-px bg-[#1B365D]/10 dark:bg-slate-700 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(0,1fr))]">
             @foreach ($model->overviewUnsupportedIndicators() as $indicator)
                 <div class="flex items-center justify-between gap-3 bg-white px-4 py-3 dark:bg-slate-900">
                     <span class="text-sm font-semibold text-[#0B0E14] dark:text-slate-100">{{ $indicator['label'] }}</span>

@@ -132,13 +132,6 @@ Done when: no UI depends on the flat compatibility payload, all enabled tasks ha
 
 Commit message: `refactor: complete flight plan workspace migration`
 
-## 17. Reserve fuel
-- Create distinction between Alternate airport burn and Reserve fuel calculation. 
-- Differed due to needing aircraft type fixture and distintion between 747 and 777 aircraft type
-- Requires full fleet in production database.
-- coincides with future 747 seeder into production
-- will have to add migration for reserve fuel additive
-
 ## 25. Bug: Envelope does not render with specific flight plan
 Currently:
 The CKS022329VHHH.pdf flight plan does not return any envelope data within the flight plan. 
@@ -234,10 +227,6 @@ No independent performance determination
 
 This view repeats the confirmed source result. It does not calculate an envelope or label the condition safe; review the controlling performance report.
 
-## Create maintenance overview card
-- Show's MEL status
-- Action oriented footer: Review MELs ->
-
 ## Triple extract key flight release data
 - Key flight plan data is found on the 3 copies. Ensure regex matches 3 times for data found on the top copy.
 - If not found 3 times, reduce confidence score yet still present data
@@ -260,6 +249,13 @@ This view repeats the confirmed source result. It does not calculate an envelope
 - Lookup aircraft by tail_number in db
 - Expose weights to user
 - Compare planned weights to aircraft weight limits
+
+## 17. Reserve fuel
+- Create distinction between Alternate airport burn and Reserve fuel calculation. 
+- Differed due to needing aircraft type fixture and distintion between 747 and 777 aircraft type
+- Requires full fleet in production database.
+- coincides with future 747 seeder into production
+- will have to add migration for reserve fuel additive
   
 -------------------------------------------------------
 
