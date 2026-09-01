@@ -3,39 +3,28 @@
 namespace App\Actions;
 
 use App\DTOs\AirportData;
-use App\DTOs\CrewMemberData;
-use App\DTOs\Etops\EtopsCoordinateData;
-use App\DTOs\Etops\EtopsData;
-use App\DTOs\Etops\EtopsEqualTimePointData;
-use App\DTOs\Etops\EtopsPointData;
-use App\DTOs\Etops\EtopsScenarioData;
 use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightInitData;
 use App\DTOs\FlightPlanData;
 use App\DTOs\FuelPlanData;
 use App\DTOs\GeneralDeclarationData;
-use App\DTOs\Maintenance\MaintenanceItemData;
-use App\DTOs\Maintenance\MaintenanceLogData;
 use App\DTOs\ReleaseAuthorizationData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
-use App\DTOs\TakeoffLandingReportData;
-use App\DTOs\WaypointData;
-use App\DTOs\Weather\AirportWeatherData;
-use App\DTOs\Weather\WeatherData;
-use App\DTOs\WeightBalance\WeightBalanceData;
-use App\DTOs\WeightBalance\WeightBalanceFieldData;
 use App\Enums\AltitudeUnit;
-use App\Enums\EtopsApplicability;
-use App\Enums\MaintenanceItemType;
 use App\Enums\OperationsSpecification;
-use App\Enums\WeightBalanceSourceStatus;
+use App\Services\FlightPlan\CrewMemberDataBuilder;
+use App\Services\FlightPlan\EtopsDataBuilder;
 use App\Services\FlightPlan\FlightInitFieldNormalizer;
 use App\Services\FlightPlan\FuelPlanFieldNormalizer;
+use App\Services\FlightPlan\MaintenanceLogDataBuilder;
+use App\Services\FlightPlan\TakeoffLandingReportDataBuilder;
+use App\Services\FlightPlan\WaypointDataBuilder;
+use App\Services\FlightPlan\WeatherDataBuilder;
+use App\Services\FlightPlan\WeightBalanceDataBuilder;
 use App\ValueObjects\AirportCode;
 use App\ValueObjects\FuelQuantity;
 use App\ValueObjects\InitialAltitude;
-use App\ValueObjects\WeightQuantity;
 use App\View\Models\FlightPlanPageData;
 use Carbon\CarbonImmutable;
 use Carbon\Exceptions\InvalidFormatException;
@@ -45,8 +34,15 @@ use ValueError;
 class BuildFlightPlanPageData
 {
     public function __construct(
-        private readonly FlightInitFieldNormalizer $flightInitFieldNormalizer = new FlightInitFieldNormalizer,
-        private readonly FuelPlanFieldNormalizer $fuelPlanFieldNormalizer = new FuelPlanFieldNormalizer,
+        private readonly FlightInitFieldNormalizer $flightInitFieldNormalizer,
+        private readonly FuelPlanFieldNormalizer $fuelPlanFieldNormalizer,
+        private readonly EtopsDataBuilder $etopsDataBuilder,
+        private readonly MaintenanceLogDataBuilder $maintenanceLogDataBuilder,
+        private readonly WeatherDataBuilder $weatherDataBuilder,
+        private readonly CrewMemberDataBuilder $crewMemberDataBuilder,
+        private readonly WaypointDataBuilder $waypointDataBuilder,
+        private readonly TakeoffLandingReportDataBuilder $takeoffLandingReportDataBuilder,
+        private readonly WeightBalanceDataBuilder $weightBalanceDataBuilder,
     ) {}
 
     /** @param array<string, mixed>|null $result */
@@ -106,18 +102,18 @@ class BuildFlightPlanPageData
                     : null,
             ),
             fuelPlan: is_array($fuelPlan) ? $this->fuelPlan($fuelPlan) : null,
-            maintenanceLog: $this->maintenanceLog($data['maintenanceLog'] ?? null),
-            takeoffLandingReport: $this->takeoffLandingReport(
+            maintenanceLog: $this->maintenanceLogDataBuilder->fromSerialized($data['maintenanceLog'] ?? null),
+            takeoffLandingReport: $this->takeoffLandingReportDataBuilder->fromSerialized(
                 $data['takeoffLandingReport'] ?? $data['envelope'] ?? null,
             ),
             flightInit: $this->flightInit($data['flightInit'] ?? null),
-            etops: $this->etops($data['etops'] ?? null),
-            weather: $this->weather($data['weather'] ?? null),
-            weightBalance: $this->weightBalance($data['weightBalance'] ?? null),
+            etops: $this->etopsDataBuilder->fromSerialized($data['etops'] ?? null),
+            weather: $this->weatherDataBuilder->fromSerialized($data['weather'] ?? null),
+            weightBalance: $this->weightBalanceDataBuilder->fromSerialized($data['weightBalance'] ?? null),
             generalDeclaration: $this->generalDeclaration($data['generalDeclaration'] ?? null),
             releaseAuthorization: $this->releaseAuthorization($data['releaseAuthorization'] ?? null),
-            crewMembers: $this->crewMembers($data['crewMembers'] ?? null),
-            waypoints: $this->waypoints($data['waypoints'] ?? null),
+            crewMembers: $this->crewMemberDataBuilder->fromSerialized($data['crewMembers'] ?? null),
+            waypoints: $this->waypointDataBuilder->fromSerialized($data['waypoints'] ?? null),
         );
     }
 
@@ -157,9 +153,8 @@ class BuildFlightPlanPageData
     /** @param array<string, mixed> $data */
     private function fuelPlan(array $data): ?FuelPlanData
     {
-        $costIndex = $this->fuelPlanFieldNormalizer->costIndex($data['costIndex'] ?? null);
         $quantities = [
-            'costIndex' => $costIndex,
+            'costIndex' => $this->fuelPlanFieldNormalizer->costIndex($data['costIndex'] ?? null),
             'ramp' => $this->fuelQuantity($data['ramp'] ?? null),
             'taxi' => $this->fuelQuantity($data['taxi'] ?? null),
             'takeoff' => $this->fuelQuantity($data['takeoff'] ?? null),
@@ -197,100 +192,9 @@ class BuildFlightPlanPageData
         }
     }
 
-    /** @return list<WaypointData> */
-    private function waypoints(mixed $value): array
-    {
-        if (! is_array($value)) {
-            return [];
-        }
-
-        $waypoints = [];
-
-        foreach ($value as $waypoint) {
-            if (! is_array($waypoint)) {
-                continue;
-            }
-
-            $identifier = $this->nullableString($waypoint['identifier'] ?? null);
-            $coordinate = $this->nullableString($waypoint['coordinate'] ?? null);
-
-            if ($identifier === null || $coordinate === null) {
-                continue;
-            }
-
-            $waypoints[] = new WaypointData(
-                identifier: $identifier,
-                coordinate: $coordinate,
-                legDurationMinutes: $this->nonNegativeInteger($waypoint['legDurationMinutes'] ?? null),
-                cumulativeDurationMinutes: $this->nonNegativeInteger($waypoint['cumulativeDurationMinutes'] ?? null),
-                remainingFuel: $this->fuelQuantity($waypoint['remainingFuel'] ?? null),
-            );
-        }
-
-        return $waypoints;
-    }
-
-    private function nonNegativeInteger(mixed $value): ?int
-    {
-        return is_int($value) && $value >= 0 ? $value : null;
-    }
-
     private function airportCode(mixed $value): ?AirportCode
     {
         return is_string($value) && $value !== '' ? new AirportCode($value) : null;
-    }
-
-    private function maintenanceLog(mixed $value): ?MaintenanceLogData
-    {
-        if (! is_array($value)) {
-            return null;
-        }
-
-        return new MaintenanceLogData(
-            sectionPresent: ($value['sectionPresent'] ?? false) === true,
-            items: $this->maintenanceItems($value['items'] ?? null),
-        );
-    }
-
-    private function takeoffLandingReport(mixed $value): ?TakeoffLandingReportData
-    {
-        if (! is_array($value) || ($value['sectionPresent'] ?? false) !== true) {
-            return null;
-        }
-
-        return new TakeoffLandingReportData(
-            sectionPresent: true,
-            sourceType: $this->nullableString($value['sourceType'] ?? null) ?? 'takeoff_landing_report',
-            reportReference: $this->nullableString($value['reportReference'] ?? null),
-            airport: $this->nullableString($value['airport'] ?? null),
-            plannedRunway: $this->nullableString($value['plannedRunway'] ?? null),
-            outsideAirTemperatureCelsius: $this->nullableFloat($value['outsideAirTemperatureCelsius'] ?? null),
-            wind: $this->nullableString($value['wind'] ?? null),
-            qnhInchesMercury: $this->nullableFloat($value['qnhInchesMercury'] ?? null),
-            qnhHectopascals: $this->nullableInteger($value['qnhHectopascals'] ?? null),
-            maximumRunwayTakeoffWeight: $this->weightQuantity($value['maximumRunwayTakeoffWeight'] ?? null),
-            flapSetting: $this->nullableString($value['flapSetting'] ?? null),
-            antiIce: is_bool($value['antiIce'] ?? null) ? $value['antiIce'] : null,
-            v1Knots: $this->nullableInteger($value['v1Knots'] ?? null),
-            rotateKnots: $this->nullableInteger($value['rotateKnots'] ?? null),
-            v2Knots: $this->nullableInteger($value['v2Knots'] ?? null),
-            plannedTakeoffWeight: $this->weightQuantity($value['plannedTakeoffWeight'] ?? null),
-            maximumFieldTakeoffWeight: $this->weightQuantity($value['maximumFieldTakeoffWeight'] ?? null),
-            sourceWarnings: $this->strings($value['sourceWarnings'] ?? null),
-        );
-    }
-
-    private function weightQuantity(mixed $value): ?WeightQuantity
-    {
-        if (! is_array($value) || ! is_int($value['amount'] ?? null) || ! is_string($value['unit'] ?? null)) {
-            return null;
-        }
-
-        try {
-            return new WeightQuantity($value['amount'], $value['unit']);
-        } catch (InvalidArgumentException) {
-            return null;
-        }
     }
 
     private function flightInit(mixed $value): ?FlightInitData
@@ -305,88 +209,6 @@ class BuildFlightPlanPageData
             filedInitialAltitude: $this->initialAltitude($value['filedInitialAltitude'] ?? null),
             fmsInitialAltitude: $this->initialAltitude($value['fmsInitialAltitude'] ?? null),
         );
-    }
-
-    private function weather(mixed $value): ?WeatherData
-    {
-        if (! is_array($value)) {
-            return null;
-        }
-
-        $weather = new WeatherData(
-            departure: $this->airportWeather($value['departure'] ?? null),
-            destination: $this->airportWeather($value['destination'] ?? null),
-            alternate: $this->airportWeather($value['alternate'] ?? null),
-            raim: $this->nullableString($value['raim'] ?? null),
-        );
-
-        return $weather->hasReports() || $weather->raim !== null ? $weather : null;
-    }
-
-    private function weightBalance(mixed $value): ?WeightBalanceData
-    {
-        if (! is_array($value)) {
-            return null;
-        }
-
-        return new WeightBalanceData(
-            basicOperatingWeight: $this->weightBalanceField($value['basicOperatingWeight'] ?? null),
-            plannedPayload: $this->weightBalanceField($value['plannedPayload'] ?? null),
-            plannedTakeoffFuel: $this->weightBalanceField($value['plannedTakeoffFuel'] ?? null),
-            plannedZeroFuelWeight: $this->weightBalanceField($value['plannedZeroFuelWeight'] ?? null),
-            plannedRampWeight: $this->weightBalanceField($value['plannedRampWeight'] ?? null),
-            plannedTakeoffGrossWeight: $this->weightBalanceField($value['plannedTakeoffGrossWeight'] ?? null),
-            plannedEstimatedLandingWeight: $this->weightBalanceField($value['plannedEstimatedLandingWeight'] ?? null),
-        );
-    }
-
-    private function weightBalanceField(mixed $value): WeightBalanceFieldData
-    {
-        if (! is_array($value)) {
-            return new WeightBalanceFieldData(null, WeightBalanceSourceStatus::NotPresent);
-        }
-
-        $sourceStatus = is_string($value['sourceStatus'] ?? null)
-            ? WeightBalanceSourceStatus::tryFrom($value['sourceStatus'])
-            : null;
-        $limitStatus = is_string($value['limitStatus'] ?? null)
-            ? WeightBalanceSourceStatus::tryFrom($value['limitStatus'])
-            : null;
-        $plannedValue = $this->weightQuantity($value['plannedValue'] ?? null);
-        $permittedLimit = $this->weightQuantity($value['permittedLimit'] ?? null);
-
-        if ($sourceStatus !== WeightBalanceSourceStatus::Confirmed) {
-            $plannedValue = null;
-        }
-
-        if ($limitStatus !== WeightBalanceSourceStatus::Confirmed) {
-            $permittedLimit = null;
-        }
-
-        return new WeightBalanceFieldData(
-            plannedValue: $plannedValue,
-            sourceStatus: $sourceStatus ?? WeightBalanceSourceStatus::NotPresent,
-            permittedLimit: $permittedLimit,
-            limitStatus: $limitStatus ?? WeightBalanceSourceStatus::LimitUnavailable,
-            derived: ($value['derived'] ?? false) === true && $plannedValue !== null,
-        );
-    }
-
-    private function airportWeather(mixed $value): ?AirportWeatherData
-    {
-        if (! is_array($value) || ! is_string($value['airport'] ?? null)) {
-            return null;
-        }
-
-        try {
-            return new AirportWeatherData(
-                airport: new AirportCode($value['airport']),
-                metars: $this->strings($value['metars'] ?? null),
-                tafs: $this->strings($value['tafs'] ?? null),
-            );
-        } catch (InvalidArgumentException) {
-            return null;
-        }
     }
 
     private function initialAltitude(mixed $value): ?InitialAltitude
@@ -407,99 +229,6 @@ class BuildFlightPlanPageData
         } catch (InvalidArgumentException|ValueError) {
             return null;
         }
-    }
-
-    private function nullableFloat(mixed $value): ?float
-    {
-        return is_float($value) || is_int($value) ? (float) $value : null;
-    }
-
-    private function nullableInteger(mixed $value): ?int
-    {
-        return is_int($value) && $value >= 0 ? $value : null;
-    }
-
-    /** @return list<string> */
-    private function strings(mixed $values): array
-    {
-        if (! is_array($values)) {
-            return [];
-        }
-
-        return array_values(array_filter(array_map(
-            fn (mixed $value): ?string => $this->nullableString($value),
-            $values,
-        )));
-    }
-
-    /** @return list<MaintenanceItemData> */
-    private function maintenanceItems(mixed $items): array
-    {
-        if (! is_array($items)) {
-            return [];
-        }
-
-        $normalized = [];
-
-        foreach ($items as $item) {
-            if (! is_array($item)) {
-                continue;
-            }
-
-            $type = is_string($item['type'] ?? null)
-                ? MaintenanceItemType::tryFrom($item['type'])
-                : null;
-            $number = $this->nullableString($item['number'] ?? null);
-            $description = $this->nullableString($item['description'] ?? null);
-
-            if ($type === null || $number === null || $description === null) {
-                continue;
-            }
-
-            $normalized[] = new MaintenanceItemData(
-                type: $type,
-                number: $number,
-                description: $description,
-                reference: $this->nullableString($item['reference'] ?? null),
-                status: $this->nullableString($item['status'] ?? null),
-                limitations: $this->nullableString($item['limitations'] ?? null),
-                procedures: $this->nullableString($item['procedures'] ?? null),
-            );
-        }
-
-        return $normalized;
-    }
-
-    /** @return list<CrewMemberData> */
-    private function crewMembers(mixed $members): array
-    {
-        if (! is_array($members)) {
-            return [];
-        }
-
-        $normalized = [];
-
-        foreach ($members as $member) {
-            if (! is_array($member)) {
-                continue;
-            }
-
-            $name = $this->nullableString($member['name'] ?? null);
-
-            if ($name === null) {
-                continue;
-            }
-
-            $normalized[] = new CrewMemberData(
-                name: $name,
-                role: $this->nullableString($member['role'] ?? null),
-                base: $this->nullableString($member['base'] ?? null),
-                employeeNumber: $this->flightInitFieldNormalizer->employeeNumber($member['employeeNumber'] ?? null),
-                highMins: ($member['highMins'] ?? false) === true,
-            );
-        }
-
-        return $normalized;
     }
 
     private function airport(mixed $value): ?AirportData
@@ -543,117 +272,5 @@ class BuildFlightPlanPageData
         $value = trim($value);
 
         return $value !== '' ? $value : null;
-    }
-
-    private function etops(mixed $value): ?EtopsData
-    {
-        if (! is_array($value)) {
-            return null;
-        }
-
-        $applicability = is_string($value['applicability'] ?? null)
-            ? EtopsApplicability::tryFrom($value['applicability'])
-            : null;
-        $equalTimePoints = [];
-        $scenarios = [];
-        $equalTimePointValues = is_array($value['equalTimePoints'] ?? null) ? $value['equalTimePoints'] : [];
-        $scenarioValues = is_array($value['scenarios'] ?? null) ? $value['scenarios'] : [];
-
-        foreach ($equalTimePointValues as $etp) {
-            if (! is_array($etp)) {
-                continue;
-            }
-
-            $label = $this->nullableString($etp['label'] ?? null);
-            $coordinate = $this->etopsCoordinate($etp['coordinate'] ?? null);
-            $sequence = $etp['sequence'] ?? null;
-
-            if ($label === null || $coordinate === null || ! is_int($sequence)) {
-                continue;
-            }
-
-            try {
-                $equalTimePoints[] = new EtopsEqualTimePointData(
-                    label: $label,
-                    coordinate: $coordinate,
-                    sequence: $sequence,
-                    firstAlternate: $this->airportCode($etp['firstAlternate'] ?? null),
-                    secondAlternate: $this->airportCode($etp['secondAlternate'] ?? null),
-                );
-            } catch (InvalidArgumentException) {
-                continue;
-            }
-        }
-
-        foreach ($scenarioValues as $scenario) {
-            if (! is_array($scenario)) {
-                continue;
-            }
-
-            $name = $this->nullableString($scenario['name'] ?? null);
-
-            if ($name === null) {
-                continue;
-            }
-
-            $scenarios[] = new EtopsScenarioData(
-                name: $name,
-                equalTimePointLabel: $this->nullableString($scenario['equalTimePointLabel'] ?? null),
-                remarks: $this->nullableString($scenario['remarks'] ?? null),
-            );
-        }
-
-        return new EtopsData(
-            sectionPresent: ($value['sectionPresent'] ?? false) === true,
-            applicability: $applicability ?? EtopsApplicability::Unknown,
-            ratingMinutes: is_int($value['ratingMinutes'] ?? null) && $value['ratingMinutes'] > 0
-                ? $value['ratingMinutes']
-                : null,
-            entryPoint: $this->etopsPoint($value['entryPoint'] ?? null),
-            exitPoint: $this->etopsPoint($value['exitPoint'] ?? null),
-            equalTimePoints: $equalTimePoints,
-            scenarios: $scenarios,
-        );
-    }
-
-    private function etopsPoint(mixed $value): ?EtopsPointData
-    {
-        if (! is_array($value)) {
-            return null;
-        }
-
-        $label = $this->nullableString($value['label'] ?? null);
-        $coordinate = $this->etopsCoordinate($value['coordinate'] ?? null);
-        $sequence = $value['sequence'] ?? null;
-
-        if ($label === null || $coordinate === null || ! is_int($sequence)) {
-            return null;
-        }
-
-        try {
-            return new EtopsPointData($label, $coordinate, $sequence);
-        } catch (InvalidArgumentException) {
-            return null;
-        }
-    }
-
-    private function etopsCoordinate(mixed $value): ?EtopsCoordinateData
-    {
-        if (! is_array($value)) {
-            return null;
-        }
-
-        $latitude = $this->nullableString($value['latitude'] ?? null);
-        $longitude = $this->nullableString($value['longitude'] ?? null);
-
-        if ($latitude === null || $longitude === null) {
-            return null;
-        }
-
-        try {
-            return new EtopsCoordinateData($latitude, $longitude);
-        } catch (InvalidArgumentException) {
-            return null;
-        }
     }
 }

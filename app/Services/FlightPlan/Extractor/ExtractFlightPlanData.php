@@ -2,6 +2,8 @@
 
 namespace App\Services\FlightPlan\Extractor;
 
+use App\DTOs\CrewManifestInputData;
+use App\DTOs\Maintenance\MaintenanceInputData;
 use App\DTOs\ParsedFlightPlanData;
 use App\Services\FlightPlan\Extractor\Etops\EtopsQualificationExtractor;
 use App\Services\FlightPlan\Extractor\Etops\EtopsRouteExtractor;
@@ -20,11 +22,11 @@ class ExtractFlightPlanData
         private readonly FlightInitExtractor $flightInitExtractor,
         private readonly WaypointExtractor $waypointExtractor,
         private readonly WeatherExtractor $weatherExtractor,
-        private readonly WeightBalanceExtractor $weightBalanceExtractor = new WeightBalanceExtractor,
-        private readonly EtopsQualificationExtractor $etopsQualificationExtractor = new EtopsQualificationExtractor,
-        private readonly EtopsRouteExtractor $etopsRouteExtractor = new EtopsRouteExtractor,
-        private readonly GeneralDeclarationExtractor $generalDeclarationExtractor = new GeneralDeclarationExtractor,
-        private readonly ReleaseAuthorizationExtractor $releaseAuthorizationExtractor = new ReleaseAuthorizationExtractor,
+        private readonly WeightBalanceExtractor $weightBalanceExtractor,
+        private readonly EtopsQualificationExtractor $etopsQualificationExtractor,
+        private readonly EtopsRouteExtractor $etopsRouteExtractor,
+        private readonly GeneralDeclarationExtractor $generalDeclarationExtractor,
+        private readonly ReleaseAuthorizationExtractor $releaseAuthorizationExtractor,
     ) {}
 
     public function extractFile(string $filePath): ParsedFlightPlanData
@@ -65,8 +67,8 @@ class ExtractFlightPlanData
                 'distance_nautical_miles' => $route['distance_nautical_miles'],
             ],
             fuel: $fuel['data'],
-            crewMembers: $crew['data'],
-            maintenance: $maintenance['data'],
+            crewMembers: new CrewManifestInputData($crew['data']),
+            maintenance: MaintenanceInputData::fromExtracted($maintenance['data']),
             takeoffLandingReport: $takeoffLandingReport['data'],
             flightInit: $flightInit['data'],
             etops: [

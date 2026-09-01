@@ -16,6 +16,7 @@ use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use App\Services\FlightPlan\Extractor\FlightScheduleExtractor;
 use App\Services\FlightPlan\Extractor\GeneralDeclarationExtractor;
 use App\Services\FlightPlan\Extractor\MaintenanceLogExtractor;
+use App\Services\FlightPlan\Extractor\PdfImagePageTextExtractor;
 use App\Services\FlightPlan\Extractor\ReleaseAuthorizationExtractor;
 use App\Services\FlightPlan\Extractor\TakeoffLandingReportExtractor;
 use App\Services\FlightPlan\Extractor\WaypointExtractor;
@@ -167,8 +168,8 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame('CKS256', $parsed->identity['flight_number']);
         $this->assertSame(5549, $parsed->route['distance_nautical_miles']);
         $this->assertSame('lb', $parsed->sourceFragments['fuel_unit']);
-        $this->assertTrue($parsed->maintenance['section_present']);
-        $this->assertSame('Alex Morgan', $parsed->crewMembers[0]['name']);
+        $this->assertTrue($parsed->maintenance->sectionPresent);
+        $this->assertSame('Alex Morgan', $parsed->crewMembers->members[0]['name']);
         $this->assertSame('Alex Morgan CP YIP', $parsed->sourceFragments['flight_crew']);
         $this->assertSame('MEL 28-22-01', $parsed->sourceFragments['maintenance_log']);
         $this->assertSame(612400, $parsed->takeoffLandingReport['planned_takeoff_weight']['amount']);
@@ -209,7 +210,11 @@ class ExtractFlightPlanDataTest extends TestCase
 
         $airportLookupClient = $this->createMock(AirportLookupClient::class);
         $airportLookupClient->method('lookupByIcao')->willReturn(null);
-        $textExtractor = new FlightPlanTextExtractor(new Parser, app(Repository::class));
+        $textExtractor = new FlightPlanTextExtractor(
+            new Parser,
+            app(Repository::class),
+            new PdfImagePageTextExtractor,
+        );
         $extractor = new ExtractFlightPlanData(
             $textExtractor,
             new FlightIdentityExtractor,
@@ -222,6 +227,11 @@ class ExtractFlightPlanDataTest extends TestCase
             new FlightInitExtractor,
             new WaypointExtractor,
             new WeatherExtractor,
+            new WeightBalanceExtractor,
+            new EtopsQualificationExtractor,
+            new EtopsRouteExtractor,
+            new GeneralDeclarationExtractor,
+            new ReleaseAuthorizationExtractor,
         );
 
         $parsed = $extractor->extractFile($samplePath);
@@ -240,7 +250,7 @@ class ExtractFlightPlanDataTest extends TestCase
             $parsed->etops['applicability'],
             ['confirmed_etops', 'confirmed_non_etops', 'unknown'],
         );
-        $this->assertArrayNotHasKey('etops_applicability', $parsed->maintenance);
+        $this->assertObjectNotHasProperty('etopsApplicability', $parsed->maintenance);
         $this->assertTrue($parsed->takeoffLandingReport['section_present']);
         $this->assertSame('KLAX', $parsed->takeoffLandingReport['airport']);
         $this->assertSame('25R-E957F', $parsed->takeoffLandingReport['planned_runway']);

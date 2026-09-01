@@ -89,6 +89,10 @@ Identified cleanup, in implementation order:
    - Require collaborators through constructor injection instead of defaulting parameters to `new ...`; keep direct construction in tests explicit when appropriate.
    - Split `FlightReleasePageViewModel` into task-specific presenters or immutable view-data objects, leaving a small release-level facade for task visibility, navigation, identity, and shared header data.
    - Replace the broad array-shape staging fields in `ParsedFlightPlanData` incrementally with typed extractor results or typed subdomain input DTOs. Preserve private source evidence separately from the serializable aggregate.
+
+   Outcome: ETOPS, Maintenance, Weather, Crew, Waypoint, TLR, and Weight/Balance builders now provide shared rules for fresh extraction and cached-payload rehydration. Construction collaborators are required through constructor injection, while ten task-focused presenters are composed behind the stable release view-model facade. Crew and Maintenance are the first broad staging arrays replaced by typed input DTOs, preserving source evidence and serialized/rendered compatibility. The focused builder, extractor, serializer, presenter, and Livewire regressions pass after Pint; Larastan remains reserved for task 19.
+
+   Commit message: `refactor: split flight plan hydration and presentation`
 3. **Make folders mirror stable domains.**
    - After responsibilities are split, group flight-plan actions under `App\Actions\FlightPlan` and keep schedule/extract/auth actions in their own domains. Avoid creating folders that would contain only one arbitrary class.
    - Mirror production namespaces in tests as files move; do not perform a repository-wide test shuffle without a corresponding production boundary change.
@@ -226,6 +230,24 @@ Currently: when no MEL / CDLs present, success green badge is rendered drawing a
 Problem: no need to draw a users attention
 Fix: Don't render when count is 0
 
+## 24.  Overview card: Auto-fit grid on operational support status
+This allows the items to automatically expand and fill the available width, so you never have a "blank" spot regardless of how many items there are.
+
+Implementation:
+Change your grid container classes as follows:
+
+html
+
+{{-- Before --}}
+<div class="grid grid-cols-1 gap-px bg-[#1B365D]/10 dark:bg-slate-700 sm:grid-cols-2 xl:grid-cols-4">
+
+{{-- After (The Fix) --}}
+<div class="grid grid-cols-1 gap-px bg-[#1B365D]/10 dark:bg-slate-700 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(0,1fr))]">
+Use code snippets with caution
+
+References:
+resources/views/components/flight-release/overview.blade.php
+
 -------------------
 **Branch Merge**
 -------------------
@@ -236,6 +258,37 @@ Fix: Don't render when count is 0
 - Remove duplicate data that exists in flight strip header
 - Show MELs/CDLs if they exist
 - Show ETOPS info if it exists
+
+## Crew list: role avatar
+- Have crew role displayed inside an avatar bubble
+Entry: Crew Card UI Refactor
+Goal Improve the visual hierarchy and scannability of the crew roster by moving the "Crew Role" (e.g., PIC, SIC, MX) from a secondary text line into a prominent "Avatar Bubble" anchor. The design must be professional, differentiate roles at a glance, and maintain high readability in both light and dark modes without being visually overwhelming.
+
+Current Setup
+
+Container: ul grid using grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 for responsive layout.
+Card Structure:
+Horizontal flex layout (flex items-center gap-3).
+Backgrounds: bg-white (light) / bg-slate-900 (dark).
+Borders: Subtle navy tint border-[#1B365D]/10.
+Avatar Bubble: A 12x10 (48px wide) flex container with a uniform background (bg-[#1B365D]/5) and role-specific text coloring.
+Details: A vertical stack containing the Name (bold) and Employee Number (monospace, prefixed with #).
+Implementation Details
+
+Layout Logic:
+Switched from flex-col to flex-row (using items-center) to place the role avatar as a visual "bullet" on the left.
+Role-Based Semantic Styling:
+Unified Background: All bubbles use bg-[#1B365D]/5 to maintain page consistency.
+Text Color Palette:
+PIC: text-blue-600
+SIC/FO: text-indigo-600
+MX: text-amber-600
+LM: text-emerald-600
+Others: text-slate-600
+Typography:
+Role: text-[10px] font-black uppercase tracking-wider for a "badge" aesthetic.
+Employee ID: Simplified to a small secondary row (text-[10px]) to reduce vertical height.
+Dark Mode Support: All colors include dark: variants (e.g., dark:bg-slate-800 for the bubble and dark:text-blue-400 for role text) to ensure WCAG contrast compliance.
 
 ## Add task: Takeoff and Landing Report
 

@@ -8,6 +8,7 @@ use App\DTOs\WeightBalance\WeightBalanceFieldData;
 use App\Enums\WeightBalanceSourceStatus;
 use App\ValueObjects\FuelQuantity;
 use App\ValueObjects\WeightQuantity;
+use InvalidArgumentException;
 
 class WeightBalanceDataBuilder
 {
@@ -25,6 +26,23 @@ class WeightBalanceDataBuilder
             plannedRampWeight: $this->rampWeight($zeroFuelWeight, $rampFuel),
             plannedTakeoffGrossWeight: $this->sourceField($source['planned_takeoff_gross_weight'] ?? null),
             plannedEstimatedLandingWeight: $this->sourceField($source['planned_estimated_landing_weight'] ?? null),
+        );
+    }
+
+    public function fromSerialized(mixed $source): ?WeightBalanceData
+    {
+        if (! is_array($source)) {
+            return null;
+        }
+
+        return new WeightBalanceData(
+            basicOperatingWeight: $this->serializedField($source['basicOperatingWeight'] ?? null),
+            plannedPayload: $this->serializedField($source['plannedPayload'] ?? null),
+            plannedTakeoffFuel: $this->serializedField($source['plannedTakeoffFuel'] ?? null),
+            plannedZeroFuelWeight: $this->serializedField($source['plannedZeroFuelWeight'] ?? null),
+            plannedRampWeight: $this->serializedField($source['plannedRampWeight'] ?? null),
+            plannedTakeoffGrossWeight: $this->serializedField($source['plannedTakeoffGrossWeight'] ?? null),
+            plannedEstimatedLandingWeight: $this->serializedField($source['plannedEstimatedLandingWeight'] ?? null),
         );
     }
 
@@ -64,6 +82,51 @@ class WeightBalanceDataBuilder
             new WeightQuantity((int) $fuel->amount, $fuel->unit),
             WeightBalanceSourceStatus::Confirmed,
         );
+    }
+
+    private function serializedField(mixed $source): WeightBalanceFieldData
+    {
+        if (! is_array($source)) {
+            return new WeightBalanceFieldData(null, WeightBalanceSourceStatus::NotPresent);
+        }
+
+        $sourceStatus = is_string($source['sourceStatus'] ?? null)
+            ? WeightBalanceSourceStatus::tryFrom($source['sourceStatus'])
+            : null;
+        $limitStatus = is_string($source['limitStatus'] ?? null)
+            ? WeightBalanceSourceStatus::tryFrom($source['limitStatus'])
+            : null;
+        $plannedValue = $this->weightQuantity($source['plannedValue'] ?? null);
+        $permittedLimit = $this->weightQuantity($source['permittedLimit'] ?? null);
+
+        if ($sourceStatus !== WeightBalanceSourceStatus::Confirmed) {
+            $plannedValue = null;
+        }
+
+        if ($limitStatus !== WeightBalanceSourceStatus::Confirmed) {
+            $permittedLimit = null;
+        }
+
+        return new WeightBalanceFieldData(
+            plannedValue: $plannedValue,
+            sourceStatus: $sourceStatus ?? WeightBalanceSourceStatus::NotPresent,
+            permittedLimit: $permittedLimit,
+            limitStatus: $limitStatus ?? WeightBalanceSourceStatus::LimitUnavailable,
+            derived: ($source['derived'] ?? false) === true && $plannedValue !== null,
+        );
+    }
+
+    private function weightQuantity(mixed $value): ?WeightQuantity
+    {
+        if (! is_array($value) || ! is_int($value['amount'] ?? null) || ! is_string($value['unit'] ?? null)) {
+            return null;
+        }
+
+        try {
+            return new WeightQuantity($value['amount'], $value['unit']);
+        } catch (InvalidArgumentException) {
+            return null;
+        }
     }
 
     private function rampWeight(

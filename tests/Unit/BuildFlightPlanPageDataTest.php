@@ -12,7 +12,7 @@ class BuildFlightPlanPageDataTest extends TestCase
 {
     public function test_it_builds_typed_page_data_from_the_normalized_contract_and_legacy_supplements(): void
     {
-        $pageData = (new BuildFlightPlanPageData)->handle($this->resultPayload());
+        $pageData = app(BuildFlightPlanPageData::class)->handle($this->resultPayload());
 
         $this->assertNotNull($pageData);
         $this->assertSame('CKS256', $pageData->flightPlan->identity->flightNumber);
@@ -53,7 +53,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $payload['departure_runway'] = '01';
         $payload['route'] = 'LEGACY ROUTE';
 
-        $pageData = (new BuildFlightPlanPageData)->handle($payload);
+        $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
 
         $this->assertNotNull($pageData);
         $this->assertSame('PANC', $pageData->flightPlan->route->departure->value);
@@ -65,7 +65,7 @@ class BuildFlightPlanPageDataTest extends TestCase
 
     public function test_it_reports_availability_for_every_flight_plan_task(): void
     {
-        $pageData = (new BuildFlightPlanPageData)->handle($this->resultPayload());
+        $pageData = app(BuildFlightPlanPageData::class)->handle($this->resultPayload());
 
         $this->assertNotNull($pageData);
         $this->assertSame([
@@ -98,7 +98,7 @@ class BuildFlightPlanPageDataTest extends TestCase
             'raim' => 'PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION VALID FROM 1020Z TO 1240Z',
         ];
 
-        $pageData = (new BuildFlightPlanPageData)->handle($payload);
+        $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
 
         $this->assertNotNull($pageData);
         $this->assertSame('PANC', $pageData->flightPlan->weather?->departure?->airport->value);
@@ -128,7 +128,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $payload['eent_coordinates'] = 'N40 31.1 W131 22.6';
         $payload['eexp_coordinates'] = 'N45 19.3 E151 36.4';
 
-        $pageData = (new BuildFlightPlanPageData)->handle($payload);
+        $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
 
         $this->assertNotNull($pageData);
         $this->assertNull($pageData->flightPlan->fuelPlan);
@@ -151,7 +151,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $payload = $this->resultPayload();
         $payload['flight_plan_data']['releaseAuthorization'] = ['operationsSpecification' => 'unsupported'];
 
-        $pageData = (new BuildFlightPlanPageData)->handle($payload);
+        $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
 
         $this->assertNotNull($pageData);
         $this->assertSame(OperationsSpecification::Unknown, $pageData->flightPlan->releaseAuthorization->operationsSpecification);
@@ -163,7 +163,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $payload['flight_plan_data']['maintenanceLog']['sectionPresent'] = false;
         $payload['flight_plan_data']['maintenanceLog']['items'] = [];
 
-        $pageData = (new BuildFlightPlanPageData)->handle($payload);
+        $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
 
         $this->assertNotNull($pageData);
         $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::MaintenanceLog));
@@ -187,7 +187,7 @@ class BuildFlightPlanPageDataTest extends TestCase
             'scenarios' => [],
         ];
 
-        $pageData = (new BuildFlightPlanPageData)->handle($payload);
+        $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
 
         $this->assertNotNull($pageData);
         $this->assertSame([], $pageData->flightPlan->etops?->equalTimePoints);
@@ -207,7 +207,7 @@ class BuildFlightPlanPageDataTest extends TestCase
             'plannedTakeoffWeight' => null,
         ];
 
-        $pageData = (new BuildFlightPlanPageData)->handle($payload);
+        $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
 
         $this->assertNotNull($pageData);
         $this->assertSame(
@@ -218,7 +218,7 @@ class BuildFlightPlanPageDataTest extends TestCase
 
     public function test_it_fails_closed_for_missing_or_malformed_normalized_payloads(): void
     {
-        $builder = new BuildFlightPlanPageData;
+        $builder = app(BuildFlightPlanPageData::class);
 
         $this->assertNull($builder->handle(null));
         $this->assertNull($builder->handle(['departure' => 'PANC']));

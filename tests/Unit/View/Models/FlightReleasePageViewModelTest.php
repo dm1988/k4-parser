@@ -9,6 +9,7 @@ use App\Enums\OperationsSpecification;
 use App\Enums\RouteTokenType;
 use App\Enums\TaskTone;
 use App\View\Models\FlightReleasePageViewModel;
+use App\View\Models\FlightReleasePageViewModelFactory;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -17,7 +18,7 @@ class FlightReleasePageViewModelTest extends TestCase
     #[Test]
     public function it_returns_empty_display_values_without_page_data(): void
     {
-        $viewModel = new FlightReleasePageViewModel(null);
+        $viewModel = app(FlightReleasePageViewModelFactory::class)->make(null);
 
         $this->assertFalse($viewModel->hasFlightPlan());
         $this->assertSame('', $viewModel->departure());
@@ -786,10 +787,10 @@ class FlightReleasePageViewModelTest extends TestCase
     /** @param array<string, mixed> $payload */
     private function viewModel(array $payload): FlightReleasePageViewModel
     {
-        $pageData = (new BuildFlightPlanPageData)->handle($payload);
+        $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
         $this->assertNotNull($pageData);
 
-        return new FlightReleasePageViewModel($pageData);
+        return app(FlightReleasePageViewModelFactory::class)->make($pageData);
     }
 
     /** @return array<string, mixed> */

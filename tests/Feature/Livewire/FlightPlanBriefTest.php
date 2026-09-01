@@ -4,6 +4,8 @@ namespace Tests\Feature\Livewire;
 
 use App\Actions\ShouldPromptForCoffee;
 use App\DTOs\AirportData;
+use App\DTOs\CrewManifestInputData;
+use App\DTOs\Maintenance\MaintenanceInputData;
 use App\DTOs\ParsedFlightPlanData;
 use App\Enums\FlightPlanTask;
 use App\Exceptions\FlightRouteNotFoundException;
@@ -1812,11 +1814,11 @@ class FlightPlanBriefTest extends TestCase
             fuel: $fuel ?? array_fill_keys([
                 'ramp', 'taxi', 'takeoff', 'trip', 'contingency', 'alternate', 'final_reserve', 'estimated_landing',
             ], null),
-            crewMembers: $crewMembers ?? [],
-            maintenance: $maintenance ?? [
+            crewMembers: new CrewManifestInputData($crewMembers ?? []),
+            maintenance: MaintenanceInputData::fromExtracted($maintenance ?? [
                 'section_present' => false,
                 'items' => [],
-            ],
+            ]),
             takeoffLandingReport: $takeoffLandingReport ?? [],
             flightInit: $flightInit ?? [
                 'filed_initial_altitude' => is_string($legacy['initial_altitude'] ?? null) ? $legacy['initial_altitude'] : null,

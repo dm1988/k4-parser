@@ -29,8 +29,8 @@ class FlightPlanTextExtractorTest extends TestCase
         $cache = new Repository(new ArrayStore);
 
         try {
-            $first = new FlightPlanTextExtractor($parser, $cache);
-            $second = new FlightPlanTextExtractor($parser, $cache);
+            $first = new FlightPlanTextExtractor($parser, $cache, new PdfImagePageTextExtractor);
+            $second = new FlightPlanTextExtractor($parser, $cache, new PdfImagePageTextExtractor);
 
             $this->assertSame('FLIGHT PLAN', $first->extract($path));
             $this->assertSame('FLIGHT PLAN', $second->extract($path));
@@ -46,7 +46,11 @@ class FlightPlanTextExtractorTest extends TestCase
             ->method('parseFile')
             ->willThrowException(new \RuntimeException('secured file'));
 
-        $extractor = new FlightPlanTextExtractor($parser, new Repository(new ArrayStore));
+        $extractor = new FlightPlanTextExtractor(
+            $parser,
+            new Repository(new ArrayStore),
+            new PdfImagePageTextExtractor,
+        );
 
         $this->expectException(FlightRouteNotFoundException::class);
         $this->expectExceptionMessage('The uploaded PDF could not be read. secured file');
@@ -105,6 +109,7 @@ class FlightPlanTextExtractorTest extends TestCase
         $text = (new FlightPlanTextExtractor(
             new Parser,
             new Repository(new ArrayStore),
+            new PdfImagePageTextExtractor,
         ))->extract($path);
 
         $result = (new GeneralDeclarationExtractor)->extract($text);

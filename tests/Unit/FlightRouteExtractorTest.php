@@ -8,6 +8,7 @@ use App\Exceptions\FlightRouteNotFoundException;
 use App\Services\Clients\AirportLookupClient;
 use App\Services\FlightPlan\Extractor\FlightPlanTextExtractor;
 use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
+use App\Services\FlightPlan\Extractor\PdfImagePageTextExtractor;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Cache\Repository;
@@ -503,6 +504,7 @@ TEXT;
             new FlightPlanTextExtractor(
                 $parser ?? new Parser,
                 $cache ?? new CacheRepository(new ArrayStore),
+                new PdfImagePageTextExtractor,
             ),
             $airportLookupClient ?? $this->fakeAirportLookupClient(),
         );

@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Infrastructure\FlightPlanResultCache;
 use App\Validation\FlightPlanValidationRules;
 use App\View\Models\FlightReleasePageViewModel;
+use App\View\Models\FlightReleasePageViewModelFactory;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -41,16 +42,20 @@ class FlightPlanBrief extends Component
 
     protected BuildFlightPlanPageData $buildFlightPlanPageData;
 
+    protected FlightReleasePageViewModelFactory $flightReleasePageViewModelFactory;
+
     public function boot(
         HandleFlightPlanExtraction $handleFlightPlanExtraction,
         ShouldPromptForCoffee $shouldPromptForCoffee,
         FlightPlanResultCache $flightPlanResultCache,
         BuildFlightPlanPageData $buildFlightPlanPageData,
+        FlightReleasePageViewModelFactory $flightReleasePageViewModelFactory,
     ): void {
         $this->handleFlightPlanExtraction = $handleFlightPlanExtraction;
         $this->shouldPromptForCoffee = $shouldPromptForCoffee;
         $this->flightPlanResultCache = $flightPlanResultCache;
         $this->buildFlightPlanPageData = $buildFlightPlanPageData;
+        $this->flightReleasePageViewModelFactory = $flightReleasePageViewModelFactory;
     }
 
     public function extractFlightPlan(): void
@@ -135,7 +140,7 @@ class FlightPlanBrief extends Component
 
     private function currentViewModel(): FlightReleasePageViewModel
     {
-        return new FlightReleasePageViewModel(
+        return $this->flightReleasePageViewModelFactory->make(
             $this->buildFlightPlanPageData->handle($this->currentFlightPlan()),
         );
     }

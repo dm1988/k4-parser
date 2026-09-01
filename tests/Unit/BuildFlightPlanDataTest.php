@@ -3,6 +3,8 @@
 namespace Tests\Unit;
 
 use App\Actions\BuildFlightPlanData;
+use App\DTOs\CrewManifestInputData;
+use App\DTOs\Maintenance\MaintenanceInputData;
 use App\DTOs\ParsedFlightPlanData;
 use App\Enums\OperationsSpecification;
 use PHPUnit\Framework\TestCase;
@@ -58,14 +60,14 @@ class BuildFlightPlanDataTest extends TestCase
                 'final_reserve' => ['amount' => 6900.0, 'unit' => 'lb'],
                 'estimated_landing' => ['amount' => 19713.0, 'unit' => 'lb'],
             ],
-            crewMembers: [[
+            crewMembers: new CrewManifestInputData([[
                 'name' => 'Alex Morgan',
                 'role' => 'CP',
                 'base' => 'YIP',
                 'employee_number' => '4827',
                 'high_mins' => true,
-            ]],
-            maintenance: [
+            ]]),
+            maintenance: MaintenanceInputData::fromExtracted([
                 'section_present' => true,
                 'items' => [[
                     'type' => 'MEL',
@@ -76,7 +78,7 @@ class BuildFlightPlanDataTest extends TestCase
                     'limitations' => null,
                     'procedures' => null,
                 ]],
-            ],
+            ]),
             takeoffLandingReport: [
                 'section_present' => true,
                 'source_type' => 'takeoff_landing_report',
@@ -132,7 +134,7 @@ class BuildFlightPlanDataTest extends TestCase
             ],
         );
 
-        $flightPlan = (new BuildFlightPlanData)->handle($parsed);
+        $flightPlan = app(BuildFlightPlanData::class)->handle($parsed);
 
         $this->assertSame('CKS256', $flightPlan->identity->flightNumber);
         $this->assertSame('62930', $flightPlan->identity->recallNumber);
@@ -214,15 +216,17 @@ class BuildFlightPlanDataTest extends TestCase
             fuel: array_fill_keys([
                 'ramp', 'taxi', 'takeoff', 'trip', 'contingency', 'alternate', 'final_reserve', 'estimated_landing',
             ], null),
+            crewMembers: new CrewManifestInputData([]),
+            maintenance: new MaintenanceInputData(false, []),
         );
 
-        $this->assertNull((new BuildFlightPlanData)->handle($parsed)->fuelPlan);
+        $this->assertNull(app(BuildFlightPlanData::class)->handle($parsed)->fuelPlan);
     }
 
     public function test_it_falls_back_to_null_for_malformed_or_impossible_flight_dates(): void
     {
         foreach (['not-a-date', '2026-02-30'] as $flightDate) {
-            $flightPlan = (new BuildFlightPlanData)->handle($this->partialParsedData(
+            $flightPlan = app(BuildFlightPlanData::class)->handle($this->partialParsedData(
                 identity: ['flight_date' => $flightDate],
             ));
 
@@ -232,7 +236,7 @@ class BuildFlightPlanDataTest extends TestCase
 
     public function test_it_preserves_null_slot_times_without_emitting_empty_strings(): void
     {
-        $flightPlan = (new BuildFlightPlanData)->handle($this->partialParsedData(
+        $flightPlan = app(BuildFlightPlanData::class)->handle($this->partialParsedData(
             schedule: [
                 'slot_times_utc' => [null, '2026-05-25T15:20:00+00:00'],
             ],
@@ -246,7 +250,7 @@ class BuildFlightPlanDataTest extends TestCase
 
     public function test_it_defaults_missing_optional_parser_keys_to_null(): void
     {
-        $flightPlan = (new BuildFlightPlanData)->handle($this->partialParsedData());
+        $flightPlan = app(BuildFlightPlanData::class)->handle($this->partialParsedData());
 
         $this->assertNull($flightPlan->identity->flightNumber);
         $this->assertNull($flightPlan->schedule->etdUtc);
@@ -259,7 +263,7 @@ class BuildFlightPlanDataTest extends TestCase
 
     public function test_it_preserves_an_explicit_zero_fuel_quantity(): void
     {
-        $flightPlan = (new BuildFlightPlanData)->handle($this->partialParsedData(
+        $flightPlan = app(BuildFlightPlanData::class)->handle($this->partialParsedData(
             fuel: [
                 'contingency' => ['amount' => 0.0, 'unit' => 'lb'],
             ],
@@ -271,7 +275,7 @@ class BuildFlightPlanDataTest extends TestCase
 
     public function test_it_withholds_waypoint_fuel_when_release_units_are_ambiguous(): void
     {
-        $flightPlan = (new BuildFlightPlanData)->handle($this->partialParsedData(
+        $flightPlan = app(BuildFlightPlanData::class)->handle($this->partialParsedData(
             fuel: [
                 'ramp' => ['amount' => 1000.0, 'unit' => 'lb'],
                 'trip' => ['amount' => 500.0, 'unit' => 'kg'],
@@ -290,7 +294,7 @@ class BuildFlightPlanDataTest extends TestCase
 
     public function test_it_expands_compact_waypoint_fuel_into_the_confirmed_release_unit(): void
     {
-        $flightPlan = (new BuildFlightPlanData)->handle($this->partialParsedData(
+        $flightPlan = app(BuildFlightPlanData::class)->handle($this->partialParsedData(
             fuel: [
                 'ramp' => ['amount' => 162800.0, 'unit' => 'lb'],
             ],
@@ -309,7 +313,7 @@ class BuildFlightPlanDataTest extends TestCase
 
     public function test_it_migrates_current_etops_values_without_changing_their_meaning(): void
     {
-        $flightPlan = (new BuildFlightPlanData)->handle($this->partialParsedData(
+        $flightPlan = app(BuildFlightPlanData::class)->handle($this->partialParsedData(
             etops: [
                 'section_present' => true,
                 'applicability' => 'confirmed_etops',
@@ -350,7 +354,7 @@ class BuildFlightPlanDataTest extends TestCase
 
     public function test_it_preserves_confirmed_non_etops_without_route_data(): void
     {
-        $flightPlan = (new BuildFlightPlanData)->handle($this->partialParsedData(
+        $flightPlan = app(BuildFlightPlanData::class)->handle($this->partialParsedData(
             etops: [
                 'section_present' => true,
                 'applicability' => 'confirmed_non_etops',
@@ -366,7 +370,7 @@ class BuildFlightPlanDataTest extends TestCase
 
     public function test_it_omits_malformed_etops_values_instead_of_failing_the_release(): void
     {
-        $flightPlan = (new BuildFlightPlanData)->handle($this->partialParsedData(
+        $flightPlan = app(BuildFlightPlanData::class)->handle($this->partialParsedData(
             etops: [
                 'etps' => [[
                     'label' => 'ETP1',
@@ -385,7 +389,7 @@ class BuildFlightPlanDataTest extends TestCase
     public function test_it_defaults_malformed_release_authorization_to_unknown(): void
     {
         foreach (['unsupported', 44, []] as $malformedValue) {
-            $flightPlan = (new BuildFlightPlanData)->handle($this->partialParsedData(
+            $flightPlan = app(BuildFlightPlanData::class)->handle($this->partialParsedData(
                 releaseAuthorization: ['operations_specification' => $malformedValue],
             ));
 
@@ -421,6 +425,8 @@ class BuildFlightPlanDataTest extends TestCase
                 ...$route,
             ],
             fuel: $fuel,
+            crewMembers: new CrewManifestInputData([]),
+            maintenance: new MaintenanceInputData(false, []),
             etops: $etops,
             waypoints: $waypoints,
             releaseAuthorization: $releaseAuthorization,

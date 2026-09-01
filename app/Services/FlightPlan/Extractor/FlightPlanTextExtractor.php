@@ -14,7 +14,7 @@ class FlightPlanTextExtractor
     public function __construct(
         private readonly Parser $parser,
         private readonly Repository $cache,
-        private readonly PdfImagePageTextExtractor $imagePageTextExtractor = new PdfImagePageTextExtractor,
+        private readonly PdfImagePageTextExtractor $imagePageTextExtractor,
     ) {}
 
     public function extract(string $filePath): string

@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\DTOs\AirportData;
+use App\DTOs\CrewManifestInputData;
 use App\DTOs\CrewMemberData;
 use App\DTOs\Etops\EtopsCoordinateData;
 use App\DTOs\Etops\EtopsData;
@@ -11,6 +12,7 @@ use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightInitData;
 use App\DTOs\FlightPlanData;
 use App\DTOs\GeneralDeclarationData;
+use App\DTOs\Maintenance\MaintenanceInputData;
 use App\DTOs\Maintenance\MaintenanceItemData;
 use App\DTOs\Maintenance\MaintenanceLogData;
 use App\DTOs\ParsedFlightPlanData;
@@ -109,6 +111,8 @@ class FlightPlanResultSerializerTest extends TestCase
             fuel: array_fill_keys([
                 'ramp', 'taxi', 'takeoff', 'trip', 'contingency', 'alternate', 'final_reserve', 'estimated_landing',
             ], null),
+            crewMembers: new CrewManifestInputData([]),
+            maintenance: new MaintenanceInputData(false, []),
             flightInit: [
                 'section_present' => true,
                 'filed_initial_altitude' => 'F340',
