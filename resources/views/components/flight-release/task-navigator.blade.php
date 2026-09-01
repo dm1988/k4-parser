@@ -55,13 +55,16 @@
                         :count="$taskCounter"
                         :label="$task->label()"
                         :noun="$task === \App\Enums\FlightPlanTask::SlotTimes ? 'approved slot' : 'item'"
+                        :tone="$task === \App\Enums\FlightPlanTask::ReviewMelCdl && $taskCounter === 0 ? 'success' : 'warning'"
                     />
                 @endif
-                <x-flight-release.status
-                    :availability="$model->availabilityFor($task)"
-                    :absence-is-good="$task->absenceIsGood()"
-                    dot
-                />
+                @unless ($task === \App\Enums\FlightPlanTask::ReviewMelCdl)
+                    <x-flight-release.status
+                        :availability="$model->availabilityFor($task)"
+                        :absence-is-good="$task->absenceIsGood()"
+                        dot
+                    />
+                @endunless
             </button>
         @endforeach
     </div>
