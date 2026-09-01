@@ -54,7 +54,11 @@
                     <x-flight-release.counter-badge
                         :count="$taskCounter"
                         :label="$task->label()"
-                        :noun="$task === \App\Enums\FlightPlanTask::SlotTimes ? 'approved slot' : 'item'"
+                        :noun="match ($task) {
+                            \App\Enums\FlightPlanTask::SlotTimes => 'approved slot',
+                            \App\Enums\FlightPlanTask::Etops => 'equal-time point',
+                            default => 'item',
+                        }"
                         :tone="$task === \App\Enums\FlightPlanTask::ReviewMelCdl && $taskCounter === 0 ? 'success' : 'warning'"
                     />
                 @endif

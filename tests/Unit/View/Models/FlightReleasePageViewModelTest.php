@@ -801,6 +801,17 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
+    public function it_counts_equal_time_points_for_the_etops_task_badge(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['etops']['scenarios'] = [];
+
+        $viewModel = $this->viewModel($payload);
+
+        $this->assertSame(1, $viewModel->taskCounter(FlightPlanTask::Etops));
+    }
+
+    #[Test]
     public function it_reports_missing_alternate_airport_details_without_losing_the_normalized_code(): void
     {
         $payload = $this->resultPayload();

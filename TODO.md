@@ -52,25 +52,6 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 # Tasks
 
-## 19. [x] Completed: Remove compatibility paths and complete release verification
-
-Outcome:
-- The flight-release workspace now serializes, caches, hydrates, and renders exclusively from the typed `flight_plan_data` contract. Flat compatibility writers, readers, staging data, duplicated allowlists, and unreachable task-view fallbacks are removed.
-- Airport enrichment and planned duration have typed owners, task availability follows explicit normalized evidence, and the `flight_plan_results:v2` namespace rejects pre-cutover cache entries instead of partially hydrating them.
-- Source fragments, raw document evidence, filenames, storage paths, and parser details remain outside cache payloads, Livewire state, rendered HTML, logs, and user-facing errors.
-- Cache expiry and ownership boundaries, reset/forget behavior, old-schema rejection, lifecycle failures, authorization, upload deletion, rendering, and privacy boundaries have focused regression coverage.
-- The release checkpoint passes: Pint; 600 PHPUnit tests with 3,760 assertions; 12 JavaScript tests; the production Vite build; and Larastan with zero errors. Larastan is now an enforced CI job, and the generated asset build introduced no tracked artifacts.
-
-Commit message: `refactor: complete flight plan workspace migration`
-
-## 26. ETOPS counter badge
-- Count of ETP points
-- Use the reuseable counter badge component
-Partially implemented, verify tests
-
-References:
-app/View/Models/FlightReleasePageViewModel.php
-
 -------------------
 **Branch Merge**
 -------------------
@@ -360,8 +341,25 @@ Outcome: PDF text flattening joined the `MFPTW` heading directly to the airport 
 
 Commit message: `fix: extract flattened TLR result boundaries`
 
+## 26. [x] Completed: ETOPS counter badge
+
+Outcome: The ETOPS task navigator now uses the reusable counter badge to display the number of typed equal-time points, independently of scenario count. Its accessible label uses the singular or plural “equal-time point” noun, and focused view-model and Livewire coverage verifies both the semantic count and rendered badge.
+
+Commit message: `feat: add ETOPS task counter badge`
+
 ## 27. [x] Completed: Bug: Envelope task availability
 
 Outcome: Envelope availability no longer depends on Takeoff and Landing Report extraction because the task presents shared flight and crew context. It remains selectable when TLR data is absent or contains no supported result, and focused unit and Livewire coverage confirms the Envelope panel still renders the available route context instead of a not-present or unsupported state. The obsolete TLR-specific availability helper was removed.
 
 Commit message: `fix: keep envelope task available`
+
+## 19. [x] Completed: Remove compatibility paths and complete release verification
+
+Outcome:
+- The flight-release workspace now serializes, caches, hydrates, and renders exclusively from the typed `flight_plan_data` contract. Flat compatibility writers, readers, staging data, duplicated allowlists, and unreachable task-view fallbacks are removed.
+- Airport enrichment and planned duration have typed owners, task availability follows explicit normalized evidence, and the `flight_plan_results:v2` namespace rejects pre-cutover cache entries instead of partially hydrating them.
+- Source fragments, raw document evidence, filenames, storage paths, and parser details remain outside cache payloads, Livewire state, rendered HTML, logs, and user-facing errors.
+- Cache expiry and ownership boundaries, reset/forget behavior, old-schema rejection, lifecycle failures, authorization, upload deletion, rendering, and privacy boundaries have focused regression coverage.
+- The release checkpoint passes: Pint; 600 PHPUnit tests with 3,760 assertions; 12 JavaScript tests; the production Vite build; and Larastan with zero errors. Larastan is now an enforced CI job, and the generated asset build introduced no tracked artifacts.
+
+Commit message: `refactor: complete flight plan workspace migration`

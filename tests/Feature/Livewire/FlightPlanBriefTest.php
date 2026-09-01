@@ -468,6 +468,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('ETOPS 180')
             ->assertSeeHtml('wire:key="flight-plan-overview-card-etops"')
             ->assertSeeHtml('wire:key="flight-plan-task-nav-etops"')
+            ->assertSeeHtml('aria-label="ETOPS: 1 equal-time point"')
             ->call('selectTask', FlightPlanTask::Etops->value)
             ->assertSet('activeTask', FlightPlanTask::Etops->value)
             ->assertSeeHtml('wire:key="flight-plan-task-panel-etops"')

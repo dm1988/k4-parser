@@ -98,6 +98,7 @@ readonly class FlightReleasePageViewModel
         return match ($task) {
             FlightPlanTask::ReviewMelCdl => $this->maintenanceItemCount(),
             FlightPlanTask::SlotTimes => count($this->slotTimes()),
+            FlightPlanTask::Etops => count($this->etps()),
             default => null,
         };
     }
