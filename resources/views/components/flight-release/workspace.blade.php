@@ -47,18 +47,6 @@
                     />
                     @break
 
-                @case(! $activeTask->hasCustomView())
-                    <div class="flex flex-col gap-4 p-4 sm:p-5">
-                        <x-flight-release.empty-state
-                            title="Source-backed data available"
-                            :message="$activeTask->label().' is available for this release. Its dedicated operational layout is scheduled in the next focused task.'"
-                            icon="check-circle"
-                            class="min-h-52 rounded-lg bg-[#F8F9FA] dark:bg-slate-800/60"
-                        />
-                        <x-flight-release.source-evidence />
-                    </div>
-                    @break
-
                 @case($activeTask === \App\Enums\FlightPlanTask::JeppPdPro)
                     <div class="p-3 sm:p-4">
                         <x-dynamic-component

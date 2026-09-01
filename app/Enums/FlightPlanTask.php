@@ -87,9 +87,4 @@ enum FlightPlanTask: string
     {
         return $this === self::ReviewMelCdl;
     }
-
-    public function hasCustomView(): bool
-    {
-        return true;
-    }
 }

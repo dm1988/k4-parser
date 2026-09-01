@@ -19,7 +19,7 @@ For a native installation:
 - Tesseract OCR (`tesseract-ocr` on Debian/Ubuntu)
 - MySQL 8.x, or SQLite for a lightweight local setup
 
-The included Docker image supplies PHP 8.5, Node.js 24, Composer, Tesseract, and the required PHP extensions. The Compose stack uses MySQL 8.4 and Redis.
+The supported Sail image supplies PHP 8.4, Node.js 24, Composer, Tesseract, and the required PHP extensions. The Compose stack uses MySQL 8.4 and Redis.
 
 ## Docker setup (recommended)
 
