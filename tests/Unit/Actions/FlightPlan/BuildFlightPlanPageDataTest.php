@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
 
 class BuildFlightPlanPageDataTest extends TestCase
 {
-    public function test_it_builds_typed_page_data_from_the_normalized_contract_and_legacy_supplements(): void
+    public function test_it_builds_typed_page_data_from_the_normalized_contract(): void
     {
         $pageData = app(BuildFlightPlanPageData::class)->handle($this->resultPayload());
 
@@ -23,10 +23,10 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame(5549, $pageData->flightPlan->route->distanceNauticalMiles);
         $this->assertSame(200, $pageData->flightPlan->fuelPlan?->costIndex);
         $this->assertSame(0.0, $pageData->flightPlan->fuelPlan->contingency?->amount);
-        $this->assertSame('Ted Stevens Anchorage International Airport', $pageData->departureAirport?->name);
+        $this->assertSame('Ted Stevens Anchorage International Airport', $pageData->flightPlan->route->departureAirport?->name);
         $this->assertSame(34000, $pageData->flightPlan->flightInit?->filedInitialAltitude?->value);
         $this->assertSame(29000, $pageData->flightPlan->flightInit->fmsInitialAltitude?->value);
-        $this->assertSame('12h10m', $pageData->duration);
+        $this->assertSame('12h10m', $pageData->flightPlan->schedule->blockDuration);
         $this->assertSame('ETP1', $pageData->flightPlan->etops?->equalTimePoints[0]->label);
         $this->assertSame('N40 31.1', $pageData->flightPlan->etops->entryPoint?->coordinate->latitude);
         $this->assertTrue($pageData->flightPlan->maintenanceLog?->sectionPresent);
@@ -44,6 +44,20 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame(OperationsSpecification::B44, $pageData->flightPlan->releaseAuthorization->operationsSpecification);
     }
 
+    public function test_it_rehydrates_airport_details_and_duration_from_a_normalized_only_payload(): void
+    {
+        $payload = $this->resultPayload();
+        $normalizedOnlyPayload = ['flight_plan_data' => $payload['flight_plan_data']];
+
+        $pageData = app(BuildFlightPlanPageData::class)->handle($normalizedOnlyPayload);
+
+        $this->assertNotNull($pageData);
+        $this->assertSame('Ted Stevens Anchorage International Airport', $pageData->flightPlan->route->departureAirport?->name);
+        $this->assertNull($pageData->flightPlan->route->destinationAirport);
+        $this->assertNull($pageData->flightPlan->route->alternateAirport);
+        $this->assertSame('12h10m', $pageData->flightPlan->schedule->blockDuration);
+    }
+
     public function test_normalized_core_values_take_precedence_over_conflicting_flat_compatibility_values(): void
     {
         $payload = $this->resultPayload();
@@ -52,6 +66,15 @@ class BuildFlightPlanPageDataTest extends TestCase
         $payload['alternate'] = null;
         $payload['departure_runway'] = '01';
         $payload['route'] = 'LEGACY ROUTE';
+        $payload['departure_airport'] = [
+            'icao' => 'XXXX',
+            'iata' => 'XXX',
+            'name' => 'Conflicting legacy airport',
+            'city' => 'Nowhere',
+            'state' => null,
+            'country' => 'Nowhere',
+        ];
+        $payload['duration'] = '99h99m';
 
         $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
 
@@ -61,6 +84,8 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame('KRSW', $pageData->flightPlan->route->alternate?->value);
         $this->assertSame('25R', $pageData->flightPlan->route->departureRunway);
         $this->assertSame('DCT Q139 TEST', $pageData->flightPlan->route->route);
+        $this->assertSame('Ted Stevens Anchorage International Airport', $pageData->flightPlan->route->departureAirport?->name);
+        $this->assertSame('12h10m', $pageData->flightPlan->schedule->blockDuration);
     }
 
     public function test_it_reports_availability_for_every_flight_plan_task(): void
@@ -121,7 +146,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         unset($payload['flight_plan_data']['generalDeclaration']);
         unset($payload['flight_plan_data']['releaseAuthorization']);
         unset($payload['flight_plan_data']['crewMembers'][0]['employeeNumber']);
-        $payload['departure_airport'] = 'invalid';
+        $payload['flight_plan_data']['route']['departureAirport'] = 'invalid';
         $payload['initial_altitude'] = [];
         $payload['flight_plan_data']['etops'] = null;
         $payload['etps'] = $this->legacyEtps();
@@ -134,7 +159,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertNull($pageData->flightPlan->fuelPlan);
         $this->assertNull($pageData->flightPlan->flightInit);
         $this->assertNull($pageData->flightPlan->crewMembers[0]->employeeNumber);
-        $this->assertNull($pageData->departureAirport);
+        $this->assertNull($pageData->flightPlan->route->departureAirport);
         $this->assertNull($pageData->flightPlan->etops);
         $this->assertFalse($pageData->flightPlan->generalDeclaration->sectionPresent);
         $this->assertSame(OperationsSpecification::Unknown, $pageData->flightPlan->releaseAuthorization->operationsSpecification);
@@ -277,7 +302,7 @@ class BuildFlightPlanPageDataTest extends TestCase
                     'etdLocal' => null,
                     'etaUtc' => '2026-05-25T14:50:00+00:00',
                     'etaLocal' => null,
-                    'blockDuration' => null,
+                    'blockDuration' => '12h10m',
                     'reportTimeUtc' => null,
                     'reportTimeLocal' => null,
                     'dutyEndUtc' => null,
@@ -296,6 +321,16 @@ class BuildFlightPlanPageDataTest extends TestCase
                     'departure' => 'PANC',
                     'destination' => 'KMIA',
                     'alternate' => 'KRSW',
+                    'departureAirport' => [
+                        'icao' => 'PANC',
+                        'iata' => 'ANC',
+                        'name' => 'Ted Stevens Anchorage International Airport',
+                        'city' => 'Anchorage',
+                        'state' => 'Alaska',
+                        'country' => 'United States',
+                    ],
+                    'destinationAirport' => null,
+                    'alternateAirport' => null,
                     'route' => 'DCT Q139 TEST',
                     'departureRunway' => '25R',
                     'arrivalRunway' => '27',

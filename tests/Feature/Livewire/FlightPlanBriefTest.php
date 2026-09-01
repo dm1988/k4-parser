@@ -1784,6 +1784,15 @@ class FlightPlanBriefTest extends TestCase
             'departure' => (string) $legacy['departure'],
             'destination' => (string) $legacy['destination'],
             'alternate' => is_string($legacy['alternate'] ?? null) ? $legacy['alternate'] : null,
+            'departure_airport' => ($legacy['departure_airport'] ?? null) instanceof AirportData
+                ? $legacy['departure_airport']
+                : null,
+            'destination_airport' => ($legacy['destination_airport'] ?? null) instanceof AirportData
+                ? $legacy['destination_airport']
+                : null,
+            'alternate_airport' => ($legacy['alternate_airport'] ?? null) instanceof AirportData
+                ? $legacy['alternate_airport']
+                : null,
             'route' => is_string($legacy['route'] ?? null) ? $legacy['route'] : null,
             'departure_runway' => is_string($legacy['departure_runway'] ?? null) ? $legacy['departure_runway'] : null,
             'arrival_runway' => is_string($legacy['arrival_runway'] ?? null) ? $legacy['arrival_runway'] : null,

@@ -2,6 +2,7 @@
 
 namespace App\Actions\FlightPlan;
 
+use App\DTOs\AirportData;
 use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightInitData;
 use App\DTOs\FlightPlanData;
@@ -73,6 +74,9 @@ class BuildFlightPlanData
                 departure: new AirportCode($parsed->route['departure'] ?? ''),
                 destination: new AirportCode($parsed->route['destination'] ?? ''),
                 alternate: $this->airportCode($parsed->route['alternate'] ?? null),
+                departureAirport: $this->airportData($parsed->route['departure_airport'] ?? null),
+                destinationAirport: $this->airportData($parsed->route['destination_airport'] ?? null),
+                alternateAirport: $this->airportData($parsed->route['alternate_airport'] ?? null),
                 route: $parsed->route['route'] ?? null,
                 departureRunway: $parsed->route['departure_runway'] ?? null,
                 arrivalRunway: $parsed->route['arrival_runway'] ?? null,
@@ -148,6 +152,11 @@ class BuildFlightPlanData
     private function airportCode(?string $value): ?AirportCode
     {
         return $value === null ? null : new AirportCode($value);
+    }
+
+    private function airportData(mixed $value): ?AirportData
+    {
+        return $value instanceof AirportData ? $value : null;
     }
 
     private function fuelPlan(ParsedFlightPlanData $parsed): ?FuelPlanData

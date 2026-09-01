@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\DTOs;
 
+use App\DTOs\AirportData;
 use App\DTOs\Etops\EtopsData;
 use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightPlanData;
@@ -26,6 +27,14 @@ class FlightPlanDataTest extends TestCase
             route: new RouteData(
                 departure: new AirportCode('KJFK'),
                 destination: new AirportCode('KLAX'),
+                departureAirport: new AirportData(
+                    'KJFK',
+                    'JFK',
+                    'John F. Kennedy International Airport',
+                    'New York',
+                    'New York',
+                    'United States',
+                ),
             ),
             fuelPlan: new FuelPlanData(ramp: FuelQuantity::pounds(216800)),
             etops: new EtopsData(
@@ -40,6 +49,7 @@ class FlightPlanDataTest extends TestCase
         $this->assertSame('KJFK', $flightPlan->route->departure->value);
         $this->assertSame(216800.0, $flightPlan->fuelPlan?->ramp?->amount);
         $this->assertSame('2026-08-21T12:00:00+00:00', $flightPlan->toArray()['schedule']['etdUtc']);
+        $this->assertSame('John F. Kennedy International Airport', $flightPlan->toArray()['route']['departureAirport']['name']);
         $this->assertSame('confirmed_etops', $flightPlan->toArray()['etops']['applicability']);
         $this->assertSame('b44', $flightPlan->toArray()['releaseAuthorization']['operationsSpecification']);
         $this->assertSame(0.0, $flightPlan->toArray()['waypoints'][0]['remainingFuel']['amount']);

@@ -42,10 +42,18 @@ class FlightPlanResultSerializerTest extends TestCase
             ->willReturn("DCT\n TEST");
         $flightPlan = new FlightPlanData(
             identity: new FlightIdentityData(flightNumber: 'CKS256'),
-            schedule: new ScheduleData,
+            schedule: new ScheduleData(blockDuration: '12h10m'),
             route: new RouteData(
                 departure: new AirportCode('KLAX'),
                 destination: new AirportCode('RKSI'),
+                departureAirport: new AirportData(
+                    'KLAX',
+                    'LAX',
+                    'Los Angeles International',
+                    'Los Angeles',
+                    'California',
+                    'United States',
+                ),
                 route: 'DCT TEST',
             ),
             maintenanceLog: new MaintenanceLogData(
@@ -154,9 +162,14 @@ class FlightPlanResultSerializerTest extends TestCase
         $this->assertSame('Los Angeles International', $result['departure_airport']['name']);
         $this->assertSame("DCT\n TEST", $result['route']);
         $this->assertSame('12h10m', $result['duration']);
+        $this->assertSame($result['flight_plan_data']['schedule']['blockDuration'], $result['duration']);
         $this->assertSame('FL 340', $result['initial_altitude']);
         $this->assertSame('ETP1', $result['etps'][0]['label']);
         $this->assertSame('CKS256', $result['flight_plan_data']['identity']['flightNumber']);
+        $this->assertSame(
+            $result['flight_plan_data']['route']['departureAirport'],
+            $result['departure_airport'],
+        );
         $this->assertSame('28-22-01', $result['flight_plan_data']['maintenanceLog']['items'][0]['number']);
         $this->assertSame('Alex Morgan', $result['flight_plan_data']['crewMembers'][0]['name']);
         $this->assertSame('4827', $result['flight_plan_data']['crewMembers'][0]['employeeNumber']);

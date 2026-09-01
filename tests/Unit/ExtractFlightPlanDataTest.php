@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\DTOs\AirportData;
 use App\DTOs\ParsedFlightPlanData;
 use App\Services\Clients\AirportLookupClient;
 use App\Services\FlightPlan\Extractor\Etops\EtopsQualificationExtractor;
@@ -167,6 +168,7 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertInstanceOf(ParsedFlightPlanData::class, $parsed);
         $this->assertSame('CKS256', $parsed->identity['flight_number']);
         $this->assertSame(5549, $parsed->route['distance_nautical_miles']);
+        $this->assertSame('Los Angeles International Airport', $parsed->route['departure_airport']?->name);
         $this->assertSame('lb', $parsed->sourceFragments['fuel_unit']);
         $this->assertTrue($parsed->maintenance->sectionPresent);
         $this->assertSame('Alex Morgan', $parsed->crewMembers->members[0]['name']);
@@ -291,7 +293,14 @@ class ExtractFlightPlanDataTest extends TestCase
             'departure' => 'KLAX',
             'destination' => 'RKSI',
             'alternate' => 'RKTU',
-            'departure_airport' => null,
+            'departure_airport' => new AirportData(
+                'KLAX',
+                'LAX',
+                'Los Angeles International Airport',
+                'Los Angeles',
+                'California',
+                'United States',
+            ),
             'destination_airport' => null,
             'alternate_airport' => null,
             'departure_runway' => '25R',

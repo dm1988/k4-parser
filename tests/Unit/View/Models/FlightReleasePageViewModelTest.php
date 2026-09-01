@@ -10,6 +10,7 @@ use App\Enums\RouteTokenType;
 use App\Enums\TaskTone;
 use App\View\Models\FlightReleasePageViewModel;
 use App\View\Models\FlightReleasePageViewModelFactory;
+use Illuminate\Support\Facades\Blade;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -716,7 +717,7 @@ class FlightReleasePageViewModelTest extends TestCase
     public function it_normalizes_numeric_regions_and_iso_country_codes_for_airport_display(): void
     {
         $payload = $this->resultPayload();
-        $payload['destination_airport'] = [
+        $payload['flight_plan_data']['route']['destinationAirport'] = [
             'icao' => 'KMIA',
             'iata' => 'MIA',
             'name' => 'Miami International Airport',
@@ -775,13 +776,33 @@ class FlightReleasePageViewModelTest extends TestCase
     public function it_reports_missing_alternate_airport_details_without_losing_the_normalized_code(): void
     {
         $payload = $this->resultPayload();
-        $payload['alternate_airport'] = null;
+        $payload['flight_plan_data']['route']['alternateAirport'] = null;
 
         $viewModel = $this->viewModel($payload);
 
         $this->assertSame('KRSW', $viewModel->alternate());
         $this->assertNull($viewModel->alternateAirport());
         $this->assertSame('Airport details unavailable.', $viewModel->alternateAirportFallback());
+    }
+
+    #[Test]
+    public function it_renders_every_visible_task_identically_from_the_normalized_only_contract(): void
+    {
+        $payload = $this->resultPayload();
+        $normalizedOnlyPayload = ['flight_plan_data' => $payload['flight_plan_data']];
+        $completeModel = $this->viewModel($payload);
+        $normalizedOnlyModel = $this->viewModel($normalizedOnlyPayload);
+
+        $this->assertEquals($completeModel->pageData, $normalizedOnlyModel->pageData);
+        $this->assertSame($completeModel->tasks(), $normalizedOnlyModel->tasks());
+
+        foreach ($completeModel->tasks() as $task) {
+            $this->assertSame(
+                $this->renderWorkspace($completeModel, $task),
+                $this->renderWorkspace($normalizedOnlyModel, $task),
+                "The {$task->value} task differs when root compatibility fields are absent.",
+            );
+        }
     }
 
     /** @param array<string, mixed> $payload */
@@ -791,6 +812,18 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertNotNull($pageData);
 
         return app(FlightReleasePageViewModelFactory::class)->make($pageData);
+    }
+
+    private function renderWorkspace(FlightReleasePageViewModel $model, FlightPlanTask $activeTask): string
+    {
+        return Blade::render(
+            '<x-flight-release.workspace :tasks="$tasks" :active-task="$activeTask" :model="$model" />',
+            [
+                'tasks' => $model->tasks(),
+                'activeTask' => $activeTask,
+                'model' => $model,
+            ],
+        );
     }
 
     /** @return array<string, mixed> */
@@ -831,7 +864,7 @@ class FlightReleasePageViewModelTest extends TestCase
                 'schedule' => [
                     'etdUtc' => null,
                     'etaUtc' => null,
-                    'blockDuration' => null,
+                    'blockDuration' => '07h12m',
                     'reportTimeUtc' => null,
                     'dutyEndUtc' => null,
                     'slotTimesUtc' => [],
@@ -840,6 +873,16 @@ class FlightReleasePageViewModelTest extends TestCase
                     'departure' => 'PANC',
                     'destination' => 'KMIA',
                     'alternate' => 'KRSW',
+                    'departureAirport' => [
+                        'icao' => 'PANC',
+                        'iata' => 'ANC',
+                        'name' => 'Ted Stevens Anchorage International Airport',
+                        'city' => 'Anchorage',
+                        'state' => 'Alaska',
+                        'country' => 'United States',
+                    ],
+                    'destinationAirport' => null,
+                    'alternateAirport' => null,
                     'route' => 'DCT TEST',
                     'departureRunway' => '25R',
                     'arrivalRunway' => '27',

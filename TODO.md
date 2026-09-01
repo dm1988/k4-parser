@@ -129,8 +129,8 @@ Goal:
 
 Current implementation:
 - `FlightPlanResultSerializer` emits the nested `flight_plan_data` aggregate plus 16 flat compatibility keys; `HandleFlightPlanExtraction::RESULT_KEYS` independently mirrors that public allowlist.
-- `BuildFlightPlanPageData` requires `flight_plan_data` for the main aggregate, but still reads `departure_airport`, `destination_airport`, `alternate_airport`, and `duration` from flat keys. Airport enrichment and displayed duration are therefore the remaining active front-end compatibility consumers.
-- `ExtractFlightPlanData` stores the complete route-extractor array in `ParsedFlightPlanData::$legacy`; the serializer reads airport details, ETP fields, altitude, duration, and route values from it.
+- `BuildFlightPlanPageData` now rehydrates airport enrichment and planned duration exclusively from `flight_plan_data`; root compatibility values remain emitted for later writer removal but have no active front-end reader.
+- `RouteData` owns enriched departure, destination, and alternate airport details, while `ScheduleData::blockDuration` owns the FPL planned duration. `ParsedFlightPlanData::$legacy` remains only for the compatibility-writer cleanup in the later sequence.
 - The orphaned `App\ValueObjects\FlightPlan` was removed during task 18; there is no legacy value-object reconstruction path to preserve or migrate.
 - ETOPS qualification is already in `Extractor/Etops/EtopsQualificationExtractor`, not `MaintenanceLogExtractor`. The questioned `ETOPS FLIGHT: NO` and `NO ETOPS` branches remain there and have explicit unit coverage; remove them only when representative source evidence proves those signatures invalid.
 - `FlightPlanPageData::availabilityFor()` marks several tasks available unconditionally, including Maintenance Log and Flight Init, while their normalized sections can be absent. Honest task availability therefore needs an explicit per-task audit before release.
@@ -143,13 +143,17 @@ Problem:
 - A passing unit suite alone does not verify production asset compilation, responsive interaction, accessibility, or representative PDF/OCR behavior.
 
 Removal sequence:
-1. **Close the two remaining normalized-contract gaps.**
+1. [x] Completed: **Close the two remaining normalized-contract gaps.**
    - Choose and document a typed owner for enriched departure/destination/alternate airport data; serialize it inside the normalized aggregate and rehydrate it without reading root keys.
    - Reconcile the route-extractor `duration` with `ScheduleData::blockDuration`. Add parity fixtures first, then keep one typed source or introduce a clearly named typed planned-duration field if the source meanings differ.
    - Add contract tests proving `FlightPlanPageData` and every visible task render identically from a payload containing only normalized data.
+
+   Outcome: `RouteData` now owns typed airport enrichment alongside the corresponding airport codes, and its serialized form carries departure, destination, and alternate details inside `flight_plan_data.route`. `FlightScheduleExtractor` remains the single parser for FPL planned duration, with `ScheduleData::blockDuration` now driving normalized serialization, page hydration, FMS presentation, and the temporary root compatibility value. Extraction no longer drops airport DTOs into legacy-only staging. Normalized-only contract tests prove page hydration and rendered HTML parity for every visible task, while conflicting root airport and duration values are ignored. Focused DTO, extractor, builder, serializer, view-model, task-rendering, and Livewire regressions pass after Pint.
+
+   Commit message: `refactor: normalize airport and duration ownership`
 2. **Cut over readers before writers.**
-   - Change `BuildFlightPlanPageData` to read airport data and duration only from `flight_plan_data` and remove normalized-vs-flat precedence/fallback tests.
-   - Add a regression assertion that root-level compatibility values are ignored or rejected, then remove them from test payload factories.
+   - Remove obsolete normalized-vs-flat fallback fixtures now that `BuildFlightPlanPageData` reads airport data and duration only from `flight_plan_data`.
+   - Remove root compatibility values from test payload factories while retaining the regression assertion that conflicting root values are ignored.
 3. **Remove compatibility writers and staging.**
    - Make `FlightPlanResultSerializer` return only the normalized public result contract and remove its `FlightRouteExtractor` dependency and `airportArray()` compatibility helper.
    - Reduce `HandleFlightPlanExtraction::RESULT_KEYS` to the normalized contract, or replace the duplicated key allowlist with one serializer-owned public payload boundary.
@@ -225,13 +229,18 @@ Outcome: Confirmed B044 releases now show the amber `B44` authorization badge on
 
 Commit message: `feat: add B44 badge to fuel score navigation`
 
-## 22. Slot times badge
+## 22. Current focus: Slot times badge
 Currently: when slot times are not present, a warning badge shows. 
 Problem: This is not necessarily a bad thing
 
-Fix: Render gray or don't render a badge
+Fix: Render a counter badge in caution yellow. If no slot times found, hide the task in the navigator and hide the approved slots card within the Schedule and slots card in the overview view.
+
+Implementation:
+- Make the counter badge reuseable
 
 References:
+app/View/Models/FlightReleasePageViewModel.php
+resources/views/components/flight-release/task-navigator.blade.php
 
 ## 23. MEL CDL Badge
 Currently: when no MEL / CDLs present, success green badge is rendered drawing a users attention

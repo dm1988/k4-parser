@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\DTOs;
 
+use App\DTOs\AirportData;
 use App\DTOs\RouteData;
 use App\ValueObjects\AirportCode;
 use InvalidArgumentException;
@@ -15,6 +16,14 @@ class RouteDataTest extends TestCase
             departure: new AirportCode('KJFK'),
             destination: new AirportCode('KLAX'),
             alternate: new AirportCode('KONT'),
+            departureAirport: new AirportData(
+                'KJFK',
+                'JFK',
+                'John F. Kennedy International Airport',
+                'New York',
+                'New York',
+                'United States',
+            ),
             route: 'DCT MERIT DCT',
             departureRunway: '31L',
             arrivalRunway: '25L',
@@ -27,6 +36,8 @@ class RouteDataTest extends TestCase
         $this->assertSame('KLAX', $route->destination->value);
         $this->assertSame(2146, $route->distanceNauticalMiles);
         $this->assertSame('KONT', $route->toArray()['alternate']);
+        $this->assertSame('John F. Kennedy International Airport', $route->toArray()['departureAirport']['name']);
+        $this->assertNull($route->toArray()['destinationAirport']);
     }
 
     public function test_it_rejects_a_negative_route_distance(): void

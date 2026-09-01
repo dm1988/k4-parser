@@ -51,7 +51,7 @@ TEXT;
         $this->assertSame('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A', $route);
     }
 
-    public function test_extract_flight_plan_data_from_text_returns_departure_destination_alternate_altitude_duration_and_route(): void
+    public function test_extract_flight_plan_data_from_text_returns_route_and_enriched_airports(): void
     {
         $departureAirport = new AirportData('PANC', 'ANC', 'Ted Stevens Anchorage International Airport', 'Anchorage', 'Alaska', 'United States');
         $destinationAirport = new AirportData('KMIA', 'MIA', 'Miami International Airport', 'Miami', 'Florida', 'United States');

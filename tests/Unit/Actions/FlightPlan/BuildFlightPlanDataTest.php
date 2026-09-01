@@ -3,6 +3,7 @@
 namespace Tests\Unit\Actions\FlightPlan;
 
 use App\Actions\FlightPlan\BuildFlightPlanData;
+use App\DTOs\AirportData;
 use App\DTOs\CrewManifestInputData;
 use App\DTOs\Maintenance\MaintenanceInputData;
 use App\DTOs\ParsedFlightPlanData;
@@ -26,7 +27,7 @@ class BuildFlightPlanDataTest extends TestCase
             schedule: [
                 'etd_utc' => '2026-05-25T02:20:00+00:00',
                 'eta_utc' => '2026-05-25T14:50:00+00:00',
-                'block_duration' => null,
+                'block_duration' => '12h10m',
                 'report_time_utc' => null,
                 'duty_end_utc' => null,
                 'slots' => [[
@@ -42,6 +43,16 @@ class BuildFlightPlanDataTest extends TestCase
                 'departure' => 'klax',
                 'destination' => 'rksi',
                 'alternate' => 'rktu',
+                'departure_airport' => new AirportData(
+                    'KLAX',
+                    'LAX',
+                    'Los Angeles International Airport',
+                    'Los Angeles',
+                    'California',
+                    'United States',
+                ),
+                'destination_airport' => null,
+                'alternate_airport' => null,
                 'route' => 'DCT TEST',
                 'departure_runway' => '25R',
                 'arrival_runway' => '33R',
@@ -140,12 +151,14 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame('62930', $flightPlan->identity->recallNumber);
         $this->assertSame('2026-05-25', $flightPlan->identity->flightDate?->toDateString());
         $this->assertSame('2026-05-25T02:20:00+00:00', $flightPlan->schedule->etdUtc);
+        $this->assertSame('12h10m', $flightPlan->schedule->blockDuration);
         $this->assertSame('departure', $flightPlan->schedule->slots[0]->direction->value);
         $this->assertSame('KLAX', $flightPlan->schedule->slots[0]->airport->value);
         $this->assertSame('2026-05-25T15:20:00+00:00', $flightPlan->schedule->slots[0]->instantUtc->toIso8601String());
         $this->assertSame('1520Z', $flightPlan->schedule->slots[0]->sourceTime);
         $this->assertSame(30, $flightPlan->schedule->slots[0]->toleranceMinutes);
         $this->assertSame('KLAX', $flightPlan->route->departure->value);
+        $this->assertSame('Los Angeles International Airport', $flightPlan->route->departureAirport?->name);
         $this->assertSame(5549, $flightPlan->route->distanceNauticalMiles);
         $this->assertSame(216800.0, $flightPlan->fuelPlan?->ramp?->amount);
         $this->assertSame(200, $flightPlan->fuelPlan->costIndex);

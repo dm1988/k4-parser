@@ -37,19 +37,19 @@ final readonly class RoutePresenter
     /** @return array{name: string, location: string, iata: string, icao: string}|null */
     public function departureAirport(): ?array
     {
-        return $this->airportDetails($this->pageData?->departureAirport);
+        return $this->airportDetails($this->pageData?->flightPlan->route->departureAirport);
     }
 
     /** @return array{name: string, location: string, iata: string, icao: string}|null */
     public function destinationAirport(): ?array
     {
-        return $this->airportDetails($this->pageData?->destinationAirport);
+        return $this->airportDetails($this->pageData?->flightPlan->route->destinationAirport);
     }
 
     /** @return array{name: string, location: string, iata: string, icao: string}|null */
     public function alternateAirport(): ?array
     {
-        return $this->airportDetails($this->pageData?->alternateAirport);
+        return $this->airportDetails($this->pageData?->flightPlan->route->alternateAirport);
     }
 
     public function alternateAirportFallback(): string

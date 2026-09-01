@@ -62,10 +62,6 @@ class BuildFlightPlanPageData
 
         return new FlightPlanPageData(
             flightPlan: $flightPlan,
-            departureAirport: $this->airport($result['departure_airport'] ?? null),
-            destinationAirport: $this->airport($result['destination_airport'] ?? null),
-            alternateAirport: $this->airport($result['alternate_airport'] ?? null),
-            duration: $this->nullableString($result['duration'] ?? null),
         );
     }
 
@@ -92,6 +88,9 @@ class BuildFlightPlanPageData
                 departure: new AirportCode($this->requiredString($route, 'departure')),
                 destination: new AirportCode($this->requiredString($route, 'destination')),
                 alternate: $this->airportCode($route['alternate'] ?? null),
+                departureAirport: $this->airport($route['departureAirport'] ?? null),
+                destinationAirport: $this->airport($route['destinationAirport'] ?? null),
+                alternateAirport: $this->airport($route['alternateAirport'] ?? null),
                 route: $this->nullableString($route['route'] ?? null),
                 departureRunway: $this->nullableString($route['departureRunway'] ?? null),
                 arrivalRunway: $this->nullableString($route['arrivalRunway'] ?? null),

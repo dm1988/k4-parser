@@ -2,7 +2,6 @@
 
 namespace App\View\Models;
 
-use App\DTOs\AirportData;
 use App\DTOs\FlightPlanData;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
@@ -11,10 +10,6 @@ final readonly class FlightPlanPageData
 {
     public function __construct(
         public FlightPlanData $flightPlan,
-        public ?AirportData $departureAirport = null,
-        public ?AirportData $destinationAirport = null,
-        public ?AirportData $alternateAirport = null,
-        public ?string $duration = null,
     ) {}
 
     /** @return array<string, FlightPlanTaskAvailability> */

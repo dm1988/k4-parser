@@ -250,7 +250,7 @@ readonly class FlightReleasePageViewModel
             ['label' => 'Cost Index', 'value' => $this->fmsCostIndex()],
             ['label' => 'Distance to Destination', 'value' => $this->fmsDistanceToDestination()],
             ['label' => 'FMS initial altitude', 'value' => $this->fmsInitialAltitude()],
-            ['label' => 'Planned Duration', 'value' => $this->pageData->duration],
+            ['label' => 'Planned Duration', 'value' => $this->pageData->flightPlan->schedule->blockDuration],
             ['label' => 'Alternate Airport Reserves', 'value' => $this->fmsAlternateReserve()],
         ];
     }
@@ -623,7 +623,7 @@ readonly class FlightReleasePageViewModel
 
     public function duration(): string
     {
-        return $this->pageData->duration ?? '';
+        return $this->pageData?->flightPlan->schedule->blockDuration ?? '';
     }
 
     public function etopsBadgeLabel(): ?string

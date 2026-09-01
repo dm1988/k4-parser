@@ -12,6 +12,9 @@ final readonly class RouteData implements JsonSerializable
         public AirportCode $departure,
         public AirportCode $destination,
         public ?AirportCode $alternate = null,
+        public ?AirportData $departureAirport = null,
+        public ?AirportData $destinationAirport = null,
+        public ?AirportData $alternateAirport = null,
         public ?string $route = null,
         public ?string $departureRunway = null,
         public ?string $arrivalRunway = null,
@@ -25,7 +28,7 @@ final readonly class RouteData implements JsonSerializable
     }
 
     /**
-     * @return array{departure: string, destination: string, alternate: string|null, route: string|null, departureRunway: string|null, arrivalRunway: string|null, departureSid: string|null, arrivalStar: string|null, distanceNauticalMiles: int|null}
+     * @return array{departure: string, destination: string, alternate: string|null, departureAirport: array<string, mixed>|null, destinationAirport: array<string, mixed>|null, alternateAirport: array<string, mixed>|null, route: string|null, departureRunway: string|null, arrivalRunway: string|null, departureSid: string|null, arrivalStar: string|null, distanceNauticalMiles: int|null}
      */
     public function toArray(): array
     {
@@ -33,6 +36,9 @@ final readonly class RouteData implements JsonSerializable
             'departure' => $this->departure->value,
             'destination' => $this->destination->value,
             'alternate' => $this->alternate?->value,
+            'departureAirport' => $this->departureAirport?->toArray(),
+            'destinationAirport' => $this->destinationAirport?->toArray(),
+            'alternateAirport' => $this->alternateAirport?->toArray(),
             'route' => $this->route,
             'departureRunway' => $this->departureRunway,
             'arrivalRunway' => $this->arrivalRunway,
@@ -43,7 +49,7 @@ final readonly class RouteData implements JsonSerializable
     }
 
     /**
-     * @return array{departure: string, destination: string, alternate: string|null, route: string|null, departureRunway: string|null, arrivalRunway: string|null, departureSid: string|null, arrivalStar: string|null, distanceNauticalMiles: int|null}
+     * @return array{departure: string, destination: string, alternate: string|null, departureAirport: array<string, mixed>|null, destinationAirport: array<string, mixed>|null, alternateAirport: array<string, mixed>|null, route: string|null, departureRunway: string|null, arrivalRunway: string|null, departureSid: string|null, arrivalStar: string|null, distanceNauticalMiles: int|null}
      */
     public function jsonSerialize(): array
     {
