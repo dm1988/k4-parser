@@ -67,14 +67,13 @@ class FlightPlanTextExtractor
         } catch (Throwable $throwable) {
             try {
                 Log::error('PDF parsing failed', [
-                    'file' => $filePath,
-                    'error' => $throwable->getMessage(),
+                    'error_code' => $throwable::class,
                 ]);
             } catch (Throwable) {
                 // Logging is best-effort when the Laravel container is unavailable.
             }
 
-            throw FlightRouteNotFoundException::pdfCouldNotBeRead($throwable->getMessage());
+            throw FlightRouteNotFoundException::pdfCouldNotBeRead();
         }
     }
 }

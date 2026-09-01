@@ -401,7 +401,7 @@ TEXT;
         $extractor->extractRouteFromText($text);
     }
 
-    public function test_extract_route_wraps_pdf_parser_failures_with_a_detailed_message(): void
+    public function test_extract_route_wraps_pdf_parser_failures_with_a_private_safe_message(): void
     {
         $parser = $this->createMock(Parser::class);
         $parser->expects($this->once())
@@ -412,7 +412,7 @@ TEXT;
 
         $this->expectException(FlightRouteNotFoundException::class);
         $this->expectExceptionMessage(
-            'The uploaded PDF could not be read. Object list not found. Possible secured file.'
+            'The uploaded PDF could not be read. It may be malformed, secured, or image-only.'
         );
 
         $extractor->extractRoute('/tmp/flight-release.pdf');

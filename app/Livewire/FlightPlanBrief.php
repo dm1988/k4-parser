@@ -20,6 +20,7 @@ use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 use LogicException;
+use RuntimeException;
 use Throwable;
 
 class FlightPlanBrief extends Component
@@ -77,8 +78,8 @@ class FlightPlanBrief extends Component
             $this->addError('flightRelease', $exception->getMessage());
 
             return;
-        } catch (Throwable $throwable) {
-            report($throwable);
+        } catch (Throwable) {
+            report(new RuntimeException('Flight plan extraction failed.'));
 
             $this->resetToUpload($user);
             $this->addError('flightRelease', 'We could not process that flight release. Please try again.');

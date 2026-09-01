@@ -60,10 +60,9 @@ class HandleFlightPlanExtraction
             $this->recordFailure($extractRequest, $startedAt, $exception);
 
             Log::warning('Flight release route extraction failed', [
-                'filename' => $uploadedFile->getClientOriginalName(),
                 'mime_type' => $uploadedFile->getMimeType(),
                 'size' => $uploadedFile->getSize(),
-                'message' => $exception->getMessage(),
+                'error_code' => $exception::class,
             ]);
 
             throw $exception;

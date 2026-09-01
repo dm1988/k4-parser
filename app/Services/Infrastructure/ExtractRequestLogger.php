@@ -83,7 +83,7 @@ class ExtractRequestLogger
 
         Log::error('K4 extraction failed', [
             'extract_request_id' => $extractRequest->id,
-            'error' => $e->getMessage(),
+            'error_code' => $e::class,
         ]);
     }
 

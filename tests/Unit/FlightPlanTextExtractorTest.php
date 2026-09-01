@@ -8,6 +8,10 @@ use App\Services\FlightPlan\Extractor\GeneralDeclarationExtractor;
 use App\Services\FlightPlan\Extractor\PdfImagePageTextExtractor;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository;
+use Illuminate\Support\Facades\Log;
+use LogicException;
+use Mockery\MockInterface;
+use Mockery\VerificationDirector;
 use Smalot\PdfParser\Document;
 use Smalot\PdfParser\Page;
 use Smalot\PdfParser\Parser;
@@ -41,10 +45,12 @@ class FlightPlanTextExtractorTest extends TestCase
 
     public function test_it_translates_pdf_parser_failures(): void
     {
+        $log = Log::spy();
+
         $parser = $this->createMock(Parser::class);
         $parser->expects($this->once())
             ->method('parseFile')
-            ->willThrowException(new \RuntimeException('secured file'));
+            ->willThrowException(new \RuntimeException('private parser detail /private/upload/path.pdf'));
 
         $extractor = new FlightPlanTextExtractor(
             $parser,
@@ -53,9 +59,15 @@ class FlightPlanTextExtractorTest extends TestCase
         );
 
         $this->expectException(FlightRouteNotFoundException::class);
-        $this->expectExceptionMessage('The uploaded PDF could not be read. secured file');
+        $this->expectExceptionMessage('The uploaded PDF could not be read. It may be malformed, secured, or image-only.');
 
-        $extractor->extract('/tmp/missing-flight-plan.pdf');
+        try {
+            $extractor->extract('/tmp/missing-flight-plan.pdf');
+        } finally {
+            $this->assertReceivedOnce($log, 'error')->with('PDF parsing failed', [
+                'error_code' => \RuntimeException::class,
+            ]);
+        }
     }
 
     public function test_it_appends_ocr_text_from_pages_without_extractable_text(): void
@@ -115,5 +127,16 @@ class FlightPlanTextExtractorTest extends TestCase
         $result = (new GeneralDeclarationExtractor)->extract($text);
 
         $this->assertTrue($result['data']['section_present']);
+    }
+
+    private function assertReceivedOnce(MockInterface $mock, string $method): VerificationDirector
+    {
+        $expectation = $mock->shouldHaveReceived($method);
+
+        if (! $expectation instanceof VerificationDirector) {
+            throw new LogicException("Expected a Mockery verification director for [{$method}].");
+        }
+
+        return $expectation->once();
     }
 }

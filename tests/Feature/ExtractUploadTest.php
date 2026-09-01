@@ -12,7 +12,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Livewire\Livewire;
+use LogicException;
+use Mockery\CompositeExpectation;
 use Mockery\MockInterface;
+use Mockery\VerificationDirector;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -84,8 +87,7 @@ class ExtractUploadTest extends TestCase
         $text = "Trip Information\nDate: 13Jun2026\nTrip ID: 13131\nCrew on trip - (5)\nCP 4620 Michael Blackburn";
 
         $this->mock(ScheduleFormatParser::class, function (MockInterface $mock) use ($text): void {
-            $mock->shouldReceive('parse')
-                ->once()
+            $this->expectOnce($mock, 'parse')
                 ->with($text, null)
                 ->andReturn([
                     'trip' => ['trip_number' => '13131'],
@@ -152,14 +154,12 @@ class ExtractUploadTest extends TestCase
         ];
 
         $this->mock(ScheduleInputResolver::class, function (MockInterface $mock) use ($source): void {
-            $mock->shouldReceive('resolve')
-                ->once()
+            $this->expectOnce($mock, 'resolve')
                 ->andReturn($source);
         });
 
         $this->mock(ScheduleFormatParser::class, function (MockInterface $mock) use ($parsed): void {
-            $mock->shouldReceive('parse')
-                ->once()
+            $this->expectOnce($mock, 'parse')
                 ->with('Duty event raw text', null)
                 ->andReturn($parsed);
         });
@@ -179,11 +179,10 @@ class ExtractUploadTest extends TestCase
 
     public function test_parse_failure_is_recorded_and_logged_without_input_contents(): void
     {
-        Log::spy();
+        $log = Log::spy();
 
         $this->mock(ScheduleInputResolver::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('resolve')
-                ->once()
+            $this->expectOnce($mock, 'resolve')
                 ->andThrow(new RuntimeException('Parser unavailable'));
         });
 
@@ -199,9 +198,9 @@ class ExtractUploadTest extends TestCase
         $this->assertArrayNotHasKey('raw', $extractRequest->getAttributes());
         $this->assertArrayNotHasKey('raw_text', $extractRequest->getAttributes());
 
-        Log::shouldHaveReceived('error')->once()->with('K4 extraction failed', [
+        $this->assertReceivedOnce($log, 'error')->with('K4 extraction failed', [
             'extract_request_id' => $extractRequest->id,
-            'error' => 'Parser unavailable',
+            'error_code' => RuntimeException::class,
         ]);
     }
 
@@ -223,14 +222,12 @@ class ExtractUploadTest extends TestCase
         ];
 
         $this->mock(ScheduleInputResolver::class, function (MockInterface $mock) use ($source): void {
-            $mock->shouldReceive('resolve')
-                ->once()
+            $this->expectOnce($mock, 'resolve')
                 ->andReturn($source);
         });
 
         $this->mock(ScheduleFormatParser::class, function (MockInterface $mock) use ($parsed, $source): void {
-            $mock->shouldReceive('parse')
-                ->once()
+            $this->expectOnce($mock, 'parse')
                 ->with($source['raw_text'], ScheduleDocumentType::PublishedRoster->value)
                 ->andReturn($parsed);
         });
@@ -269,14 +266,12 @@ class ExtractUploadTest extends TestCase
         ];
 
         $this->mock(ScheduleInputResolver::class, function (MockInterface $mock) use ($source): void {
-            $mock->shouldReceive('resolve')
-                ->once()
+            $this->expectOnce($mock, 'resolve')
                 ->andReturn($source);
         });
 
         $this->mock(ScheduleFormatParser::class, function (MockInterface $mock) use ($parsed, $source): void {
-            $mock->shouldReceive('parse')
-                ->once()
+            $this->expectOnce($mock, 'parse')
                 ->with($source['raw_text'], ScheduleDocumentType::TripInformation->value)
                 ->andReturn($parsed);
         });
@@ -317,5 +312,27 @@ class ExtractUploadTest extends TestCase
     private function sessionCacheNamespace(): string
     {
         return (string) session('parsed_results_namespace');
+    }
+
+    private function expectOnce(MockInterface $mock, string $method): CompositeExpectation
+    {
+        $expectation = $mock->shouldReceive($method);
+
+        if (! $expectation instanceof CompositeExpectation) {
+            throw new LogicException("Expected a composite Mockery expectation for [{$method}].");
+        }
+
+        return $expectation->once();
+    }
+
+    private function assertReceivedOnce(MockInterface $mock, string $method): VerificationDirector
+    {
+        $expectation = $mock->shouldHaveReceived($method);
+
+        if (! $expectation instanceof VerificationDirector) {
+            throw new LogicException("Expected a Mockery verification director for [{$method}].");
+        }
+
+        return $expectation->once();
     }
 }

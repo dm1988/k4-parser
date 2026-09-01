@@ -108,9 +108,13 @@ Removal sequence:
    Outcome: Task availability now follows typed evidence for every task. Flight Init requires its confirmed section or crew data; Review MEL / CDL safely handles an absent or confirmed-empty maintenance section; and an explicitly present ETOPS section without supported detail reports `NotSupported`, while confirmed non-ETOPS remains `NotPresent`. Overview, FMS, Jepp PD-Pro, Maintenance Log, and Envelope remain explicit shared-context exceptions. Focused coverage exercises available, absent, unsupported, and confirmed-empty states. Every task already maps to a verified Blade component, and repository searches confirm the obsolete `hasCustomView()` API, assertion, and workspace fallback are absent. ETOPS extraction signatures were left unchanged.
 
    Commit message: `refactor: finalize flight plan task availability`
-6. **Lock the privacy boundary.**
+6. [x] Completed: **Lock the privacy boundary.**
    - Assert `sourceFragments`, raw extracted page text, storage paths, and private evidence are absent from the serialized cache payload, Livewire snapshot, rendered HTML, logs, and validation/error responses.
    - Keep the Livewire component state limited to the locked opaque result key and active task; rehydrated page/view data remains derived server-side.
+
+   Outcome: Flight-plan source fragments remain internal to extraction and are excluded from the normalized cache contract, Livewire state, and rendered HTML. Parser and extraction failure logs now contain only safe error classes and operational metadata—never private storage paths, filenames, raw parser messages, or document evidence. User-visible parser and unexpected-error responses are generic, and unexpected exceptions are reported through a sanitized boundary. Privacy sentinels cover cache serialization, the constrained Livewire state, rendered output, logs, and error bags.
+
+   Commit message: `fix: lock flight plan privacy boundary`
 
 Focused verification while implementing:
 - Contract and hydration: `ExtractFlightPlanDataTest`, `BuildFlightPlanDataTest`, `FlightPlanResultSerializerTest`, `BuildFlightPlanPageDataTest`, and DTO tests for each moved field.

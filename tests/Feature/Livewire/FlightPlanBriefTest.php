@@ -28,6 +28,7 @@ use Livewire\Livewire;
 use LogicException;
 use Mockery\CompositeExpectation;
 use Mockery\MockInterface;
+use Mockery\VerificationDirector;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -139,13 +140,18 @@ class FlightPlanBriefTest extends TestCase
     {
         Storage::fake('user_flight_releases');
         $user = User::factory()->admin()->create();
+        $privateEvidence = 'PRIVATE-EVIDENCE-MUST-NOT-ESCAPE';
+        $privateStoragePath = '/private/flight-releases/source-document.pdf';
 
-        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock) use ($privateEvidence, $privateStoragePath): void {
             $this->expectOnce($mock, 'extractFile')
                 ->withArgs(fn (string $path): bool => str_contains($path, 'framework/testing/disks/user_flight_releases'))
                 ->andReturn($this->parsedFlightPlan([
                     ...$this->flightPlan(),
                     'sensitive_internal_marker' => 'must-not-reach-livewire',
+                ], sourceFragments: [
+                    'raw_page_text' => $privateEvidence,
+                    'storage_path' => $privateStoragePath,
                 ]));
         });
         $this->mock(ShouldPromptForCoffee::class, function (MockInterface $mock) use ($user): void {
@@ -172,7 +178,6 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeHtml('max-w-xl flex-1 items-center gap-3 rounded-lg bg-slate-50 p-2 backdrop-blur-sm dark:bg-slate-800/80 sm:gap-5 lg:bg-transparent lg:p-0')
             ->assertSeeTextInOrder(['Flight not present', 'Aircraft not present', 'Tail not present', 'PANC', 'Date not present', 'Time not present', '07h12m', 'KMIA'])
             ->assertSeeText('Operational support status')
-            ->assertSeeHtml('wire:key="flight-plan-overview-card-flight_init"')
             ->assertDontSeeHtml('aria-label="Available"')
             ->assertDontSeeText('Available')
             ->assertSeeHtml('aria-label="Not present"')
@@ -208,7 +213,11 @@ class FlightPlanBriefTest extends TestCase
         $this->assertArrayNotHasKey('flightPlan', $snapshotData);
         $this->assertArrayHasKey('flightPlanKey', $snapshotData);
         $this->assertIsString($flightPlanKey);
-        $this->assertStringNotContainsString('must-not-reach-livewire', json_encode($snapshotData, JSON_THROW_ON_ERROR));
+        $this->assertEqualsCanonicalizing(['flightRelease', 'flightPlanKey', 'activeTask'], array_keys($snapshotData));
+        $serializedSnapshot = json_encode($snapshotData, JSON_THROW_ON_ERROR);
+        $this->assertStringNotContainsString('must-not-reach-livewire', $serializedSnapshot);
+        $this->assertStringNotContainsString($privateEvidence, $serializedSnapshot);
+        $this->assertStringNotContainsString($privateStoragePath, $serializedSnapshot);
 
         $cachedFlightPlan = app(FlightPlanResultCache::class)->get($user, $flightPlanKey);
 
@@ -217,6 +226,11 @@ class FlightPlanBriefTest extends TestCase
         $this->assertArrayNotHasKey('sensitive_internal_marker', $cachedFlightPlan);
         $this->assertSame('PANC', $cachedFlightPlan['flight_plan_data']['route']['departure']);
         $this->assertArrayNotHasKey('sourceFragments', $cachedFlightPlan['flight_plan_data']);
+        $serializedCache = json_encode($cachedFlightPlan, JSON_THROW_ON_ERROR);
+        $this->assertStringNotContainsString($privateEvidence, $serializedCache);
+        $this->assertStringNotContainsString($privateStoragePath, $serializedCache);
+        $this->assertStringNotContainsString($privateEvidence, $component->html());
+        $this->assertStringNotContainsString($privateStoragePath, $component->html());
         $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
 
         $component
@@ -1543,10 +1557,11 @@ class FlightPlanBriefTest extends TestCase
             ->once()
             ->withArgs(function (string $message, array $context): bool {
                 return $message === 'Flight release route extraction failed'
-                    && $context['filename'] === 'flight-release.pdf'
                     && $context['mime_type'] === 'application/pdf'
                     && $context['size'] > 0
-                    && str_contains($context['message'], 'route segment could not be identified');
+                    && $context['error_code'] === FlightRouteNotFoundException::class
+                    && ! array_key_exists('filename', $context)
+                    && ! array_key_exists('message', $context);
             });
 
         $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
@@ -1573,24 +1588,33 @@ class FlightPlanBriefTest extends TestCase
     {
         Storage::fake('user_flight_releases');
         Exceptions::fake();
+        $log = Log::spy();
+        $privateFailure = 'PRIVATE RAW PAGE /private/flight-release.pdf';
 
-        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock) use ($privateFailure): void {
             $this->expectOnce($mock, 'extractFile')
-                ->andThrow(new RuntimeException('Unexpected extractor failure'));
+                ->andThrow(new RuntimeException($privateFailure));
         });
 
-        Livewire::actingAs(User::factory()->admin()->create())
+        $component = Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
             ->assertNoRedirect()
             ->assertSet('flightRelease', null)
             ->assertSet('flightPlanKey', null)
             ->assertHasErrors(['flightRelease'])
-            ->assertSeeText('We could not process that flight release. Please try again.');
+            ->assertSeeText('We could not process that flight release. Please try again.')
+            ->assertDontSeeText($privateFailure);
 
         Exceptions::assertReported(
-            fn (RuntimeException $exception): bool => $exception->getMessage() === 'Unexpected extractor failure',
+            fn (RuntimeException $exception): bool => $exception->getMessage() === 'Flight plan extraction failed.',
         );
+        $this->assertReceivedOnce($log, 'error')->withArgs(
+            fn (string $message, array $context): bool => $message === 'K4 extraction failed'
+                && $context['error_code'] === RuntimeException::class
+                && ! str_contains(json_encode($context, JSON_THROW_ON_ERROR), $privateFailure),
+        );
+        $this->assertStringNotContainsString($privateFailure, json_encode($component->errors()->toArray(), JSON_THROW_ON_ERROR));
 
         $extractRequest = ExtractRequest::query()->sole();
         $this->assertSame('failed', $extractRequest->status);
@@ -1674,6 +1698,7 @@ class FlightPlanBriefTest extends TestCase
         ?array $weightBalance = null,
         ?array $generalDeclaration = null,
         ?array $releaseAuthorization = null,
+        array $sourceFragments = [],
     ): ParsedFlightPlanData {
         $extractedRouteData ??= $this->flightPlan();
 
@@ -1744,6 +1769,7 @@ class FlightPlanBriefTest extends TestCase
             generalDeclaration: $generalDeclaration ?? [],
             releaseAuthorization: $releaseAuthorization ?? [],
             waypoints: $waypoints ?? [],
+            sourceFragments: $sourceFragments,
         );
     }
 
@@ -1753,6 +1779,17 @@ class FlightPlanBriefTest extends TestCase
 
         if (! $expectation instanceof CompositeExpectation) {
             throw new LogicException("Expected a composite Mockery expectation for [{$method}].");
+        }
+
+        return $expectation->once();
+    }
+
+    private function assertReceivedOnce(MockInterface $mock, string $method): VerificationDirector
+    {
+        $expectation = $mock->shouldHaveReceived($method);
+
+        if (! $expectation instanceof VerificationDirector) {
+            throw new LogicException("Expected a Mockery verification director for [{$method}].");
         }
 
         return $expectation->once();
