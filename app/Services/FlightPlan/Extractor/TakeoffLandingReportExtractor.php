@@ -69,10 +69,19 @@ class TakeoffLandingReportExtractor
         $source = Str::squish($section);
         $matches = [];
         $pattern = '/APT\h+PRWY\h+POAT\h+PWIND\h+PQNH\h+PMRTW\h+FLP\h+IC\h+V1\h+VR\h+V2\h+PTOW\h+MFPTW\h*'
-            .'(?<airport>[A-Z]{4})\h+(?<runway>\d{2}[LRC]?(?:[\/-][A-Z0-9]+)*)\h+(?<oat>[MP-]?\d{1,2}(?:\.\d)?)\h+'
-            .'(?<wind>\d{3}[MP]\d{2,3})\h+(?<qnh>\d{2}\.\d{2}|\d{4})\h+(?<pmrtw>\d{1,5}|-)\h+'
-            .'(?<flap>[A-Z0-9.]+)\h+(?<ice>[YN])\h+(?<v1>\d{1,3})\h+(?<vr>\d{1,3})\h+(?<v2>\d{1,3})\h+'
-            .'(?<ptow>\d{1,5})\h+(?<mfptw>\d{1,5}|-)/i';
+            .'(?<airport>[A-Z]{4})\h+'
+            .'(?<runway>\d{2}[LRC]?(?:[\/-][A-Z0-9]+)*)\h+'
+            .'(?<oat>[MP-]?\d{1,2}(?:\.\d)?)\h+'
+            .'(?<wind>\d{3}[MP-]?\d{1,3})\h+'
+            .'(?<qnh>\d{2}\.\d{2}|\d{3,4})\h+'
+            .'(?<pmrtw>\d{1,5}|-)\h+'
+            .'(?<flap>[A-Z0-9.]+)\h+'
+            .'(?<ice>[YN])\h+'
+            .'(?<v1>\d{1,3})\h+'
+            .'(?<vr>\d{1,3})\h+'
+            .'(?<v2>\d{1,3})\h+'
+            .'(?<ptow>\d{1,5})\h+'
+            .'(?<mfptw>\d{1,5}|-)/i';
 
         if (preg_match($pattern, $source, $matches) !== 1) {
             return null;
@@ -106,7 +115,7 @@ class TakeoffLandingReportExtractor
     {
         $matches = [];
 
-        if (preg_match('/\b(TLR-\d+\h+SEQ-[A-Z0-9]+\h+\d{2}[A-Z]{3}\d{2}\h+\d{4}Z)\b/i', $source, $matches) !== 1) {
+        if (preg_match('/(TLR-\d+\h+SEQ-[A-Z0-9]+\h+\d{2}[A-Z]{3}\d{2}\h+\d{4}Z)(?=\h|A\/C|\z)/i', $source, $matches) !== 1) {
             return null;
         }
 
@@ -149,7 +158,7 @@ class TakeoffLandingReportExtractor
     {
         $matches = [];
 
-        if (preg_match('/\bRMKS\h+(?<warnings>.*?)(?=-{4,}|RWY\h+OAT\h+WIND|\z)/i', $source, $matches) !== 1) {
+        if (preg_match('/RMKS\h+(?<warnings>.*?)(?=-{4,}|RWY\h+OAT\h+WIND|\z)/i', $source, $matches) !== 1) {
             return [];
         }
 

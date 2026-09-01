@@ -132,15 +132,11 @@ Done when: no UI depends on the flat compatibility payload, all enabled tasks ha
 
 Commit message: `refactor: complete flight plan workspace migration`
 
-## 25. Bug: No TLR extracted data with specific flight plan
-Currently:
-The CKS022329VHHH.pdf flight plan does not return any tlr data within the flight plan. 
+## 25. [x] Completed: Bug: No TLR extracted data with specific flight plan
 
-Debugging:
-Testing text: 
-`TAKEOFF AND LANDING REPORT CKS 0223 VHHH-PANC 29AUG26TLR-20 SEQ-98203271C 29AUG26 1708ZA/C N779CK  B777-300ER GE90-115BLACARS INIT DATE   29    ACARS TAKEOFF REQUEST   1701Z-0501Z/// TAKEOFF DATA ///APT  PRWY        POAT PWIND  PQNH  PMRTW FLP IC V1 VR V2 PTOW MFPTWVHHH 25C         28.0 243M05 999   8140  15  Y  68 77 83 7745 7750RMKS WET RUNWAY---- ---- ------ ----- ------- --- --- --- --- --- ------------------RWY  OAT  WIND   QNH   MRTW    FLP V1  VR  V2  PWR CONFIG/CONDITION---------------------------- RUNWAY INFO ----------------------------RWY          LENGTH PMTOW EFP     NOTES07C           12467  7750 SPECIAL07C SHIPS     12467  7750 SPECIAL07L           12467  7750 SPECIAL07L SHIPS     12467  7750 SPECIAL USE WHEN SHIPS ARE WITHIN                                 1000F OF XTND CL FOR VMC OR                                 IF RPRTD BY ATC/ATIS FOR                                 IMC07R           12467  7750 SPECIAL NIGHTLY CLOSURES PER ACTIVE                                 SUP07R SHIPS     12467  7750 SPECIAL USE WHEN SHIPS ARE WITHIN                                 1000F OF XTND CL FOR VMC OR                                 IF RPRTD BY ATC/ATIS FOR                                 IMC25C           12467  7750 DT H25425C SHIPS     12467  7750 DT H254 USE WHEN SHIPS ARE WITHIN                                 1000F OF XTND CL FOR VMC OR                                 IF RPRTD BY ATC/ATIS FOR                                 IMC25L           12467  7750 LT H235 NIGHTLY CLOSURES PER ACTIVE                                 SUP25L SHIPS     12467  7750 LT H235 USE WHEN SHIPS ARE WITHIN                                 1000F OF XTND CL FOR VMC OR                                 IF RPRTD BY ATC/ATIS FOR                                 IMC25R           12467  7750 DT H25425R SHIPS     12467  7521 DT H254 USE WHEN SHIPS ARE WITHIN                                 1000F OF XTND CL FOR VMC OR                                 IF RPRTD BY ATC/ATIS FOR                                 IMC---------------- SPECIAL ENG FAIL TAKEOFF PROCEDURES ----------------RWY CLB VIA       REACHING   OR         TURN      FRA   HOLD07C     H079      D7.9 IZSC  -D3.2 SMT  RT H185   1200-EAST OF SMT07L     H085      D9.0 IZSL  -D3.5 SMT  RT H185   1200-EAST OF SMT07R     H070      D7.9 IZSR  -D2.9 SMT  RT H185   1200-EAST OF SMT------------------- DRY RWY - PTOW - ENG A/I OFF --------------------RWY          MTOW MT    N1 CONFIG              FL  V1  VR  V207C          7745 33 104.6 D-TO - PACKS ON     15 16`
-References:
-storage/app/private/flight_releases/CKS022329VHHH.pdf
+Outcome: PDF text flattening joined the `MFPTW` heading directly to the airport code and joined the report timestamp and result values to their following labels. The TLR extractor now accepts those missing horizontal boundaries while retaining the existing typed field validation. A sanitized regression fixture covers the joined heading, report reference, and remarks boundaries. The supplied `CKS022329VHHH.pdf` now extracts the VHHH runway 25C result, report reference, weather inputs, limits, source-calculated weights, source-coded V-speeds, anti-ice state, and `WET RUNWAY` warning.
+
+Commit message: `fix: extract flattened TLR result boundaries`
 
 ## 26. ETOPS counter badge
 - Count of ETP points

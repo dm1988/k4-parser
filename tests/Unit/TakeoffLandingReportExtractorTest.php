@@ -95,6 +95,36 @@ class TakeoffLandingReportExtractorTest extends TestCase
         $this->assertSame([], $data['source_warnings']);
     }
 
+    public function test_it_extracts_a_flattened_report_with_glued_column_and_aircraft_boundaries(): void
+    {
+        $result = $this->extractor()->extract($this->fixture('flattened-glued-boundaries'));
+
+        $this->assertSame([
+            'section_present' => true,
+            'source_type' => 'takeoff_landing_report',
+            'report_reference' => 'TLR-20 SEQ-ABC123C 29AUG26 1708Z',
+            'airport' => 'VHHH',
+            'planned_runway' => '25C',
+            'outside_air_temperature_celsius' => 28.0,
+            'wind' => '243M05',
+            'qnh_inches_mercury' => null,
+            'qnh_hectopascals' => 999,
+            'maximum_runway_takeoff_weight' => ['amount' => 814000, 'unit' => 'lb'],
+            'flap_setting' => '15',
+            'anti_ice' => true,
+            'v1_knots' => 68,
+            'rotate_knots' => 77,
+            'v2_knots' => 83,
+            'planned_takeoff_weight' => ['amount' => 774500, 'unit' => 'lb'],
+            'maximum_field_takeoff_weight' => ['amount' => 775000, 'unit' => 'lb'],
+            'source_warnings' => ['WET RUNWAY'],
+        ], $result['data']);
+        $this->assertStringContainsString(
+            'MFPTWVHHH',
+            $result['source_fragments']['takeoff_landing_report'],
+        );
+    }
+
     public function test_it_distinguishes_an_absent_report_from_a_report_without_a_supported_result(): void
     {
         $absent = $this->extractor()->extract('ROUTE KLAX DCT RKSI');
