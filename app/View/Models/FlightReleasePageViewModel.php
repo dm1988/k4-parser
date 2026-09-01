@@ -67,7 +67,7 @@ readonly class FlightReleasePageViewModel
     {
         return match ($task) {
             FlightPlanTask::SlotTimes => $this->hasSlotTimes(),
-            FlightPlanTask::Etops => $this->etopsApplicability() === EtopsApplicability::ConfirmedEtops,
+            FlightPlanTask::Etops => $this->availabilityFor($task) !== FlightPlanTaskAvailability::NotPresent,
             default => true,
         };
     }

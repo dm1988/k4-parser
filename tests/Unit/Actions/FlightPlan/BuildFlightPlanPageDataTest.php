@@ -204,6 +204,53 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::Etops));
     }
 
+    public function test_it_uses_typed_evidence_for_absent_unsupported_and_confirmed_empty_tasks(): void
+    {
+        $builder = app(BuildFlightPlanPageData::class);
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['flightInit'] = null;
+        $payload['flight_plan_data']['crewMembers'] = [];
+        $payload['flight_plan_data']['maintenanceLog'] = null;
+        $payload['flight_plan_data']['etops'] = [
+            'sectionPresent' => true,
+            'applicability' => 'unknown',
+            'ratingMinutes' => null,
+            'entryPoint' => null,
+            'exitPoint' => null,
+            'equalTimePoints' => [],
+            'alternates' => [],
+            'scenarios' => [],
+        ];
+
+        $pageData = $builder->handle($payload);
+
+        $this->assertNotNull($pageData);
+        $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::FlightInit));
+        $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::ReviewMelCdl));
+        $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::MaintenanceLog));
+        $this->assertSame(FlightPlanTaskAvailability::NotSupported, $pageData->availabilityFor(FlightPlanTask::Etops));
+
+        $payload['flight_plan_data']['flightInit'] = [
+            'sectionPresent' => true,
+            'acarsInitDate' => null,
+            'filedInitialAltitude' => null,
+            'fmsInitialAltitude' => null,
+        ];
+        $payload['flight_plan_data']['maintenanceLog'] = [
+            'sectionPresent' => true,
+            'items' => [],
+        ];
+        $payload['flight_plan_data']['etops']['applicability'] = 'confirmed_non_etops';
+
+        $confirmedEmptyPageData = $builder->handle($payload);
+
+        $this->assertNotNull($confirmedEmptyPageData);
+        $this->assertSame(FlightPlanTaskAvailability::Available, $confirmedEmptyPageData->availabilityFor(FlightPlanTask::FlightInit));
+        $this->assertSame(FlightPlanTaskAvailability::NotPresent, $confirmedEmptyPageData->availabilityFor(FlightPlanTask::ReviewMelCdl));
+        $this->assertSame(FlightPlanTaskAvailability::Available, $confirmedEmptyPageData->availabilityFor(FlightPlanTask::MaintenanceLog));
+        $this->assertSame(FlightPlanTaskAvailability::NotPresent, $confirmedEmptyPageData->availabilityFor(FlightPlanTask::Etops));
+    }
+
     public function test_it_keeps_the_envelope_available_for_a_legacy_tlr_without_a_supported_result(): void
     {
         $payload = $this->resultPayload();

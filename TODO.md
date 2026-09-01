@@ -93,13 +93,21 @@ Removal sequence:
    Outcome: `FlightPlanResultSerializer` now owns a single normalized public boundary containing only `flight_plan_data`; its route-extractor dependency, flat compatibility fields, and formatting helper were removed. `HandleFlightPlanExtraction` returns that serializer contract directly without a duplicated key allowlist. `ParsedFlightPlanData::$legacy` and route staging were removed, and compatibility-only mocks, fixtures, and assertions were replaced with normalized-contract coverage. Repository searches confirm no production or flight-plan test references remain for the removed staging property, writer allowlist, or route formatting method.
 
    Commit message: `refactor: remove flight plan compatibility writers`
-4. **Version the cache boundary.**
+4. [x] Completed: **Version the cache boundary.**
    - Version the flight-plan result cache namespace or payload schema when the cutover ships so pre-cutover arrays cannot be silently interpreted by the new hydrator.
    - Add explicit TTL-expiry, wrong-user, malformed-key, reset/forget, and old-schema rejection tests. It is acceptable for an in-flight pre-release result to return the user to the upload state after deployment; it is not acceptable to partially render mixed schemas.
-5. **Finish small compatibility-era UI cleanup.**
+
+   Outcome: Flight-plan results now use the `flight_plan_results:v2` cache namespace, so unversioned pre-cutover payloads are invisible to the normalized hydrator and safely return users to the upload state. Focused cache tests cover the versioned opaque key, configured TTL expiry, user isolation, malformed keys, explicit forgetting, and rejection of a mixed legacy payload stored under the old namespace. The existing successful extraction/reset Livewire regression continues to prove that resetting the workspace forgets its cached result.
+
+   Commit message: `refactor: version flight plan result cache`
+5. [x] Completed: **Finish small compatibility-era UI cleanup.**
    - Define the required typed evidence for every `FlightPlanTask` and test present, absent, unsupported, and confirmed-empty states. Remove unconditional availability where a task's source section can be absent, and keep Overview/shared-context exceptions explicit.
    - Remove `FlightPlanTask::hasCustomView()`, its always-true unit assertion, and the unreachable fallback branch in `workspace.blade.php` after component coverage proves all visible task cases resolve.
    - Keep ETOPS signature changes separate from the contract removal. If the two non-ETOPS signatures are invalid, add a sanitized representative fixture that demonstrates the false classification before deleting the branches and updating `EtopsQualificationExtractorTest`.
+
+   Outcome: Task availability now follows typed evidence for every task. Flight Init requires its confirmed section or crew data; Review MEL / CDL safely handles an absent or confirmed-empty maintenance section; and an explicitly present ETOPS section without supported detail reports `NotSupported`, while confirmed non-ETOPS remains `NotPresent`. Overview, FMS, Jepp PD-Pro, Maintenance Log, and Envelope remain explicit shared-context exceptions. Focused coverage exercises available, absent, unsupported, and confirmed-empty states. Every task already maps to a verified Blade component, and repository searches confirm the obsolete `hasCustomView()` API, assertion, and workspace fallback are absent. ETOPS extraction signatures were left unchanged.
+
+   Commit message: `refactor: finalize flight plan task availability`
 6. **Lock the privacy boundary.**
    - Assert `sourceFragments`, raw extracted page text, storage paths, and private evidence are absent from the serialized cache payload, Livewire snapshot, rendered HTML, logs, and validation/error responses.
    - Keep the Livewire component state limited to the locked opaque result key and active task; rehydrated page/view data remains derived server-side.
@@ -136,20 +144,13 @@ Done when: no UI depends on the flat compatibility payload, all enabled tasks ha
 
 Commit message: `refactor: complete flight plan workspace migration`
 
-## 25. [x] Completed: Bug: No TLR extracted data with specific flight plan
-
-Outcome: PDF text flattening joined the `MFPTW` heading directly to the airport code and joined the report timestamp and result values to their following labels. The TLR extractor now accepts those missing horizontal boundaries while retaining the existing typed field validation. A sanitized regression fixture covers the joined heading, report reference, and remarks boundaries. The supplied `CKS022329VHHH.pdf` now extracts the VHHH runway 25C result, report reference, weather inputs, limits, source-calculated weights, source-coded V-speeds, anti-ice state, and `WET RUNWAY` warning.
-
-Commit message: `fix: extract flattened TLR result boundaries`
-
 ## 26. ETOPS counter badge
 - Count of ETP points
+- Use the reuseable counter badge component
+Partially implemented, verify tests
 
-## 27. [x] Completed: Bug: Envelope task availability
-
-Outcome: Envelope availability no longer depends on Takeoff and Landing Report extraction because the task presents shared flight and crew context. It remains selectable when TLR data is absent or contains no supported result, and focused unit and Livewire coverage confirms the Envelope panel still renders the available route context instead of a not-present or unsupported state. The obsolete TLR-specific availability helper was removed.
-
-Commit message: `fix: keep envelope task available`
+References:
+app/View/Models/FlightReleasePageViewModel.php
 
 -------------------
 **Branch Merge**
@@ -433,3 +434,15 @@ Use code snippets with caution
 
 References:
 resources/views/components/flight-release/overview.blade.php
+
+## 25. [x] Completed: Bug: No TLR extracted data with specific flight plan
+
+Outcome: PDF text flattening joined the `MFPTW` heading directly to the airport code and joined the report timestamp and result values to their following labels. The TLR extractor now accepts those missing horizontal boundaries while retaining the existing typed field validation. A sanitized regression fixture covers the joined heading, report reference, and remarks boundaries. The supplied `CKS022329VHHH.pdf` now extracts the VHHH runway 25C result, report reference, weather inputs, limits, source-calculated weights, source-coded V-speeds, anti-ice state, and `WET RUNWAY` warning.
+
+Commit message: `fix: extract flattened TLR result boundaries`
+
+## 27. [x] Completed: Bug: Envelope task availability
+
+Outcome: Envelope availability no longer depends on Takeoff and Landing Report extraction because the task presents shared flight and crew context. It remains selectable when TLR data is absent or contains no supported result, and focused unit and Livewire coverage confirms the Envelope panel still renders the available route context instead of a not-present or unsupported state. The obsolete TLR-specific availability helper was removed.
+
+Commit message: `fix: keep envelope task available`

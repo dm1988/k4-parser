@@ -532,6 +532,29 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
+    public function it_exposes_an_explicit_unsupported_etops_section_without_treating_it_as_absent(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['etops'] = [
+            'sectionPresent' => true,
+            'applicability' => 'unknown',
+            'ratingMinutes' => null,
+            'entryPoint' => null,
+            'exitPoint' => null,
+            'equalTimePoints' => [],
+            'alternates' => [],
+            'scenarios' => [],
+        ];
+
+        $viewModel = $this->viewModel($payload);
+
+        $this->assertSame(FlightPlanTaskAvailability::NotSupported, $viewModel->availabilityFor(FlightPlanTask::Etops));
+        $this->assertTrue($viewModel->isTaskVisible(FlightPlanTask::Etops));
+        $this->assertContains(FlightPlanTask::Etops, $viewModel->tasks());
+        $this->assertStringContainsString('Not supported yet', $this->renderWorkspace($viewModel, FlightPlanTask::Etops));
+    }
+
+    #[Test]
     public function it_groups_raw_weather_reports_by_airport_role_without_interpretation(): void
     {
         $payload = $this->resultPayload();

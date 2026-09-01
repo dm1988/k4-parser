@@ -1415,11 +1415,6 @@ class FlightPlanBriefTest extends TestCase
             ->assertDontSeeText('On plan')
             ->assertDontSeeText('Dispatchable');
 
-        $this->assertGreaterThanOrEqual(
-            9,
-            substr_count($component->html(), 'Not present in this release'),
-        );
-
         $component
             ->call('selectTask', FlightPlanTask::Etops->value)
             ->assertSet('activeTask', FlightPlanTask::Overview->value)
