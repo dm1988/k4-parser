@@ -4,8 +4,8 @@ namespace Tests\Unit;
 
 use App\DTOs\ParsedFlightPlanData;
 use App\Services\Clients\AirportLookupClient;
-use App\Services\FlightPlan\Extractor\EnvelopeExtractor;
 use App\Services\FlightPlan\Extractor\Etops\EtopsQualificationExtractor;
+use App\Services\FlightPlan\Extractor\Etops\EtopsRouteExtractor;
 use App\Services\FlightPlan\Extractor\ExtractFlightPlanData;
 use App\Services\FlightPlan\Extractor\FlightCrewExtractor;
 use App\Services\FlightPlan\Extractor\FlightFuelExtractor;
@@ -17,6 +17,7 @@ use App\Services\FlightPlan\Extractor\FlightScheduleExtractor;
 use App\Services\FlightPlan\Extractor\GeneralDeclarationExtractor;
 use App\Services\FlightPlan\Extractor\MaintenanceLogExtractor;
 use App\Services\FlightPlan\Extractor\ReleaseAuthorizationExtractor;
+use App\Services\FlightPlan\Extractor\TakeoffLandingReportExtractor;
 use App\Services\FlightPlan\Extractor\WaypointExtractor;
 use App\Services\FlightPlan\Extractor\WeatherExtractor;
 use App\Services\FlightPlan\Extractor\WeightBalanceExtractor;
@@ -59,16 +60,22 @@ class ExtractFlightPlanDataTest extends TestCase
             'data' => $this->maintenance(),
             'source_fragments' => ['maintenance_log' => 'MEL 28-22-01'],
         ]);
-        $envelopeExtractor = $this->createMock(EnvelopeExtractor::class);
-        $envelopeExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
-            'data' => $this->envelope(),
-            'source_fragments' => ['envelope_takeoff_landing_report' => 'private TLR evidence'],
+        $takeoffLandingReportExtractor = $this->createMock(TakeoffLandingReportExtractor::class);
+        $takeoffLandingReportExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
+            'data' => $this->takeoffLandingReport(),
+            'source_fragments' => ['takeoff_landing_report' => 'private TLR evidence'],
         ]);
         $flightInitExtractor = $this->createMock(FlightInitExtractor::class);
         $flightInitExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
-            'data' => ['section_present' => true, 'acars_init_date' => '11', 'fms_initial_altitude' => 'F290'],
+            'data' => [
+                'section_present' => true,
+                'acars_init_date' => '11',
+                'filed_initial_altitude' => 'F340',
+                'fms_initial_altitude' => 'F290',
+            ],
             'source_fragments' => [
                 'flight_init_takeoff_landing_report' => 'private ACARS init evidence',
+                'flight_init_filed_initial_altitude' => 'F340',
                 'flight_init_fms_initial_altitude' => 'DEST RKSI 033.4 01.48 290 0896 P078',
             ],
         ]);
@@ -112,6 +119,20 @@ class ExtractFlightPlanDataTest extends TestCase
             ],
             'source_fragments' => ['etops_qualification' => 'ETOPS 180 ETOPS ALTERNATE AIRPORTS'],
         ]);
+        $etopsRouteExtractor = $this->createMock(EtopsRouteExtractor::class);
+        $etopsRouteExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
+            'data' => [
+                'etps' => [[
+                    'label' => 'ETP1',
+                    'airports' => 'KSFO-PACD',
+                    'coordinates' => 'N45 43.7 W143 53.1',
+                    'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
+                ]],
+                'eent_coordinates' => 'N40 31.1 W131 22.6',
+                'eexp_coordinates' => 'N45 19.3 E151 36.4',
+            ],
+            'source_fragments' => [],
+        ]);
         $generalDeclarationExtractor = $this->createMock(GeneralDeclarationExtractor::class);
         $generalDeclarationExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
             'data' => ['section_present' => true],
@@ -131,12 +152,13 @@ class ExtractFlightPlanDataTest extends TestCase
             $fuelExtractor,
             $crewExtractor,
             $maintenanceLogExtractor,
-            $envelopeExtractor,
+            $takeoffLandingReportExtractor,
             $flightInitExtractor,
             $waypointExtractor,
             $weatherExtractor,
             $weightBalanceExtractor,
             $etopsQualificationExtractor,
+            $etopsRouteExtractor,
             $generalDeclarationExtractor,
             $releaseAuthorizationExtractor,
         ))->extractFile('/tmp/release.pdf');
@@ -149,8 +171,8 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame('Alex Morgan', $parsed->crewMembers[0]['name']);
         $this->assertSame('Alex Morgan CP YIP', $parsed->sourceFragments['flight_crew']);
         $this->assertSame('MEL 28-22-01', $parsed->sourceFragments['maintenance_log']);
-        $this->assertSame(612400, $parsed->envelope['planned_takeoff_weight']['amount']);
-        $this->assertSame('private TLR evidence', $parsed->sourceFragments['envelope_takeoff_landing_report']);
+        $this->assertSame(612400, $parsed->takeoffLandingReport['planned_takeoff_weight']['amount']);
+        $this->assertSame('private TLR evidence', $parsed->sourceFragments['takeoff_landing_report']);
         $this->assertSame('11', $parsed->flightInit['acars_init_date']);
         $this->assertSame('F340', $parsed->flightInit['filed_initial_altitude']);
         $this->assertSame('F290', $parsed->flightInit['fms_initial_altitude']);
@@ -173,7 +195,8 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame('private GENDEC signature', $parsed->sourceFragments['general_declaration_signature']);
         $this->assertSame('b44', $parsed->releaseAuthorization['operations_specification']);
         $this->assertSame('RELEASED IAW OPS SPEC B044', $parsed->sourceFragments['release_authorization']);
-        $this->assertSame('FL 340', $parsed->legacy['initial_altitude']);
+        $this->assertSame('12h10m', $parsed->schedule['block_duration']);
+        $this->assertArrayNotHasKey('initial_altitude', $parsed->legacy);
     }
 
     public function test_private_sample_characterizes_confirmed_normalized_fields(): void
@@ -195,9 +218,10 @@ class ExtractFlightPlanDataTest extends TestCase
             new FlightFuelExtractor,
             new FlightCrewExtractor(new CrewListParser),
             new MaintenanceLogExtractor,
-            new EnvelopeExtractor,
+            new TakeoffLandingReportExtractor,
             new FlightInitExtractor,
             new WaypointExtractor,
+            new WeatherExtractor,
         );
 
         $parsed = $extractor->extractFile($samplePath);
@@ -213,13 +237,14 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame(['amount' => 195116.0, 'unit' => 'lb'], $parsed->fuel['trip']);
         $this->assertNull($parsed->fuel['contingency']);
         $this->assertContains(
-            $parsed->maintenance['etops_applicability'],
+            $parsed->etops['applicability'],
             ['confirmed_etops', 'confirmed_non_etops', 'unknown'],
         );
-        $this->assertTrue($parsed->envelope['section_present']);
-        $this->assertSame('KLAX', $parsed->envelope['airport']);
-        $this->assertSame('25R-E957F', $parsed->envelope['planned_runway']);
-        $this->assertSame(['amount' => 618100, 'unit' => 'lb'], $parsed->envelope['planned_takeoff_weight']);
+        $this->assertArrayNotHasKey('etops_applicability', $parsed->maintenance);
+        $this->assertTrue($parsed->takeoffLandingReport['section_present']);
+        $this->assertSame('KLAX', $parsed->takeoffLandingReport['airport']);
+        $this->assertSame('25R-E957F', $parsed->takeoffLandingReport['planned_runway']);
+        $this->assertSame(['amount' => 618100, 'unit' => 'lb'], $parsed->takeoffLandingReport['planned_takeoff_weight']);
     }
 
     /** @return array{flight_number: string, trip_number: string, recall_number: string, aircraft_type: string, tail_number: string, flight_date: string, release_revision: null} */
@@ -236,13 +261,13 @@ class ExtractFlightPlanDataTest extends TestCase
         ];
     }
 
-    /** @return array{etd_utc: string, eta_utc: string, block_duration: null, report_time_utc: null, duty_end_utc: null, slot_times_utc: list<string>} */
+    /** @return array{etd_utc: string, eta_utc: string, block_duration: string, report_time_utc: null, duty_end_utc: null, slot_times_utc: list<string>} */
     private function schedule(): array
     {
         return [
             'etd_utc' => '2026-05-25T02:20:00+00:00',
             'eta_utc' => '2026-05-25T14:50:00+00:00',
-            'block_duration' => null,
+            'block_duration' => '12h10m',
             'report_time_utc' => null,
             'duty_end_utc' => null,
             'slot_times_utc' => [],
@@ -264,17 +289,6 @@ class ExtractFlightPlanDataTest extends TestCase
             'departure_sid' => 'SUMMR2',
             'arrival_star' => 'GUKDO2E',
             'distance_nautical_miles' => 5549,
-            'etps' => [[
-                'label' => 'ETP1',
-                'airports' => 'KSFO-PACD',
-                'coordinates' => 'N45 43.7 W143 53.1',
-                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
-            ]],
-            'eent_coordinates' => 'N40 31.1 W131 22.6',
-            'eexp_coordinates' => 'N45 19.3 E151 36.4',
-            'initial_altitude' => 'FL 340',
-            'filed_initial_altitude_source' => 'F340',
-            'duration' => '12h10m',
             'route' => 'DCT TEST',
         ];
     }
@@ -298,12 +312,11 @@ class ExtractFlightPlanDataTest extends TestCase
         ]];
     }
 
-    /** @return array{section_present: true, etops_applicability: string, items: list<array{type: string, number: string, description: string, reference: string, status: string, limitations: null, procedures: null}>} */
+    /** @return array{section_present: true, items: list<array{type: string, number: string, description: string, reference: string, status: string, limitations: null, procedures: null}>} */
     private function maintenance(): array
     {
         return [
             'section_present' => true,
-            'etops_applicability' => 'confirmed_etops',
             'items' => [[
                 'type' => 'MEL',
                 'number' => '28-22-01',
@@ -317,7 +330,7 @@ class ExtractFlightPlanDataTest extends TestCase
     }
 
     /** @return array<string, mixed> */
-    private function envelope(): array
+    private function takeoffLandingReport(): array
     {
         return [
             'section_present' => true,

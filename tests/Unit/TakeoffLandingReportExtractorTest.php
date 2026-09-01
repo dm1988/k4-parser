@@ -3,10 +3,10 @@
 namespace Tests\Unit;
 
 use App\Exceptions\FlightPlanDataConflictException;
-use App\Services\FlightPlan\Extractor\EnvelopeExtractor;
+use App\Services\FlightPlan\Extractor\TakeoffLandingReportExtractor;
 use PHPUnit\Framework\TestCase;
 
-class EnvelopeExtractorTest extends TestCase
+class TakeoffLandingReportExtractorTest extends TestCase
 {
     public function test_it_extracts_the_selected_takeoff_result_with_explicit_units_and_provenance(): void
     {
@@ -32,7 +32,7 @@ class EnvelopeExtractorTest extends TestCase
             'maximum_field_takeoff_weight' => ['amount' => 766000, 'unit' => 'lb'],
             'source_warnings' => ['32-41-03 - SOURCE BRAKE MESSAGE'],
         ], $result['data']);
-        $this->assertArrayHasKey('envelope_takeoff_landing_report', $result['source_fragments']);
+        $this->assertArrayHasKey('takeoff_landing_report', $result['source_fragments']);
     }
 
     public function test_it_supports_multiline_and_flattened_source_text_and_preserves_boundary_values(): void
@@ -113,8 +113,8 @@ class EnvelopeExtractorTest extends TestCase
             "TAKEOFF AND LANDING REPORT UNSUPPORTED\n".$this->fixture('selected-result'),
         );
 
-        $this->assertStringContainsString('TLR-30 SEQ-48273190', $result['source_fragments']['envelope_takeoff_landing_report']);
-        $this->assertStringNotContainsString('UNSUPPORTED', $result['source_fragments']['envelope_takeoff_landing_report']);
+        $this->assertStringContainsString('TLR-30 SEQ-48273190', $result['source_fragments']['takeoff_landing_report']);
+        $this->assertStringNotContainsString('UNSUPPORTED', $result['source_fragments']['takeoff_landing_report']);
     }
 
     public function test_it_deduplicates_identical_results_and_rejects_conflicting_reports(): void
@@ -125,19 +125,19 @@ class EnvelopeExtractorTest extends TestCase
         $this->assertSame(612400, $duplicate['data']['planned_takeoff_weight']['amount']);
 
         $this->expectException(FlightPlanDataConflictException::class);
-        $this->expectExceptionMessage('Conflicting flight release values were found for takeoff and landing report envelope result.');
+        $this->expectExceptionMessage('Conflicting flight release values were found for takeoff and landing report result.');
 
         $this->extractor()->extract($fixture."\n".str_replace('6124 7660', '6125 7660', $fixture));
     }
 
-    private function extractor(): EnvelopeExtractor
+    private function extractor(): TakeoffLandingReportExtractor
     {
-        return new EnvelopeExtractor;
+        return new TakeoffLandingReportExtractor;
     }
 
     private function fixture(string $name): string
     {
-        $contents = file_get_contents(__DIR__."/../Fixtures/FlightPlan/envelope/{$name}.txt");
+        $contents = file_get_contents(__DIR__."/../Fixtures/FlightPlan/takeoff-landing-report/{$name}.txt");
 
         $this->assertIsString($contents);
 

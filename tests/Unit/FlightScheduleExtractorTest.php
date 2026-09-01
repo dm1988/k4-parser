@@ -39,7 +39,8 @@ TEXT, '2026-05-25');
                 'tolerance_minutes' => null,
             ],
         ], $result['data']['slots']);
-        $this->assertNull($result['data']['block_duration']);
+        $this->assertSame('12h10m', $result['data']['block_duration']);
+        $this->assertSame('RKSI1210', $result['source_fragments']['schedule_fpl_duration']);
     }
 
     public function test_it_rejects_a_conflicting_fpl_departure_time(): void
@@ -61,6 +62,29 @@ TEXT, '2026-05-25');
         $this->assertNull($result['data']['eta_utc']);
         $this->assertSame([], $result['data']['slot_times_utc']);
         $this->assertSame([], $result['data']['slots']);
+    }
+
+    public function test_it_extracts_planned_duration_without_schedule_timestamps(): void
+    {
+        $result = (new FlightScheduleExtractor)->extract(
+            '(FPL-CKS241-IS-B77L/H-SDE2-PANC1040-N0489F330 DCT TEST-KMIA0712 KRSW)',
+            null,
+        );
+
+        $this->assertSame('07h12m', $result['data']['block_duration']);
+        $this->assertSame('KMIA0712', $result['source_fragments']['schedule_fpl_duration']);
+    }
+
+    public function test_it_rejects_conflicting_planned_durations(): void
+    {
+        $this->expectException(FlightPlanDataConflictException::class);
+        $this->expectExceptionMessage('Conflicting flight release values were found for planned flight duration.');
+
+        (new FlightScheduleExtractor)->extract(
+            '(FPL-CKS241-IS-B77L/H-SDE2-PANC1040-N0489F330 DCT TEST-KMIA0712) '
+            .'(FPL-CKS242-IS-B77L/H-SDE2-PANC1040-N0489F330 DCT TEST-KMIA0812)',
+            null,
+        );
     }
 
     public function test_it_sorts_multiple_slots_by_complete_instant_and_preserves_source_order_for_ties(): void

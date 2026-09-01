@@ -67,7 +67,6 @@ class BuildFlightPlanDataTest extends TestCase
             ]],
             maintenance: [
                 'section_present' => true,
-                'etops_applicability' => 'confirmed_etops',
                 'items' => [[
                     'type' => 'MEL',
                     'number' => '28-22-01',
@@ -78,7 +77,7 @@ class BuildFlightPlanDataTest extends TestCase
                     'procedures' => null,
                 ]],
             ],
-            envelope: [
+            takeoffLandingReport: [
                 'section_present' => true,
                 'source_type' => 'takeoff_landing_report',
                 'report_reference' => 'TLR-30 SEQ-48273190 25MAY26 0115Z',
@@ -159,11 +158,11 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertTrue($flightPlan->flightInit->filedInitialAltitude->isFlightLevel);
         $this->assertSame(29000, $flightPlan->flightInit->fmsInitialAltitude?->value);
         $this->assertSame('feet', $flightPlan->flightInit->fmsInitialAltitude->unit->value);
-        $this->assertSame(612400, $flightPlan->envelope->plannedTakeoffWeight?->amount);
-        $this->assertNull($flightPlan->envelope->qnhInchesMercury);
-        $this->assertSame(1015, $flightPlan->envelope->qnhHectopascals);
-        $this->assertFalse($flightPlan->envelope->antiIce);
-        $this->assertSame(['Source warning'], $flightPlan->envelope?->sourceWarnings);
+        $this->assertSame(612400, $flightPlan->takeoffLandingReport->plannedTakeoffWeight?->amount);
+        $this->assertNull($flightPlan->takeoffLandingReport->qnhInchesMercury);
+        $this->assertSame(1015, $flightPlan->takeoffLandingReport->qnhHectopascals);
+        $this->assertFalse($flightPlan->takeoffLandingReport->antiIce);
+        $this->assertSame(['Source warning'], $flightPlan->takeoffLandingReport?->sourceWarnings);
         $this->assertSame(['FIX01', 'FIX01'], array_column($flightPlan->waypoints, 'identifier'));
         $this->assertSame(11, $flightPlan->waypoints[0]->cumulativeDurationMinutes);
         $this->assertSame(0.0, $flightPlan->waypoints[0]->remainingFuel?->amount);
@@ -255,7 +254,7 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertNull($flightPlan->route->distanceNauticalMiles);
         $this->assertNull($flightPlan->fuelPlan);
         $this->assertFalse($flightPlan->maintenanceLog?->sectionPresent);
-        $this->assertNull($flightPlan->envelope);
+        $this->assertNull($flightPlan->takeoffLandingReport);
     }
 
     public function test_it_preserves_an_explicit_zero_fuel_quantity(): void

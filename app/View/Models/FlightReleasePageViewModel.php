@@ -4,11 +4,11 @@ namespace App\View\Models;
 
 use App\DTOs\AirportData;
 use App\DTOs\CrewMemberData;
-use App\DTOs\EnvelopeData;
 use App\DTOs\Etops\EtopsEqualTimePointData;
 use App\DTOs\Etops\EtopsScenarioData;
-use App\DTOs\MaintenanceItemData;
+use App\DTOs\Maintenance\MaintenanceItemData;
 use App\DTOs\SlotTimeData;
+use App\DTOs\TakeoffLandingReportData;
 use App\DTOs\WaypointData;
 use App\DTOs\WeightBalance\WeightBalanceFieldData;
 use App\Enums\AltitudeUnit;
@@ -401,7 +401,7 @@ readonly class FlightReleasePageViewModel
 
     public function maintenanceEtopsLabel(): string
     {
-        return $this->pageData?->flightPlan->maintenanceLog?->etopsApplicability->label() ?? 'Not confirmed';
+        return $this->etopsApplicability()->label();
     }
 
     /**
@@ -747,9 +747,9 @@ readonly class FlightReleasePageViewModel
         ];
     }
 
-    private function tlr(): ?EnvelopeData
+    private function tlr(): ?TakeoffLandingReportData
     {
-        return $this->pageData?->flightPlan->envelope;
+        return $this->pageData?->flightPlan->takeoffLandingReport;
     }
 
     private function formatWeight(?WeightQuantity $weight): ?string

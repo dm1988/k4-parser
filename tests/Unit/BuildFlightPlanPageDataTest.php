@@ -35,8 +35,8 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame('4827', $pageData->flightPlan->crewMembers[0]->employeeNumber);
         $this->assertTrue($pageData->flightPlan->crewMembers[0]->highMins);
         $this->assertSame('11', $pageData->flightPlan->flightInit->acarsInitDate);
-        $this->assertSame(612400, $pageData->flightPlan->envelope?->plannedTakeoffWeight?->amount);
-        $this->assertSame(1015, $pageData->flightPlan->envelope->qnhHectopascals);
+        $this->assertSame(612400, $pageData->flightPlan->takeoffLandingReport?->plannedTakeoffWeight?->amount);
+        $this->assertSame(1015, $pageData->flightPlan->takeoffLandingReport->qnhHectopascals);
         $this->assertSame(['FIX01', 'FIX01'], array_column($pageData->flightPlan->waypoints, 'identifier'));
         $this->assertSame(11, $pageData->flightPlan->waypoints[0]->cumulativeDurationMinutes);
         $this->assertSame(0.0, $pageData->flightPlan->waypoints[0]->remainingFuel?->amount);
@@ -70,6 +70,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertNotNull($pageData);
         $this->assertSame([
             FlightPlanTask::Overview->value => FlightPlanTaskAvailability::Available,
+            FlightPlanTask::ReviewMelCdl->value => FlightPlanTaskAvailability::Available,
             FlightPlanTask::JeppPdPro->value => FlightPlanTaskAvailability::Available,
             FlightPlanTask::MaintenanceLog->value => FlightPlanTaskAvailability::Available,
             FlightPlanTask::Envelope->value => FlightPlanTaskAvailability::Available,
@@ -114,6 +115,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $payload['flight_plan_data']['fuelPlan'] = null;
         $payload['flight_plan_data']['waypoints'] = [];
         $payload['flight_plan_data']['maintenanceLog'] = null;
+        $payload['flight_plan_data']['takeoffLandingReport'] = null;
         $payload['flight_plan_data']['envelope'] = null;
         unset($payload['flight_plan_data']['flightInit']);
         unset($payload['flight_plan_data']['generalDeclaration']);
@@ -195,9 +197,10 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::Etops));
     }
 
-    public function test_it_distinguishes_an_unsupported_envelope_result_from_an_absent_section(): void
+    public function test_it_rehydrates_the_legacy_envelope_alias_and_distinguishes_an_unsupported_tlr_result(): void
     {
         $payload = $this->resultPayload();
+        unset($payload['flight_plan_data']['takeoffLandingReport']);
         $payload['flight_plan_data']['envelope'] = [
             'sectionPresent' => true,
             'sourceType' => 'takeoff_landing_report',
@@ -313,7 +316,6 @@ class BuildFlightPlanPageDataTest extends TestCase
                 ],
                 'maintenanceLog' => [
                     'sectionPresent' => true,
-                    'etopsApplicability' => 'confirmed_etops',
                     'items' => [[
                         'type' => 'MEL',
                         'number' => '28-22-01',
@@ -324,7 +326,7 @@ class BuildFlightPlanPageDataTest extends TestCase
                         'procedures' => null,
                     ]],
                 ],
-                'envelope' => [
+                'takeoffLandingReport' => [
                     'sectionPresent' => true,
                     'sourceType' => 'takeoff_landing_report',
                     'reportReference' => 'TLR-30 SEQ-48273190 25MAY26 0115Z',

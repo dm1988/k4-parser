@@ -3,6 +3,7 @@
 namespace App\DTOs;
 
 use App\DTOs\Etops\EtopsData;
+use App\DTOs\Maintenance\MaintenanceLogData;
 use App\DTOs\Weather\WeatherData;
 use App\DTOs\WeightBalance\WeightBalanceData;
 use JsonSerializable;
@@ -19,7 +20,7 @@ final readonly class FlightPlanData implements JsonSerializable
         public RouteData $route,
         public ?FuelPlanData $fuelPlan = null,
         public ?MaintenanceLogData $maintenanceLog = null,
-        public ?EnvelopeData $envelope = null,
+        public ?TakeoffLandingReportData $takeoffLandingReport = null,
         public ?FlightInitData $flightInit = null,
         public ?EtopsData $etops = null,
         public ?WeatherData $weather = null,
@@ -39,7 +40,8 @@ final readonly class FlightPlanData implements JsonSerializable
             'route' => $this->route->toArray(),
             'fuelPlan' => $this->fuelPlan?->toArray(),
             'maintenanceLog' => $this->maintenanceLog?->toArray(),
-            'envelope' => $this->envelope?->toArray(),
+            'takeoffLandingReport' => $this->takeoffLandingReport?->toArray(),
+            'envelope' => $this->takeoffLandingReport?->toArray(),
             'flightInit' => $this->flightInit?->toArray(),
             'etops' => $this->etops?->toArray(),
             'weather' => $this->weather?->toArray(),

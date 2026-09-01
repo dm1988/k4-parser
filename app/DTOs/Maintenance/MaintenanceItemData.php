@@ -1,6 +1,6 @@
 <?php
 
-namespace App\DTOs;
+namespace App\DTOs\Maintenance;
 
 use App\Enums\MaintenanceItemType;
 use JsonSerializable;

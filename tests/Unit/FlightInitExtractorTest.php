@@ -15,6 +15,7 @@ class FlightInitExtractorTest extends TestCase
         $this->assertSame([
             'section_present' => true,
             'acars_init_date' => '11',
+            'filed_initial_altitude' => null,
             'fms_initial_altitude' => null,
         ], $result['data']);
         $this->assertArrayHasKey('flight_init_takeoff_landing_report', $result['source_fragments']);
@@ -44,6 +45,7 @@ TEXT;
         $this->assertSame([
             'section_present' => true,
             'acars_init_date' => '25',
+            'filed_initial_altitude' => null,
             'fms_initial_altitude' => null,
         ], $result['data']);
         $this->assertSame('25', $wrappedDate['data']['acars_init_date']);
@@ -67,9 +69,9 @@ TEXT;
         $missing = $this->extractor()->extract('TAKEOFF AND LANDING REPORT CKS 0524 KDFW-RKSI 11MAY26');
         $invalid = $this->extractor()->extract('TAKEOFF AND LANDING REPORT ACARS INIT DATE 32');
 
-        $this->assertSame(['section_present' => false, 'acars_init_date' => null, 'fms_initial_altitude' => null], $absent['data']);
-        $this->assertSame(['section_present' => true, 'acars_init_date' => null, 'fms_initial_altitude' => null], $missing['data']);
-        $this->assertSame(['section_present' => true, 'acars_init_date' => null, 'fms_initial_altitude' => null], $invalid['data']);
+        $this->assertSame(['section_present' => false, 'acars_init_date' => null, 'filed_initial_altitude' => null, 'fms_initial_altitude' => null], $absent['data']);
+        $this->assertSame(['section_present' => true, 'acars_init_date' => null, 'filed_initial_altitude' => null, 'fms_initial_altitude' => null], $missing['data']);
+        $this->assertSame(['section_present' => true, 'acars_init_date' => null, 'filed_initial_altitude' => null, 'fms_initial_altitude' => null], $invalid['data']);
         $this->assertSame([], $absent['source_fragments']);
         $this->assertSame([], $missing['source_fragments']);
         $this->assertSame([], $invalid['source_fragments']);
@@ -105,6 +107,27 @@ TEXT;
 
         $this->extractor()->extract(
             'DEST RKSI 033.4 01.48 290 0896 P078 DEST RKSI 033.4 01.48 310 0896 P078',
+        );
+    }
+
+    public function test_it_owns_source_backed_feet_and_metric_filed_altitude_codes(): void
+    {
+        $feet = $this->extractor()->extract($this->fixture('initial-altitude-feet'));
+        $meters = $this->extractor()->extract($this->fixture('initial-altitude-meters'));
+
+        $this->assertSame('F330', $feet['data']['filed_initial_altitude']);
+        $this->assertSame('N0497F330', $feet['source_fragments']['flight_init_filed_initial_altitude']);
+        $this->assertSame('S0890', $meters['data']['filed_initial_altitude']);
+        $this->assertSame('K0920S0890', $meters['source_fragments']['flight_init_filed_initial_altitude']);
+    }
+
+    public function test_it_rejects_conflicting_filed_initial_altitudes(): void
+    {
+        $this->expectException(FlightPlanDataConflictException::class);
+        $this->expectExceptionMessage('Conflicting flight release values were found for filed initial altitude.');
+
+        $this->extractor()->extract(
+            $this->fixture('initial-altitude-feet')."\n".str_replace('F330', 'F350', $this->fixture('initial-altitude-feet')),
         );
     }
 

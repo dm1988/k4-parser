@@ -2,16 +2,16 @@
 
 namespace Tests\Unit\DTOs;
 
-use App\DTOs\EnvelopeData;
+use App\DTOs\TakeoffLandingReportData;
 use App\ValueObjects\WeightQuantity;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
-class EnvelopeDataTest extends TestCase
+class TakeoffLandingReportDataTest extends TestCase
 {
-    public function test_it_serializes_typed_envelope_values_with_units(): void
+    public function test_it_serializes_typed_takeoff_landing_report_values_with_units(): void
     {
-        $data = new EnvelopeData(
+        $data = new TakeoffLandingReportData(
             sectionPresent: true,
             sourceType: 'takeoff_landing_report',
             qnhHectopascals: 1015,

@@ -17,22 +17,6 @@ use Tests\TestCase;
 
 class FlightRouteExtractorTest extends TestCase
 {
-    public function test_source_backed_fixtures_preserve_feet_and_metric_initial_altitude_codes(): void
-    {
-        $extractor = $this->makeExtractor();
-        $feet = $extractor->extractFlightPlanDataFromText((string) file_get_contents(
-            base_path('tests/Fixtures/FlightPlan/flight-init/initial-altitude-feet.txt'),
-        ));
-        $meters = $extractor->extractFlightPlanDataFromText((string) file_get_contents(
-            base_path('tests/Fixtures/FlightPlan/flight-init/initial-altitude-meters.txt'),
-        ));
-
-        $this->assertSame('F330', $feet['filed_initial_altitude_source']);
-        $this->assertSame('FL 330', $feet['initial_altitude']);
-        $this->assertSame('S0890', $meters['filed_initial_altitude_source']);
-        $this->assertSame('S0890', $meters['initial_altitude']);
-    }
-
     public function test_extract_route_from_text_returns_the_route_block(): void
     {
         $extractor = $this->makeExtractor();
@@ -103,12 +87,6 @@ TEXT;
             'departure_sid' => null,
             'arrival_star' => null,
             'distance_nautical_miles' => null,
-            'etps' => [],
-            'eent_coordinates' => null,
-            'eexp_coordinates' => null,
-            'initial_altitude' => 'FL 330',
-            'filed_initial_altitude_source' => 'F330',
-            'duration' => '07h12m',
             'route' => "DCT JOH DCT YAK J541 SSR DCT 5726N13228W DCT YXS DCT\nDESNU DCT HASOS DCT TIMMR DCT FSD Q19 DSM/N0486F350 J45 IRK DCT\nFAM J151 GETME DCT VLKNN Q139 MGMRY DCT ACORI FROGZ5",
         ], $flightPlan);
     }
@@ -131,7 +109,6 @@ TEXT);
         $this->assertSame('33R', $flightPlan['arrival_runway']);
         $this->assertSame('SUMMR2 SCTRR', $flightPlan['departure_sid']);
         $this->assertSame('GUKDO GUKD2E', $flightPlan['arrival_star']);
-        $this->assertSame('12h10m', $flightPlan['duration']);
     }
 
     public function test_extract_flight_plan_data_from_flattened_pdf_text_returns_planned_runways_sid_and_star(): void
@@ -153,29 +130,6 @@ TEXT);
         $this->assertSame('33R', $flightPlan['arrival_runway']);
         $this->assertSame('SUMMR2 SCTRR', $flightPlan['departure_sid']);
         $this->assertSame('GUKDO GUKD2E', $flightPlan['arrival_star']);
-        $this->assertSame('12h10m', $flightPlan['duration']);
-        $this->assertSame([
-            [
-                'label' => 'ETP1',
-                'airports' => 'KSFO-PACD',
-                'coordinates' => 'N45 43.7 W143 53.1',
-                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
-            ],
-            [
-                'label' => 'ETP1',
-                'airports' => 'PACD-RJSS',
-                'coordinates' => 'N47 02.0 W145 36.5',
-                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
-            ],
-            [
-                'label' => 'ETP2',
-                'airports' => 'PACD-RJSS',
-                'coordinates' => 'N51 48.6 E164 12.8',
-                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
-            ],
-        ], $flightPlan['etps']);
-        $this->assertSame('N40 31.1 W131 22.6', $flightPlan['eent_coordinates']);
-        $this->assertSame('N45 19.3 E151 36.4', $flightPlan['eexp_coordinates']);
     }
 
     public function test_planned_runway_extraction_stops_at_asterisks_and_allows_a_missing_sid(): void
@@ -206,23 +160,6 @@ TEXT);
         $this->assertSame('33R', $flightPlan['arrival_runway']);
         $this->assertSame('SUMMR2 SCTRR', $flightPlan['departure_sid']);
         $this->assertSame('GUKDO GUKD2E', $flightPlan['arrival_star']);
-        $this->assertSame('12h10m', $flightPlan['duration']);
-        $this->assertSame([
-            [
-                'label' => 'ETP1',
-                'airports' => 'KSFO-PACD',
-                'coordinates' => 'N45 43.7 W143 53.1',
-                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
-            ],
-            [
-                'label' => 'ETP2',
-                'airports' => 'PACD-RJSS',
-                'coordinates' => 'N51 48.6 E164 12.8',
-                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
-            ],
-        ], $flightPlan['etps']);
-        $this->assertSame('N40 31.1 W131 22.6', $flightPlan['eent_coordinates']);
-        $this->assertSame('N45 19.3 E151 36.4', $flightPlan['eexp_coordinates']);
     }
 
     public function test_extract_flight_plan_data_sets_planned_runway_values_to_null_when_lines_are_missing(): void
@@ -241,30 +178,12 @@ TEXT);
         $this->assertNull($flightPlan['arrival_runway']);
         $this->assertNull($flightPlan['departure_sid']);
         $this->assertNull($flightPlan['arrival_star']);
-        $this->assertSame([], $flightPlan['etps']);
-        $this->assertNull($flightPlan['eent_coordinates']);
-        $this->assertNull($flightPlan['eexp_coordinates']);
-    }
-
-    public function test_extract_flight_plan_data_ignores_non_all_engine_etp_scenarios(): void
-    {
-        $extractor = $this->makeExtractor();
-
-        $flightPlan = $extractor->extractFlightPlanDataFromText(<<<'TEXT'
-ETP1  KSFO-PACD  N46 01.0  W144 35.5  1EO/DRIFTDOWN/84M/320KIAS
-(FPL-CKS272-IS
--B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1
--SBKP1000
--N0487F360 OSUDO4A ASETA
--SCEL0322)
-TEXT);
-
-        $this->assertSame([], $flightPlan['etps']);
     }
 
     public function test_extract_route_uses_the_pdf_parser_output(): void
     {
         $document = $this->createMock(Document::class);
+        $document->method('getPages')->willReturn([]);
         $document->expects($this->once())
             ->method('getText')
             ->willReturn("(FPL-CKS272-IS\n-N0487F360 OSUDO4A ASETA\n-SCEL0322)");
@@ -283,6 +202,7 @@ TEXT);
     public function test_extract_flight_plan_data_uses_the_pdf_parser_output(): void
     {
         $document = $this->createMock(Document::class);
+        $document->method('getPages')->willReturn([]);
         $document->expects($this->once())
             ->method('getText')
             ->willReturn("(FPL-CKS272-IS\n-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1\n-SBKP1000\n-N0487F360 OSUDO4A ASETA\n-SCEL0322 SAME)");
@@ -307,12 +227,6 @@ TEXT);
             'departure_sid' => null,
             'arrival_star' => null,
             'distance_nautical_miles' => null,
-            'etps' => [],
-            'eent_coordinates' => null,
-            'eexp_coordinates' => null,
-            'initial_altitude' => 'FL 360',
-            'filed_initial_altitude_source' => 'F360',
-            'duration' => '03h22m',
             'route' => 'OSUDO4A ASETA',
         ], $extractor->extractFlightPlanData('/tmp/flight-release.pdf'));
     }
@@ -321,6 +235,7 @@ TEXT);
     {
         $pdfText = "(FPL-CKS272-IS\n-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1\n-SBKP1000\n-N0487F360 OSUDO4A ASETA\n-SCEL0322 SAME)";
         $document = $this->createMock(Document::class);
+        $document->method('getPages')->willReturn([]);
         $document->expects($this->once())
             ->method('getText')
             ->willReturn($pdfText);
@@ -332,7 +247,7 @@ TEXT);
             ->willReturn($document);
 
         $cache = app(Repository::class);
-        $cacheKey = 'flight-plan-extractor:pdf-text:'.hash_file('sha256', __FILE__);
+        $cacheKey = 'flight-plan-extractor:v2:pdf-text:'.hash_file('sha256', __FILE__);
         $cache->forget($cacheKey);
         $firstExtractor = $this->makeExtractor($parser, cache: $cache);
         $secondExtractor = $this->makeExtractor($parser, cache: $cache);
@@ -350,12 +265,6 @@ TEXT);
             'departure_sid' => null,
             'arrival_star' => null,
             'distance_nautical_miles' => null,
-            'etps' => [],
-            'eent_coordinates' => null,
-            'eexp_coordinates' => null,
-            'initial_altitude' => 'FL 360',
-            'filed_initial_altitude_source' => 'F360',
-            'duration' => '03h22m',
             'route' => 'OSUDO4A ASETA',
         ], $secondExtractor->extractFlightPlanData(__FILE__));
         $this->assertSame($pdfText, $cache->get($cacheKey));
@@ -367,11 +276,13 @@ TEXT);
         $this->assertIsString($path);
 
         $firstDocument = $this->createMock(Document::class);
+        $firstDocument->method('getPages')->willReturn([]);
         $firstDocument->expects($this->once())
             ->method('getText')
             ->willReturn("(FPL-CKS272-IS\n-N0487F360 OSUDO4A ASETA\n-SCEL0322)");
 
         $secondDocument = $this->createMock(Document::class);
+        $secondDocument->method('getPages')->willReturn([]);
         $secondDocument->expects($this->once())
             ->method('getText')
             ->willReturn("(FPL-CKS273-IS\n-N0487F360 DCT KEMAX UL9\n-SCEL0322)");
@@ -438,7 +349,6 @@ TEXT;
         $this->assertNull($flightPlan['alternate']);
         $this->assertNull($flightPlan['alternate_airport']);
         $this->assertSame('SCEL', $flightPlan['destination']);
-        $this->assertSame('03h22m', $flightPlan['duration']);
     }
 
     public function test_extract_flight_plan_data_from_text_returns_null_airport_dtos_when_lookup_finds_no_match(): void

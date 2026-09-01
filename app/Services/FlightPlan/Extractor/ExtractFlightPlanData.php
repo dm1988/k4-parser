@@ -4,6 +4,7 @@ namespace App\Services\FlightPlan\Extractor;
 
 use App\DTOs\ParsedFlightPlanData;
 use App\Services\FlightPlan\Extractor\Etops\EtopsQualificationExtractor;
+use App\Services\FlightPlan\Extractor\Etops\EtopsRouteExtractor;
 
 class ExtractFlightPlanData
 {
@@ -15,12 +16,13 @@ class ExtractFlightPlanData
         private readonly FlightFuelExtractor $fuelExtractor,
         private readonly FlightCrewExtractor $crewExtractor,
         private readonly MaintenanceLogExtractor $maintenanceLogExtractor,
-        private readonly EnvelopeExtractor $envelopeExtractor,
+        private readonly TakeoffLandingReportExtractor $takeoffLandingReportExtractor,
         private readonly FlightInitExtractor $flightInitExtractor,
         private readonly WaypointExtractor $waypointExtractor,
         private readonly WeatherExtractor $weatherExtractor,
         private readonly WeightBalanceExtractor $weightBalanceExtractor = new WeightBalanceExtractor,
         private readonly EtopsQualificationExtractor $etopsQualificationExtractor = new EtopsQualificationExtractor,
+        private readonly EtopsRouteExtractor $etopsRouteExtractor = new EtopsRouteExtractor,
         private readonly GeneralDeclarationExtractor $generalDeclarationExtractor = new GeneralDeclarationExtractor,
         private readonly ReleaseAuthorizationExtractor $releaseAuthorizationExtractor = new ReleaseAuthorizationExtractor,
     ) {}
@@ -38,12 +40,13 @@ class ExtractFlightPlanData
         $fuel = $this->fuelExtractor->extract($text);
         $crew = $this->crewExtractor->extract($text);
         $maintenance = $this->maintenanceLogExtractor->extract($text);
-        $envelope = $this->envelopeExtractor->extract($text);
+        $takeoffLandingReport = $this->takeoffLandingReportExtractor->extract($text);
         $flightInit = $this->flightInitExtractor->extract($text);
         $waypoints = $this->waypointExtractor->extract($text);
         $weather = $this->weatherExtractor->extract($text);
         $weightBalance = $this->weightBalanceExtractor->extract($text);
         $etopsQualification = $this->etopsQualificationExtractor->extract($text);
+        $etopsRoute = $this->etopsRouteExtractor->extract($text);
         $generalDeclaration = $this->generalDeclarationExtractor->extract($text);
         $releaseAuthorization = $this->releaseAuthorizationExtractor->extract($text);
 
@@ -63,21 +66,12 @@ class ExtractFlightPlanData
             ],
             fuel: $fuel['data'],
             crewMembers: $crew['data'],
-            maintenance: [
-                ...$maintenance['data'],
-                'etops_applicability' => $etopsQualification['data']['applicability'],
-            ],
-            envelope: $envelope['data'],
-            flightInit: [
-                ...$flightInit['data'],
-                'section_present' => true,
-                'filed_initial_altitude' => $route['filed_initial_altitude_source'],
-            ],
+            maintenance: $maintenance['data'],
+            takeoffLandingReport: $takeoffLandingReport['data'],
+            flightInit: $flightInit['data'],
             etops: [
                 ...$etopsQualification['data'],
-                'etps' => $route['etps'],
-                'eent_coordinates' => $route['eent_coordinates'],
-                'eexp_coordinates' => $route['eexp_coordinates'],
+                ...$etopsRoute['data'],
             ],
             weather: $weather['data'],
             weightBalance: $weightBalance['data'],
@@ -90,13 +84,13 @@ class ExtractFlightPlanData
                 ...$fuel['source_fragments'],
                 ...$crew['source_fragments'],
                 ...$maintenance['source_fragments'],
-                ...$envelope['source_fragments'],
+                ...$takeoffLandingReport['source_fragments'],
                 ...$flightInit['source_fragments'],
-                'flight_init_filed_initial_altitude' => $route['filed_initial_altitude_source'],
                 ...$waypoints['source_fragments'],
                 ...$weather['source_fragments'],
                 ...$weightBalance['source_fragments'],
                 ...$etopsQualification['source_fragments'],
+                ...$etopsRoute['source_fragments'],
                 ...$generalDeclaration['source_fragments'],
                 ...$releaseAuthorization['source_fragments'],
             ],

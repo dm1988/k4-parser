@@ -668,8 +668,8 @@ class FlightReleasePageViewModelTest extends TestCase
     public function it_formats_source_qnh_hectopascals_without_converting_units(): void
     {
         $payload = $this->resultPayload();
-        $payload['flight_plan_data']['envelope']['qnhInchesMercury'] = null;
-        $payload['flight_plan_data']['envelope']['qnhHectopascals'] = 1015;
+        $payload['flight_plan_data']['takeoffLandingReport']['qnhInchesMercury'] = null;
+        $payload['flight_plan_data']['takeoffLandingReport']['qnhHectopascals'] = 1015;
 
         $this->assertSame('1015 hPa', $this->viewModel($payload)->tlrQnh());
     }
@@ -850,7 +850,6 @@ class FlightReleasePageViewModelTest extends TestCase
                 'fuelPlan' => null,
                 'maintenanceLog' => [
                     'sectionPresent' => true,
-                    'etopsApplicability' => 'confirmed_etops',
                     'items' => [
                         [
                             'type' => 'MEL',
@@ -872,7 +871,7 @@ class FlightReleasePageViewModelTest extends TestCase
                         ],
                     ],
                 ],
-                'envelope' => [
+                'takeoffLandingReport' => [
                     'sectionPresent' => true,
                     'sourceType' => 'takeoff_landing_report',
                     'reportReference' => 'TLR-30 SEQ-48273190 25MAY26 0115Z',

@@ -5,11 +5,9 @@ namespace App\DTOs;
 use App\ValueObjects\WeightQuantity;
 use JsonSerializable;
 
-final readonly class EnvelopeData implements JsonSerializable
+final readonly class TakeoffLandingReportData implements JsonSerializable
 {
-    /**
-     * @param  list<string>  $sourceWarnings
-     */
+    /** @param list<string> $sourceWarnings */
     public function __construct(
         public bool $sectionPresent,
         public string $sourceType,
@@ -31,28 +29,7 @@ final readonly class EnvelopeData implements JsonSerializable
         public array $sourceWarnings = [],
     ) {}
 
-    /**
-     * @return array{
-     *     sectionPresent: bool,
-     *     sourceType: string,
-     *     reportReference: ?string,
-     *     airport: ?string,
-     *     plannedRunway: ?string,
-     *     outsideAirTemperatureCelsius: ?float,
-     *     wind: ?string,
-     *     qnhInchesMercury: ?float,
-     *     qnhHectopascals: ?int,
-     *     maximumRunwayTakeoffWeight: array{amount: int, unit: 'lb'|'kg'}|null,
-     *     flapSetting: ?string,
-     *     antiIce: ?bool,
-     *     v1Knots: ?int,
-     *     rotateKnots: ?int,
-     *     v2Knots: ?int,
-     *     plannedTakeoffWeight: array{amount: int, unit: 'lb'|'kg'}|null,
-     *     maximumFieldTakeoffWeight: array{amount: int, unit: 'lb'|'kg'}|null,
-     *     sourceWarnings: list<string>
-     * }
-     */
+    /** @return array<string, mixed> */
     public function toArray(): array
     {
         return [

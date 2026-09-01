@@ -29,11 +29,13 @@ class FlightPlanResultSerializer
             'arrival_runway' => $flightPlan->route->arrivalRunway,
             'departure_sid' => $flightPlan->route->departureSid,
             'arrival_star' => $flightPlan->route->arrivalStar,
-            'etps' => $legacy['etps'] ?? [],
-            'eent_coordinates' => $legacy['eent_coordinates'] ?? null,
-            'eexp_coordinates' => $legacy['eexp_coordinates'] ?? null,
-            'initial_altitude' => $legacy['initial_altitude'] ?? '',
-            'duration' => $legacy['duration'] ?? '',
+            'etps' => $parsed->etops['etps'] ?? [],
+            'eent_coordinates' => $parsed->etops['eent_coordinates'] ?? null,
+            'eexp_coordinates' => $parsed->etops['eexp_coordinates'] ?? null,
+            'initial_altitude' => $this->legacyInitialAltitude($parsed->flightInit['filed_initial_altitude'] ?? null),
+            'duration' => is_string($parsed->schedule['block_duration'] ?? null)
+                ? $parsed->schedule['block_duration']
+                : '',
             'route' => $this->routeExtractor->formatForIcaoDisplay($flightPlan->route->route ?? ''),
             'flight_plan_data' => $flightPlan->toArray(),
         ];
@@ -47,5 +49,16 @@ class FlightPlanResultSerializer
         }
 
         return is_array($airport) ? $airport : null;
+    }
+
+    private function legacyInitialAltitude(mixed $value): string
+    {
+        if (! is_string($value)) {
+            return '';
+        }
+
+        return preg_match('/^F(?<level>\d{3,4})$/', $value, $matches) === 1
+            ? 'FL '.$matches['level']
+            : $value;
     }
 }

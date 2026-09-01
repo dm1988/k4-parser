@@ -10,7 +10,7 @@ class FlightScheduleExtractor
 {
     /**
      * @return array{
-     *     data: array{etd_utc: ?string, eta_utc: ?string, block_duration: ?string, report_time_utc: ?string, duty_end_utc: ?string, slots: list<array{direction: string, airport: string, instant_utc: string, source_time: string}>, slot_times_utc: list<string>},
+     *     data: array{etd_utc: ?string, eta_utc: ?string, block_duration: ?string, report_time_utc: ?string, duty_end_utc: ?string, slot_source_text: ?string, slots: list<array{direction: 'arrival'|'departure', airport: string, instant_utc: string, source_time: string, tolerance_minutes: ?int}>, slot_times_utc: list<string>},
      *     source_fragments: array<string, string|list<array{direction: string, airport: string, time: string}>>
      * }
      */
@@ -25,12 +25,13 @@ class FlightScheduleExtractor
         $eta = $this->utcInstant($flightDate, $etaMatches, dayIndex: 3, after: $etd);
         $this->corroborateFplDepartureTime($text, $etd);
         [$slots, $slotEvidence, $slotSourceText] = $this->slotTimes($text, $flightDate, $etd);
+        $plannedDuration = $this->plannedDuration($text);
 
         return [
             'data' => [
                 'etd_utc' => $etd?->toIso8601String(),
                 'eta_utc' => $eta?->toIso8601String(),
-                'block_duration' => null,
+                'block_duration' => $plannedDuration['value'],
                 'report_time_utc' => null,
                 'duty_end_utc' => null,
                 'slot_source_text' => $slotSourceText,
@@ -53,8 +54,36 @@ class FlightScheduleExtractor
                 'schedule' => isset($etdMatches[0], $etaMatches[0])
                     ? Str::squish($etdMatches[0].' '.$etaMatches[0])
                     : null,
+                'schedule_fpl_duration' => $plannedDuration['source'],
                 'slot_times' => $slotEvidence,
             ], static fn (string|array|null $value): bool => $value !== null && $value !== []),
+        ];
+    }
+
+    /** @return array{value: ?string, source: ?string} */
+    private function plannedDuration(string $text): array
+    {
+        $matches = [];
+        preg_match_all(
+            '/\(FPL-.*?-(?:N\d{4}|K\d{4}|M\d{3})[FASM]\d{3,4}\h+.*?-(?<source>[A-Z]{4}(?<duration>\d{4}))(?:\h+[A-Z]{4})?\b/s',
+            $text,
+            $matches,
+            PREG_SET_ORDER,
+        );
+        $durations = array_values(array_unique(array_map(
+            static fn (array $match): string => $match['duration'],
+            array_filter($matches, static fn (array $match): bool => (int) substr($match['duration'], 2, 2) < 60),
+        )));
+
+        if (count($durations) > 1) {
+            throw FlightPlanDataConflictException::forField('planned flight duration');
+        }
+
+        $duration = $durations[0] ?? null;
+
+        return [
+            'value' => $duration === null ? null : substr($duration, 0, 2).'h'.substr($duration, 2, 2).'m',
+            'source' => isset($matches[0]['source']) && $duration !== null ? Str::squish($matches[0]['source']) : null,
         ];
     }
 

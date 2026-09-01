@@ -39,12 +39,6 @@ class FlightRouteExtractor
      *     departure_sid: ?string,
      *     arrival_star: ?string,
      *     distance_nautical_miles: ?int,
-     *     etps: list<array{label: string, airports: string, coordinates: string, scenario: string}>,
-     *     eent_coordinates: ?string,
-     *     eexp_coordinates: ?string,
-     *     initial_altitude: string,
-     *     filed_initial_altitude_source: string,
-     *     duration: string,
      *     route: string
      * }
      *
@@ -83,12 +77,6 @@ class FlightRouteExtractor
      *     departure_sid: ?string,
      *     arrival_star: ?string,
      *     distance_nautical_miles: ?int,
-     *     etps: list<array{label: string, airports: string, coordinates: string, scenario: string}>,
-     *     eent_coordinates: ?string,
-     *     eexp_coordinates: ?string,
-     *     initial_altitude: string,
-     *     filed_initial_altitude_source: string,
-     *     duration: string,
      *     route: string
      * }
      *
@@ -121,12 +109,6 @@ class FlightRouteExtractor
             'departure_sid' => $plannedRunways['departure_sid'],
             'arrival_star' => $plannedRunways['arrival_star'],
             'distance_nautical_miles' => $this->extractDistanceNauticalMiles($text),
-            'etps' => $this->extractEtps($text),
-            'eent_coordinates' => $this->extractMarkerCoordinates($text, 'EENT'),
-            'eexp_coordinates' => $this->extractMarkerCoordinates($text, 'EEXP'),
-            'initial_altitude' => $this->formatInitialAltitude($matches[2]),
-            'filed_initial_altitude_source' => $matches[2],
-            'duration' => $this->formatDuration($matches[5]),
             'route' => $route,
         ];
     }
@@ -186,62 +168,6 @@ class FlightRouteExtractor
     }
 
     /**
-     * @return list<array{label: string, airports: string, coordinates: string, scenario: string}>
-     */
-    private function extractEtps(string $text): array
-    {
-        $pattern = '/(ETP\d+)\s+([A-Z]{4}-[A-Z]{4})\s+'
-            .'([NS]\d{2}\s+\d{2}\.\d\s+[EW]\d{3}\s+\d{2}\.\d)\s+'
-            .'(ALL ENGINE\/DECOMPRESSION\/LRC)\b/';
-
-        if (preg_match_all($pattern, $text, $matches, PREG_SET_ORDER) === false) {
-            return [];
-        }
-
-        $etps = [];
-        $seenEtps = [];
-
-        foreach ($matches as $match) {
-            $coordinates = preg_replace('/\s+/', ' ', trim($match[3]));
-
-            if (! is_string($coordinates)) {
-                continue;
-            }
-
-            $signature = implode('|', [$match[1], $match[2], $coordinates, $match[4]]);
-
-            if (isset($seenEtps[$signature])) {
-                continue;
-            }
-
-            $seenEtps[$signature] = true;
-
-            $etps[] = [
-                'label' => $match[1],
-                'airports' => $match[2],
-                'coordinates' => $coordinates,
-                'scenario' => $match[4],
-            ];
-        }
-
-        return $etps;
-    }
-
-    private function extractMarkerCoordinates(string $text, string $marker): ?string
-    {
-        $pattern = '/([NS]\d{2}\s+\d{2}\.\d\s+[EW]\d{3}\s+\d{2}\.\d)'
-            .'\s*\('.preg_quote($marker, '/').'\)/';
-
-        if (preg_match($pattern, $text, $matches) !== 1) {
-            return null;
-        }
-
-        $coordinates = preg_replace('/\s+/', ' ', trim($matches[1]));
-
-        return is_string($coordinates) ? $coordinates : null;
-    }
-
-    /**
      * @throws FlightRouteNotFoundException
      */
     private function extractFlightPlanBlock(string $text): string
@@ -292,20 +218,6 @@ class FlightRouteExtractor
         }
 
         return implode(PHP_EOL, $normalizedLines);
-    }
-
-    private function formatInitialAltitude(string $level): string
-    {
-        if (preg_match('/^F(\d{3,4})$/', $level, $matches) === 1) {
-            return 'FL '.$matches[1];
-        }
-
-        return $level;
-    }
-
-    private function formatDuration(string $duration): string
-    {
-        return substr($duration, 0, 2).'h'.substr($duration, 2, 2).'m';
     }
 
     public function formatForIcaoDisplay(string $route): string

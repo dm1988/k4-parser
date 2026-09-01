@@ -9,7 +9,7 @@ class FlightInitExtractor
 {
     /**
      * @return array{
-     *     data: array{section_present: bool, acars_init_date: ?string, fms_initial_altitude: ?string},
+     *     data: array{section_present: bool, acars_init_date: ?string, filed_initial_altitude: ?string, fms_initial_altitude: ?string},
      *     source_fragments: array<string, string>
      * }
      */
@@ -18,6 +18,7 @@ class FlightInitExtractor
         $sections = $this->sections($text);
         $dates = [];
         $sourceFragment = null;
+        $filedInitialAltitude = $this->filedInitialAltitude($text);
         $fmsInitialAltitude = $this->fmsInitialAltitude($text);
 
         foreach ($sections as $section) {
@@ -37,14 +38,41 @@ class FlightInitExtractor
 
         return [
             'data' => [
-                'section_present' => $sections !== [] || $fmsInitialAltitude['value'] !== null,
+                'section_present' => $sections !== [] || $filedInitialAltitude['value'] !== null || $fmsInitialAltitude['value'] !== null,
                 'acars_init_date' => $dates[0] ?? null,
+                'filed_initial_altitude' => $filedInitialAltitude['value'],
                 'fms_initial_altitude' => $fmsInitialAltitude['value'],
             ],
             'source_fragments' => array_filter([
                 'flight_init_takeoff_landing_report' => $sourceFragment,
+                'flight_init_filed_initial_altitude' => $filedInitialAltitude['source'],
                 'flight_init_fms_initial_altitude' => $fmsInitialAltitude['source'],
             ]),
+        ];
+    }
+
+    /** @return array{value: ?string, source: ?string} */
+    private function filedInitialAltitude(string $text): array
+    {
+        $matches = [];
+        preg_match_all(
+            '/\(FPL-.*?-(?<source>(?:N\d{4}|K\d{4}|M\d{3})(?<level>[FASM]\d{3,4}))\h+/s',
+            $text,
+            $matches,
+            PREG_SET_ORDER,
+        );
+        $levels = array_values(array_unique(array_map(
+            static fn (array $match): string => $match['level'],
+            $matches,
+        )));
+
+        if (count($levels) > 1) {
+            throw FlightPlanDataConflictException::forField('filed initial altitude');
+        }
+
+        return [
+            'value' => $levels[0] ?? null,
+            'source' => isset($matches[0]['source']) ? Str::squish($matches[0]['source']) : null,
         ];
     }
 

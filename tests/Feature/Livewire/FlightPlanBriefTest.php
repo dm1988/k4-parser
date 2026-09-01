@@ -678,7 +678,6 @@ class FlightPlanBriefTest extends TestCase
                     ],
                     maintenance: [
                         'section_present' => true,
-                        'etops_applicability' => 'confirmed_etops',
                         'items' => [
                             [
                                 'type' => 'MEL',
@@ -717,6 +716,10 @@ class FlightPlanBriefTest extends TestCase
                                 'procedures' => null,
                             ],
                         ],
+                    ],
+                    etops: [
+                        'section_present' => true,
+                        'applicability' => 'confirmed_etops',
                     ],
                 ));
         });
@@ -840,8 +843,11 @@ class FlightPlanBriefTest extends TestCase
                 ->andReturn($this->parsedFlightPlan(
                     maintenance: [
                         'section_present' => true,
-                        'etops_applicability' => 'confirmed_non_etops',
                         'items' => [],
+                    ],
+                    etops: [
+                        'section_present' => true,
+                        'applicability' => 'confirmed_non_etops',
                     ],
                 ));
         });
@@ -1009,7 +1015,7 @@ class FlightPlanBriefTest extends TestCase
                         ['name' => 'BENNETT B', 'role' => 'MX', 'base' => null],
                         ['name' => 'GARCIA T', 'role' => 'LM', 'base' => null],
                     ],
-                    envelope: [
+                    takeoffLandingReport: [
                         'section_present' => true,
                         'source_type' => 'takeoff_landing_report',
                         'report_reference' => 'TLR-30 SEQ-48273190 25MAY26 0115Z',
@@ -1109,7 +1115,7 @@ class FlightPlanBriefTest extends TestCase
 
         $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
             $this->expectOnce($mock, 'extractFile')
-                ->andReturn($this->parsedFlightPlan(envelope: [
+                ->andReturn($this->parsedFlightPlan(takeoffLandingReport: [
                     'section_present' => true,
                     'source_type' => 'takeoff_landing_report',
                     'planned_takeoff_weight' => null,
@@ -1221,8 +1227,11 @@ class FlightPlanBriefTest extends TestCase
                     ]],
                     maintenance: [
                         'section_present' => false,
-                        'etops_applicability' => 'confirmed_etops',
                         'items' => [],
+                    ],
+                    etops: [
+                        'section_present' => true,
+                        'applicability' => 'confirmed_etops',
                     ],
                 ));
         });
@@ -1753,7 +1762,7 @@ class FlightPlanBriefTest extends TestCase
         ?array $fuel = null,
         ?array $crewMembers = null,
         ?array $maintenance = null,
-        ?array $envelope = null,
+        ?array $takeoffLandingReport = null,
         ?array $flightInit = null,
         ?array $etops = null,
         ?array $waypoints = null,
@@ -1789,7 +1798,7 @@ class FlightPlanBriefTest extends TestCase
             schedule: $schedule ?? [
                 'etd_utc' => null,
                 'eta_utc' => null,
-                'block_duration' => null,
+                'block_duration' => is_string($legacy['duration'] ?? null) ? $legacy['duration'] : null,
                 'report_time_utc' => null,
                 'duty_end_utc' => null,
                 'slot_times_utc' => [],
@@ -1801,12 +1810,17 @@ class FlightPlanBriefTest extends TestCase
             crewMembers: $crewMembers ?? [],
             maintenance: $maintenance ?? [
                 'section_present' => false,
-                'etops_applicability' => 'unknown',
                 'items' => [],
             ],
-            envelope: $envelope ?? [],
-            flightInit: $flightInit ?? [],
+            takeoffLandingReport: $takeoffLandingReport ?? [],
+            flightInit: $flightInit ?? [
+                'filed_initial_altitude' => is_string($legacy['initial_altitude'] ?? null) ? $legacy['initial_altitude'] : null,
+            ],
             etops: [
+                'section_present' => is_array($legacy['etps'] ?? null) && $legacy['etps'] !== [],
+                'applicability' => is_array($legacy['etps'] ?? null) && $legacy['etps'] !== []
+                    ? 'confirmed_etops'
+                    : 'unknown',
                 ...($etops ?? []),
                 'etps' => is_array($legacy['etps'] ?? null) ? $legacy['etps'] : [],
                 'eent_coordinates' => is_string($legacy['eent_coordinates'] ?? null) ? $legacy['eent_coordinates'] : null,

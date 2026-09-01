@@ -161,8 +161,15 @@ Commit message: `fix: tighten crew name extraction`
 
 ## 16. Implement weight limits in aircraft table and provide 747 AC seeder
 - Weight limits do not exist in DB
-- Create a list of fields to be added
-- Add 747 ac seeder
+- Create a migration adding the following fields:
+  - Max ramp weight
+  - Max Zero fuel weight
+  - Max takeoff weight
+  - Max landing weight
+  - Max autoland weight
+  - Minimum flight weight
+  - Engines (string)
+- Create a seeder
 
 ### 17. Reserve fuel
 - Create distinction between Alternate airport burn and Reserve fuel calculation. 
@@ -171,35 +178,135 @@ Commit message: `fix: tighten crew name extraction`
 - coincides with future 747 seeder into production
 - will have to add migration for reserve fuel additive
 
-## 18. Cleanup
-- Move 2 maintenance DTOs into Maintenance DTO subfolder
-- Identify DTOs and Services that would benefit from improved folder structure
+## 18. Indentify: Cleanup
+
+Goal:
+- Make the flight-release code easier to navigate and change by giving each domain one clear owner, breaking up oversized classes, and removing files that no longer participate in a supported path.
+
+Current implementation:
+- `app/DTOs` now has domain folders for ETOPS, Maintenance, Weather, and Weight & Balance, while several release-level DTOs remain at the root until their stable construction boundaries are split.
+- `BuildFlightPlanData` is 557 lines and `BuildFlightPlanPageData` is 662 lines. Both construct the same nested aggregate from different array shapes and duplicate fuel, maintenance, weather, ETOPS, crew, waypoint, and scalar normalization.
+- `ExtractFlightPlanData` and both builders instantiate some concrete collaborators as constructor defaults. This bypasses container-managed dependency injection and makes the real dependency boundary inconsistent.
+- `FlightReleasePageViewModel` is 1,168 lines and presents every task from one class, so unrelated task changes share one dependency and one large test fixture.
+- `FlightRouteExtractor` now owns route facts only: airports, route text, runways/procedures, and distance. ETOPS route points, filed altitude, and planned duration are extracted by their respective ETOPS, Flight Init, and Schedule boundaries.
+- `EtopsData::applicability` is the single normalized ETOPS applicability owner; Maintenance consumes that aggregate instead of retaining a duplicate field.
+- Takeoff and Landing Report extraction, staging, DTOs, fixtures, and source evidence use explicit `TakeoffLandingReport*` language. The existing `Envelope` UI task label/slug and serialized `envelope` alias remain only as deliberate task 19 compatibility paths.
+- `App\ValueObjects\FlightPlan` and `tests/Unit/ExampleTest.php` have no production value. Only `docker/8.4` is referenced by `compose.yaml`; the parallel `docker/8.0`, `8.1`, `8.2`, `8.3`, and `8.5` trees are currently unused, and the documented PHP 8.5 baseline disagrees with the 8.4 Compose context.
+
+Problem:
+- Domain boundaries are expressed inconsistently by folders, names, and data ownership.
+- Large builders and the all-purpose view model increase regression risk and make focused tests harder to understand.
+- Duplicate compatibility-era fields can diverge while still producing apparently valid UI output.
+- Dead files and unused runtime definitions obscure the supported architecture.
+
+Identified cleanup, in implementation order:
+1. [x] Completed: **Correct domain ownership before moving namespaces.**
+
+   Outcome: Maintenance DTOs now live under `App\DTOs\Maintenance`, and ETOPS applicability exists only in the ETOPS aggregate. Takeoff and Landing Report classes, staging data, source evidence, tests, and fixtures use explicit TLR terminology; the old serialized `envelope` key and UI task slug remain documented compatibility aliases for task 19. `EtopsRouteExtractor` owns ETP/EENT/EEXP data, `FlightInitExtractor` owns filed altitude, and `FlightScheduleExtractor` owns FPL planned duration, leaving `FlightRouteExtractor` responsible only for route facts. Flat serializer compatibility values are composed from those normalized owners instead of being parsed by the route boundary. Focused parser, DTO, builder, serializer, view-model, and Livewire regressions pass after Pint.
+
+   Verification follow-up outcome: `FlightReleaseControllerTest` now asserts the current automatic-upload dropzone copy and verifies that the obsolete `Extract route` control remains absent.
+
+   Static-analysis follow-up outcome: `FlightScheduleExtractor::extract()` now declares `slot_source_text` and each slot's nullable `tolerance_minutes` in its public return shape, matching the normalized data it always emits and removing the reported test-offset ambiguity.
+
+   Commit message: `refactor: correct flight plan domain ownership`
+2. **Split construction and presentation by subdomain.**
+   - Extract small builders/hydrators for ETOPS, Maintenance, Weather, Crew, Waypoints, and TLR, following the existing `WeightBalanceDataBuilder` pattern.
+   - Reuse those collaborators from both initial construction and cached-payload rehydration so validation/defaulting rules have one implementation.
+   - Require collaborators through constructor injection instead of defaulting parameters to `new ...`; keep direct construction in tests explicit when appropriate.
+   - Split `FlightReleasePageViewModel` into task-specific presenters or immutable view-data objects, leaving a small release-level facade for task visibility, navigation, identity, and shared header data.
+   - Replace the broad array-shape staging fields in `ParsedFlightPlanData` incrementally with typed extractor results or typed subdomain input DTOs. Preserve private source evidence separately from the serializable aggregate.
+3. **Make folders mirror stable domains.**
+   - After responsibilities are split, group flight-plan actions under `App\Actions\FlightPlan` and keep schedule/extract/auth actions in their own domains. Avoid creating folders that would contain only one arbitrary class.
+   - Mirror production namespaces in tests as files move; do not perform a repository-wide test shuffle without a corresponding production boundary change.
+4. **Remove confirmed residue.**
+   - Delete the orphaned `App\ValueObjects\FlightPlan` after a final reference search, the empty `App\Jobs\ProcessImageOcr` scaffold, and the placeholder `tests/Unit/ExampleTest.php`; retain the feature smoke test because it verifies real landing-page behavior.
+   - Select and document one supported Sail PHP image, update `compose.yaml` and the technical baseline to agree, then remove only the unreferenced Docker version directories.
+   - Remove `FlightPlanTask::hasCustomView()` and the unreachable workspace fallback together after asserting every visible task has a dedicated component.
+
+Constraints:
+- Make each namespace/responsibility move an independently reviewable change with its imports and focused tests; do not combine all cleanup into one mechanical commit.
+- Preserve serialized key compatibility until task 19 deliberately versions and removes that contract.
+- Do not add interfaces or abstraction layers unless there are multiple implementations or a real application boundary.
+- Run the narrowest affected PHPUnit tests for each batch, Pint after PHP changes, and reserve Larastan for the final integration checkpoint in task 19.
+
+Done when: each flight-release fact has one domain owner, the two aggregate-building paths share subdomain hydration rules, task presentation is no longer concentrated in one class, and confirmed dead files/runtime definitions are removed without changing user-visible behavior.
+
+Proposed commit sequence:
+- `refactor: organize flight plan domain data`
+- `refactor: split flight plan hydration and presentation`
+- `chore: remove obsolete project files`
 
 ## 19. Remove compatibility paths and complete release verification
 
-Goal: Finish the migration only after every active front-end consumer uses typed page data.
+Goal:
+- Finish the normalized flight-release migration only after every active UI consumer can be rebuilt from one typed cached contract, then run a release-quality verification checkpoint.
 
-- Remove flat route keys, legacy `App\ValueObjects\FlightPlan` reconstruction, and compatibility serializer branches only after parity tests pass.
-- Keep source fragments out of Livewire snapshots and cached public result payloads unless explicitly allowlisted and sanitized.
-- Verify authorization, feature flags, metrics, cache isolation/expiry, upload deletion, parser failures, and unexpected-error reporting.
-- Run focused PHPUnit tests while implementing each task.
-- Run Pint after PHP changes and JavaScript tests after interaction changes.
-- At the final integration checkpoint, run the full PHPUnit suite, production Vite build, JavaScript suite, and Larastan once.
-- Perform manual responsive, keyboard, screen-reader-label, light/dark, and representative-PDF smoke tests.
-- Remove hasCustom view from Tasks enum.
-- Move ETOPs functions out of MaintenanceLogExtractor into ETOPs services. i.e. etopsApplicability
-- These 2 etops if conditions not possible:
-        if (preg_match('/\bETOPS(?:\h+FLIGHT)?\h*[:=-]\h*(YES|Y|NO|N)\b/i', $text, $explicit) === 1) {
-            return in_array(Str::upper($explicit[1]), ['YES', 'Y'], true)
-                ? EtopsApplicability::ConfirmedEtops
-                : EtopsApplicability::ConfirmedNonEtops;
-        }
+Current implementation:
+- `FlightPlanResultSerializer` emits the nested `flight_plan_data` aggregate plus 16 flat compatibility keys; `HandleFlightPlanExtraction::RESULT_KEYS` independently mirrors that public allowlist.
+- `BuildFlightPlanPageData` requires `flight_plan_data` for the main aggregate, but still reads `departure_airport`, `destination_airport`, `alternate_airport`, and `duration` from flat keys. Airport enrichment and displayed duration are therefore the remaining active front-end compatibility consumers.
+- `ExtractFlightPlanData` stores the complete route-extractor array in `ParsedFlightPlanData::$legacy`; the serializer reads airport details, ETP fields, altitude, duration, and route values from it.
+- `App\ValueObjects\FlightPlan` is already orphaned; there is no active reconstruction path to preserve or migrate.
+- ETOPS qualification is already in `Extractor/Etops/EtopsQualificationExtractor`, not `MaintenanceLogExtractor`. The questioned `ETOPS FLIGHT: NO` and `NO ETOPS` branches remain there and have explicit unit coverage; remove them only when representative source evidence proves those signatures invalid.
+- `FlightPlanPageData::availabilityFor()` marks several tasks available unconditionally, including Maintenance Log and Flight Init, while their normalized sections can be absent. Honest task availability therefore needs an explicit per-task audit before release.
+- Privacy, scoped cache access, upload deletion, authorization, feature gating, metrics, parser failures, and unexpected-error reporting have focused coverage. Cache expiry itself does not yet have an explicit `FlightPlanResultCacheTest` assertion.
 
-        if (preg_match('/\bNO\h+ETOPS\b/i', $text) === 1) {
-            return EtopsApplicability::ConfirmedNonEtops;
-        }
-- 
-- Update this file with actual outcomes and remove completed implementation detail instead of adding duplicate plans.
+Problem:
+- Removing the flat payload now would discard airport details and displayed duration after cache rehydration.
+- The duplicated allowlist, serializer fields, parser `legacy` bag, and legacy-oriented tests make it easy to reintroduce a flat consumer.
+- Cached results written immediately before deployment need an explicit invalidation/version strategy once compatibility hydration is removed.
+- A passing unit suite alone does not verify production asset compilation, responsive interaction, accessibility, or representative PDF/OCR behavior.
+
+Removal sequence:
+1. **Close the two remaining normalized-contract gaps.**
+   - Choose and document a typed owner for enriched departure/destination/alternate airport data; serialize it inside the normalized aggregate and rehydrate it without reading root keys.
+   - Reconcile the route-extractor `duration` with `ScheduleData::blockDuration`. Add parity fixtures first, then keep one typed source or introduce a clearly named typed planned-duration field if the source meanings differ.
+   - Add contract tests proving `FlightPlanPageData` and every visible task render identically from a payload containing only normalized data.
+2. **Cut over readers before writers.**
+   - Change `BuildFlightPlanPageData` to read airport data and duration only from `flight_plan_data` and remove normalized-vs-flat precedence/fallback tests.
+   - Add a regression assertion that root-level compatibility values are ignored or rejected, then remove them from test payload factories.
+3. **Remove compatibility writers and staging.**
+   - Make `FlightPlanResultSerializer` return only the normalized public result contract and remove its `FlightRouteExtractor` dependency and `airportArray()` compatibility helper.
+   - Reduce `HandleFlightPlanExtraction::RESULT_KEYS` to the normalized contract, or replace the duplicated key allowlist with one serializer-owned public payload boundary.
+   - Remove `ParsedFlightPlanData::$legacy`; have dedicated extractors return every still-supported typed fact, and remove legacy route keys that no longer have a consumer.
+   - Delete `App\ValueObjects\FlightPlan` and legacy-only test fixtures/assertions after a repository-wide reference search is empty.
+4. **Version the cache boundary.**
+   - Version the flight-plan result cache namespace or payload schema when the cutover ships so pre-cutover arrays cannot be silently interpreted by the new hydrator.
+   - Add explicit TTL-expiry, wrong-user, malformed-key, reset/forget, and old-schema rejection tests. It is acceptable for an in-flight pre-release result to return the user to the upload state after deployment; it is not acceptable to partially render mixed schemas.
+5. **Finish small compatibility-era UI cleanup.**
+   - Define the required typed evidence for every `FlightPlanTask` and test present, absent, unsupported, and confirmed-empty states. Remove unconditional availability where a task's source section can be absent, and keep Overview/shared-context exceptions explicit.
+   - Remove `FlightPlanTask::hasCustomView()`, its always-true unit assertion, and the unreachable fallback branch in `workspace.blade.php` after component coverage proves all visible task cases resolve.
+   - Keep ETOPS signature changes separate from the contract removal. If the two non-ETOPS signatures are invalid, add a sanitized representative fixture that demonstrates the false classification before deleting the branches and updating `EtopsQualificationExtractorTest`.
+6. **Lock the privacy boundary.**
+   - Assert `sourceFragments`, raw extracted page text, storage paths, and private evidence are absent from the serialized cache payload, Livewire snapshot, rendered HTML, logs, and validation/error responses.
+   - Keep the Livewire component state limited to the locked opaque result key and active task; rehydrated page/view data remains derived server-side.
+
+Focused verification while implementing:
+- Contract and hydration: `ExtractFlightPlanDataTest`, `BuildFlightPlanDataTest`, `FlightPlanResultSerializerTest`, `BuildFlightPlanPageDataTest`, and DTO tests for each moved field.
+- Cache and privacy: `FlightPlanResultCacheTest` plus the successful extraction, missing-cache, reset, cross-user, source-fragment, and Livewire snapshot assertions in `FlightPlanBriefTest`.
+- Lifecycle and failure handling: the successful extraction, request metrics, route-not-found, logging failure, unexpected exception, and upload-deletion cases in `FlightPlanBriefTest`.
+- Access boundaries: `FlightReleaseControllerTest`, `FeatureRouteAuthorizationTest`, and the component action authorization case in `FlightPlanBriefTest`.
+- Presentation parity: `FlightReleasePageViewModelTest`, `FlightPlanTaskTest`, component tests, and the affected JavaScript test only when interaction code changes.
+
+Final integration checkpoint:
+1. Run `vendor/bin/sail bin pint --dirty --format agent` after the final PHP changes.
+2. Run the complete PHPUnit suite with `vendor/bin/sail artisan test --compact`.
+3. Run the JavaScript suite with `vendor/bin/sail npm test`.
+4. Build production assets with `vendor/bin/sail npm run build`.
+5. Run Larastan once with the project configuration.
+6. Add Larastan to CI or an equally enforced release workflow so the final static-analysis gate is repeatable rather than dependent on a manual checklist.
+7. Confirm the worktree contains no accidental generated assets, cache files, or unrelated changes.
+
+Manual release smoke tests:
+- Upload representative text-based and OCR/image-only PDFs, including GENDEC, B43/B44, non-ETOPS, ETOPS, missing optional sections, parser failure, and malformed/secured PDF cases.
+- Confirm automatic parsing after file selection, recoverable retry/reset behavior, task navigation, copy controls, and no reparsing during refresh/task changes.
+- Check mobile, tablet, and desktop layouts; keyboard-only operation; visible focus; accessible names/status announcements; screen-reader reading order; and light/dark themes.
+- Confirm request metrics and failure records contain operational metadata but no document content, and verify temporary uploads are deleted after both success and failure.
+
+Constraints:
+- Do not remove a compatibility field until a typed equivalent and parity test exist.
+- Do not keep a silent fallback for old cache schemas after the versioned cutover.
+- Run focused tests during each batch, Pint after PHP changes, JavaScript tests after interaction changes, and Larastan only at this final integration checkpoint.
+- Replace this plan with concise actual outcomes when completed instead of appending a duplicate implementation log.
 
 Done when: no UI depends on the flat compatibility payload, all enabled tasks have honest availability states, and the full integration checkpoint passes.
 

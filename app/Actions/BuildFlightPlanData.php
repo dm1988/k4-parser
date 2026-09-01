@@ -3,7 +3,6 @@
 namespace App\Actions;
 
 use App\DTOs\CrewMemberData;
-use App\DTOs\EnvelopeData;
 use App\DTOs\Etops\EtopsCoordinateData;
 use App\DTOs\Etops\EtopsData;
 use App\DTOs\Etops\EtopsEqualTimePointData;
@@ -14,13 +13,14 @@ use App\DTOs\FlightInitData;
 use App\DTOs\FlightPlanData;
 use App\DTOs\FuelPlanData;
 use App\DTOs\GeneralDeclarationData;
-use App\DTOs\MaintenanceItemData;
-use App\DTOs\MaintenanceLogData;
+use App\DTOs\Maintenance\MaintenanceItemData;
+use App\DTOs\Maintenance\MaintenanceLogData;
 use App\DTOs\ParsedFlightPlanData;
 use App\DTOs\ReleaseAuthorizationData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
 use App\DTOs\SlotTimeData;
+use App\DTOs\TakeoffLandingReportData;
 use App\DTOs\WaypointData;
 use App\DTOs\Weather\AirportWeatherData;
 use App\DTOs\Weather\WeatherData;
@@ -87,7 +87,7 @@ class BuildFlightPlanData
             ),
             fuelPlan: $fuelPlan,
             maintenanceLog: $this->maintenanceLog($parsed),
-            envelope: $this->envelope($parsed),
+            takeoffLandingReport: $this->takeoffLandingReport($parsed),
             flightInit: $this->flightInit($parsed),
             etops: $this->etops($parsed),
             weather: $this->weather($parsed),
@@ -250,44 +250,40 @@ class BuildFlightPlanData
     private function maintenanceLog(ParsedFlightPlanData $parsed): MaintenanceLogData
     {
         $maintenance = $parsed->maintenance;
-        $applicability = is_string($maintenance['etops_applicability'] ?? null)
-            ? EtopsApplicability::tryFrom($maintenance['etops_applicability'])
-            : null;
 
         return new MaintenanceLogData(
             sectionPresent: ($maintenance['section_present'] ?? false) === true,
-            etopsApplicability: $applicability ?? EtopsApplicability::Unknown,
             items: $this->maintenanceItems($maintenance['items'] ?? null),
         );
     }
 
-    private function envelope(ParsedFlightPlanData $parsed): ?EnvelopeData
+    private function takeoffLandingReport(ParsedFlightPlanData $parsed): ?TakeoffLandingReportData
     {
-        $envelope = $parsed->envelope;
+        $takeoffLandingReport = $parsed->takeoffLandingReport;
 
-        if (($envelope['section_present'] ?? false) !== true) {
+        if (($takeoffLandingReport['section_present'] ?? false) !== true) {
             return null;
         }
 
-        return new EnvelopeData(
+        return new TakeoffLandingReportData(
             sectionPresent: true,
-            sourceType: $this->nullableString($envelope['source_type'] ?? null) ?? 'takeoff_landing_report',
-            reportReference: $this->nullableString($envelope['report_reference'] ?? null),
-            airport: $this->nullableString($envelope['airport'] ?? null),
-            plannedRunway: $this->nullableString($envelope['planned_runway'] ?? null),
-            outsideAirTemperatureCelsius: $this->nullableFloat($envelope['outside_air_temperature_celsius'] ?? null),
-            wind: $this->nullableString($envelope['wind'] ?? null),
-            qnhInchesMercury: $this->nullableFloat($envelope['qnh_inches_mercury'] ?? null),
-            qnhHectopascals: $this->nullableInteger($envelope['qnh_hectopascals'] ?? null),
-            maximumRunwayTakeoffWeight: $this->weightQuantity($envelope['maximum_runway_takeoff_weight'] ?? null),
-            flapSetting: $this->nullableString($envelope['flap_setting'] ?? null),
-            antiIce: is_bool($envelope['anti_ice'] ?? null) ? $envelope['anti_ice'] : null,
-            v1Knots: $this->nullableInteger($envelope['v1_knots'] ?? null),
-            rotateKnots: $this->nullableInteger($envelope['rotate_knots'] ?? null),
-            v2Knots: $this->nullableInteger($envelope['v2_knots'] ?? null),
-            plannedTakeoffWeight: $this->weightQuantity($envelope['planned_takeoff_weight'] ?? null),
-            maximumFieldTakeoffWeight: $this->weightQuantity($envelope['maximum_field_takeoff_weight'] ?? null),
-            sourceWarnings: $this->strings($envelope['source_warnings'] ?? null),
+            sourceType: $this->nullableString($takeoffLandingReport['source_type'] ?? null) ?? 'takeoff_landing_report',
+            reportReference: $this->nullableString($takeoffLandingReport['report_reference'] ?? null),
+            airport: $this->nullableString($takeoffLandingReport['airport'] ?? null),
+            plannedRunway: $this->nullableString($takeoffLandingReport['planned_runway'] ?? null),
+            outsideAirTemperatureCelsius: $this->nullableFloat($takeoffLandingReport['outside_air_temperature_celsius'] ?? null),
+            wind: $this->nullableString($takeoffLandingReport['wind'] ?? null),
+            qnhInchesMercury: $this->nullableFloat($takeoffLandingReport['qnh_inches_mercury'] ?? null),
+            qnhHectopascals: $this->nullableInteger($takeoffLandingReport['qnh_hectopascals'] ?? null),
+            maximumRunwayTakeoffWeight: $this->weightQuantity($takeoffLandingReport['maximum_runway_takeoff_weight'] ?? null),
+            flapSetting: $this->nullableString($takeoffLandingReport['flap_setting'] ?? null),
+            antiIce: is_bool($takeoffLandingReport['anti_ice'] ?? null) ? $takeoffLandingReport['anti_ice'] : null,
+            v1Knots: $this->nullableInteger($takeoffLandingReport['v1_knots'] ?? null),
+            rotateKnots: $this->nullableInteger($takeoffLandingReport['rotate_knots'] ?? null),
+            v2Knots: $this->nullableInteger($takeoffLandingReport['v2_knots'] ?? null),
+            plannedTakeoffWeight: $this->weightQuantity($takeoffLandingReport['planned_takeoff_weight'] ?? null),
+            maximumFieldTakeoffWeight: $this->weightQuantity($takeoffLandingReport['maximum_field_takeoff_weight'] ?? null),
+            sourceWarnings: $this->strings($takeoffLandingReport['source_warnings'] ?? null),
         );
     }
 
@@ -398,10 +394,7 @@ class BuildFlightPlanData
             $parsed->etops['eexp_coordinates'] ?? null,
             $sequence,
         );
-        $maintenanceApplicability = is_string($parsed->maintenance['etops_applicability'] ?? null)
-            ? EtopsApplicability::tryFrom($parsed->maintenance['etops_applicability'])
-            : null;
-        $applicability = $qualificationApplicability ?? $maintenanceApplicability ?? EtopsApplicability::Unknown;
+        $applicability = $qualificationApplicability ?? EtopsApplicability::Unknown;
 
         if (
             $entryPoint === null

@@ -4,7 +4,6 @@ namespace Tests\Unit;
 
 use App\DTOs\AirportData;
 use App\DTOs\CrewMemberData;
-use App\DTOs\EnvelopeData;
 use App\DTOs\Etops\EtopsCoordinateData;
 use App\DTOs\Etops\EtopsData;
 use App\DTOs\Etops\EtopsPointData;
@@ -12,12 +11,13 @@ use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightInitData;
 use App\DTOs\FlightPlanData;
 use App\DTOs\GeneralDeclarationData;
-use App\DTOs\MaintenanceItemData;
-use App\DTOs\MaintenanceLogData;
+use App\DTOs\Maintenance\MaintenanceItemData;
+use App\DTOs\Maintenance\MaintenanceLogData;
 use App\DTOs\ParsedFlightPlanData;
 use App\DTOs\ReleaseAuthorizationData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
+use App\DTOs\TakeoffLandingReportData;
 use App\DTOs\WaypointData;
 use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
@@ -48,7 +48,6 @@ class FlightPlanResultSerializerTest extends TestCase
             ),
             maintenanceLog: new MaintenanceLogData(
                 sectionPresent: true,
-                etopsApplicability: EtopsApplicability::ConfirmedEtops,
                 items: [
                     new MaintenanceItemData(
                         type: MaintenanceItemType::Mel,
@@ -57,7 +56,7 @@ class FlightPlanResultSerializerTest extends TestCase
                     ),
                 ],
             ),
-            envelope: new EnvelopeData(
+            takeoffLandingReport: new TakeoffLandingReportData(
                 sectionPresent: true,
                 sourceType: 'takeoff_landing_report',
                 plannedTakeoffWeight: new WeightQuantity(612400, 'lb'),
@@ -91,7 +90,7 @@ class FlightPlanResultSerializerTest extends TestCase
             schedule: [
                 'etd_utc' => null,
                 'eta_utc' => null,
-                'block_duration' => null,
+                'block_duration' => '12h10m',
                 'report_time_utc' => null,
                 'duty_end_utc' => null,
                 'slot_times_utc' => [],
@@ -110,10 +109,27 @@ class FlightPlanResultSerializerTest extends TestCase
             fuel: array_fill_keys([
                 'ramp', 'taxi', 'takeoff', 'trip', 'contingency', 'alternate', 'final_reserve', 'estimated_landing',
             ], null),
+            flightInit: [
+                'section_present' => true,
+                'filed_initial_altitude' => 'F340',
+            ],
+            etops: [
+                'section_present' => true,
+                'applicability' => 'confirmed_etops',
+                'rating_minutes' => 180,
+                'etps' => [[
+                    'label' => 'ETP1',
+                    'airports' => 'KSFO-PACD',
+                    'coordinates' => 'N45 43.7 W143 53.1',
+                    'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
+                ]],
+                'eent_coordinates' => 'N40 31.1 W131 22.6',
+                'eexp_coordinates' => 'N45 19.3 E151 36.4',
+            ],
             sourceFragments: [
                 'fuel_summary' => 'must not leak',
                 'maintenance_log' => 'private maintenance evidence',
-                'envelope_takeoff_landing_report' => 'private TLR evidence',
+                'takeoff_landing_report' => 'private TLR evidence',
                 'computed_flight_plan_waypoints' => 'private waypoint row evidence',
                 'general_declaration_signature' => 'private GENDEC evidence',
                 'release_authorization' => 'private Operations Specification evidence',
@@ -122,11 +138,9 @@ class FlightPlanResultSerializerTest extends TestCase
                 'departure_airport' => new AirportData('KLAX', 'LAX', 'Los Angeles International', 'Los Angeles', 'California', 'United States'),
                 'destination_airport' => null,
                 'alternate_airport' => null,
-                'etps' => [],
-                'eent_coordinates' => null,
-                'eexp_coordinates' => null,
-                'initial_altitude' => 'FL 340',
-                'duration' => '12h10m',
+                'etps' => [['label' => 'wrong legacy value']],
+                'initial_altitude' => 'wrong legacy value',
+                'duration' => 'wrong legacy value',
             ],
         );
 
@@ -135,13 +149,20 @@ class FlightPlanResultSerializerTest extends TestCase
         $this->assertSame('KLAX', $result['departure']);
         $this->assertSame('Los Angeles International', $result['departure_airport']['name']);
         $this->assertSame("DCT\n TEST", $result['route']);
+        $this->assertSame('12h10m', $result['duration']);
+        $this->assertSame('FL 340', $result['initial_altitude']);
+        $this->assertSame('ETP1', $result['etps'][0]['label']);
         $this->assertSame('CKS256', $result['flight_plan_data']['identity']['flightNumber']);
         $this->assertSame('28-22-01', $result['flight_plan_data']['maintenanceLog']['items'][0]['number']);
         $this->assertSame('Alex Morgan', $result['flight_plan_data']['crewMembers'][0]['name']);
         $this->assertSame('4827', $result['flight_plan_data']['crewMembers'][0]['employeeNumber']);
         $this->assertTrue($result['flight_plan_data']['crewMembers'][0]['highMins']);
         $this->assertSame('11', $result['flight_plan_data']['flightInit']['acarsInitDate']);
-        $this->assertSame(612400, $result['flight_plan_data']['envelope']['plannedTakeoffWeight']['amount']);
+        $this->assertSame(612400, $result['flight_plan_data']['takeoffLandingReport']['plannedTakeoffWeight']['amount']);
+        $this->assertSame(
+            $result['flight_plan_data']['takeoffLandingReport'],
+            $result['flight_plan_data']['envelope'],
+        );
         $this->assertSame('N40 31.1', $result['flight_plan_data']['etops']['entryPoint']['coordinate']['latitude']);
         $this->assertSame(180, $result['flight_plan_data']['etops']['ratingMinutes']);
         $this->assertSame('FIX01', $result['flight_plan_data']['waypoints'][0]['identifier']);

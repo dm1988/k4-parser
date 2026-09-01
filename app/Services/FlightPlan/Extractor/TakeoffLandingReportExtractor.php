@@ -5,18 +5,13 @@ namespace App\Services\FlightPlan\Extractor;
 use App\Exceptions\FlightPlanDataConflictException;
 use Illuminate\Support\Str;
 
-class EnvelopeExtractor
+class TakeoffLandingReportExtractor
 {
     private const SOURCE_TYPE = 'takeoff_landing_report';
 
     private const WEIGHT_MULTIPLIER = 100;
 
-    /**
-     * @return array{
-     *     data: array{section_present: bool, source_type: string, report_reference: ?string, airport: ?string, planned_runway: ?string, outside_air_temperature_celsius: ?float, wind: ?string, qnh_inches_mercury: ?float, qnh_hectopascals: ?int, maximum_runway_takeoff_weight: array{amount: int, unit: string}|null, flap_setting: ?string, anti_ice: ?bool, v1_knots: ?int, rotate_knots: ?int, v2_knots: ?int, planned_takeoff_weight: array{amount: int, unit: string}|null, maximum_field_takeoff_weight: array{amount: int, unit: string}|null, source_warnings: list<string>},
-     *     source_fragments: array<string, string>
-     * }
-     */
+    /** @return array{data: array<string, mixed>, source_fragments: array<string, string>} */
     public function extract(string $text): array
     {
         $sections = $this->sections($text);
@@ -31,7 +26,7 @@ class EnvelopeExtractor
             }
 
             if ($results !== [] && $results[0] !== $result) {
-                throw FlightPlanDataConflictException::forField('takeoff and landing report envelope result');
+                throw FlightPlanDataConflictException::forField('takeoff and landing report result');
             }
 
             $results[] = $result;
@@ -43,7 +38,7 @@ class EnvelopeExtractor
         return [
             'data' => $result ?? $this->emptyData($sections !== []),
             'source_fragments' => $sourceFragment === null ? [] : [
-                'envelope_takeoff_landing_report' => $sourceFragment,
+                'takeoff_landing_report' => $sourceFragment,
             ],
         ];
     }
@@ -68,9 +63,7 @@ class EnvelopeExtractor
         return $sections;
     }
 
-    /**
-     * @return array{section_present: true, source_type: string, report_reference: ?string, airport: string, planned_runway: string, outside_air_temperature_celsius: float, wind: string, qnh_inches_mercury: ?float, qnh_hectopascals: ?int, maximum_runway_takeoff_weight: array{amount: int, unit: string}|null, flap_setting: string, anti_ice: bool, v1_knots: int, rotate_knots: int, v2_knots: int, planned_takeoff_weight: array{amount: int, unit: string}, maximum_field_takeoff_weight: array{amount: int, unit: string}|null, source_warnings: list<string>}|null
-     */
+    /** @return array<string, mixed>|null */
     private function selectedResult(string $section): ?array
     {
         $source = Str::squish($section);
@@ -148,10 +141,7 @@ class EnvelopeExtractor
             return null;
         }
 
-        return [
-            'amount' => (int) $value * self::WEIGHT_MULTIPLIER,
-            'unit' => 'lb',
-        ];
+        return ['amount' => (int) $value * self::WEIGHT_MULTIPLIER, 'unit' => 'lb'];
     }
 
     /** @return list<string> */
@@ -175,9 +165,7 @@ class EnvelopeExtractor
         ));
     }
 
-    /**
-     * @return array{section_present: bool, source_type: string, report_reference: null, airport: null, planned_runway: null, outside_air_temperature_celsius: null, wind: null, qnh_inches_mercury: null, qnh_hectopascals: null, maximum_runway_takeoff_weight: null, flap_setting: null, anti_ice: null, v1_knots: null, rotate_knots: null, v2_knots: null, planned_takeoff_weight: null, maximum_field_takeoff_weight: null, source_warnings: list<string>}
-     */
+    /** @return array<string, mixed> */
     private function emptyData(bool $sectionPresent): array
     {
         return [

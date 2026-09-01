@@ -4,7 +4,6 @@ namespace App\Actions;
 
 use App\DTOs\AirportData;
 use App\DTOs\CrewMemberData;
-use App\DTOs\EnvelopeData;
 use App\DTOs\Etops\EtopsCoordinateData;
 use App\DTOs\Etops\EtopsData;
 use App\DTOs\Etops\EtopsEqualTimePointData;
@@ -15,11 +14,12 @@ use App\DTOs\FlightInitData;
 use App\DTOs\FlightPlanData;
 use App\DTOs\FuelPlanData;
 use App\DTOs\GeneralDeclarationData;
-use App\DTOs\MaintenanceItemData;
-use App\DTOs\MaintenanceLogData;
+use App\DTOs\Maintenance\MaintenanceItemData;
+use App\DTOs\Maintenance\MaintenanceLogData;
 use App\DTOs\ReleaseAuthorizationData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
+use App\DTOs\TakeoffLandingReportData;
 use App\DTOs\WaypointData;
 use App\DTOs\Weather\AirportWeatherData;
 use App\DTOs\Weather\WeatherData;
@@ -107,7 +107,9 @@ class BuildFlightPlanPageData
             ),
             fuelPlan: is_array($fuelPlan) ? $this->fuelPlan($fuelPlan) : null,
             maintenanceLog: $this->maintenanceLog($data['maintenanceLog'] ?? null),
-            envelope: $this->envelope($data['envelope'] ?? null),
+            takeoffLandingReport: $this->takeoffLandingReport(
+                $data['takeoffLandingReport'] ?? $data['envelope'] ?? null,
+            ),
             flightInit: $this->flightInit($data['flightInit'] ?? null),
             etops: $this->etops($data['etops'] ?? null),
             weather: $this->weather($data['weather'] ?? null),
@@ -244,24 +246,19 @@ class BuildFlightPlanPageData
             return null;
         }
 
-        $applicability = is_string($value['etopsApplicability'] ?? null)
-            ? EtopsApplicability::tryFrom($value['etopsApplicability'])
-            : null;
-
         return new MaintenanceLogData(
             sectionPresent: ($value['sectionPresent'] ?? false) === true,
-            etopsApplicability: $applicability ?? EtopsApplicability::Unknown,
             items: $this->maintenanceItems($value['items'] ?? null),
         );
     }
 
-    private function envelope(mixed $value): ?EnvelopeData
+    private function takeoffLandingReport(mixed $value): ?TakeoffLandingReportData
     {
         if (! is_array($value) || ($value['sectionPresent'] ?? false) !== true) {
             return null;
         }
 
-        return new EnvelopeData(
+        return new TakeoffLandingReportData(
             sectionPresent: true,
             sourceType: $this->nullableString($value['sourceType'] ?? null) ?? 'takeoff_landing_report',
             reportReference: $this->nullableString($value['reportReference'] ?? null),
