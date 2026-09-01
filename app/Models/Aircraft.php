@@ -18,6 +18,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'model',
     'is_active',
     'airline',
+    'max_ramp_weight',
+    'max_zero_fuel_weight',
+    'max_takeoff_weight',
+    'max_landing_weight',
+    'max_autoland_weight',
+    'minimum_flight_weight',
+    'engines',
 ])]
 class Aircraft extends Model
 {

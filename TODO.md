@@ -159,7 +159,7 @@ Static-analysis follow-up outcome: Larastan test errors were resolved by preserv
 
 Commit message: `fix: tighten crew name extraction`
 
-## 16. Implement weight limits in aircraft table and provide 747 AC seeder
+## 16. [x] Completed: Implement weight limits in aircraft table and provide an Aircraft seeder
 - Weight limits do not exist in DB
 - Create a migration adding the following fields:
   - Max ramp weight
@@ -170,6 +170,15 @@ Commit message: `fix: tighten crew name extraction`
   - Minimum flight weight
   - Engines (string)
 - Create a seeder
+Commands:
+./vendor/bin/sail artisan make:migration add_weight_limits_and_engines_to_aircraft_table --table=aircraft
+
+./vendor/bin/sail artisan make:seeder AircraftWeightSeeder
+./vendor/bin/sail artisan migrate
+
+./vendor/bin/sail artisan db:seed --class=AircraftWeightSeeder
+
+Outcome: Added nullable aircraft weight-limit and engine columns plus an idempotent, transaction-backed fleet importer for all 37 aircraft in the supplied K4 dataset. The importer maps MZFW, MTOW, MLW, and OEW to their corresponding aircraft weight fields, imports available engine data by unique tail number, creates missing fleet records, preserves unrelated existing aircraft data, and leaves unsupported MRW and autoland values unmapped rather than guessing.
 
 ### 17. Reserve fuel
 - Create distinction between Alternate airport burn and Reserve fuel calculation. 
