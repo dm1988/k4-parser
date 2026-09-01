@@ -8,6 +8,8 @@ use Illuminate\Support\Str;
 
 class FlightPlanResultCache
 {
+    private const string CACHE_NAMESPACE = 'flight_plan_results:v2';
+
     /** @param array<string, mixed> $flightPlan */
     public function put(User $user, array $flightPlan): string
     {
@@ -46,6 +48,6 @@ class FlightPlanResultCache
 
     private function cacheKey(User $user, string $resultKey): string
     {
-        return "flight_plan_results:{$user->getKey()}:{$resultKey}";
+        return self::CACHE_NAMESPACE.":{$user->getKey()}:{$resultKey}";
     }
 }
