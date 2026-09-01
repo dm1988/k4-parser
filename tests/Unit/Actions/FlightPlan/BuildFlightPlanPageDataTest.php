@@ -243,32 +243,6 @@ class BuildFlightPlanPageDataTest extends TestCase
     private function resultPayload(): array
     {
         return [
-            'departure' => 'PANC',
-            'destination' => 'KMIA',
-            'alternate' => 'KRSW',
-            'departure_airport' => [
-                'icao' => 'PANC',
-                'iata' => 'ANC',
-                'name' => 'Ted Stevens Anchorage International Airport',
-                'city' => 'Anchorage',
-                'state' => 'Alaska',
-                'country' => 'United States',
-            ],
-            'destination_airport' => null,
-            'alternate_airport' => null,
-            'departure_runway' => '25R',
-            'arrival_runway' => '27',
-            'route' => "DCT Q139\n TEST",
-            'initial_altitude' => 'FL 340',
-            'duration' => '12h10m',
-            'etps' => [[
-                'label' => 'ETP1',
-                'airports' => 'KSFO-PACD',
-                'coordinates' => 'N45 43.7 W143 53.1',
-                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
-            ]],
-            'eent_coordinates' => 'N40 31.1 W131 22.6',
-            'eexp_coordinates' => null,
             'flight_plan_data' => [
                 'identity' => [
                     'flightNumber' => 'CKS256',

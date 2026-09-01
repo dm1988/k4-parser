@@ -81,9 +81,13 @@ Removal sequence:
    Outcome: `RouteData` now owns typed airport enrichment alongside the corresponding airport codes, and its serialized form carries departure, destination, and alternate details inside `flight_plan_data.route`. `FlightScheduleExtractor` remains the single parser for FPL planned duration, with `ScheduleData::blockDuration` now driving normalized serialization, page hydration, FMS presentation, and the temporary root compatibility value. Extraction no longer drops airport DTOs into legacy-only staging. Normalized-only contract tests prove page hydration and rendered HTML parity for every visible task, while conflicting root airport and duration values are ignored. Focused DTO, extractor, builder, serializer, view-model, task-rendering, and Livewire regressions pass after Pint.
 
    Commit message: `refactor: normalize airport and duration ownership`
-2. **Cut over readers before writers.**
+2. [x] Completed: **Cut over readers before writers.**
    - Remove obsolete normalized-vs-flat fallback fixtures now that `BuildFlightPlanPageData` reads airport data and duration only from `flight_plan_data`.
    - Remove root compatibility values from test payload factories while retaining the regression assertion that conflicting root values are ignored.
+
+   Outcome: Shared page-data and presentation payload factories now contain only the normalized `flight_plan_data` contract. The obsolete mixed-payload versus normalized-only rendering comparison was removed, while the focused regression test still injects conflicting root values and proves the normalized airport, route, runway, and duration values win.
+
+   Commit message: `test: complete normalized reader cutover`
 3. [x] Completed: **Remove compatibility writers and staging.**
 
    Outcome: `FlightPlanResultSerializer` now owns a single normalized public boundary containing only `flight_plan_data`; its route-extractor dependency, flat compatibility fields, and formatting helper were removed. `HandleFlightPlanExtraction` returns that serializer contract directly without a duplicated key allowlist. `ParsedFlightPlanData::$legacy` and route staging were removed, and compatibility-only mocks, fixtures, and assertions were replaced with normalized-contract coverage. Repository searches confirm no production or flight-plan test references remain for the removed staging property, writer allowlist, or route formatting method.

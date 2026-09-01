@@ -791,21 +791,14 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
-    public function it_renders_every_visible_task_identically_from_the_normalized_only_contract(): void
+    public function it_renders_every_visible_task_from_the_normalized_contract(): void
     {
-        $payload = $this->resultPayload();
-        $normalizedOnlyPayload = ['flight_plan_data' => $payload['flight_plan_data']];
-        $completeModel = $this->viewModel($payload);
-        $normalizedOnlyModel = $this->viewModel($normalizedOnlyPayload);
+        $viewModel = $this->viewModel($this->resultPayload());
 
-        $this->assertEquals($completeModel->pageData, $normalizedOnlyModel->pageData);
-        $this->assertSame($completeModel->tasks(), $normalizedOnlyModel->tasks());
-
-        foreach ($completeModel->tasks() as $task) {
-            $this->assertSame(
-                $this->renderWorkspace($completeModel, $task),
-                $this->renderWorkspace($normalizedOnlyModel, $task),
-                "The {$task->value} task differs when root compatibility fields are absent.",
+        foreach ($viewModel->tasks() as $task) {
+            $this->assertStringContainsString(
+                'wire:key="flight-plan-task-panel-'.$task->value.'"',
+                $this->renderWorkspace($viewModel, $task),
             );
         }
     }
@@ -835,27 +828,6 @@ class FlightReleasePageViewModelTest extends TestCase
     private function resultPayload(): array
     {
         return [
-            'departure_airport' => [
-                'icao' => 'PANC',
-                'iata' => 'ANC',
-                'name' => 'Ted Stevens Anchorage International Airport',
-                'city' => 'Anchorage',
-                'state' => 'Alaska',
-                'country' => 'United States',
-            ],
-            'destination_airport' => null,
-            'alternate_airport' => null,
-            'initial_altitude' => 'FL 330',
-            'duration' => '07h12m',
-            'route' => "DCT\n TEST",
-            'etps' => [[
-                'label' => 'ETP1',
-                'airports' => 'KSFO-PACD',
-                'coordinates' => 'N45 43.7 W143 53.1',
-                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
-            ]],
-            'eent_coordinates' => 'N40 31.1 W131 22.6',
-            'eexp_coordinates' => 'N45 19.3 E151 36.4',
             'flight_plan_data' => [
                 'identity' => [
                     'flightNumber' => 'CKS241',
