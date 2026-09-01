@@ -99,7 +99,6 @@ class ExtractFlightPlanData
                 ...$generalDeclaration['source_fragments'],
                 ...$releaseAuthorization['source_fragments'],
             ],
-            legacy: $route,
         );
     }
 }

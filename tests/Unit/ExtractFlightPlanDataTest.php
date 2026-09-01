@@ -46,7 +46,7 @@ class ExtractFlightPlanDataTest extends TestCase
             'source_fragments' => [],
         ]);
         $routeExtractor = $this->createMock(FlightRouteExtractor::class);
-        $routeExtractor->expects($this->once())->method('extractFlightPlanDataFromText')->with($text)->willReturn($this->legacyRoute());
+        $routeExtractor->expects($this->once())->method('extractFlightPlanDataFromText')->with($text)->willReturn($this->routeData());
         $fuelExtractor = $this->createMock(FlightFuelExtractor::class);
         $fuelExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
             'data' => $this->fuel(),
@@ -199,7 +199,6 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame('b44', $parsed->releaseAuthorization['operations_specification']);
         $this->assertSame('RELEASED IAW OPS SPEC B044', $parsed->sourceFragments['release_authorization']);
         $this->assertSame('12h10m', $parsed->schedule['block_duration']);
-        $this->assertArrayNotHasKey('initial_altitude', $parsed->legacy);
     }
 
     public function test_private_sample_characterizes_confirmed_normalized_fields(): void
@@ -287,7 +286,7 @@ class ExtractFlightPlanDataTest extends TestCase
     }
 
     /** @return array<string, mixed> */
-    private function legacyRoute(): array
+    private function routeData(): array
     {
         return [
             'departure' => 'KLAX',

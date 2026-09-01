@@ -16,26 +16,6 @@ use Throwable;
 
 class HandleFlightPlanExtraction
 {
-    private const RESULT_KEYS = [
-        'departure',
-        'destination',
-        'alternate',
-        'departure_airport',
-        'destination_airport',
-        'alternate_airport',
-        'departure_runway',
-        'arrival_runway',
-        'departure_sid',
-        'arrival_star',
-        'etps',
-        'eent_coordinates',
-        'eexp_coordinates',
-        'initial_altitude',
-        'duration',
-        'route',
-        'flight_plan_data',
-    ];
-
     public function __construct(
         private readonly ExtractFlightPlanData $extractor,
         private readonly BuildFlightPlanData $builder,
@@ -65,10 +45,7 @@ class HandleFlightPlanExtraction
                 $uploadedFile,
             );
             $parsedFlightPlan = $this->extractor->extractFile($disk->path($path));
-            $flightPlan = $this->serializer->serialize(
-                $this->builder->handle($parsedFlightPlan),
-                $parsedFlightPlan,
-            );
+            $flightPlan = $this->serializer->serialize($this->builder->handle($parsedFlightPlan));
 
             $this->extractRequestLogger->complete(
                 $extractRequest,
@@ -78,7 +55,7 @@ class HandleFlightPlanExtraction
                 detectedHotelCount: 0,
             );
 
-            return $this->normalizeFlightPlan($flightPlan);
+            return $flightPlan;
         } catch (FlightRouteNotFoundException $exception) {
             $this->recordFailure($extractRequest, $startedAt, $exception);
 
@@ -104,14 +81,5 @@ class HandleFlightPlanExtraction
         if ($extractRequest !== null && $startedAt !== null) {
             $this->extractRequestLogger->error($extractRequest, $startedAt, $throwable);
         }
-    }
-
-    /**
-     * @param  array<string, mixed>  $flightPlan
-     * @return array<string, mixed>
-     */
-    private function normalizeFlightPlan(array $flightPlan): array
-    {
-        return array_intersect_key($flightPlan, array_flip(self::RESULT_KEYS));
     }
 }

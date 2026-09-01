@@ -44,21 +44,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame(OperationsSpecification::B44, $pageData->flightPlan->releaseAuthorization->operationsSpecification);
     }
 
-    public function test_it_rehydrates_airport_details_and_duration_from_a_normalized_only_payload(): void
-    {
-        $payload = $this->resultPayload();
-        $normalizedOnlyPayload = ['flight_plan_data' => $payload['flight_plan_data']];
-
-        $pageData = app(BuildFlightPlanPageData::class)->handle($normalizedOnlyPayload);
-
-        $this->assertNotNull($pageData);
-        $this->assertSame('Ted Stevens Anchorage International Airport', $pageData->flightPlan->route->departureAirport?->name);
-        $this->assertNull($pageData->flightPlan->route->destinationAirport);
-        $this->assertNull($pageData->flightPlan->route->alternateAirport);
-        $this->assertSame('12h10m', $pageData->flightPlan->schedule->blockDuration);
-    }
-
-    public function test_normalized_core_values_take_precedence_over_conflicting_flat_compatibility_values(): void
+    public function test_it_ignores_conflicting_root_compatibility_values(): void
     {
         $payload = $this->resultPayload();
         $payload['departure'] = 'XXXX';
@@ -132,7 +118,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::Weather));
     }
 
-    public function test_it_preserves_a_sparse_normalized_result_and_ignores_malformed_optional_legacy_data(): void
+    public function test_it_preserves_a_sparse_normalized_result(): void
     {
         $payload = $this->resultPayload();
         $payload['flight_plan_data']['schedule']['slots'] = [];
@@ -147,11 +133,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         unset($payload['flight_plan_data']['releaseAuthorization']);
         unset($payload['flight_plan_data']['crewMembers'][0]['employeeNumber']);
         $payload['flight_plan_data']['route']['departureAirport'] = 'invalid';
-        $payload['initial_altitude'] = [];
         $payload['flight_plan_data']['etops'] = null;
-        $payload['etps'] = $this->legacyEtps();
-        $payload['eent_coordinates'] = 'N40 31.1 W131 22.6';
-        $payload['eexp_coordinates'] = 'N45 19.3 E151 36.4';
 
         $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
 
@@ -444,16 +426,5 @@ class BuildFlightPlanPageDataTest extends TestCase
                 ]],
             ],
         ];
-    }
-
-    /** @return list<array{label: string, airports: string, coordinates: string, scenario: string}> */
-    private function legacyEtps(): array
-    {
-        return [[
-            'label' => 'ETP1',
-            'airports' => 'KSFO-PACD',
-            'coordinates' => 'N45 43.7 W143 53.1',
-            'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
-        ]];
     }
 }

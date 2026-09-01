@@ -3,7 +3,6 @@
 namespace Tests\Unit;
 
 use App\DTOs\AirportData;
-use App\DTOs\CrewManifestInputData;
 use App\DTOs\CrewMemberData;
 use App\DTOs\Etops\EtopsCoordinateData;
 use App\DTOs\Etops\EtopsData;
@@ -12,10 +11,8 @@ use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightInitData;
 use App\DTOs\FlightPlanData;
 use App\DTOs\GeneralDeclarationData;
-use App\DTOs\Maintenance\MaintenanceInputData;
 use App\DTOs\Maintenance\MaintenanceItemData;
 use App\DTOs\Maintenance\MaintenanceLogData;
-use App\DTOs\ParsedFlightPlanData;
 use App\DTOs\ReleaseAuthorizationData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
@@ -24,22 +21,16 @@ use App\DTOs\WaypointData;
 use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
 use App\Enums\OperationsSpecification;
-use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use App\Services\FlightPlan\FlightPlanResultSerializer;
 use App\ValueObjects\AirportCode;
 use App\ValueObjects\FuelQuantity;
 use App\ValueObjects\WeightQuantity;
-use Tests\TestCase;
+use PHPUnit\Framework\TestCase;
 
 class FlightPlanResultSerializerTest extends TestCase
 {
-    public function test_it_preserves_the_flat_view_contract_and_adds_normalized_data(): void
+    public function test_it_serializes_only_the_normalized_public_contract(): void
     {
-        $routeExtractor = $this->createMock(FlightRouteExtractor::class);
-        $routeExtractor->expects($this->once())
-            ->method('formatForIcaoDisplay')
-            ->with('DCT TEST')
-            ->willReturn("DCT\n TEST");
         $flightPlan = new FlightPlanData(
             identity: new FlightIdentityData(flightNumber: 'CKS256'),
             schedule: new ScheduleData(blockDuration: '12h10m'),
@@ -87,89 +78,13 @@ class FlightPlanResultSerializerTest extends TestCase
             generalDeclaration: new GeneralDeclarationData(true),
             releaseAuthorization: new ReleaseAuthorizationData(OperationsSpecification::B44),
         );
-        $parsed = new ParsedFlightPlanData(
-            identity: [
-                'flight_number' => 'CKS256',
-                'trip_number' => null,
-                'recall_number' => null,
-                'aircraft_type' => null,
-                'tail_number' => null,
-                'flight_date' => null,
-                'release_revision' => null,
-            ],
-            schedule: [
-                'etd_utc' => null,
-                'eta_utc' => null,
-                'block_duration' => '12h10m',
-                'report_time_utc' => null,
-                'duty_end_utc' => null,
-                'slot_times_utc' => [],
-            ],
-            route: [
-                'departure' => 'KLAX',
-                'destination' => 'RKSI',
-                'alternate' => null,
-                'route' => 'DCT TEST',
-                'departure_runway' => null,
-                'arrival_runway' => null,
-                'departure_sid' => null,
-                'arrival_star' => null,
-                'distance_nautical_miles' => null,
-            ],
-            fuel: array_fill_keys([
-                'ramp', 'taxi', 'takeoff', 'trip', 'contingency', 'alternate', 'final_reserve', 'estimated_landing',
-            ], null),
-            crewMembers: new CrewManifestInputData([]),
-            maintenance: new MaintenanceInputData(false, []),
-            flightInit: [
-                'section_present' => true,
-                'filed_initial_altitude' => 'F340',
-            ],
-            etops: [
-                'section_present' => true,
-                'applicability' => 'confirmed_etops',
-                'rating_minutes' => 180,
-                'etps' => [[
-                    'label' => 'ETP1',
-                    'airports' => 'KSFO-PACD',
-                    'coordinates' => 'N45 43.7 W143 53.1',
-                    'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
-                ]],
-                'eent_coordinates' => 'N40 31.1 W131 22.6',
-                'eexp_coordinates' => 'N45 19.3 E151 36.4',
-            ],
-            sourceFragments: [
-                'fuel_summary' => 'must not leak',
-                'maintenance_log' => 'private maintenance evidence',
-                'takeoff_landing_report' => 'private TLR evidence',
-                'computed_flight_plan_waypoints' => 'private waypoint row evidence',
-                'general_declaration_signature' => 'private GENDEC evidence',
-                'release_authorization' => 'private Operations Specification evidence',
-            ],
-            legacy: [
-                'departure_airport' => new AirportData('KLAX', 'LAX', 'Los Angeles International', 'Los Angeles', 'California', 'United States'),
-                'destination_airport' => null,
-                'alternate_airport' => null,
-                'etps' => [['label' => 'wrong legacy value']],
-                'initial_altitude' => 'wrong legacy value',
-                'duration' => 'wrong legacy value',
-            ],
-        );
 
-        $result = (new FlightPlanResultSerializer($routeExtractor))->serialize($flightPlan, $parsed);
+        $result = (new FlightPlanResultSerializer)->serialize($flightPlan);
 
-        $this->assertSame('KLAX', $result['departure']);
-        $this->assertSame('Los Angeles International', $result['departure_airport']['name']);
-        $this->assertSame("DCT\n TEST", $result['route']);
-        $this->assertSame('12h10m', $result['duration']);
-        $this->assertSame($result['flight_plan_data']['schedule']['blockDuration'], $result['duration']);
-        $this->assertSame('FL 340', $result['initial_altitude']);
-        $this->assertSame('ETP1', $result['etps'][0]['label']);
+        $this->assertSame(['flight_plan_data'], array_keys($result));
         $this->assertSame('CKS256', $result['flight_plan_data']['identity']['flightNumber']);
-        $this->assertSame(
-            $result['flight_plan_data']['route']['departureAirport'],
-            $result['departure_airport'],
-        );
+        $this->assertSame('Los Angeles International', $result['flight_plan_data']['route']['departureAirport']['name']);
+        $this->assertSame('12h10m', $result['flight_plan_data']['schedule']['blockDuration']);
         $this->assertSame('28-22-01', $result['flight_plan_data']['maintenanceLog']['items'][0]['number']);
         $this->assertSame('Alex Morgan', $result['flight_plan_data']['crewMembers'][0]['name']);
         $this->assertSame('4827', $result['flight_plan_data']['crewMembers'][0]['employeeNumber']);
@@ -187,12 +102,5 @@ class FlightPlanResultSerializerTest extends TestCase
         $this->assertTrue($result['flight_plan_data']['generalDeclaration']['sectionPresent']);
         $this->assertSame('b44', $result['flight_plan_data']['releaseAuthorization']['operationsSpecification']);
         $this->assertArrayNotHasKey('crewMembers', $result['flight_plan_data']['maintenanceLog']);
-        $this->assertArrayNotHasKey('source_fragments', $result);
-        $this->assertStringNotContainsString('must not leak', json_encode($result, JSON_THROW_ON_ERROR));
-        $this->assertStringNotContainsString('private maintenance evidence', json_encode($result, JSON_THROW_ON_ERROR));
-        $this->assertStringNotContainsString('private TLR evidence', json_encode($result, JSON_THROW_ON_ERROR));
-        $this->assertStringNotContainsString('private waypoint row evidence', json_encode($result, JSON_THROW_ON_ERROR));
-        $this->assertStringNotContainsString('private GENDEC evidence', json_encode($result, JSON_THROW_ON_ERROR));
-        $this->assertStringNotContainsString('private Operations Specification evidence', json_encode($result, JSON_THROW_ON_ERROR));
     }
 }

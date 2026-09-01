@@ -9,8 +9,6 @@ use App\Services\Clients\AirportLookupClient;
 
 class FlightRouteExtractor
 {
-    private const ICAO_ROUTE_LINE_LENGTH = 58;
-
     private const FLIGHT_PLAN_DETAILS_PATTERN = '/\(FPL-[^-]+-[^-]+\s*-[^\r\n]*\s*-([A-Z]{4})\d{4}\s*-(?:N\d{4}|K\d{4}|M\d{3})([A-Z]\d{3,4})\h+(.+?)\s*-([A-Z]{4})(\d{4})(?:\h+([A-Z]{4}))?\b/s';
 
     public function __construct(
@@ -218,63 +216,5 @@ class FlightRouteExtractor
         }
 
         return implode(PHP_EOL, $normalizedLines);
-    }
-
-    public function formatForIcaoDisplay(string $route): string
-    {
-        $segments = $this->routeElements($route);
-
-        if ($segments === []) {
-            return trim($route);
-        }
-
-        $lines = [];
-        $currentLine = '';
-
-        foreach ($segments as $segment) {
-            if ($segment === '') {
-                continue;
-            }
-
-            $linePrefix = $lines === [] ? '' : ' ';
-            $candidate = $currentLine === ''
-                ? $linePrefix.$segment
-                : $currentLine.' '.$segment;
-
-            if ($currentLine !== '' && strlen($candidate) > self::ICAO_ROUTE_LINE_LENGTH) {
-                $lines[] = $currentLine;
-                $currentLine = ' '.$segment;
-
-                continue;
-            }
-
-            $currentLine = $candidate;
-        }
-
-        if ($currentLine !== '') {
-            $lines[] = $currentLine;
-        }
-
-        return implode(PHP_EOL, $lines);
-    }
-
-    /**
-     * ICAO routes are whitespace-delimited elements, so wraps must happen
-     * only before the next full element and never inside one.
-     *
-     * @return array<int, string>
-     */
-    private function routeElements(string $route): array
-    {
-        $segments = preg_split('/\s+/', trim($route));
-
-        if ($segments === false) {
-            return [];
-        }
-
-        return array_values(array_filter(
-            $segments,
-            static fn (string $segment): bool => $segment !== '',
-        ));
     }
 }

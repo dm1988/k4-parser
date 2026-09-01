@@ -19,7 +19,6 @@ final readonly class ParsedFlightPlanData
      * @param  array{operations_specification?: string}  $releaseAuthorization
      * @param  array<string, array{amount?: ?int, unit?: string, status?: string}>  $weightBalance
      * @param  array<string, string|list<array{direction: string, airport: string, time: string}>>  $sourceFragments
-     * @param  array<string, mixed>  $legacy
      * @param  list<array{coordinate: string, identifier: string, time: ?string, total_time: ?string, remaining_fuel: ?string}>  $waypoints
      */
     public function __construct(
@@ -37,7 +36,6 @@ final readonly class ParsedFlightPlanData
         public array $generalDeclaration = [],
         public array $releaseAuthorization = [],
         public array $sourceFragments = [],
-        public array $legacy = [],
         public array $waypoints = [],
     ) {}
 }
