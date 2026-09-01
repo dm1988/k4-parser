@@ -178,6 +178,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertDontSeeHtml('aria-label="Not supported"')
             ->assertSeeHtml('h-2.5 w-2.5 ring-1 ring-inset ring-black/10 dark:ring-white/10')
             ->assertDontSeeHtml('title="OpSpec B44 Authorized"')
+            ->assertDontSeeHtml('wire:key="flight-plan-task-nav-fuel_score-b44"')
             ->assertDispatched('open-modal', name: 'buy-me-a-coffee')
             ->call('selectTask', FlightPlanTask::Fms->value)
             ->assertSeeText('FMS route setup')
@@ -1370,11 +1371,12 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('Score Fuel')
             ->assertSeeText('Review ETOPS')
             ->assertSeeHtml('title="OpSpec B44 Authorized"')
+            ->assertSeeHtml('wire:key="flight-plan-task-nav-fuel_score-b44"')
             ->assertSeeHtml('bg-amber-500/10')
             ->assertSeeText('Operational support status')
             ->assertSeeText('GENDEC')
             ->assertSeeText('Available')
-            ->assertSeeText('Flight plan filing')
+            ->assertDontSeeText('Flight plan filing')
             ->assertSeeText('Weather / RAIM')
             ->assertSeeText('Maintenance')
             ->assertDontSeeText('On plan')
@@ -1398,7 +1400,9 @@ class FlightPlanBriefTest extends TestCase
                 ->assertSet('activeTask', $task->value);
         }
 
-        $component->assertDontSeeHtml('title="OpSpec B44 Authorized"');
+        $component
+            ->assertSeeHtml('title="OpSpec B44 Authorized"')
+            ->assertSeeHtml('wire:key="flight-plan-task-nav-fuel_score-b44"');
 
         $component
             ->call('selectTask', FlightPlanTask::SlotTimes->value)
@@ -1484,6 +1488,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertDontSeeHtml('wire:key="flight-plan-overview-card-etops"')
             ->assertDontSeeHtml('wire:key="flight-plan-task-nav-etops"')
             ->assertDontSeeHtml('title="OpSpec B44 Authorized"')
+            ->assertDontSeeHtml('wire:key="flight-plan-task-nav-fuel_score-b44"')
             ->assertDontSeeText('0 LB')
             ->assertDontSeeText('0 KG')
             ->assertDontSeeText('On plan')
