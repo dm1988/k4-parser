@@ -376,7 +376,6 @@ readonly class FlightReleasePageViewModel
                     ? FlightPlanTaskAvailability::Available
                     : FlightPlanTaskAvailability::NotPresent,
             ],
-            ['label' => 'Flight plan filing', 'availability' => FlightPlanTaskAvailability::NotSupported],
             ['label' => 'Weather / RAIM', 'availability' => $this->availabilityFor(FlightPlanTask::Weather)],
             [
                 'label' => 'Maintenance',

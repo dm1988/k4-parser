@@ -390,7 +390,6 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('1 critical point · EENT · EEXP', $viewModel->overviewEtopsSummary());
         $this->assertSame([
             ['label' => 'GENDEC', 'availability' => FlightPlanTaskAvailability::NotPresent],
-            ['label' => 'Flight plan filing', 'availability' => FlightPlanTaskAvailability::NotSupported],
             ['label' => 'Weather / RAIM', 'availability' => FlightPlanTaskAvailability::NotPresent],
             [
                 'label' => 'Maintenance',
@@ -470,7 +469,7 @@ class FlightReleasePageViewModelTest extends TestCase
             'label' => 'Maintenance',
             'availability' => FlightPlanTaskAvailability::NotPresent,
             'absenceIsGood' => true,
-        ], $emptyViewModel->overviewUnsupportedIndicators()[3]);
+        ], $emptyViewModel->overviewUnsupportedIndicators()[2]);
 
         $missingSectionPayload = $this->resultPayload();
         $missingSectionPayload['flight_plan_data']['maintenanceLog'] = null;
@@ -480,7 +479,7 @@ class FlightReleasePageViewModelTest extends TestCase
             'label' => 'Maintenance',
             'availability' => FlightPlanTaskAvailability::NotPresent,
             'absenceIsGood' => false,
-        ], $missingSectionViewModel->overviewUnsupportedIndicators()[3]);
+        ], $missingSectionViewModel->overviewUnsupportedIndicators()[2]);
     }
 
     #[Test]

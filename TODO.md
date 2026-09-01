@@ -52,141 +52,6 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 # Tasks
 
-## 13. [x] Completed: Feat: GENDEC available determination
-
-Goal:
-- Determine whether the uploaded release contains a General Declaration (GENDEC) page.
-- Expose the determination through the normalized, typed flight-plan result and cached result payload.
-- Replace the hard-coded `GENDEC` `Not supported` overview indicator with `Available` or `Not present` based on extracted evidence.
-
-Current implementation:
-- `FlightReleasePageViewModel::overviewUnsupportedIndicators()` always reports `GENDEC` as `FlightPlanTaskAvailability::NotSupported`.
-- `ExtractFlightPlanData` receives the complete text extracted from every PDF page, but no dedicated service inspects it for a General Declaration section.
-- `ParsedFlightPlanData`, `FlightPlanData`, result serialization, and cache rehydration do not contain GENDEC availability data.
-- The Overview already renders compact availability values in `Operational support status`; no separate GENDEC task or workspace view currently exists.
-
-Problem:
-- Releases containing a usable General Declaration page are presented as unsupported.
-- A loose search for `General Declaration` could produce false positives from incidental references or document indexes.
-- Adding detection only to the live extraction path would lose the result after serialization and produce different behavior for cached releases.
-
-Plan:
-- Add a dedicated GENDEC extractor service that returns a normalized `section_present` boolean and a minimal source fragment for test/debug evidence.
-- Detect a bounded General Declaration page signature rather than a single phrase. Require the `General Declaration` heading and nearby structural labels such as `(Outward/Inward)`, `Owner or Operator`, `Marks of Nationality and Registration`, `Departure from`, `Flight No`, `Date`, and `Arrival At`.
-- Make the signature tolerant of PDF extraction whitespace, line breaks, and adjacent flattened labels while keeping the search within a limited section window.
-- Invoke the extractor once from `ExtractFlightPlanData` using the already extracted full document text.
-- Carry the availability through `ParsedFlightPlanData`, a typed GENDEC/general-declaration DTO on `FlightPlanData`, `toArray()`, `FlightPlanResultSerializer`, and `BuildFlightPlanPageData` cache rehydration.
-- Update `FlightReleasePageViewModel::overviewUnsupportedIndicators()` so GENDEC maps to `Available` when the section is present and `NotPresent` otherwise.
-- Keep GENDEC in `Operational support status`; do not add task navigation or a workspace view until GENDEC content needs to be displayed or acted upon.
-- Add focused extractor tests for the representative page, whitespace/flattening variants, a missing page, and incidental `General Declaration` text without the required field structure.
-- Add DTO/build/serialization round-trip coverage and focused view-model or Livewire assertions for both `Available` and `Not present` overview states.
-
-Constraints:
-- Treat the document signature as evidence of page availability only; do not validate, interpret, or expose crew, passenger, nationality, registration, or customs data in this task.
-- Do not retain the full General Declaration page in the public cached result or rendered HTML; source evidence should remain in the existing private extraction evidence path.
-- Preserve compatibility when older cached results do not contain the new field by defaulting GENDEC to `Not present`.
-- Use the existing `FlightPlanTaskAvailability` labels and status component rather than introducing a GENDEC-specific badge vocabulary.
-
-Representative source signature (PDF extraction may flatten whitespace and labels):
-```text
-General Declaration
-(Outward/Inward)
-Owner or Operator:
-K4
-Marks of Nationality and Registration:
-N774CK
-Departure from:
-Los Angeles
-United States
-Flight No:
-K4256
-Date:
-24May2026
-Arrival At:
-```
-
-References:
-- `app/Services/FlightPlan/Extractor/ExtractFlightPlanData.php`
-- `app/DTOs/ParsedFlightPlanData.php`
-- `app/DTOs/FlightPlanData.php`
-- `app/Actions/BuildFlightPlanData.php`
-- `app/Actions/BuildFlightPlanPageData.php`
-- `app/Services/FlightPlan/FlightPlanResultSerializer.php`
-- `app/View/Models/FlightReleasePageViewModel.php`
-- `resources/views/components/flight-release/overview.blade.php`
-- `tests/Unit/View/Models/FlightReleasePageViewModelTest.php`
-- `tests/Feature/Livewire/FlightPlanBriefTest.php`
-
-Outcome: GENDEC availability is now determined from a bounded, ordered General Declaration signature instead of a loose phrase match. Detection tolerates line breaks, irregular whitespace, and flattened labels such as `Flight No:K4256Date:` while rejecting incidental references and labels outside the section window. The typed boolean survives result serialization and cache rehydration, with older cached results defaulting to `Not present`. Only minimal signature evidence stays in the private extraction evidence path; crew, passenger, passport, customs, and full-page content are not exposed in the cached payload or rendered HTML. The Overview now uses the shared availability status component to show `Available` or `Not present`, with no new task or workspace.
-
-Follow-up outcome: Availability labels and badge/dot color classes now belong to `FlightPlanTaskAvailability` instead of the Blade component. `NotPresent` renders with an explicit red warning palette in both full badges and compact dots, while the existing opt-in rendering behavior for `Available` remains unchanged.
-
-GENDEC image-page follow-up outcome: Flight release PDF pages that contain no extractable text now receive a targeted Tesseract OCR fallback before structured extraction. GENDEC detection validates the complete declaration label set within the bounded section without assuming a single-column label order, allowing image-only two-column forms such as `CKS027227SBKP.pdf` to resolve as present. The PDF text cache namespace was versioned so releases cached before this fix are reprocessed automatically.
-
-Commit message: `feat: determine GENDEC availability`
-
-### [x] Completed follow up: FlightPlanTaskAvailability color classes
-Goal: Render contextual availability classes using success, danger, warning, or neutral tones.
-
-Outcome: Availability labels remain owned by `FlightPlanTaskAvailability`, while the new `TaskTone` enum owns badge and dot palettes. Default availability uses neutral for available, danger for not present, and warning for not supported. The Review MEL/CDL context treats a confirmed empty maintenance section as success and source-listed items as warning; a missing maintenance section remains danger rather than implying a clean release. Missing GENDEC and Weather / RAIM remain danger, and confirmed non-ETOPS uses an explicit neutral tone. The shared status component applies these contexts consistently to badges and accessible dots across Overview, task navigation, and section headers while preserving the default behavior that hides ordinary available statuses.
-
-Commit message: `feat: add contextual flight task availability tones`
-
-## 14. [x] Completed: Feat: Determine B43 or B44 release
-Goal:
-- Determine whether the release explicitly identifies Operations Specification B043 or B044.
-- Render a compact amber `B44` tag at the top right of the Overview route card only for a confirmed B044 release.
-- Establish an extensible normalized structure for future B44-specific information without coupling that information to the header UI.
-
-Outcome: A dedicated release-authorization extractor now classifies only explicit B043 and B044 Operations Specification signatures, tolerates parser whitespace and flattened text, preserves private source evidence internally, and rejects conflicting signatures. The normalized release uses a typed `B43`, `B44`, or `unknown` enum and release-authorization DTO across extraction, aggregate construction, serialization, and backward-compatible cache rehydration. Confirmed B044 releases render the requested amber `B44` badge at the top right of the Overview route card alongside its availability indicator; B043 and unknown releases render no badge, and the persistent release header remains unchanged. Focused PHPUnit coverage verifies extraction edge cases, typed round trips, source-evidence privacy, cache compatibility, and B44-only Overview rendering. Pint and Larastan pass.
-
-Commit message: `feat: classify B43 and B44 flight releases`
-
-## 15. [x] Completed: Bug: Loose crew name regex extraction
-- Crew details are extracted within name:
-1. `Additional` extracted as name: PAYNE R ADDNTL
-2. `IRP` extracted as name: GONZALEZ D IRP
-3. `HIGH MINS` extracted as name: FERGUSON S HIGH MINS
-
-- Fix: parse out HIGH MINS, IRP, HIGH MINS removing it from the name
-- Stop crew name parsing on line break
-- Add a high mins flag to the DTO contract
-- Front end display as a caution
-
-Outcome: Release-manifest parsing now stops at physical line boundaries and removes trailing `ADDNTL`, `ADDNTL CAPT`, `IRP`, and `HIGH MINS` annotations from crew names. `HIGH MINS` is preserved as a typed boolean through extraction, DTO construction, result serialization, and cache rehydration, and affected crew render an amber caution badge in the Envelope and Flight Init crew lists. The existing flattened-placeholder regression remains covered so final employee records are retained before empty `IRP`, `MX`, `LM`, and `ACM` role columns.
-
-Static-analysis follow-up outcome: Larastan test errors were resolved by preserving Livewire test component types across response assertions, removing nullsafe access only after PHPUnit assertions prove values are non-null, and dropping redundant nested assertions beneath an explicitly null `flightInit` value.
-
-Commit message: `fix: tighten crew name extraction`
-
-## 16. [x] Completed: Implement weight limits in aircraft table and provide an Aircraft seeder
-- Weight limits do not exist in DB
-- Create a migration adding the following fields:
-  - Max ramp weight
-  - Max Zero fuel weight
-  - Max takeoff weight
-  - Max landing weight
-  - Max autoland weight
-  - Minimum flight weight
-  - Engines (string)
-- Create a seeder
-Commands:
-./vendor/bin/sail artisan make:migration add_weight_limits_and_engines_to_aircraft_table --table=aircraft
-
-./vendor/bin/sail artisan make:seeder AircraftWeightSeeder
-./vendor/bin/sail artisan migrate
-
-./vendor/bin/sail artisan db:seed --class=AircraftWeightSeeder
-
-Outcome: Added nullable aircraft weight-limit and engine columns plus an idempotent, transaction-backed fleet importer for all 37 aircraft in the supplied K4 dataset. The importer maps MZFW, MTOW, MLW, and OEW to their corresponding aircraft weight fields, imports available engine data by unique tail number, creates missing fleet records, preserves unrelated existing aircraft data, and leaves unsupported MRW and autoland values unmapped rather than guessing.
-
-### 17. Reserve fuel
-- Create distinction between Alternate airport burn and Reserve fuel calculation. 
-- Differed due to needing aircraft type fixture and distintion between 747 and 777 aircraft type
-- Requires full fleet in production database.
-- coincides with future 747 seeder into production
-- will have to add migration for reserve fuel additive
-
 ## 18. Indentify: Cleanup
 
 Goal:
@@ -321,10 +186,14 @@ Done when: no UI depends on the flat compatibility payload, all enabled tasks ha
 
 Commit message: `refactor: complete flight plan workspace migration`
 
-## 20. Remove from overview: `Flight plan filing`
+## 20. [x] Completed: Remove from overview: `Flight plan filing`
 - Found in section: Operational support status
 
-## 21. Add B44 badge to Fuel Score in Task navigator
+Outcome: Removed the unsupported `Flight plan filing` indicator from Operational support status while preserving the remaining GENDEC, Weather / RAIM, Maintenance, and conditional ETOPS statuses.
+
+Commit message: `fix: remove flight plan filing overview status`
+
+## 21. [x] Completed: Add B44 badge to Fuel Score in Task navigator
 - So B44 flight plan status is visible in all tasks
 
 Currently: B44 only shows on Overview view. When user navigates to another task, that potentially important info is no longer visible.
@@ -339,6 +208,10 @@ app/DTOs/ReleaseAuthorizationData.php
 app/DTOs/FlightPlanData.php
 resources/views/components/flight-release/overview.blade.php
 resources/views/components/flight-release/task-navigator.blade.php
+
+Outcome: Confirmed B044 releases now show the amber `B44` authorization badge on the Fuel Score task navigator item, keeping the authorization visible across every task. B043 and unknown releases render no navigator badge. The Overview route card and navigator reuse one Blade badge component so their wording and styling remain consistent.
+
+Commit message: `feat: add B44 badge to fuel score navigation`
 
 ## 22. Slot times badge
 Currently: when slot times are not present, a warning badge shows. 
@@ -428,6 +301,11 @@ This view repeats the confirmed source result. It does not calculate an envelope
 - Can I run along side existing test suite?
 - Naming
 - Layering
+
+## Aircraft lookup and display weights
+- Lookup aircraft by tail_number in db
+- Expose weights to user
+- Compare planned weights to aircraft weight limits
   
 -------------------------------------------------------
 
@@ -905,3 +783,138 @@ References:
 Outcome: Confirmed ETOPS releases retain the actionable Overview card, task navigation, and detail workspace. Confirmed non-ETOPS releases now replace those surfaces with a compact `ETOPS` / `Non ETOPS` row in `Operational support status`. Unknown applicability remains distinct and does not claim `Non ETOPS`; because no ETOPS workflow is confirmed, its Overview card, task navigation, and detail workspace are also omitted. Direct attempts to select a hidden ETOPS task are rejected. Applicability-only ETOPS results now survive typed DTO construction and cache rehydration even when no rating or route points exist. Verified against `CKS093312ZSOF 2.pdf`, which contains only incidental maintenance references to ETOPS and no operational ETOPS qualification or route data.
 
 Commit message: `feat: hide ETOPS task for non-ETOPS flights`
+
+## 13. [x] Completed: Feat: GENDEC available determination
+
+Goal:
+- Determine whether the uploaded release contains a General Declaration (GENDEC) page.
+- Expose the determination through the normalized, typed flight-plan result and cached result payload.
+- Replace the hard-coded `GENDEC` `Not supported` overview indicator with `Available` or `Not present` based on extracted evidence.
+
+Current implementation:
+- `FlightReleasePageViewModel::overviewUnsupportedIndicators()` always reports `GENDEC` as `FlightPlanTaskAvailability::NotSupported`.
+- `ExtractFlightPlanData` receives the complete text extracted from every PDF page, but no dedicated service inspects it for a General Declaration section.
+- `ParsedFlightPlanData`, `FlightPlanData`, result serialization, and cache rehydration do not contain GENDEC availability data.
+- The Overview already renders compact availability values in `Operational support status`; no separate GENDEC task or workspace view currently exists.
+
+Problem:
+- Releases containing a usable General Declaration page are presented as unsupported.
+- A loose search for `General Declaration` could produce false positives from incidental references or document indexes.
+- Adding detection only to the live extraction path would lose the result after serialization and produce different behavior for cached releases.
+
+Plan:
+- Add a dedicated GENDEC extractor service that returns a normalized `section_present` boolean and a minimal source fragment for test/debug evidence.
+- Detect a bounded General Declaration page signature rather than a single phrase. Require the `General Declaration` heading and nearby structural labels such as `(Outward/Inward)`, `Owner or Operator`, `Marks of Nationality and Registration`, `Departure from`, `Flight No`, `Date`, and `Arrival At`.
+- Make the signature tolerant of PDF extraction whitespace, line breaks, and adjacent flattened labels while keeping the search within a limited section window.
+- Invoke the extractor once from `ExtractFlightPlanData` using the already extracted full document text.
+- Carry the availability through `ParsedFlightPlanData`, a typed GENDEC/general-declaration DTO on `FlightPlanData`, `toArray()`, `FlightPlanResultSerializer`, and `BuildFlightPlanPageData` cache rehydration.
+- Update `FlightReleasePageViewModel::overviewUnsupportedIndicators()` so GENDEC maps to `Available` when the section is present and `NotPresent` otherwise.
+- Keep GENDEC in `Operational support status`; do not add task navigation or a workspace view until GENDEC content needs to be displayed or acted upon.
+- Add focused extractor tests for the representative page, whitespace/flattening variants, a missing page, and incidental `General Declaration` text without the required field structure.
+- Add DTO/build/serialization round-trip coverage and focused view-model or Livewire assertions for both `Available` and `Not present` overview states.
+
+Constraints:
+- Treat the document signature as evidence of page availability only; do not validate, interpret, or expose crew, passenger, nationality, registration, or customs data in this task.
+- Do not retain the full General Declaration page in the public cached result or rendered HTML; source evidence should remain in the existing private extraction evidence path.
+- Preserve compatibility when older cached results do not contain the new field by defaulting GENDEC to `Not present`.
+- Use the existing `FlightPlanTaskAvailability` labels and status component rather than introducing a GENDEC-specific badge vocabulary.
+
+Representative source signature (PDF extraction may flatten whitespace and labels):
+```text
+General Declaration
+(Outward/Inward)
+Owner or Operator:
+K4
+Marks of Nationality and Registration:
+N774CK
+Departure from:
+Los Angeles
+United States
+Flight No:
+K4256
+Date:
+24May2026
+Arrival At:
+```
+
+References:
+- `app/Services/FlightPlan/Extractor/ExtractFlightPlanData.php`
+- `app/DTOs/ParsedFlightPlanData.php`
+- `app/DTOs/FlightPlanData.php`
+- `app/Actions/BuildFlightPlanData.php`
+- `app/Actions/BuildFlightPlanPageData.php`
+- `app/Services/FlightPlan/FlightPlanResultSerializer.php`
+- `app/View/Models/FlightReleasePageViewModel.php`
+- `resources/views/components/flight-release/overview.blade.php`
+- `tests/Unit/View/Models/FlightReleasePageViewModelTest.php`
+- `tests/Feature/Livewire/FlightPlanBriefTest.php`
+
+Outcome: GENDEC availability is now determined from a bounded, ordered General Declaration signature instead of a loose phrase match. Detection tolerates line breaks, irregular whitespace, and flattened labels such as `Flight No:K4256Date:` while rejecting incidental references and labels outside the section window. The typed boolean survives result serialization and cache rehydration, with older cached results defaulting to `Not present`. Only minimal signature evidence stays in the private extraction evidence path; crew, passenger, passport, customs, and full-page content are not exposed in the cached payload or rendered HTML. The Overview now uses the shared availability status component to show `Available` or `Not present`, with no new task or workspace.
+
+Follow-up outcome: Availability labels and badge/dot color classes now belong to `FlightPlanTaskAvailability` instead of the Blade component. `NotPresent` renders with an explicit red warning palette in both full badges and compact dots, while the existing opt-in rendering behavior for `Available` remains unchanged.
+
+GENDEC image-page follow-up outcome: Flight release PDF pages that contain no extractable text now receive a targeted Tesseract OCR fallback before structured extraction. GENDEC detection validates the complete declaration label set within the bounded section without assuming a single-column label order, allowing image-only two-column forms such as `CKS027227SBKP.pdf` to resolve as present. The PDF text cache namespace was versioned so releases cached before this fix are reprocessed automatically.
+
+Commit message: `feat: determine GENDEC availability`
+
+### [x] Completed follow up: FlightPlanTaskAvailability color classes
+Goal: Render contextual availability classes using success, danger, warning, or neutral tones.
+
+Outcome: Availability labels remain owned by `FlightPlanTaskAvailability`, while the new `TaskTone` enum owns badge and dot palettes. Default availability uses neutral for available, danger for not present, and warning for not supported. The Review MEL/CDL context treats a confirmed empty maintenance section as success and source-listed items as warning; a missing maintenance section remains danger rather than implying a clean release. Missing GENDEC and Weather / RAIM remain danger, and confirmed non-ETOPS uses an explicit neutral tone. The shared status component applies these contexts consistently to badges and accessible dots across Overview, task navigation, and section headers while preserving the default behavior that hides ordinary available statuses.
+
+Commit message: `feat: add contextual flight task availability tones`
+
+## 14. [x] Completed: Feat: Determine B43 or B44 release
+Goal:
+- Determine whether the release explicitly identifies Operations Specification B043 or B044.
+- Render a compact amber `B44` tag at the top right of the Overview route card only for a confirmed B044 release.
+- Establish an extensible normalized structure for future B44-specific information without coupling that information to the header UI.
+
+Outcome: A dedicated release-authorization extractor now classifies only explicit B043 and B044 Operations Specification signatures, tolerates parser whitespace and flattened text, preserves private source evidence internally, and rejects conflicting signatures. The normalized release uses a typed `B43`, `B44`, or `unknown` enum and release-authorization DTO across extraction, aggregate construction, serialization, and backward-compatible cache rehydration. Confirmed B044 releases render the requested amber `B44` badge at the top right of the Overview route card alongside its availability indicator; B043 and unknown releases render no badge, and the persistent release header remains unchanged. Focused PHPUnit coverage verifies extraction edge cases, typed round trips, source-evidence privacy, cache compatibility, and B44-only Overview rendering. Pint and Larastan pass.
+
+Commit message: `feat: classify B43 and B44 flight releases`
+
+## 15. [x] Completed: Bug: Loose crew name regex extraction
+- Crew details are extracted within name:
+1. `Additional` extracted as name: PAYNE R ADDNTL
+2. `IRP` extracted as name: GONZALEZ D IRP
+3. `HIGH MINS` extracted as name: FERGUSON S HIGH MINS
+
+- Fix: parse out HIGH MINS, IRP, HIGH MINS removing it from the name
+- Stop crew name parsing on line break
+- Add a high mins flag to the DTO contract
+- Front end display as a caution
+
+Outcome: Release-manifest parsing now stops at physical line boundaries and removes trailing `ADDNTL`, `ADDNTL CAPT`, `IRP`, and `HIGH MINS` annotations from crew names. `HIGH MINS` is preserved as a typed boolean through extraction, DTO construction, result serialization, and cache rehydration, and affected crew render an amber caution badge in the Envelope and Flight Init crew lists. The existing flattened-placeholder regression remains covered so final employee records are retained before empty `IRP`, `MX`, `LM`, and `ACM` role columns.
+
+Static-analysis follow-up outcome: Larastan test errors were resolved by preserving Livewire test component types across response assertions, removing nullsafe access only after PHPUnit assertions prove values are non-null, and dropping redundant nested assertions beneath an explicitly null `flightInit` value.
+
+Commit message: `fix: tighten crew name extraction`
+
+## 16. [x] Completed: Implement weight limits in aircraft table and provide an Aircraft seeder
+- Weight limits do not exist in DB
+- Create a migration adding the following fields:
+  - Max ramp weight
+  - Max Zero fuel weight
+  - Max takeoff weight
+  - Max landing weight
+  - Max autoland weight
+  - Minimum flight weight
+  - Engines (string)
+- Create a seeder
+Commands:
+./vendor/bin/sail artisan make:migration add_weight_limits_and_engines_to_aircraft_table --table=aircraft
+
+./vendor/bin/sail artisan make:seeder AircraftWeightSeeder
+./vendor/bin/sail artisan migrate
+
+./vendor/bin/sail artisan db:seed --class=AircraftWeightSeeder
+
+Outcome: Added nullable aircraft weight-limit and engine columns plus an idempotent, transaction-backed fleet importer for all 37 aircraft in the supplied K4 dataset. The importer maps MZFW, MTOW, MLW, and OEW to their corresponding aircraft weight fields, imports available engine data by unique tail number, creates missing fleet records, preserves unrelated existing aircraft data, and leaves unsupported MRW and autoland values unmapped rather than guessing.
+
+### 17. Reserve fuel
+- Create distinction between Alternate airport burn and Reserve fuel calculation. 
+- Differed due to needing aircraft type fixture and distintion between 747 and 777 aircraft type
+- Requires full fleet in production database.
+- coincides with future 747 seeder into production
+- will have to add migration for reserve fuel additive
