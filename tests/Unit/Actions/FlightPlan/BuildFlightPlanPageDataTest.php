@@ -1,8 +1,8 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\Actions\FlightPlan;
 
-use App\Actions\BuildFlightPlanPageData;
+use App\Actions\FlightPlan\BuildFlightPlanPageData;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
 use App\Enums\OperationsSpecification;

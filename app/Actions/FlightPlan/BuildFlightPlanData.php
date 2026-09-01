@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Actions;
+namespace App\Actions\FlightPlan;
 
 use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightInitData;

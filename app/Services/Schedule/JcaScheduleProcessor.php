@@ -2,7 +2,7 @@
 
 namespace App\Services\Schedule;
 
-use App\Actions\BuildScheduleResult;
+use App\Actions\Schedule\BuildScheduleResult;
 use App\DTOs\ExtractedEventDTO;
 use App\DTOs\ExtractedResultData;
 use App\Enums\ScheduleDocumentType;

@@ -2,8 +2,8 @@
 
 namespace App\Livewire;
 
-use App\Actions\BuildFlightPlanPageData;
-use App\Actions\HandleFlightPlanExtraction;
+use App\Actions\FlightPlan\BuildFlightPlanPageData;
+use App\Actions\FlightPlan\HandleFlightPlanExtraction;
 use App\Actions\ShouldPromptForCoffee;
 use App\Enums\FlightPlanTask;
 use App\Exceptions\FlightRouteNotFoundException;

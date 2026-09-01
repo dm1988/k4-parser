@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Actions;
+namespace App\Actions\Schedule;
 
 use App\DTOs\ExtractedEventDTO;
 use App\DTOs\ExtractedResultData;

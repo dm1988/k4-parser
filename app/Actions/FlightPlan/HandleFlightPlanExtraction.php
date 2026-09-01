@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Actions;
+namespace App\Actions\FlightPlan;
 
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Models\ExtractRequest;

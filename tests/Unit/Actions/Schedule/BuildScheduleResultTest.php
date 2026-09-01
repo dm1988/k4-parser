@@ -1,8 +1,8 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\Actions\Schedule;
 
-use App\Actions\BuildScheduleResult;
+use App\Actions\Schedule\BuildScheduleResult;
 use App\DTOs\DutyEvent;
 use App\DTOs\ExtractedResultData;
 use App\DTOs\Flight;

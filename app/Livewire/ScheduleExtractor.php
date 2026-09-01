@@ -2,7 +2,7 @@
 
 namespace App\Livewire;
 
-use App\Actions\HandleExtractExecution;
+use App\Actions\Extract\HandleExtractExecution;
 use App\Actions\ShouldPromptForCoffee;
 use App\DTOs\ExtractedResultData;
 use App\Enums\ScheduleEventType;

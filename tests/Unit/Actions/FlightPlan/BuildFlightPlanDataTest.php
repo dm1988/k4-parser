@@ -1,8 +1,8 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\Actions\FlightPlan;
 
-use App\Actions\BuildFlightPlanData;
+use App\Actions\FlightPlan\BuildFlightPlanData;
 use App\DTOs\CrewManifestInputData;
 use App\DTOs\Maintenance\MaintenanceInputData;
 use App\DTOs\ParsedFlightPlanData;

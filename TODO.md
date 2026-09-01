@@ -93,9 +93,13 @@ Identified cleanup, in implementation order:
    Outcome: ETOPS, Maintenance, Weather, Crew, Waypoint, TLR, and Weight/Balance builders now provide shared rules for fresh extraction and cached-payload rehydration. Construction collaborators are required through constructor injection, while ten task-focused presenters are composed behind the stable release view-model facade. Crew and Maintenance are the first broad staging arrays replaced by typed input DTOs, preserving source evidence and serialized/rendered compatibility. The focused builder, extractor, serializer, presenter, and Livewire regressions pass after Pint; Larastan remains reserved for task 19.
 
    Commit message: `refactor: split flight plan hydration and presentation`
-3. **Make folders mirror stable domains.**
+3. [x] Completed: **Make folders mirror stable domains.**
    - After responsibilities are split, group flight-plan actions under `App\Actions\FlightPlan` and keep schedule/extract/auth actions in their own domains. Avoid creating folders that would contain only one arbitrary class.
    - Mirror production namespaces in tests as files move; do not perform a repository-wide test shuffle without a corresponding production boundary change.
+
+   Outcome: Flight-plan construction, page hydration, and extraction orchestration now live under `App\Actions\FlightPlan`; schedule result construction lives under `App\Actions\Schedule`; and shared extraction execution/logging lives under `App\Actions\Extract`. Direct action unit tests mirror those production namespaces, while consumer tests remain in their established feature and view-model domains. All affected imports were updated without changing behavior. The focused flight-plan, schedule, extraction, view-model, and Livewire regressions pass after Pint.
+
+   Commit message: `refactor: organize actions by stable domain`
 4. **Remove confirmed residue.**
    - Delete the orphaned `App\ValueObjects\FlightPlan` after a final reference search, the empty `App\Jobs\ProcessImageOcr` scaffold, and the placeholder `tests/Unit/ExampleTest.php`; retain the feature smoke test because it verifies real landing-page behavior.
    - Select and document one supported Sail PHP image, update `compose.yaml` and the technical baseline to agree, then remove only the unreferenced Docker version directories.
