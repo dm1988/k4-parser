@@ -150,7 +150,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::FuelScore));
         $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::Etops));
         $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::MaintenanceLog));
-        $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::Envelope));
+        $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::Envelope));
     }
 
     public function test_it_defaults_malformed_release_authorization_to_unknown(): void
@@ -204,7 +204,7 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::Etops));
     }
 
-    public function test_it_rehydrates_the_legacy_envelope_alias_and_distinguishes_an_unsupported_tlr_result(): void
+    public function test_it_keeps_the_envelope_available_for_a_legacy_tlr_without_a_supported_result(): void
     {
         $payload = $this->resultPayload();
         unset($payload['flight_plan_data']['takeoffLandingReport']);
@@ -218,7 +218,7 @@ class BuildFlightPlanPageDataTest extends TestCase
 
         $this->assertNotNull($pageData);
         $this->assertSame(
-            FlightPlanTaskAvailability::NotSupported,
+            FlightPlanTaskAvailability::Available,
             $pageData->availabilityFor(FlightPlanTask::Envelope),
         );
     }

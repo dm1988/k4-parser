@@ -50,7 +50,7 @@ final readonly class FlightPlanPageData
             FlightPlanTask::WeightAndBalance => $this->flightPlan->weightBalance?->hasSourceData() === true
                 ? FlightPlanTaskAvailability::Available
                 : FlightPlanTaskAvailability::NotPresent,
-            FlightPlanTask::Envelope => $this->takeoffLandingReportAvailability(),
+            FlightPlanTask::Envelope => FlightPlanTaskAvailability::Available,
         };
     }
 
@@ -64,16 +64,5 @@ final readonly class FlightPlanPageData
             || $etops->equalTimePoints !== []
             || $etops->exitPoint !== null
         );
-    }
-
-    private function takeoffLandingReportAvailability(): FlightPlanTaskAvailability
-    {
-        if ($this->flightPlan->takeoffLandingReport === null) {
-            return FlightPlanTaskAvailability::NotPresent;
-        }
-
-        return $this->flightPlan->takeoffLandingReport->plannedTakeoffWeight === null
-            ? FlightPlanTaskAvailability::NotSupported
-            : FlightPlanTaskAvailability::Available;
     }
 }

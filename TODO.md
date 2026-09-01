@@ -145,18 +145,11 @@ Commit message: `fix: extract flattened TLR result boundaries`
 ## 26. ETOPS counter badge
 - Count of ETP points
 
-## 27. Bug: Envelope task availability
-Currently:
-If no Tld data, no data in the envelope task renders, even with valid existing data. 
+## 27. [x] Completed: Bug: Envelope task availability
 
-Fix:
-- The envelope task is just a combination of existing extracted data. It esentially is always available. 
-- Verified bug by changing line 53 to: `FlightPlanTask::Envelope => FlightPlanTaskAvailability::Available,`
+Outcome: Envelope availability no longer depends on Takeoff and Landing Report extraction because the task presents shared flight and crew context. It remains selectable when TLR data is absent or contains no supported result, and focused unit and Livewire coverage confirms the Envelope panel still renders the available route context instead of a not-present or unsupported state. The obsolete TLR-specific availability helper was removed.
 
-
-References: 
-app/View/Models/FlightPlanPageData.php
-app/Enums/FlightPlanTask.php
+Commit message: `fix: keep envelope task available`
 
 -------------------
 **Branch Merge**

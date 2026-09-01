@@ -1059,24 +1059,24 @@ class FlightPlanBriefTest extends TestCase
         $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
     }
 
-    public function test_envelope_is_not_supported_when_a_tlr_section_has_no_supported_result(): void
+    public function test_envelope_remains_available_without_tlr_data(): void
     {
         Storage::fake('user_flight_releases');
 
         $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
             $this->expectOnce($mock, 'extractFile')
-                ->andReturn($this->parsedFlightPlan(takeoffLandingReport: [
-                    'section_present' => true,
-                    'source_type' => 'takeoff_landing_report',
-                    'planned_takeoff_weight' => null,
-                ]));
+                ->andReturn($this->parsedFlightPlan());
         });
         Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
             ->call('selectTask', FlightPlanTask::Envelope->value)
-            ->assertSeeText('Not supported yet')
-            ->assertSeeText('Envelope requires confirmed fixtures and typed extraction')
+            ->assertSet('activeTask', FlightPlanTask::Envelope->value)
+            ->assertSeeHtml('wire:key="flight-plan-task-panel-envelope"')
+            ->assertSeeText('Flight details')
+            ->assertSeeText('PANC')
+            ->assertSeeText('KMIA')
+            ->assertDontSeeText('Not supported yet')
             ->assertDontSeeText('Not present in this release');
     }
 
