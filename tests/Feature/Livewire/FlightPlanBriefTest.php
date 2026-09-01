@@ -119,6 +119,11 @@ class FlightPlanBriefTest extends TestCase
 
     public function test_it_validates_pdf_uploads_and_clears_the_error_when_the_file_changes(): void
     {
+        $this->assertSame(
+            ['required', 'file', 'max:12288'],
+            config('livewire.temporary_file_upload.rules'),
+        );
+
         $component = Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
             ->call('extractFlightPlan')
@@ -285,7 +290,10 @@ class FlightPlanBriefTest extends TestCase
                 static fn (FlightPlanTask $task): string => $task->label(),
                 array_values(array_filter(
                     FlightPlanTask::cases(),
-                    static fn (FlightPlanTask $task): bool => $task !== FlightPlanTask::ReviewMelCdl,
+                    static fn (FlightPlanTask $task): bool => ! in_array($task, [
+                        FlightPlanTask::ReviewMelCdl,
+                        FlightPlanTask::SlotTimes,
+                    ], true),
                 )),
             ))
             ->assertSeeText(FlightPlanTask::ReviewMelCdl->label())
@@ -306,6 +314,10 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('Tail N774CK')
             ->assertSeeText('ETD (UTC)')
             ->assertSeeText('ETA (UTC)')
+            ->assertDontSeeText('Approved slots')
+            ->assertDontSeeText('Review Slot Times')
+            ->assertDontSeeHtml('wire:key="flight-plan-task-nav-slot_times"')
+            ->assertDontSeeHtml('wire:target="selectTask(\'slot_times\')"')
             ->assertSeeText('Release revision')
             ->assertSeeText('3');
 
@@ -324,17 +336,15 @@ class FlightPlanBriefTest extends TestCase
 
         $component
             ->call('selectTask', FlightPlanTask::SlotTimes->value)
-            ->assertSet('activeTask', FlightPlanTask::SlotTimes->value)
-            ->assertSeeText('Not present in this release')
-            ->assertSeeText('Slot Times data was not found');
+            ->assertSet('activeTask', FlightPlanTask::JeppPdPro->value);
 
         $component
             ->call('$refresh')
-            ->assertSet('activeTask', FlightPlanTask::SlotTimes->value);
+            ->assertSet('activeTask', FlightPlanTask::JeppPdPro->value);
 
         $component
             ->call('selectTask', 'untrusted-task')
-            ->assertSet('activeTask', FlightPlanTask::SlotTimes->value);
+            ->assertSet('activeTask', FlightPlanTask::JeppPdPro->value);
 
         $component
             ->call('selectTask', FlightPlanTask::Fms->value)
@@ -1366,6 +1376,8 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('4,000 NM')
             ->assertSeeText('120,000 LB')
             ->assertSeeText('2 approved UTC slots')
+            ->assertSeeHtml('aria-label="Slot Times: 2 approved slots"')
+            ->assertSeeHtml('rounded-full bg-amber-100')
             ->assertSeeText('1 critical point · EENT · EEXP')
             ->assertSeeText('ACARS Initialize Flight')
             ->assertSeeText('Program FMS')

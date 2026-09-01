@@ -229,7 +229,7 @@ Outcome: Confirmed B044 releases now show the amber `B44` authorization badge on
 
 Commit message: `feat: add B44 badge to fuel score navigation`
 
-## 22. Current focus: Slot times badge
+## 22. [x] Completed: Slot times badge
 Currently: when slot times are not present, a warning badge shows. 
 Problem: This is not necessarily a bad thing
 
@@ -241,6 +241,10 @@ Implementation:
 References:
 app/View/Models/FlightReleasePageViewModel.php
 resources/views/components/flight-release/task-navigator.blade.php
+
+Outcome: Approved slot times now use a reusable amber counter badge in the task navigator. Releases without approved slots omit the Slot Times navigator task, the Approved slots overview metric, and the unavailable overview action/status affordances, while preserving the schedule card's ETD and ETA values. Focused view-model and Livewire regressions pass after Pint.
+
+Commit message: `feat: show approved slot count in task navigation`
 
 ## 23. MEL CDL Badge
 Currently: when no MEL / CDLs present, success green badge is rendered drawing a users attention

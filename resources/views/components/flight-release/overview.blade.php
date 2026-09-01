@@ -42,12 +42,16 @@
             title="Schedule and slots"
             icon="clock"
             :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::SlotTimes)"
+            :show-action="$model->hasSlotTimes()"
+            :show-status="$model->hasSlotTimes()"
             class="xl:col-span-2"
         >
             <dl class="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-1">
                 <x-flight-release.metric label="ETD (UTC)" :value="$model->overviewEtdUtc()" empty-text="Not present in this release" />
                 <x-flight-release.metric label="ETA (UTC)" :value="$model->overviewEtaUtc()" empty-text="Not present in this release" />
-                <x-flight-release.metric label="Approved slots" :value="$model->overviewSlotSummary()" empty-text="Not present in this release" />
+                @if ($model->hasSlotTimes())
+                    <x-flight-release.metric label="Approved slots" :value="$model->overviewSlotSummary()" empty-text="Not present in this release" />
+                @endif
             </dl>
         </x-flight-release.overview-card>
 

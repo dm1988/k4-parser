@@ -65,8 +65,11 @@ readonly class FlightReleasePageViewModel
 
     public function isTaskVisible(FlightPlanTask $task): bool
     {
-        return $task !== FlightPlanTask::Etops
-            || $this->etopsApplicability() === EtopsApplicability::ConfirmedEtops;
+        return match ($task) {
+            FlightPlanTask::SlotTimes => $this->hasSlotTimes(),
+            FlightPlanTask::Etops => $this->etopsApplicability() === EtopsApplicability::ConfirmedEtops,
+            default => true,
+        };
     }
 
     public function shouldShowEtopsOverviewCard(): bool
@@ -92,9 +95,16 @@ readonly class FlightReleasePageViewModel
 
     public function taskCounter(FlightPlanTask $task): ?int
     {
-        return $task === FlightPlanTask::ReviewMelCdl
-            ? $this->maintenanceItemCount()
-            : null;
+        return match ($task) {
+            FlightPlanTask::ReviewMelCdl => $this->maintenanceItemCount(),
+            FlightPlanTask::SlotTimes => count($this->slotTimes()),
+            default => null,
+        };
+    }
+
+    public function hasSlotTimes(): bool
+    {
+        return $this->slotTimes() !== [];
     }
 
     public function flightNumber(): ?string

@@ -47,6 +47,7 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertNull($viewModel->overviewRouteDistance());
         $this->assertNull($viewModel->overviewRampFuel());
         $this->assertNull($viewModel->overviewSlotSummary());
+        $this->assertFalse($viewModel->hasSlotTimes());
         $this->assertNull($viewModel->overviewEtopsSummary());
         $this->assertNull($viewModel->fmsDistanceToDestination());
         $this->assertNull($viewModel->fmsAlternateReserve());
@@ -373,6 +374,8 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('4,000 NM', $viewModel->overviewRouteDistance());
         $this->assertSame('120,000 LB', $viewModel->overviewRampFuel());
         $this->assertSame('2 approved UTC slots', $viewModel->overviewSlotSummary());
+        $this->assertTrue($viewModel->hasSlotTimes());
+        $this->assertSame(2, $viewModel->taskCounter(FlightPlanTask::SlotTimes));
         $this->assertSame([
             'direction' => 'Departure',
             'airport' => 'PANC',
@@ -460,6 +463,8 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame(FlightPlanTask::ReviewMelCdl, $viewModel->tasks()[1]);
         $this->assertSame(2, $viewModel->taskCounter(FlightPlanTask::ReviewMelCdl));
         $this->assertNull($viewModel->taskCounter(FlightPlanTask::MaintenanceLog));
+        $this->assertNotContains(FlightPlanTask::SlotTimes, $viewModel->tasks());
+        $this->assertSame(0, $viewModel->taskCounter(FlightPlanTask::SlotTimes));
 
         $payload = $this->resultPayload();
         $payload['flight_plan_data']['maintenanceLog']['items'] = [];

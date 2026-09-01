@@ -10,7 +10,7 @@ class FlightScheduleExtractor
 {
     /**
      * @return array{
-     *     data: array{etd_utc: ?string, eta_utc: ?string, block_duration: ?string, report_time_utc: ?string, duty_end_utc: ?string, slot_source_text: ?string, slots: list<array{direction: 'arrival'|'departure', airport: string, instant_utc: string, source_time: string, tolerance_minutes: ?int}>, slot_times_utc: list<string>},
+     *     data: array{etd_utc: ?string, eta_utc: ?string, block_duration: ?string, report_time_utc: ?string, duty_end_utc: ?string, slot_source_text: ?string, slots: list<array{direction: 'arrival'|'departure'|'unspecified', airport: string, instant_utc: string, source_time: string, tolerance_minutes: ?int}>, slot_times_utc: list<string>},
      *     source_fragments: array<string, string|list<array{direction: string, airport: string, time: string}>>
      * }
      */
@@ -154,7 +154,7 @@ class FlightScheduleExtractor
     }
 
     /**
-     * @return array{list<array{direction: 'arrival'|'departure', airport: string, instant: CarbonImmutable, source_time: string, tolerance_minutes: ?int, source_order: int}>, list<array{direction: string, airport: string, time: string}>, ?string}
+     * @return array{list<array{direction: 'arrival'|'departure'|'unspecified', airport: string, instant: CarbonImmutable, source_time: string, tolerance_minutes: ?int, source_order: int}>, list<array{direction: string, airport: string, time: string}>, ?string}
      */
     private function slotTimes(string $text, ?string $flightDate, ?CarbonImmutable $etd): array
     {
@@ -170,7 +170,7 @@ class FlightScheduleExtractor
 
         $matches = [];
         preg_match_all(
-            '/(?:(?<direction_before>ARR|DEP)\s+(?<airport_before>[A-Z]{4})\s+@\s*(?<time_before>\d{4})Z(?:\s*\(\s*(?:\+\/-|\+-)\s*(?<tolerance_before>\d+)\s*MIN\s*\))?)|(?:-\s*(?<airport_after>[A-Z]{4}):\s*(?<time_after>\d{4})Z(?:\s*(?:\+\/-|\+-)\s*(?<tolerance_after>\d+)\s*MIN)?(?:\s+(?<direction_after>ARR|DEP))?)/i',
+            '/(?:(?<direction_before>ARR|DEP)\s+(?<airport_before>[A-Z]{3,4})\s+(?:@\s*)?(?<time_before>\d{4})Z(?:\s*\(?\s*(?:\+\/-|\+-)\s*(?<tolerance_before>\d+)(?:\s*MINS?)?\s*\)?)?)|(?:-?\s*(?<airport_after>[A-Z]{3,4})\s*:?\s*(?:(?<direction_between>ARR|DEP)\s+)?(?<time_after>\d{4})Z(?:\s*\(?\s*(?:\+\/-|\+-)\s*(?<tolerance_after>\d+)(?:\s*MINS?)?\s*\)?)?(?:\s+(?<direction_after>ARR|DEP))?)/i',
             $sectionMatches[1],
             $matches,
             PREG_SET_ORDER,
@@ -180,14 +180,14 @@ class FlightScheduleExtractor
 
         foreach ($matches as $sourceOrder => $match) {
             $sourceDigits = ($match['time_before'] ?? '') !== '' ? $match['time_before'] : ($match['time_after'] ?? '');
-            $direction = Str::upper(($match['direction_before'] ?? '') !== '' ? $match['direction_before'] : ($match['direction_after'] ?? ''));
+            $direction = Str::upper(
+                ($match['direction_before'] ?? '') !== ''
+                    ? $match['direction_before']
+                    : (($match['direction_between'] ?? '') !== '' ? $match['direction_between'] : ($match['direction_after'] ?? '')),
+            );
 
             if ($direction === '' && preg_match('/\bARRIVAL\b/i', $sectionMatches[1]) === 1) {
                 $direction = 'ARR';
-            }
-
-            if ($direction === '') {
-                continue;
             }
 
             $time = $this->utcInstant($flightDate, [1 => substr($sourceDigits, 0, 2), 2 => substr($sourceDigits, 2, 2)], dayIndex: 5, after: $etd);
@@ -200,7 +200,11 @@ class FlightScheduleExtractor
             $sourceTime = $sourceDigits.'Z';
             $tolerance = ($match['tolerance_before'] ?? '') !== '' ? $match['tolerance_before'] : ($match['tolerance_after'] ?? '');
             $slots[] = [
-                'direction' => $direction === 'DEP' ? 'departure' : 'arrival',
+                'direction' => match ($direction) {
+                    'DEP' => 'departure',
+                    'ARR' => 'arrival',
+                    default => 'unspecified',
+                },
                 'airport' => $airport,
                 'instant' => $time,
                 'source_time' => $sourceTime,
@@ -208,7 +212,7 @@ class FlightScheduleExtractor
                 'source_order' => $sourceOrder,
             ];
             $evidence[] = [
-                'direction' => $direction,
+                'direction' => $direction === '' ? 'UNSPECIFIED' : $direction,
                 'airport' => $airport,
                 'time' => $sourceTime,
             ];

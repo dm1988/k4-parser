@@ -122,6 +122,35 @@ TEXT, '2026-05-25');
         $this->assertStringContainsString('NO MORE THAN 30 MINUTES EARLY ARRIVAL TO ICN', $complex['data']['slot_source_text']);
     }
 
+    public function test_it_extracts_iata_slot_formats_from_representative_releases(): void
+    {
+        $directionless = (new FlightScheduleExtractor)->extract(
+            "SHETD 08.05Z/16 ETA 20.58Z\n*** APPROVED SLOT TIMES: NRT 2115Z+-30",
+            '2026-05-16',
+        );
+
+        $this->assertSame([[
+            'direction' => 'unspecified',
+            'airport' => 'NRT',
+            'instant_utc' => '2026-05-16T21:15:00+00:00',
+            'source_time' => '2115Z',
+            'tolerance_minutes' => 30,
+        ]], $directionless['data']['slots']);
+
+        $airportFirst = (new FlightScheduleExtractor)->extract(
+            "SHETD 22.00Z/29 ETA 07.25Z\n*** APPROVED SLOT TIMES:\n-HKG DEP 2200Z (+/- 90 MINS)",
+            '2026-08-29',
+        );
+
+        $this->assertSame([[
+            'direction' => 'departure',
+            'airport' => 'HKG',
+            'instant_utc' => '2026-08-29T22:00:00+00:00',
+            'source_time' => '2200Z',
+            'tolerance_minutes' => 90,
+        ]], $airportFirst['data']['slots']);
+    }
+
     public function test_it_deduplicates_repeated_slots_and_stops_raw_text_at_operational_section_boundaries(): void
     {
         foreach (['ETOPS', 'MEL/CDL'] as $boundary) {

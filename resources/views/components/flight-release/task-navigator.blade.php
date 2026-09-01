@@ -51,10 +51,11 @@
                     />
                 @endif
                 @if ($taskCounter !== null)
-                    <span
-                        class="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums {{ $isActive ? 'bg-[#C5A059] text-[#0B0E14]' : 'bg-[#1B365D]/10 text-[#1B365D] dark:bg-slate-700 dark:text-slate-100' }}"
-                        aria-label="{{ $task->label() }}: {{ $taskCounter }} {{ \Illuminate\Support\Str::plural('item', $taskCounter) }}"
-                    >{{ $taskCounter }}</span>
+                    <x-flight-release.counter-badge
+                        :count="$taskCounter"
+                        :label="$task->label()"
+                        :noun="$task === \App\Enums\FlightPlanTask::SlotTimes ? 'approved slot' : 'item'"
+                    />
                 @endif
                 <x-flight-release.status
                     :availability="$model->availabilityFor($task)"
