@@ -3,9 +3,12 @@
 namespace App\Services\FlightPlan\Extractor;
 
 use App\DTOs\AirportData;
+use App\DTOs\AirportResolution;
+use App\Exceptions\AirportResolutionException;
 use App\Exceptions\FlightPlanDataConflictException;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Services\Clients\AirportLookupClient;
+use App\Services\Infrastructure\AirportCodeCache;
 
 class FlightRouteExtractor
 {
@@ -14,6 +17,7 @@ class FlightRouteExtractor
     public function __construct(
         private readonly FlightPlanTextExtractor $textExtractor,
         private readonly AirportLookupClient $airportLookupClient,
+        private readonly AirportCodeCache $airportCodeCache,
     ) {}
 
     /**
@@ -117,7 +121,27 @@ class FlightRouteExtractor
             return null;
         }
 
-        return $this->airportLookupClient->lookupByIcao($icao);
+        $cachedResolution = $this->airportCodeCache->get($icao);
+
+        if ($cachedResolution !== null) {
+            return $cachedResolution->airport;
+        }
+
+        try {
+            $airport = $this->airportLookupClient->lookupByIcaoOrFail($icao);
+        } catch (AirportResolutionException) {
+            $this->airportCodeCache->put(AirportResolution::unavailable($icao));
+
+            return null;
+        }
+
+        $this->airportCodeCache->put(
+            $airport instanceof AirportData
+                ? AirportResolution::found($icao, $airport)
+                : AirportResolution::missing($icao),
+        );
+
+        return $airport;
     }
 
     /**

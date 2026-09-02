@@ -23,6 +23,7 @@ use App\Services\FlightPlan\Extractor\TakeoffLandingReportExtractor;
 use App\Services\FlightPlan\Extractor\WaypointExtractor;
 use App\Services\FlightPlan\Extractor\WeatherExtractor;
 use App\Services\FlightPlan\Extractor\WeightBalanceExtractor;
+use App\Services\Infrastructure\AirportCodeCache;
 use App\Services\Schedule\Extractor\CrewListParser;
 use Illuminate\Contracts\Cache\Repository;
 use Smalot\PdfParser\Parser;
@@ -220,7 +221,7 @@ class ExtractFlightPlanDataTest extends TestCase
             $textExtractor,
             new FlightIdentityExtractor,
             new FlightScheduleExtractor,
-            new FlightRouteExtractor($textExtractor, $airportLookupClient),
+            new FlightRouteExtractor($textExtractor, $airportLookupClient, app(AirportCodeCache::class)),
             new FlightFuelExtractor,
             new FlightCrewExtractor(new CrewListParser),
             new MaintenanceLogExtractor,

@@ -3,12 +3,14 @@
 namespace Tests\Unit;
 
 use App\DTOs\AirportData;
+use App\Exceptions\AirportResolutionException;
 use App\Exceptions\FlightPlanDataConflictException;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Services\Clients\AirportLookupClient;
 use App\Services\FlightPlan\Extractor\FlightPlanTextExtractor;
 use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
 use App\Services\FlightPlan\Extractor\PdfImagePageTextExtractor;
+use App\Services\Infrastructure\AirportCodeCache;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Cache\Repository;
@@ -312,7 +314,7 @@ TEXT);
         $lookups = [];
         $airportLookupClient = $this->createMock(AirportLookupClient::class);
         $airportLookupClient->expects($this->exactly(2))
-            ->method('lookupByIcao')
+            ->method('lookupByIcaoOrFail')
             ->willReturnCallback(function (string $icao) use (&$lookups): ?AirportData {
                 $lookups[] = $icao;
 
@@ -330,6 +332,59 @@ TEXT);
 TEXT);
 
         $this->assertSame(['SBKP', 'SCEL'], $lookups);
+    }
+
+    public function test_airport_lookups_reuse_cached_resolutions(): void
+    {
+        $departureAirport = new AirportData('SBKP', 'VCP', 'Viracopos International Airport', 'Campinas', 'Sao Paulo', 'Brazil');
+        $destinationAirport = new AirportData('SCEL', 'SCL', 'Arturo Merino Benitez International Airport', 'Santiago', null, 'Chile');
+        $airportLookupClient = $this->createMock(AirportLookupClient::class);
+        $airportLookupClient->expects($this->exactly(2))
+            ->method('lookupByIcaoOrFail')
+            ->willReturnMap([
+                ['SBKP', $departureAirport],
+                ['SCEL', $destinationAirport],
+            ]);
+        $extractor = $this->makeExtractor(airportLookupClient: $airportLookupClient);
+        $text = <<<'TEXT'
+(FPL-CKS272-IS
+-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1
+-SBKP1000
+-N0487F360 OSUDO4A ASETA
+-SCEL0322)
+TEXT;
+
+        $firstFlightPlan = $extractor->extractFlightPlanDataFromText($text);
+        $secondFlightPlan = $extractor->extractFlightPlanDataFromText($text);
+
+        $this->assertSame($departureAirport, $firstFlightPlan['departure_airport']);
+        $this->assertSame($destinationAirport, $firstFlightPlan['destination_airport']);
+        $this->assertEquals($departureAirport, $secondFlightPlan['departure_airport']);
+        $this->assertEquals($destinationAirport, $secondFlightPlan['destination_airport']);
+    }
+
+    public function test_airport_provider_failures_remain_non_fatal_and_are_cached(): void
+    {
+        $airportLookupClient = $this->createMock(AirportLookupClient::class);
+        $airportLookupClient->expects($this->exactly(2))
+            ->method('lookupByIcaoOrFail')
+            ->willThrowException(AirportResolutionException::providerUnavailable());
+        $extractor = $this->makeExtractor(airportLookupClient: $airportLookupClient);
+        $text = <<<'TEXT'
+(FPL-CKS272-IS
+-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1
+-SBKP1000
+-N0487F360 OSUDO4A ASETA
+-SCEL0322)
+TEXT;
+
+        $firstFlightPlan = $extractor->extractFlightPlanDataFromText($text);
+        $secondFlightPlan = $extractor->extractFlightPlanDataFromText($text);
+
+        $this->assertNull($firstFlightPlan['departure_airport']);
+        $this->assertNull($firstFlightPlan['destination_airport']);
+        $this->assertNull($secondFlightPlan['departure_airport']);
+        $this->assertNull($secondFlightPlan['destination_airport']);
     }
 
     public function test_extract_flight_plan_data_from_text_sets_alternate_to_null_when_not_listed(): void
@@ -476,6 +531,7 @@ TEXT;
                 new PdfImagePageTextExtractor,
             ),
             $airportLookupClient ?? $this->fakeAirportLookupClient(),
+            app(AirportCodeCache::class),
         );
     }
 
@@ -485,7 +541,7 @@ TEXT;
     private function fakeAirportLookupClient(array $airports = []): AirportLookupClient
     {
         $client = $this->createMock(AirportLookupClient::class);
-        $client->method('lookupByIcao')
+        $client->method('lookupByIcaoOrFail')
             ->willReturnCallback(static fn (string $icao): ?AirportData => $airports[$icao] ?? null);
 
         return $client;

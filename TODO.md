@@ -17,7 +17,7 @@
 
 Build one reviewable flight-release workspace from the normalized extraction pipeline. Parse each source fact once, keep operational values typed, and present unavailable data honestly instead of inferring it.
 
-### Product and UI rules
+# Product and UI rules
 
 - Use Aviation Blue for structure, Compass Gold for primary emphasis, and the existing light/dark theme tokens.
 - Keep operational values compact and scannable; use monospaced text for codes, times, routes, coordinates, and numeric planning values.
@@ -29,22 +29,51 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 # Tasks
 
-# Parse bottlenecks:
-The cache itself is not slow. The 5.77-second request breaks down as:
-- 10 database queries: 73.52 ms total
-- PDF text cache lookup: miss, 823 μs
-- Cache write: 28.62 ms
-- Extraction pipeline: 3.846 seconds
-- Three sequential airport API calls: 521 ms + 283 ms + 279 ms
-- Rendering/other overhead: relatively small
-The preceding 15.51-second request shows the same pattern, with extraction taking 13.488 seconds. Both requests used different PDF hashes, so both legitimately missed the seven-day text cache in [FlightPlanTextExtractor.php](/home/dm1988/k4-parser/app/Services/FlightPlan/Extractor/FlightPlanTextExtractor.php).
+## Flight plan: Parse bottlenecks:
 
-Two bottlenecks stand out:
-1. PDF parsing/OCR is the largest and most variable cost. Debugbar lacks finer timing spans inside parseFile(), page text extraction, and OCR, so we cannot yet distinguish them precisely.
-2. Airport metadata is fetched serially for departure, destination, and alternate in [FlightRouteExtractor.php](/home/dm1988/k4-parser/app/Services/FlightPlan/Extractor/FlightRouteExtractor.php). This adds roughly 1.1–1.5 seconds per uncached parse. That route bypasses the existing AirportCodeCache used elsewhere.
-The database-backed cache and the 10-query count are not causing the delay. The highest-value fix would be to reuse AirportCodeCache for flight-plan airport lookups, then add timing around PDF parsing versus per-page OCR. No files were changed and no tests were necessary for this read-only diagnosis.
+### Reduce PDF extraction and airport lookup latency
 
-# Refactor welcome page for use with new features
+Goal:
+
+- Reduce uncached flight-plan parse time by eliminating avoidable airport API latency and identifying the slow stages within PDF parsing and OCR.
+
+Problem:
+
+- PDF parsing/OCR is the largest and most variable cost, but the current Debugbar measurements do not distinguish `parseFile()`, page text extraction, and per-page OCR.
+- Departure, destination, and alternate airport metadata requests run sequentially, adding roughly 1.1–1.5 seconds to an uncached parse.
+- Flight-plan airport lookups bypass the existing airport cache, causing repeated remote requests for airport codes already resolved elsewhere.
+
+Current setup:
+
+- A 5.77-second request spent 73.52 ms on 10 database queries, 823 μs on a missed PDF text-cache lookup, 28.62 ms writing that cache, 3.846 seconds in the extraction pipeline, and 521 ms + 283 ms + 279 ms on three sequential airport API calls. Rendering and other overhead were comparatively small.
+- A preceding 15.51-second request showed the same pattern, with 13.488 seconds spent in extraction.
+- The requests used different PDF hashes, so both legitimately missed the seven-day text cache.
+- The database-backed cache and query count are not material bottlenecks.
+
+Implementation / fixes:
+
+1. [x] Completed: Route flight-plan departure, destination, and alternate lookups through the existing `AirportCodeCache`, preserving the current airport metadata contract and failure behavior.
+2. Deduplicate airport codes before lookup so identical route stations are resolved once per parse.
+3. Add timing spans around `parseFile()`, page text extraction, and each OCR operation, including page context and whether OCR was required, without recording document contents.
+4. Add focused tests proving airport cache hits avoid provider calls, duplicate codes are resolved once, cache misses retain current results, and provider failures remain non-fatal where currently supported.
+5. Re-profile one cold-cache and one warm-cache parse, then record the timing comparison here before marking the task complete.
+
+References:
+
+- [FlightPlanTextExtractor.php](/home/dm1988/k4-parser/app/Services/FlightPlan/Extractor/FlightPlanTextExtractor.php)
+- [FlightRouteExtractor.php](/home/dm1988/k4-parser/app/Services/FlightPlan/Extractor/FlightRouteExtractor.php)
+- Existing `AirportCodeCache` implementation and its focused tests.
+
+Proposed commit message: `perf: reduce flight plan parsing bottlenecks`
+
+Outcome:
+
+- Flight-plan airport lookups now reuse cached found, missing, and unavailable resolutions. Provider failures remain non-fatal and return `null` airport metadata.
+- Focused coverage verifies cached resolutions avoid repeated provider calls and unavailable providers retain the existing nullable response contract.
+
+Task commit message: `perf: cache flight plan airport lookups`
+
+## Refactor welcome page for use with new features
 
 Audit outcome:
 
@@ -64,7 +93,7 @@ Refactor plan:
 
 Proposed commit message: `refactor: make welcome page a branded product hub`
 
-# Implement CrewCompass tie ins, branding, and marketing
+## Implement CrewCompass tie ins, branding, and marketing
 
 Reference figma make plan
 
@@ -82,16 +111,16 @@ Simple plan:
 3. Expose typed city-summary data through the event and flight-card view models, then render a reusable Crew Compass city-summary component on layover cards and airport popovers.
 4. Add focused provider, enrichment, view-model, and Blade component tests for available, unavailable, zero-place, duplicate-city, and provider-failure cases.
 
-# feat: Track schedule upload count
+## feat: Track schedule upload count
 - For multiple file uploads within each user request
 
-## Refactor overview task
+## Flight plan: Refactor overview task
 - Emphsize attention items
 - Remove duplicate data that exists in flight strip header
 - Show MELs/CDLs if they exist
 - Show ETOPS info if it exists
 
-## Crew list: role avatar
+## Flight plan: Crew list: role avatar
 - Have crew role displayed inside an avatar bubble
 Entry: Crew Card UI Refactor
 Goal Improve the visual hierarchy and scannability of the crew roster by moving the "Crew Role" (e.g., PIC, SIC, MX) from a secondary text line into a prominent "Avatar Bubble" anchor. The design must be professional, differentiate roles at a glance, and maintain high readability in both light and dark modes without being visually overwhelming.
@@ -122,7 +151,7 @@ Role: text-[10px] font-black uppercase tracking-wider for a "badge" aesthetic.
 Employee ID: Simplified to a small secondary row (text-[10px]) to reduce vertical height.
 Dark Mode Support: All colors include dark: variants (e.g., dark:bg-slate-800 for the bubble and dark:text-blue-400 for role text) to ensure WCAG contrast compliance.
 
-## Add task: Takeoff and Landing Report
+## Flight plan: Add task: Takeoff and Landing Report
 
 Naming outcome: Renamed the view-model presentation API from the ambiguous `envelope*` prefix to `tlr*`. The normalized payload continues using its existing `envelope` storage key until the broader data contract is migrated.
 
@@ -165,16 +194,16 @@ No independent performance determination
 
 This view repeats the confirmed source result. It does not calculate an envelope or label the condition safe; review the controlling performance report.
 
-## Triple extract key flight release data
+## Flight plan: Triple extract key flight release data
 - Key flight plan data is found on the 3 copies. Ensure regex matches 3 times for data found on the top copy.
 - If not found 3 times, reduce confidence score yet still present data
 - Show user message to check the value
 
-## Create a way to turn tasks on or off
+## Flight plan: Create a way to turn tasks on or off
 - in ENV and config files
 - in coordination with enum
 
-## Refactor FlightPlanBriefTest
+## Flight plan: Refactor FlightPlanBriefTest
 - Split tests and organize into folders grouped by test focus area
 
 ## PEST architechure tests
@@ -183,19 +212,19 @@ This view repeats the confirmed source result. It does not calculate an envelope
 - Naming
 - Layering
 
-## Aircraft lookup and display weights
+## Flight plan: Aircraft lookup and display weights
 - Lookup aircraft by tail_number in db
 - Expose weights to user
 - Compare planned weights to aircraft weight limits
 
-## 17. Reserve fuel
+## 17. Flight plan: Reserve fuel
 - Create distinction between Alternate airport burn and Reserve fuel calculation. 
 - Differed due to needing aircraft type fixture and distintion between 747 and 777 aircraft type
 - Requires full fleet in production database.
 - coincides with future 747 seeder into production
 - will have to add migration for reserve fuel additive
 
-# Smart maintenance counter badges
+## Flight plan: Smart maintenance counter badges
 - If MELs exist render in warning
 - If no MELs but CDLs present, render caution
 - If no MEL and CDLs but NEF or COI carry over, render Neutral
@@ -210,57 +239,5 @@ app/Enums/TaskTone.php
 -------------------------------------------------------
 
 ## Completed: Repair Composer lockfile for CI
-
-- [x] Traced the GitHub Actions installation failure to malformed duplicate metadata in `composer.lock` introduced after the last valid Composer update.
-- [x] Restored the immediate pre-corruption lockfile without changing `composer.json` or dependency versions.
-- [x] Strict Composer validation passes and the install dry-run reports no package operations.
-
-Commit message: `fix: restore valid Composer lockfile for CI`
-
 ## Completed: Resolve Larastan errors in tests
-
-- [x] Typed Mockery expectation helpers against `ExpectationInterface`, refined Larastan's fluent type to `Expectation`, and removed impossible runtime type guards.
-- [x] Used Livewire's `viewData()` testing API instead of calling `render()` through the base component type.
-- [x] Removed redundant nullsafe access where valid fixtures guarantee typed values.
-- [x] Six affected test files pass with 68 tests and 963 assertions; Pint and Larastan pass with zero errors.
-
-Commit message: `test: resolve Larastan errors in extraction coverage`
-# Completed: Critical bug
-Bug:
-Cannup upload from schedule extractor. 
-`Extract Schedule` button remains disabled after valid file selection
-
-Somewhere in form.blade.php:
-            <button
-                id="extractBtn"
-                type="submit"
-                data-extract-submit
-                @disabled($files === [])
-                wire:loading.attr="disabled"
-
-Fix:
-Ensure all livewire dependancies
-Ensure vite depenancies
-Ensure npm depanancies
-
-Investigation outcome:
-- Livewire, Vite, and npm dependencies are installed and loaded. Recent Debugbar captures show successful temporary upload and component update requests.
-- The post-upload Livewire state contains one `TemporaryUploadedFile`, so the selected file reaches the server correctly.
-- Root cause: the submit button combines an initially rendered `disabled` attribute with `wire:loading.attr="disabled"` targeting both `files` and `extractRoster`. Livewire records the initial disabled state when the file upload begins and restores that state when loading ends, even though the updated component state contains a valid file.
-- Focused fix: keep `@disabled($files === [])`, but limit the button's loading-disabled target to `extractRoster`. The upload's server rerender can then remove the initial disabled attribute after a valid file is selected.
-- Regression coverage must assert that the submit button has `disabled` before selection and does not have it after setting a valid upload; the existing test checks the ready text but not the resulting button attribute.
-
-Proposed commit message: `fix: enable schedule extraction after file upload`
-
-Implementation outcome:
-- [x] Scoped the submit button's loading-disabled state to `extractRoster`, allowing Livewire's post-upload render to enable it after valid file selection.
-- [x] Added focused regression assertions proving the button is disabled initially and enabled after a valid PDF upload.
-- [x] Focused Livewire test passes with 12 assertions; Pint passes.
-
-References:
-resources/views/components/extract/form.blade.php
-resources/views/livewire/schedule-extractor.blade.php
-
-# Complete: Chore: update laravel
-- Updated to laravel framework 13.26.1
-- Required package updates
+## Completed: Chore: update laravel
