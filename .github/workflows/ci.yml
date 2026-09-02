@@ -27,6 +27,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
+      - name: Prepare Laravel directories
+        run: |
+          mkdir -p storage/framework/{cache/data,sessions,views}
+          mkdir -p storage/logs bootstrap/cache
+
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -48,6 +53,11 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+
+      - name: Prepare Laravel directories
+        run: |
+          mkdir -p storage/framework/{cache/data,sessions,views}
+          mkdir -p storage/logs bootstrap/cache
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -77,6 +87,11 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: package-lock.json
+
+      - name: Prepare Laravel directories
+        run: |
+          mkdir -p storage/framework/{cache/data,sessions,views}
+          mkdir -p storage/logs bootstrap/cache
 
       - name: Build frontend assets
         run: |
@@ -115,6 +130,11 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+
+      - name: Prepare Laravel directories
+        run: |
+          mkdir -p storage/framework/{cache/data,sessions,views}
+          mkdir -p storage/logs bootstrap/cache
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2

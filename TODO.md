@@ -29,6 +29,40 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 # Tasks
 
+## Github CI Tests fail
+
+Check github env
+
+Illuminate\Foundation\ComposerScripts::postAutoloadDump
+  > @php artisan package:discover --ansi
+  
+     InvalidArgumentException 
+  
+    Please provide a valid cache path.
+  
+    at vendor/laravel/framework/src/Illuminate/View/Compilers/Compiler.php:75
+       71▕         $compiledExtension = 'php',
+       72▕         $shouldCheckTimestamps = true,
+       73▕     ) {
+       74▕         if (! $cachePath) {
+    ➜  75▕             throw new InvalidArgumentException('Please provide a valid cache path.');
+       76▕         }
+       77▕ 
+       78▕         $this->files = $files;
+       79▕         $this->cachePath = $cachePath;
+  
+        +19 vendor frames 
+  
+    20  [internal]:0
+        Illuminate\Foundation\Application::{closure:Illuminate\Foundation\Application::boot():1138}()
+        +6 vendor frames 
+  
+    27  artisan:16
+        Illuminate\Foundation\Application::handleCommand()
+  
+  Script @php artisan package:discover --ansi handling the post-autoload-dump event returned with error code 1
+  Error: Process completed with exit code 1
+
 ## Flight plan: Parse bottlenecks:
 
 ### Reduce PDF extraction and airport lookup latency
