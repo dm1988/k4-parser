@@ -6,6 +6,7 @@ use App\Exceptions\FlightRouteNotFoundException;
 use App\Services\FlightPlan\Extractor\FlightPlanTextExtractor;
 use App\Services\FlightPlan\Extractor\GeneralDeclarationExtractor;
 use App\Services\FlightPlan\Extractor\PdfImagePageTextExtractor;
+use Fruitcake\LaravelDebugbar\LaravelDebugbar;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository;
 use Illuminate\Support\Facades\Log;
@@ -104,6 +105,70 @@ class FlightPlanTextExtractorTest extends TestCase
                 "FLIGHT PLAN\nGeneral Declaration (Outward/Inward)",
                 $extractor->extract($path),
             );
+        } finally {
+            unlink($path);
+        }
+    }
+
+    public function test_it_records_safe_pdf_page_and_ocr_timing_context(): void
+    {
+        $path = tempnam('/tmp', 'flight-plan-text-');
+        $this->assertIsString($path);
+        file_put_contents($path, 'pdf bytes');
+
+        $textPage = $this->createMock(Page::class);
+        $textPage->method('getText')->willReturn('FLIGHT PLAN');
+        $imagePage = $this->createMock(Page::class);
+        $imagePage->method('getText')->willReturn('');
+        $document = $this->createMock(Document::class);
+        $document->method('getText')->willReturn('PRIVATE DOCUMENT CONTENT');
+        $document->method('getPages')->willReturn([$textPage, $imagePage]);
+        $parser = $this->createMock(Parser::class);
+        $parser->method('parseFile')->with($path)->willReturn($document);
+        $imagePageTextExtractor = $this->createMock(PdfImagePageTextExtractor::class);
+        $imagePageTextExtractor->method('extract')->with($path, 1)->willReturn('PRIVATE OCR CONTENT');
+
+        $timings = [];
+        $debugbar = $this->createMock(LaravelDebugbar::class);
+        $debugbar->method('isCollecting')->willReturn(true);
+        $debugbar->expects($this->exactly(4))
+            ->method('addMeasure')
+            ->willReturnCallback(function (
+                string $label,
+                float $start,
+                ?float $end,
+                array $context,
+                ?string $collector,
+                ?string $group,
+            ) use (&$timings): void {
+                $timings[] = compact('label', 'context', 'collector', 'group');
+            });
+        $this->app->instance(LaravelDebugbar::class, $debugbar);
+
+        try {
+            $extractor = new FlightPlanTextExtractor(
+                $parser,
+                new Repository(new ArrayStore),
+                $imagePageTextExtractor,
+            );
+
+            $extractor->extract($path);
+
+            $this->assertSame([
+                ['operation' => 'parse_file'],
+                ['operation' => 'page_text', 'page_index' => 0, 'page_number' => 1, 'ocr_required' => false],
+                ['operation' => 'page_text', 'page_index' => 1, 'page_number' => 2, 'ocr_required' => true],
+                ['operation' => 'ocr', 'page_index' => 1, 'page_number' => 2, 'ocr_required' => true],
+            ], array_column($timings, 'context'));
+            $this->assertSame([
+                'Flight plan PDF parse',
+                'Flight plan page text extraction',
+                'Flight plan page text extraction',
+                'Flight plan page OCR',
+            ], array_column($timings, 'label'));
+            $this->assertSame(['time'], array_values(array_unique(array_column($timings, 'collector'))));
+            $this->assertSame(['Flight plan extraction'], array_values(array_unique(array_column($timings, 'group'))));
+            $this->assertStringNotContainsString('PRIVATE', serialize($timings));
         } finally {
             unlink($path);
         }

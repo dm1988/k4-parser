@@ -65,7 +65,7 @@ Illuminate\Foundation\ComposerScripts::postAutoloadDump
 
 ## Flight plan: Parse bottlenecks:
 
-### Reduce PDF extraction and airport lookup latency
+### Completed: Reduce PDF extraction and airport lookup latency
 
 Goal:
 
@@ -88,9 +88,9 @@ Implementation / fixes:
 
 1. [x] Completed: Route flight-plan departure, destination, and alternate lookups through the existing `AirportCodeCache`, preserving the current airport metadata contract and failure behavior.
 2. [x] Completed: Deduplicate airport codes before lookup so identical route stations are resolved once per parse.
-3. Add timing spans around `parseFile()`, page text extraction, and each OCR operation, including page context and whether OCR was required, without recording document contents.
-4. Add focused tests proving airport cache hits avoid provider calls, duplicate codes are resolved once, cache misses retain current results, and provider failures remain non-fatal where currently supported.
-5. Re-profile one cold-cache and one warm-cache parse, then record the timing comparison here before marking the task complete.
+3. [x] Completed: Add timing spans around `parseFile()`, page text extraction, and each OCR operation, including page context and whether OCR was required, without recording document contents.
+4. [x] Completed: Add focused tests proving airport cache hits avoid provider calls, duplicate codes are resolved once, cache misses retain current results, and provider failures remain non-fatal where currently supported.
+5. [x] Completed: Re-profile one cold-cache and one warm-cache parse, then record the timing comparison here before marking the task complete.
 
 References:
 
@@ -105,10 +105,17 @@ Outcome:
 - Flight-plan airport lookups now reuse cached found, missing, and unavailable resolutions. Provider failures remain non-fatal and return `null` airport metadata.
 - Focused coverage verifies cached resolutions avoid repeated provider calls and unavailable providers retain the existing nullable response contract.
 - Route stations are deduplicated before cache or provider access, while each departure, destination, and alternate field retains its expected airport metadata.
+- Debugbar now groups PDF parsing, per-page text extraction, and OCR timings under `Flight plan extraction`, recording only operation and page metadata plus whether OCR was required.
+- Focused cache, duplicate-station, provider-failure, and timing coverage passes: 30 tests with 117 assertions.
+- On September 2, 2026, the full normalized extraction service parsed `CKS025625KLAX.pdf` in 1,942.29 ms after clearing only its PDF-text key and the `KLAX`, `RKSI`, and `RKTU` airport keys. The immediate warm-cache parse took 20.14 ms, a 99.0% reduction, with equivalent route output.
 
 Task 1 commit message: `perf: cache flight plan airport lookups`
 
 Task 2 commit message: `perf: deduplicate flight plan airport lookups`
+
+Task 3 commit message: `perf: instrument flight plan text extraction`
+
+Completion commit message: `perf: complete flight plan extraction optimization`
 
 ## Refactor welcome page for use with new features
 
