@@ -5,6 +5,8 @@ namespace App\Services\Schedule;
 use App\DTOs\AirportResolution;
 use App\Services\Clients\AirportLookupClient;
 use App\Services\Infrastructure\AirportCodeCache;
+use App\ValueObjects\AirportCode;
+use InvalidArgumentException;
 use Throwable;
 
 final class AirportResolver
@@ -20,40 +22,46 @@ final class AirportResolver
      */
     public function resolveMany(iterable $codes): array
     {
-        $codes = collect($codes)
-            ->map(static fn (string $code): string => strtoupper(trim($code)))
-            ->filter(static fn (string $code): bool => preg_match('/^[A-Z]{3,4}$/', $code) === 1)
-            ->unique()
-            ->values();
+        $validCodes = collect($codes)
+            ->map(static function (string $code): ?AirportCode {
+                try {
+                    return AirportCode::from($code);
+                } catch (InvalidArgumentException) {
+                    return null;
+                }
+            })
+            ->filter()
+            ->unique(static fn (AirportCode $code): string => $code->value);
 
         $resolved = [];
 
-        foreach ($codes as $code) {
-            $cached = $this->cache->get($code);
+        foreach ($validCodes as $airportCode) {
+            $codeString = $airportCode->value;
+            $cached = $this->cache->get($codeString);
 
             if ($cached !== null) {
-                $resolved[$code] = $cached;
+                $resolved[$codeString] = $cached;
 
                 continue;
             }
 
             try {
-                $airport = strlen($code) === 3
-                    ? $this->client->lookupByIataOrFail($code)
-                    : $this->client->lookupByIcaoOrFail($code);
+                $airport = $airportCode->isIata()
+                    ? $this->client->lookupByIataOrFail($codeString)
+                    : $this->client->lookupByIcaoOrFail($codeString);
 
                 $resolution = $airport
-                    ? AirportResolution::found($code, $airport)
-                    : AirportResolution::missing($code);
+                    ? AirportResolution::found($codeString, $airport)
+                    : AirportResolution::missing($codeString);
 
                 $this->cache->put($resolution);
-                $resolved[$code] = $resolution;
+                $resolved[$codeString] = $resolution;
             } catch (Throwable $exception) {
                 report($exception);
 
-                $resolution = AirportResolution::unavailable($code);
+                $resolution = AirportResolution::unavailable($codeString);
                 $this->cache->put($resolution);
-                $resolved[$code] = $resolution;
+                $resolved[$codeString] = $resolution;
             }
         }
 

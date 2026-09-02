@@ -1,0 +1,451 @@
+<?php
+
+namespace Tests\Unit\Actions\FlightPlan;
+
+use App\Actions\FlightPlan\BuildFlightPlanPageData;
+use App\Enums\FlightPlanTask;
+use App\Enums\FlightPlanTaskAvailability;
+use App\Enums\OperationsSpecification;
+use PHPUnit\Framework\TestCase;
+
+class BuildFlightPlanPageDataTest extends TestCase
+{
+    public function test_it_builds_typed_page_data_from_the_normalized_contract(): void
+    {
+        $pageData = app(BuildFlightPlanPageData::class)->handle($this->resultPayload());
+
+        $this->assertNotNull($pageData);
+        $this->assertSame('CKS256', $pageData->flightPlan->identity->flightNumber);
+        $this->assertSame('2026-05-25', $pageData->flightPlan->identity->flightDate?->toDateString());
+        $this->assertSame('2026-05-25T02:20:00+00:00', $pageData->flightPlan->schedule->etdUtc);
+        $this->assertSame('PANC', $pageData->flightPlan->route->departure->value);
+        $this->assertSame('DCT Q139 TEST', $pageData->flightPlan->route->route);
+        $this->assertSame(5549, $pageData->flightPlan->route->distanceNauticalMiles);
+        $this->assertSame(200, $pageData->flightPlan->fuelPlan?->costIndex);
+        $this->assertSame(0.0, $pageData->flightPlan->fuelPlan->contingency?->amount);
+        $this->assertSame('Ted Stevens Anchorage International Airport', $pageData->flightPlan->route->departureAirport?->name);
+        $this->assertSame(34000, $pageData->flightPlan->flightInit?->filedInitialAltitude?->value);
+        $this->assertSame(29000, $pageData->flightPlan->flightInit->fmsInitialAltitude?->value);
+        $this->assertSame('12h10m', $pageData->flightPlan->schedule->blockDuration);
+        $this->assertSame('ETP1', $pageData->flightPlan->etops?->equalTimePoints[0]->label);
+        $this->assertSame('N40 31.1', $pageData->flightPlan->etops->entryPoint?->coordinate->latitude);
+        $this->assertTrue($pageData->flightPlan->maintenanceLog?->sectionPresent);
+        $this->assertSame('28-22-01', $pageData->flightPlan->maintenanceLog->items[0]->number);
+        $this->assertSame('Alex Morgan', $pageData->flightPlan->crewMembers[0]->name);
+        $this->assertSame('4827', $pageData->flightPlan->crewMembers[0]->employeeNumber);
+        $this->assertTrue($pageData->flightPlan->crewMembers[0]->highMins);
+        $this->assertSame('11', $pageData->flightPlan->flightInit->acarsInitDate);
+        $this->assertSame(612400, $pageData->flightPlan->takeoffLandingReport?->plannedTakeoffWeight?->amount);
+        $this->assertSame(1015, $pageData->flightPlan->takeoffLandingReport->qnhHectopascals);
+        $this->assertSame(['FIX01', 'FIX01'], array_column($pageData->flightPlan->waypoints, 'identifier'));
+        $this->assertSame(11, $pageData->flightPlan->waypoints[0]->cumulativeDurationMinutes);
+        $this->assertSame(0.0, $pageData->flightPlan->waypoints[0]->remainingFuel?->amount);
+        $this->assertTrue($pageData->flightPlan->generalDeclaration->sectionPresent);
+        $this->assertSame(OperationsSpecification::B44, $pageData->flightPlan->releaseAuthorization->operationsSpecification);
+    }
+
+    public function test_it_ignores_conflicting_root_compatibility_values(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['departure'] = 'XXXX';
+        $payload['destination'] = 'YYYY';
+        $payload['alternate'] = null;
+        $payload['departure_runway'] = '01';
+        $payload['route'] = 'LEGACY ROUTE';
+        $payload['departure_airport'] = [
+            'icao' => 'XXXX',
+            'iata' => 'XXX',
+            'name' => 'Conflicting legacy airport',
+            'city' => 'Nowhere',
+            'state' => null,
+            'country' => 'Nowhere',
+        ];
+        $payload['duration'] = '99h99m';
+
+        $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
+
+        $this->assertNotNull($pageData);
+        $this->assertSame('PANC', $pageData->flightPlan->route->departure->value);
+        $this->assertSame('KMIA', $pageData->flightPlan->route->destination->value);
+        $this->assertSame('KRSW', $pageData->flightPlan->route->alternate?->value);
+        $this->assertSame('25R', $pageData->flightPlan->route->departureRunway);
+        $this->assertSame('DCT Q139 TEST', $pageData->flightPlan->route->route);
+        $this->assertSame('Ted Stevens Anchorage International Airport', $pageData->flightPlan->route->departureAirport?->name);
+        $this->assertSame('12h10m', $pageData->flightPlan->schedule->blockDuration);
+    }
+
+    public function test_it_reports_availability_for_every_flight_plan_task(): void
+    {
+        $pageData = app(BuildFlightPlanPageData::class)->handle($this->resultPayload());
+
+        $this->assertNotNull($pageData);
+        $this->assertSame([
+            FlightPlanTask::Overview->value => FlightPlanTaskAvailability::Available,
+            FlightPlanTask::ReviewMelCdl->value => FlightPlanTaskAvailability::Available,
+            FlightPlanTask::JeppPdPro->value => FlightPlanTaskAvailability::Available,
+            FlightPlanTask::MaintenanceLog->value => FlightPlanTaskAvailability::Available,
+            FlightPlanTask::Envelope->value => FlightPlanTaskAvailability::Available,
+            FlightPlanTask::FlightInit->value => FlightPlanTaskAvailability::Available,
+            FlightPlanTask::Fms->value => FlightPlanTaskAvailability::Available,
+            FlightPlanTask::SlotTimes->value => FlightPlanTaskAvailability::Available,
+            FlightPlanTask::FuelScore->value => FlightPlanTaskAvailability::Available,
+            FlightPlanTask::Etops->value => FlightPlanTaskAvailability::Available,
+            FlightPlanTask::Weather->value => FlightPlanTaskAvailability::NotPresent,
+            FlightPlanTask::WeightAndBalance->value => FlightPlanTaskAvailability::NotPresent,
+        ], $pageData->taskAvailability());
+    }
+
+    public function test_it_rehydrates_weather_reports_and_rejects_malformed_airport_groups(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['weather'] = [
+            'departure' => [
+                'airport' => 'PANC',
+                'metars' => ['METAR PANC 250553Z 22006KT 10SM FEW060 14/06 A2991', '', 42],
+                'tafs' => ['TAF PANC 250521Z 2506/2612 28006KT P6SM BKN070'],
+            ],
+            'destination' => ['airport' => 'invalid', 'metars' => ['ignored'], 'tafs' => []],
+            'alternate' => null,
+            'raim' => 'PASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION VALID FROM 1020Z TO 1240Z',
+        ];
+
+        $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
+
+        $this->assertNotNull($pageData);
+        $this->assertSame('PANC', $pageData->flightPlan->weather?->departure?->airport->value);
+        $this->assertSame(['METAR PANC 250553Z 22006KT 10SM FEW060 14/06 A2991'], $pageData->flightPlan->weather->departure->metars);
+        $this->assertNull($pageData->flightPlan->weather->destination);
+        $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::Weather));
+    }
+
+    public function test_it_preserves_a_sparse_normalized_result(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['schedule']['slots'] = [];
+        $payload['flight_plan_data']['schedule']['slotTimesUtc'] = [];
+        $payload['flight_plan_data']['fuelPlan'] = null;
+        $payload['flight_plan_data']['waypoints'] = [];
+        $payload['flight_plan_data']['maintenanceLog'] = null;
+        $payload['flight_plan_data']['takeoffLandingReport'] = null;
+        $payload['flight_plan_data']['envelope'] = null;
+        unset($payload['flight_plan_data']['flightInit']);
+        unset($payload['flight_plan_data']['generalDeclaration']);
+        unset($payload['flight_plan_data']['releaseAuthorization']);
+        unset($payload['flight_plan_data']['crewMembers'][0]['employeeNumber']);
+        $payload['flight_plan_data']['route']['departureAirport'] = 'invalid';
+        $payload['flight_plan_data']['etops'] = null;
+
+        $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
+
+        $this->assertNotNull($pageData);
+        $this->assertNull($pageData->flightPlan->fuelPlan);
+        $this->assertNull($pageData->flightPlan->flightInit);
+        $this->assertNull($pageData->flightPlan->crewMembers[0]->employeeNumber);
+        $this->assertNull($pageData->flightPlan->route->departureAirport);
+        $this->assertNull($pageData->flightPlan->etops);
+        $this->assertFalse($pageData->flightPlan->generalDeclaration->sectionPresent);
+        $this->assertSame(OperationsSpecification::Unknown, $pageData->flightPlan->releaseAuthorization->operationsSpecification);
+        $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::JeppPdPro));
+        $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::SlotTimes));
+        $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::FuelScore));
+        $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::Etops));
+        $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::MaintenanceLog));
+        $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::Envelope));
+    }
+
+    public function test_it_defaults_malformed_release_authorization_to_unknown(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['releaseAuthorization'] = ['operationsSpecification' => 'unsupported'];
+
+        $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
+
+        $this->assertNotNull($pageData);
+        $this->assertSame(OperationsSpecification::Unknown, $pageData->flightPlan->releaseAuthorization->operationsSpecification);
+    }
+
+    public function test_it_keeps_maintenance_context_available_without_a_dedicated_item_section(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['maintenanceLog']['sectionPresent'] = false;
+        $payload['flight_plan_data']['maintenanceLog']['items'] = [];
+
+        $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
+
+        $this->assertNotNull($pageData);
+        $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::MaintenanceLog));
+    }
+
+    public function test_it_keeps_a_partial_entry_only_etops_section_available(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['etops'] = [
+            'sectionPresent' => true,
+            'applicability' => 'confirmed_etops',
+            'ratingMinutes' => 210,
+            'entryPoint' => [
+                'label' => 'EENT',
+                'coordinate' => ['latitude' => 'N40 31.1', 'longitude' => 'W131 22.6'],
+                'sequence' => 0,
+            ],
+            'exitPoint' => null,
+            'equalTimePoints' => [],
+            'alternates' => [],
+            'scenarios' => [],
+        ];
+
+        $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
+
+        $this->assertNotNull($pageData);
+        $this->assertSame([], $pageData->flightPlan->etops?->equalTimePoints);
+        $this->assertNotNull($pageData->flightPlan->etops->entryPoint);
+        $this->assertSame(210, $pageData->flightPlan->etops->ratingMinutes);
+        $this->assertTrue($pageData->hasEtopsData());
+        $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::Etops));
+    }
+
+    public function test_it_uses_typed_evidence_for_absent_unsupported_and_confirmed_empty_tasks(): void
+    {
+        $builder = app(BuildFlightPlanPageData::class);
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['flightInit'] = null;
+        $payload['flight_plan_data']['crewMembers'] = [];
+        $payload['flight_plan_data']['maintenanceLog'] = null;
+        $payload['flight_plan_data']['etops'] = [
+            'sectionPresent' => true,
+            'applicability' => 'unknown',
+            'ratingMinutes' => null,
+            'entryPoint' => null,
+            'exitPoint' => null,
+            'equalTimePoints' => [],
+            'alternates' => [],
+            'scenarios' => [],
+        ];
+
+        $pageData = $builder->handle($payload);
+
+        $this->assertNotNull($pageData);
+        $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::FlightInit));
+        $this->assertSame(FlightPlanTaskAvailability::NotPresent, $pageData->availabilityFor(FlightPlanTask::ReviewMelCdl));
+        $this->assertSame(FlightPlanTaskAvailability::Available, $pageData->availabilityFor(FlightPlanTask::MaintenanceLog));
+        $this->assertSame(FlightPlanTaskAvailability::NotSupported, $pageData->availabilityFor(FlightPlanTask::Etops));
+
+        $payload['flight_plan_data']['flightInit'] = [
+            'sectionPresent' => true,
+            'acarsInitDate' => null,
+            'filedInitialAltitude' => null,
+            'fmsInitialAltitude' => null,
+        ];
+        $payload['flight_plan_data']['maintenanceLog'] = [
+            'sectionPresent' => true,
+            'items' => [],
+        ];
+        $payload['flight_plan_data']['etops']['applicability'] = 'confirmed_non_etops';
+
+        $confirmedEmptyPageData = $builder->handle($payload);
+
+        $this->assertNotNull($confirmedEmptyPageData);
+        $this->assertSame(FlightPlanTaskAvailability::Available, $confirmedEmptyPageData->availabilityFor(FlightPlanTask::FlightInit));
+        $this->assertSame(FlightPlanTaskAvailability::NotPresent, $confirmedEmptyPageData->availabilityFor(FlightPlanTask::ReviewMelCdl));
+        $this->assertSame(FlightPlanTaskAvailability::Available, $confirmedEmptyPageData->availabilityFor(FlightPlanTask::MaintenanceLog));
+        $this->assertSame(FlightPlanTaskAvailability::NotPresent, $confirmedEmptyPageData->availabilityFor(FlightPlanTask::Etops));
+    }
+
+    public function test_it_keeps_the_envelope_available_for_a_legacy_tlr_without_a_supported_result(): void
+    {
+        $payload = $this->resultPayload();
+        unset($payload['flight_plan_data']['takeoffLandingReport']);
+        $payload['flight_plan_data']['envelope'] = [
+            'sectionPresent' => true,
+            'sourceType' => 'takeoff_landing_report',
+            'plannedTakeoffWeight' => null,
+        ];
+
+        $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
+
+        $this->assertNotNull($pageData);
+        $this->assertSame(
+            FlightPlanTaskAvailability::Available,
+            $pageData->availabilityFor(FlightPlanTask::Envelope),
+        );
+    }
+
+    public function test_it_fails_closed_for_missing_or_malformed_normalized_payloads(): void
+    {
+        $builder = app(BuildFlightPlanPageData::class);
+
+        $this->assertNull($builder->handle(null));
+        $this->assertNull($builder->handle(['departure' => 'PANC']));
+        $this->assertNull($builder->handle(['flight_plan_data' => 'invalid']));
+        $this->assertNull($builder->handle([
+            'flight_plan_data' => [
+                'identity' => [],
+                'schedule' => [],
+                'route' => ['departure' => 'PANC'],
+            ],
+        ]));
+    }
+
+    /** @return array<string, mixed> */
+    private function resultPayload(): array
+    {
+        return [
+            'flight_plan_data' => [
+                'identity' => [
+                    'flightNumber' => 'CKS256',
+                    'tripNumber' => '109546',
+                    'recallNumber' => '62930',
+                    'aircraftType' => 'B777-200F',
+                    'tailNumber' => 'N774CK',
+                    'flightDate' => '2026-05-25',
+                    'releaseRevision' => null,
+                ],
+                'schedule' => [
+                    'etdUtc' => '2026-05-25T02:20:00+00:00',
+                    'etdLocal' => null,
+                    'etaUtc' => '2026-05-25T14:50:00+00:00',
+                    'etaLocal' => null,
+                    'blockDuration' => '12h10m',
+                    'reportTimeUtc' => null,
+                    'reportTimeLocal' => null,
+                    'dutyEndUtc' => null,
+                    'dutyEndLocal' => null,
+                    'slots' => [[
+                        'direction' => 'departure',
+                        'airport' => 'PANC',
+                        'instantUtc' => '2026-05-25T15:20:00+00:00',
+                        'sourceTime' => '1520Z',
+                        'toleranceMinutes' => 30,
+                    ]],
+                    'slotTimesUtc' => ['2026-05-25T15:20:00+00:00'],
+                    'slotTimesLocal' => [],
+                ],
+                'route' => [
+                    'departure' => 'PANC',
+                    'destination' => 'KMIA',
+                    'alternate' => 'KRSW',
+                    'departureAirport' => [
+                        'icao' => 'PANC',
+                        'iata' => 'ANC',
+                        'name' => 'Ted Stevens Anchorage International Airport',
+                        'city' => 'Anchorage',
+                        'state' => 'Alaska',
+                        'country' => 'United States',
+                    ],
+                    'destinationAirport' => null,
+                    'alternateAirport' => null,
+                    'route' => 'DCT Q139 TEST',
+                    'departureRunway' => '25R',
+                    'arrivalRunway' => '27',
+                    'departureSid' => 'SUMMR2',
+                    'arrivalStar' => 'FROGZ5',
+                    'distanceNauticalMiles' => 5549,
+                ],
+                'fuelPlan' => [
+                    'costIndex' => 200,
+                    'ramp' => ['amount' => 216800.0, 'unit' => 'lb'],
+                    'taxi' => ['amount' => 2000.0, 'unit' => 'lb'],
+                    'takeoff' => ['amount' => 214800.0, 'unit' => 'lb'],
+                    'trip' => ['amount' => 195100.0, 'unit' => 'lb'],
+                    'contingency' => ['amount' => 0.0, 'unit' => 'lb'],
+                    'alternate' => ['amount' => 5600.0, 'unit' => 'lb'],
+                    'finalReserve' => ['amount' => 6900.0, 'unit' => 'lb'],
+                    'estimatedLanding' => ['amount' => 19700.0, 'unit' => 'lb'],
+                ],
+                'maintenanceLog' => [
+                    'sectionPresent' => true,
+                    'items' => [[
+                        'type' => 'MEL',
+                        'number' => '28-22-01',
+                        'description' => 'Center tank override pump inoperative.',
+                        'reference' => '1042',
+                        'status' => 'OPEN',
+                        'limitations' => null,
+                        'procedures' => null,
+                    ]],
+                ],
+                'takeoffLandingReport' => [
+                    'sectionPresent' => true,
+                    'sourceType' => 'takeoff_landing_report',
+                    'reportReference' => 'TLR-30 SEQ-48273190 25MAY26 0115Z',
+                    'airport' => 'KLAX',
+                    'plannedRunway' => '25R',
+                    'outsideAirTemperatureCelsius' => 18.0,
+                    'wind' => '250M08',
+                    'qnhInchesMercury' => null,
+                    'qnhHectopascals' => 1015,
+                    'maximumRunwayTakeoffWeight' => ['amount' => 768000, 'unit' => 'lb'],
+                    'flapSetting' => '15',
+                    'antiIce' => false,
+                    'v1Knots' => 151,
+                    'rotateKnots' => 158,
+                    'v2Knots' => 164,
+                    'plannedTakeoffWeight' => ['amount' => 612400, 'unit' => 'lb'],
+                    'maximumFieldTakeoffWeight' => ['amount' => 766000, 'unit' => 'lb'],
+                    'sourceWarnings' => ['Source warning'],
+                ],
+                'flightInit' => [
+                    'sectionPresent' => true,
+                    'acarsInitDate' => '11',
+                    'filedInitialAltitude' => [
+                        'value' => 34000,
+                        'unit' => 'feet',
+                        'isFlightLevel' => true,
+                    ],
+                    'fmsInitialAltitude' => [
+                        'value' => 29000,
+                        'unit' => 'feet',
+                        'isFlightLevel' => true,
+                    ],
+                ],
+                'etops' => [
+                    'sectionPresent' => true,
+                    'applicability' => 'unknown',
+                    'entryPoint' => [
+                        'label' => 'EENT',
+                        'coordinate' => ['latitude' => 'N40 31.1', 'longitude' => 'W131 22.6'],
+                        'sequence' => 0,
+                    ],
+                    'exitPoint' => null,
+                    'equalTimePoints' => [[
+                        'label' => 'ETP1',
+                        'coordinate' => ['latitude' => 'N45 43.7', 'longitude' => 'W143 53.1'],
+                        'sequence' => 1,
+                        'firstAlternate' => 'KSFO',
+                        'secondAlternate' => 'PACD',
+                    ]],
+                    'alternates' => [],
+                    'scenarios' => [[
+                        'name' => 'ALL ENGINE/DECOMPRESSION/LRC',
+                        'equalTimePointLabel' => 'ETP1',
+                        'diversion' => null,
+                        'criticalFuel' => null,
+                        'remarks' => null,
+                    ]],
+                ],
+                'generalDeclaration' => ['sectionPresent' => true],
+                'releaseAuthorization' => ['operationsSpecification' => 'b44'],
+                'crewMembers' => [[
+                    'name' => 'Alex Morgan',
+                    'role' => 'CP',
+                    'base' => 'YIP',
+                    'employeeNumber' => '4827',
+                    'highMins' => true,
+                ]],
+                'waypoints' => [[
+                    'identifier' => 'FIX01',
+                    'coordinate' => 'N01 02.3 E004 05.6',
+                    'legDurationMinutes' => 5,
+                    'cumulativeDurationMinutes' => 11,
+                    'remainingFuel' => ['amount' => 0.0, 'unit' => 'lb'],
+                ], [
+                    'identifier' => 'FIX01',
+                    'coordinate' => 'N02 03.4 E005 06.7',
+                    'legDurationMinutes' => null,
+                    'cumulativeDurationMinutes' => null,
+                    'remainingFuel' => null,
+                ]],
+            ],
+        ];
+    }
+}

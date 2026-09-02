@@ -63,7 +63,7 @@
                 data-extract-submit
                 @disabled($files === [])
                 wire:loading.attr="disabled"
-                wire:target="files, extractRoster"
+                wire:target="extractRoster"
                 class="inline-flex w-full items-center justify-center gap-3 rounded-2xl bg-[#C5A059] px-6 py-4 text-lg font-bold text-[#0B0E14] shadow-lg shadow-[#C5A059]/20 transition duration-300 hover:bg-[#D4AF37] hover:shadow-[#C5A059]/40 disabled:cursor-not-allowed disabled:bg-[#1B365D]/10 disabled:text-[#1B365D]/40 disabled:shadow-none dark:disabled:border dark:disabled:border-slate-700 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
             >
                 <span data-submit-label wire:loading.remove wire:target="extractRoster">Extract Schedule</span>

@@ -41,22 +41,51 @@ class ScheduleExtractorTest extends TestCase
             ->assertSee('Flights only')
             ->assertDontSee('Extracted Schedule');
 
-        $this->assertNull($component->instance()->render()->getData()['viewModel']);
+        $this->assertNull($component->viewData('viewModel'));
     }
 
     public function test_upload_dropzone_displays_the_selected_file_name_size_and_ready_action(): void
     {
-        Livewire::actingAs(User::factory()->create())
+        $component = Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
             ->assertSee('Drop your schedule here')
             ->assertSee('Select up to five images, or one PDF. Click to browse your files.')
-            ->assertSeeHtml('disabled')
+            ->assertSeeHtml('wire:target="extractRoster"');
+
+        $this->assertExtractButtonDisabled($component->html());
+
+        $component
             ->set('files', [UploadedFile::fake()->create('published-roster.pdf', 512, 'application/pdf')])
             ->assertSee('published-roster.pdf')
             ->assertSee('512 KB')
             ->assertSee('Click to change')
             ->assertSee('Files ready to extract')
             ->assertSee('Extract Schedule');
+
+        $this->assertExtractButtonEnabled($component->html());
+    }
+
+    private function assertExtractButtonDisabled(string $html): void
+    {
+        $button = $this->extractButtonHtml($html);
+
+        $this->assertMatchesRegularExpression('/\sdisabled(?:\s|>)/', $button);
+    }
+
+    private function assertExtractButtonEnabled(string $html): void
+    {
+        $button = $this->extractButtonHtml($html);
+
+        $this->assertDoesNotMatchRegularExpression('/\sdisabled(?:\s|>)/', $button);
+    }
+
+    private function extractButtonHtml(string $html): string
+    {
+        $matched = preg_match('/<button\b[^>]*\bid="extractBtn"[^>]*>/s', $html, $matches);
+
+        $this->assertSame(1, $matched);
+
+        return $matches[0];
     }
 
     public function test_the_view_state_cannot_be_changed_by_the_client(): void

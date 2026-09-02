@@ -12,7 +12,7 @@ class PublishedRosterParserTest extends TestCase
         $text = <<<'TEXT'
 Published Roster
 Planning period:June 2026Fleet:All fleetsRank:All ranks
-72860, Gonzalez David
+93614, Gonzalez David
 Rank: FO	Base:KEF	Seniority:745
 Passports:US (12Sep2028)Medical:MED (01Oct2026)Line check:777_LC (01Dec2026)Qualifications:B777
 DateReport (UTC)TagsPosActivityFromTo Start (UTC)End (UTC)A/CLayoverTrip ID
@@ -35,7 +35,7 @@ OFF Days	9	33
 Block time	58:01	273:04
 DH time	25:27
 Block time + DH time 83:28
-Created 17Jun2026 02:12 (UTC) by 72860	  1 (  1)
+Created 17Jun2026 02:12 (UTC) by 93614	  1 (  1)
 TEXT;
 
         $parsed = app(PublishedRosterParser::class)->parse($text);

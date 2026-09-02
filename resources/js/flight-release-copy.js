@@ -1,4 +1,5 @@
 const copyStatusTimeouts = new WeakMap();
+const initializedDocuments = new WeakSet();
 const copyStatusVisibleMilliseconds = 2000;
 const copyStatusFadeMilliseconds = 300;
 
@@ -37,29 +38,45 @@ const copyButtonText = (button) => {
 };
 
 export default function initializeFlightReleaseCopyButtons() {
-    document.querySelectorAll('[data-copy-target]').forEach((button) => {
-        button.addEventListener('click', async () => {
-            const status = document.getElementById(button.dataset.copyStatus);
+    if (initializedDocuments.has(document)) {
+        return;
+    }
 
-            if (! status) {
-                return;
-            }
+    initializedDocuments.add(document);
 
-            const text = copyButtonText(button);
-            const label = button.dataset.copyLabel ?? 'Value';
+    document.addEventListener('click', async (event) => {
+        const target = event.target;
 
-            if (! text) {
-                showCopyStatus(status, `Unable to copy ${label.toLowerCase()}.`);
+        if (! target || typeof target.closest !== 'function') {
+            return;
+        }
 
-                return;
-            }
+        const button = target.closest('[data-copy-target]');
 
-            try {
-                await navigator.clipboard.writeText(text);
-                showCopyStatus(status, `${label} copied.`);
-            } catch {
-                showCopyStatus(status, `Unable to copy ${label.toLowerCase()}.`);
-            }
-        });
+        if (! button) {
+            return;
+        }
+
+        const status = document.getElementById(button.dataset.copyStatus);
+
+        if (! status) {
+            return;
+        }
+
+        const text = copyButtonText(button);
+        const label = button.dataset.copyLabel ?? 'Value';
+
+        if (! text) {
+            showCopyStatus(status, `Unable to copy ${label.toLowerCase()}.`);
+
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(text);
+            showCopyStatus(status, `${label} copied.`);
+        } catch {
+            showCopyStatus(status, `Unable to copy ${label.toLowerCase()}.`);
+        }
     });
 }

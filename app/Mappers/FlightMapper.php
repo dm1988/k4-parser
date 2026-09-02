@@ -3,6 +3,7 @@
 namespace App\Mappers;
 
 use App\DTOs\Flight;
+use App\DTOs\ScheduleData;
 use App\Enums\MetadataKey;
 use App\Enums\ScheduleEventType;
 use Carbon\CarbonImmutable;
@@ -38,6 +39,19 @@ final class FlightMapper
             tailNumber: $this->normalizeTailNumber(
                 $this->nullableString($metadata, MetadataKey::TailNumber->value) ?? $this->nullableString($metadata, MetadataKey::Aircraft->value)
             ),
+            schedule: new ScheduleData(
+                etdUtc: $start,
+                etdLocal: $this->nullableString($metadata, MetadataKey::LegLocalStart->value),
+                etaUtc: $end,
+                etaLocal: $this->nullableString($metadata, MetadataKey::LegLocalEnd->value),
+                blockDuration: $this->nullableString($metadata, MetadataKey::BlockTime->value),
+                reportTimeUtc: $this->nullableString($metadata, MetadataKey::DutyUtcStart->value),
+                reportTimeLocal: $this->nullableString($metadata, MetadataKey::DutyLocalStart->value),
+                dutyEndUtc: $this->nullableString($metadata, MetadataKey::DutyUtcEnd->value),
+                dutyEndLocal: $this->nullableString($metadata, MetadataKey::DutyLocalEnd->value),
+                slotTimesUtc: $this->stringList($metadata[MetadataKey::SlotTimesUtc->value] ?? []),
+                slotTimesLocal: $this->stringList($metadata[MetadataKey::SlotTimesLocal->value] ?? []),
+            ),
             isDeadhead: (bool) ($metadata[MetadataKey::Deadhead->value] ?? $event['is_deadhead'] ?? false),
             badgeColor: (string) ($event['badgeColor'] ?? $event['badge_color'] ?? $eventType->badgeColor()),
             downloadUrl: (string) ($metadata[MetadataKey::FlightawareUrl->value] ?? $metadata[MetadataKey::DownloadUrl->value] ?? $event['download_url'] ?? ''),
@@ -45,18 +59,11 @@ final class FlightMapper
             flightNumber: $this->nullableString($metadata, MetadataKey::FlightNumber->value),
             position: $this->nullableString($metadata, MetadataKey::Position->value),
             aircraft: $this->nullableString($metadata, MetadataKey::Aircraft->value),
-            blockTime: $this->nullableString($metadata, MetadataKey::BlockTime->value),
             tripId: $this->nullableString($metadata, MetadataKey::TripId->value),
             crewCount: $this->nullableInt($metadata, MetadataKey::CrewCount->value),
             operatingCrewCount: $this->nullableInt($metadata, MetadataKey::OperatingCrewCount->value),
             deadheadingCrewCount: $this->nullableInt($metadata, MetadataKey::DeadheadingCrewCount->value),
             dutyStation: $this->nullableString($metadata, MetadataKey::DutyStation->value),
-            legLocalStart: $this->nullableString($metadata, MetadataKey::LegLocalStart->value),
-            legLocalEnd: $this->nullableString($metadata, MetadataKey::LegLocalEnd->value),
-            dutyLocalStart: $this->nullableString($metadata, MetadataKey::DutyLocalStart->value),
-            dutyLocalEnd: $this->nullableString($metadata, MetadataKey::DutyLocalEnd->value),
-            start: $start,
-            end: $end,
             timezone: $this->nullableString($event, 'timezone'),
             origin: $this->nullableString($metadata, MetadataKey::Origin->value) ?? $this->nullableString($metadata, 'station'),
             destination: $this->nullableString($metadata, MetadataKey::Destination->value),
@@ -80,16 +87,20 @@ final class FlightMapper
         $metadata[MetadataKey::Position->value] = $flight->position;
         $metadata[MetadataKey::Aircraft->value] = $flight->aircraft;
         $metadata[MetadataKey::TailNumber->value] = $flight->tailNumber;
-        $metadata[MetadataKey::BlockTime->value] = $flight->blockTime;
+        $metadata[MetadataKey::BlockTime->value] = $flight->schedule->blockDuration;
         $metadata[MetadataKey::TripId->value] = $flight->tripId;
         $metadata[MetadataKey::CrewCount->value] = $flight->crewCount;
         $metadata[MetadataKey::OperatingCrewCount->value] = $flight->operatingCrewCount;
         $metadata[MetadataKey::DeadheadingCrewCount->value] = $flight->deadheadingCrewCount;
         $metadata[MetadataKey::DutyStation->value] = $flight->dutyStation;
-        $metadata[MetadataKey::LegLocalStart->value] = $flight->legLocalStart;
-        $metadata[MetadataKey::LegLocalEnd->value] = $flight->legLocalEnd;
-        $metadata[MetadataKey::DutyLocalStart->value] = $flight->dutyLocalStart;
-        $metadata[MetadataKey::DutyLocalEnd->value] = $flight->dutyLocalEnd;
+        $metadata[MetadataKey::LegLocalStart->value] = $flight->schedule->etdLocal;
+        $metadata[MetadataKey::LegLocalEnd->value] = $flight->schedule->etaLocal;
+        $metadata[MetadataKey::DutyUtcStart->value] = $flight->schedule->reportTimeUtc;
+        $metadata[MetadataKey::DutyLocalStart->value] = $flight->schedule->reportTimeLocal;
+        $metadata[MetadataKey::DutyUtcEnd->value] = $flight->schedule->dutyEndUtc;
+        $metadata[MetadataKey::DutyLocalEnd->value] = $flight->schedule->dutyEndLocal;
+        $metadata[MetadataKey::SlotTimesUtc->value] = $flight->schedule->slotTimesUtc;
+        $metadata[MetadataKey::SlotTimesLocal->value] = $flight->schedule->slotTimesLocal;
         $metadata[MetadataKey::Deadhead->value] = $flight->isDeadhead;
         $metadata[MetadataKey::FlightawareUrl->value] = $flight->downloadUrl !== '' ? $flight->downloadUrl : ($metadata[MetadataKey::FlightawareUrl->value] ?? null);
         $metadata[MetadataKey::RawLines->value] = $flight->rawLines;

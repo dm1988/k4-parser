@@ -37,6 +37,8 @@ enum MetadataKey: string
     case FlightUtcEnd = 'flight_utc_end';
     case DutyUtcStart = 'duty_utc_start';
     case DutyUtcEnd = 'duty_utc_end';
+    case SlotTimesUtc = 'slot_times_utc';
+    case SlotTimesLocal = 'slot_times_local';
     case Crew = 'crew';
 
     public static function values(): array

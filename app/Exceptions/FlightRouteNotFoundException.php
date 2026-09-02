@@ -6,9 +6,9 @@ use RuntimeException;
 
 class FlightRouteNotFoundException extends RuntimeException
 {
-    public static function pdfCouldNotBeRead(string $reason): self
+    public static function pdfCouldNotBeRead(): self
     {
-        return new self('The uploaded PDF could not be read. '.$reason);
+        return new self('The uploaded PDF could not be read. It may be malformed, secured, or image-only.');
     }
 
     public static function flightPlanBlockMissing(): self

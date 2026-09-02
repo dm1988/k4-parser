@@ -21,34 +21,28 @@ class FakeClassList {
     }
 }
 
-const makeButton = (target, label, status) => {
-    let clickListener;
-
-    return {
-        dataset: {
-            copyLabel: label,
-            copyStatus: status,
-            copyTarget: target,
-        },
-        addEventListener(event, listener) {
-            if (event === 'click') {
-                clickListener = listener;
-            }
-        },
-        async click() {
-            await clickListener();
-        },
-    };
-};
-
-const wait = (milliseconds) => new Promise((resolve) => {
-    setTimeout(resolve, milliseconds);
+const makeButton = (target, label, status) => ({
+    dataset: {
+        copyLabel: label,
+        copyStatus: status,
+        copyTarget: target,
+    },
+    closest: () => null,
 });
 
-test('the copy status remains visible when a button is reused after three copy actions', async (context) => {
+const installBrowserGlobals = (context, elements, writeText) => {
     const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
     const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
     const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+    const listeners = [];
+    const fakeDocument = {
+        addEventListener(event, listener) {
+            if (event === 'click') {
+                listeners.push(listener);
+            }
+        },
+        getElementById: (id) => elements.get(id) ?? null,
+    };
 
     context.after(() => {
         for (const [property, descriptor] of Object.entries({
@@ -64,34 +58,15 @@ test('the copy status remains visible when a button is reused after three copy a
         }
     });
 
-    const buttons = [
-        makeButton('departure-output', 'Departure', 'departure-status'),
-        makeButton('destination-output', 'Destination', 'destination-status'),
-        makeButton('alternate-output', 'Alternate', 'alternate-status'),
-    ];
-    const elements = new Map([
-        ['departure-output', { textContent: 'KCVG' }],
-        ['destination-output', { textContent: 'KJFK' }],
-        ['alternate-output', { textContent: 'KEWR' }],
-        ['departure-status', { classList: new FakeClassList(['opacity-0']), textContent: '' }],
-        ['destination-status', { classList: new FakeClassList(['opacity-0']), textContent: '' }],
-        ['alternate-status', { classList: new FakeClassList(['opacity-0']), textContent: '' }],
-    ]);
-
     Object.defineProperties(globalThis, {
         document: {
             configurable: true,
-            value: {
-                getElementById: (id) => elements.get(id) ?? null,
-                querySelectorAll: () => buttons,
-            },
+            value: fakeDocument,
         },
         navigator: {
             configurable: true,
             value: {
-                clipboard: {
-                    writeText: async () => {},
-                },
+                clipboard: { writeText },
             },
         },
         window: {
@@ -100,17 +75,55 @@ test('the copy status remains visible when a button is reused after three copy a
         },
     });
 
+    return {
+        async click(button) {
+            const target = {
+                closest: (selector) => selector === '[data-copy-target]' ? button : null,
+            };
+
+            await Promise.all(listeners.map((listener) => listener({ target })));
+        },
+        listeners,
+    };
+};
+
+test('a copy button inserted after initialization works and repeated copies remain visible', async (context) => {
+    const elements = new Map();
+    const writes = [];
+    const browser = installBrowserGlobals(context, elements, async (value) => writes.push(value));
+
     initializeFlightReleaseCopyButtons();
 
-    await buttons[0].click();
-    await buttons[1].click();
-    await buttons[2].click();
-    await buttons[0].click();
-    await wait(100);
+    const button = makeButton('departure-output', 'Departure', 'departure-status');
+    const status = { classList: new FakeClassList(['opacity-0']), textContent: '' };
 
-    const departureStatus = elements.get('departure-status');
+    elements.set('departure-output', { textContent: 'PANC' });
+    elements.set('departure-status', status);
 
-    assert.equal(departureStatus.textContent, 'Departure copied.');
-    assert.equal(departureStatus.classList.contains('opacity-100'), true);
-    assert.equal(departureStatus.classList.contains('opacity-0'), false);
+    await browser.click(button);
+    await browser.click(button);
+
+    assert.deepEqual(writes, ['PANC', 'PANC']);
+    assert.equal(status.textContent, 'Departure copied.');
+    assert.equal(status.classList.contains('opacity-100'), true);
+    assert.equal(status.classList.contains('opacity-0'), false);
+});
+
+test('initializing twice does not register duplicate delegated listeners', async (context) => {
+    const button = makeButton('route-output', 'Route', 'route-status');
+    const elements = new Map([
+        ['route-output', { value: 'DCT Q139 TEST' }],
+        ['route-status', { classList: new FakeClassList(['opacity-0']), textContent: '' }],
+    ]);
+    let writeCount = 0;
+    const browser = installBrowserGlobals(context, elements, async () => {
+        writeCount++;
+    });
+
+    initializeFlightReleaseCopyButtons();
+    initializeFlightReleaseCopyButtons();
+    await browser.click(button);
+
+    assert.equal(browser.listeners.length, 1);
+    assert.equal(writeCount, 1);
 });

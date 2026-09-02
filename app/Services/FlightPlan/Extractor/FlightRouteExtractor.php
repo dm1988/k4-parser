@@ -3,23 +3,17 @@
 namespace App\Services\FlightPlan\Extractor;
 
 use App\DTOs\AirportData;
+use App\Exceptions\FlightPlanDataConflictException;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Services\Clients\AirportLookupClient;
-use Illuminate\Contracts\Cache\Repository;
-use Illuminate\Support\Facades\Log;
-use Smalot\PdfParser\Parser;
-use Throwable;
 
 class FlightRouteExtractor
 {
-    private const ICAO_ROUTE_LINE_LENGTH = 58;
-
     private const FLIGHT_PLAN_DETAILS_PATTERN = '/\(FPL-[^-]+-[^-]+\s*-[^\r\n]*\s*-([A-Z]{4})\d{4}\s*-(?:N\d{4}|K\d{4}|M\d{3})([A-Z]\d{3,4})\h+(.+?)\s*-([A-Z]{4})(\d{4})(?:\h+([A-Z]{4}))?\b/s';
 
     public function __construct(
-        private readonly Parser $parser,
+        private readonly FlightPlanTextExtractor $textExtractor,
         private readonly AirportLookupClient $airportLookupClient,
-        private readonly Repository $cache,
     ) {}
 
     /**
@@ -27,7 +21,7 @@ class FlightRouteExtractor
      */
     public function extractRoute(string $filePath): string
     {
-        return $this->extractRouteFromText($this->parsePdf($filePath));
+        return $this->extractRouteFromText($this->textExtractor->extract($filePath));
     }
 
     /**
@@ -42,11 +36,7 @@ class FlightRouteExtractor
      *     arrival_runway: ?string,
      *     departure_sid: ?string,
      *     arrival_star: ?string,
-     *     etps: list<array{label: string, airports: string, coordinates: string, scenario: string}>,
-     *     eent_coordinates: ?string,
-     *     eexp_coordinates: ?string,
-     *     initial_altitude: string,
-     *     duration: string,
+     *     distance_nautical_miles: ?int,
      *     route: string
      * }
      *
@@ -54,7 +44,7 @@ class FlightRouteExtractor
      */
     public function extractFlightPlanData(string $filePath): array
     {
-        return $this->extractFlightPlanDataFromText($this->parsePdf($filePath));
+        return $this->extractFlightPlanDataFromText($this->textExtractor->extract($filePath));
     }
 
     /**
@@ -84,11 +74,7 @@ class FlightRouteExtractor
      *     arrival_runway: ?string,
      *     departure_sid: ?string,
      *     arrival_star: ?string,
-     *     etps: list<array{label: string, airports: string, coordinates: string, scenario: string}>,
-     *     eent_coordinates: ?string,
-     *     eexp_coordinates: ?string,
-     *     initial_altitude: string,
-     *     duration: string,
+     *     distance_nautical_miles: ?int,
      *     route: string
      * }
      *
@@ -120,11 +106,7 @@ class FlightRouteExtractor
             'arrival_runway' => $plannedRunways['arrival_runway'],
             'departure_sid' => $plannedRunways['departure_sid'],
             'arrival_star' => $plannedRunways['arrival_star'],
-            'etps' => $this->extractEtps($text),
-            'eent_coordinates' => $this->extractMarkerCoordinates($text, 'EENT'),
-            'eexp_coordinates' => $this->extractMarkerCoordinates($text, 'EEXP'),
-            'initial_altitude' => $this->formatInitialAltitude($matches[2]),
-            'duration' => $this->formatDuration($matches[5]),
+            'distance_nautical_miles' => $this->extractDistanceNauticalMiles($text),
             'route' => $route,
         ];
     }
@@ -165,8 +147,8 @@ class FlightRouteExtractor
     private function extractPlannedRunwayLine(string $text, string $type): array
     {
         $pattern = '/PLANNED\s+TO\s+'.preg_quote($type, '/').'\s+RUNWAY:\s*'
-            .'(\d{2}[LCR]?)\s+(.+?)'
-            .'(?=\s+PLANNED\s+TO\s+(?:DEPT|ARRV)\s+RUNWAY:|\.\s+\*{3,}|\R|$)/i';
+            .'(\d{2}[LCR]?)\h*(.*?)'
+            .'(?=PLANNED\s+TO\s+(?:DEPT|ARRV)\s+RUNWAY:|\h*\*|\R|$)/i';
 
         if (preg_match($pattern, $text, $matches) !== 1) {
             return [
@@ -179,55 +161,8 @@ class FlightRouteExtractor
 
         return [
             'runway' => $matches[1],
-            'procedure' => is_string($procedure) ? rtrim($procedure, '.') : null,
+            'procedure' => is_string($procedure) && $procedure !== '' ? rtrim($procedure, '.') : null,
         ];
-    }
-
-    /**
-     * @return list<array{label: string, airports: string, coordinates: string, scenario: string}>
-     */
-    private function extractEtps(string $text): array
-    {
-        $pattern = '/(ETP\d+)\s+([A-Z]{4}-[A-Z]{4})\s+'
-            .'([NS]\d{2}\s+\d{2}\.\d\s+[EW]\d{3}\s+\d{2}\.\d)\s+'
-            .'(ALL ENGINE\/DECOMPRESSION\/LRC)\b/';
-
-        if (preg_match_all($pattern, $text, $matches, PREG_SET_ORDER) === false) {
-            return [];
-        }
-
-        $etps = [];
-
-        foreach ($matches as $match) {
-            $coordinates = preg_replace('/\s+/', ' ', trim($match[3]));
-
-            if (! is_string($coordinates)) {
-                continue;
-            }
-
-            $etps[$match[1]] = [
-                'label' => $match[1],
-                'airports' => $match[2],
-                'coordinates' => $coordinates,
-                'scenario' => $match[4],
-            ];
-        }
-
-        return array_values($etps);
-    }
-
-    private function extractMarkerCoordinates(string $text, string $marker): ?string
-    {
-        $pattern = '/([NS]\d{2}\s+\d{2}\.\d\s+[EW]\d{3}\s+\d{2}\.\d)'
-            .'\s*\('.preg_quote($marker, '/').'\)/';
-
-        if (preg_match($pattern, $text, $matches) !== 1) {
-            return null;
-        }
-
-        $coordinates = preg_replace('/\s+/', ' ', trim($matches[1]));
-
-        return is_string($coordinates) ? $coordinates : null;
     }
 
     /**
@@ -242,51 +177,17 @@ class FlightRouteExtractor
         return $matches[0];
     }
 
-    /**
-     * @throws FlightRouteNotFoundException
-     */
-    private function parsePdf(string $filePath): string
+    public function extractDistanceNauticalMiles(string $text): ?int
     {
-        $cacheKey = $this->pdfCacheKey($filePath);
+        $matches = [];
+        preg_match_all('/TOTAL\s+DIST\/DEST\s+(\d{1,5})\b/i', $text, $matches);
+        $distances = array_map(static fn (string $distance): int => (int) $distance, $matches[1]);
 
-        if ($cacheKey !== null) {
-            return $this->cache->remember($cacheKey, now()->addDays(7), fn (): string => $this->readPdfText($filePath));
+        if (count(array_unique($distances)) > 1) {
+            throw FlightPlanDataConflictException::forField('route distance');
         }
 
-        return $this->readPdfText($filePath);
-    }
-
-    private function pdfCacheKey(string $filePath): ?string
-    {
-        if (! is_file($filePath)) {
-            return null;
-        }
-
-        $fileHash = hash_file('sha256', $filePath);
-
-        if ($fileHash === false) {
-            return null;
-        }
-
-        return 'flight-route-extractor:pdf-text:'.$fileHash;
-    }
-
-    /**
-     * @throws FlightRouteNotFoundException
-     */
-    private function readPdfText(string $filePath): string
-    {
-        try {
-            return $this->parser->parseFile($filePath)->getText();
-        } catch (Throwable $e) {
-            try {
-                Log::error('PDF parsing failed', ['file' => $filePath, 'error' => $e->getMessage()]);
-            } catch (Throwable) {
-                // Logging is best-effort here because some unit tests do not boot Laravel's container.
-            }
-
-            throw FlightRouteNotFoundException::pdfCouldNotBeRead($e->getMessage());
-        }
+        return $distances[0] ?? null;
     }
 
     private static function normalizeRouteLine(string $line): string
@@ -315,77 +216,5 @@ class FlightRouteExtractor
         }
 
         return implode(PHP_EOL, $normalizedLines);
-    }
-
-    private function formatInitialAltitude(string $level): string
-    {
-        if (preg_match('/^F(\d{3,4})$/', $level, $matches) === 1) {
-            return 'FL '.$matches[1];
-        }
-
-        return $level;
-    }
-
-    private function formatDuration(string $duration): string
-    {
-        return substr($duration, 0, 2).'h'.substr($duration, 2, 2).'m';
-    }
-
-    public function formatForIcaoDisplay(string $route): string
-    {
-        $segments = $this->routeElements($route);
-
-        if ($segments === []) {
-            return trim($route);
-        }
-
-        $lines = [];
-        $currentLine = '';
-
-        foreach ($segments as $segment) {
-            if ($segment === '') {
-                continue;
-            }
-
-            $linePrefix = $lines === [] ? '' : ' ';
-            $candidate = $currentLine === ''
-                ? $linePrefix.$segment
-                : $currentLine.' '.$segment;
-
-            if ($currentLine !== '' && strlen($candidate) > self::ICAO_ROUTE_LINE_LENGTH) {
-                $lines[] = $currentLine;
-                $currentLine = ' '.$segment;
-
-                continue;
-            }
-
-            $currentLine = $candidate;
-        }
-
-        if ($currentLine !== '') {
-            $lines[] = $currentLine;
-        }
-
-        return implode(PHP_EOL, $lines);
-    }
-
-    /**
-     * ICAO routes are whitespace-delimited elements, so wraps must happen
-     * only before the next full element and never inside one.
-     *
-     * @return array<int, string>
-     */
-    private function routeElements(string $route): array
-    {
-        $segments = preg_split('/\s+/', trim($route));
-
-        if ($segments === false) {
-            return [];
-        }
-
-        return array_values(array_filter(
-            $segments,
-            static fn (string $segment): bool => $segment !== '',
-        ));
     }
 }

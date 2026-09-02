@@ -3,9 +3,12 @@
 namespace Tests\Unit;
 
 use App\DTOs\AirportData;
+use App\Exceptions\FlightPlanDataConflictException;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Services\Clients\AirportLookupClient;
+use App\Services\FlightPlan\Extractor\FlightPlanTextExtractor;
 use App\Services\FlightPlan\Extractor\FlightRouteExtractor;
+use App\Services\FlightPlan\Extractor\PdfImagePageTextExtractor;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Cache\Repository;
@@ -48,7 +51,7 @@ TEXT;
         $this->assertSame('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A', $route);
     }
 
-    public function test_extract_flight_plan_data_from_text_returns_departure_destination_alternate_altitude_duration_and_route(): void
+    public function test_extract_flight_plan_data_from_text_returns_route_and_enriched_airports(): void
     {
         $departureAirport = new AirportData('PANC', 'ANC', 'Ted Stevens Anchorage International Airport', 'Anchorage', 'Alaska', 'United States');
         $destinationAirport = new AirportData('KMIA', 'MIA', 'Miami International Airport', 'Miami', 'Florida', 'United States');
@@ -84,11 +87,7 @@ TEXT;
             'arrival_runway' => null,
             'departure_sid' => null,
             'arrival_star' => null,
-            'etps' => [],
-            'eent_coordinates' => null,
-            'eexp_coordinates' => null,
-            'initial_altitude' => 'FL 330',
-            'duration' => '07h12m',
+            'distance_nautical_miles' => null,
             'route' => "DCT JOH DCT YAK J541 SSR DCT 5726N13228W DCT YXS DCT\nDESNU DCT HASOS DCT TIMMR DCT FSD Q19 DSM/N0486F350 J45 IRK DCT\nFAM J151 GETME DCT VLKNN Q139 MGMRY DCT ACORI FROGZ5",
         ], $flightPlan);
     }
@@ -111,7 +110,6 @@ TEXT);
         $this->assertSame('33R', $flightPlan['arrival_runway']);
         $this->assertSame('SUMMR2 SCTRR', $flightPlan['departure_sid']);
         $this->assertSame('GUKDO GUKD2E', $flightPlan['arrival_star']);
-        $this->assertSame('12h10m', $flightPlan['duration']);
     }
 
     public function test_extract_flight_plan_data_from_flattened_pdf_text_returns_planned_runways_sid_and_star(): void
@@ -122,6 +120,7 @@ TEXT);
 KALITTA AIR RELEASE TIME 2154     ********************************************************************* BASED ON FORECAST WINDS:          PLANNED TO DEPT RUNWAY: 25R   SUMMR2 SCTRR          PLANNED TO ARRV RUNWAY: 33R   GUKDO GUKD2E.     ******************************************************************     * REFER TO FSA PRIOR TO DEPARTURE
 ETOPS 60/180ETP1  KSFO-PACD  N45  43.7  W143  53.1  ALL ENGINE/DECOMPRESSION/LRC TIME TO ETP: 03:09
 ETP1  KSFO-PACD  N46 01.0  W144 35.5  1EO/DRIFTDOWN/84M/320KIAS
+ETP1  PACD-RJSS  N47 02.0  W145 36.5  ALL ENGINE/DECOMPRESSION/LRC
 ETP2  PACD-RJSS  N51  48.6  E164  12.8  ALL ENGINE/DECOMPRESSION/LRC TIME TO ETP: 07:42
 N40 31.1 W131 22.6(EENT) 0238 288 340
 N45 19.3 E151 36.4(EEXP)
@@ -132,23 +131,19 @@ TEXT);
         $this->assertSame('33R', $flightPlan['arrival_runway']);
         $this->assertSame('SUMMR2 SCTRR', $flightPlan['departure_sid']);
         $this->assertSame('GUKDO GUKD2E', $flightPlan['arrival_star']);
-        $this->assertSame('12h10m', $flightPlan['duration']);
-        $this->assertSame([
-            [
-                'label' => 'ETP1',
-                'airports' => 'KSFO-PACD',
-                'coordinates' => 'N45 43.7 W143 53.1',
-                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
-            ],
-            [
-                'label' => 'ETP2',
-                'airports' => 'PACD-RJSS',
-                'coordinates' => 'N51 48.6 E164 12.8',
-                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
-            ],
-        ], $flightPlan['etps']);
-        $this->assertSame('N40 31.1 W131 22.6', $flightPlan['eent_coordinates']);
-        $this->assertSame('N45 19.3 E151 36.4', $flightPlan['eexp_coordinates']);
+    }
+
+    public function test_planned_runway_extraction_stops_at_asterisks_and_allows_a_missing_sid(): void
+    {
+        $flightPlan = $this->makeExtractor()->extractFlightPlanDataFromText(<<<'TEXT'
+PLANNED TO DEPT RUNWAY: 33          PLANNED TO ARRV RUNWAY: 33L   OLMEN OLME2E     ******************************************************************     * THE CURRENT AIMS OPERATIONAL PROGRAM SOFTWARE LOADED IN N794CK *
+(FPL-CKS093-IS-B77L/H-SDE2-ZSOF0330-N0487F340 DCT OLMEN OLME2E-RKSI0600)
+TEXT);
+
+        $this->assertSame('33', $flightPlan['departure_runway']);
+        $this->assertNull($flightPlan['departure_sid']);
+        $this->assertSame('33L', $flightPlan['arrival_runway']);
+        $this->assertSame('OLMEN OLME2E', $flightPlan['arrival_star']);
     }
 
     public function test_sample_flight_release_extracts_planned_runways_sid_and_star(): void
@@ -166,23 +161,6 @@ TEXT);
         $this->assertSame('33R', $flightPlan['arrival_runway']);
         $this->assertSame('SUMMR2 SCTRR', $flightPlan['departure_sid']);
         $this->assertSame('GUKDO GUKD2E', $flightPlan['arrival_star']);
-        $this->assertSame('12h10m', $flightPlan['duration']);
-        $this->assertSame([
-            [
-                'label' => 'ETP1',
-                'airports' => 'KSFO-PACD',
-                'coordinates' => 'N45 43.7 W143 53.1',
-                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
-            ],
-            [
-                'label' => 'ETP2',
-                'airports' => 'PACD-RJSS',
-                'coordinates' => 'N51 48.6 E164 12.8',
-                'scenario' => 'ALL ENGINE/DECOMPRESSION/LRC',
-            ],
-        ], $flightPlan['etps']);
-        $this->assertSame('N40 31.1 W131 22.6', $flightPlan['eent_coordinates']);
-        $this->assertSame('N45 19.3 E151 36.4', $flightPlan['eexp_coordinates']);
     }
 
     public function test_extract_flight_plan_data_sets_planned_runway_values_to_null_when_lines_are_missing(): void
@@ -201,30 +179,12 @@ TEXT);
         $this->assertNull($flightPlan['arrival_runway']);
         $this->assertNull($flightPlan['departure_sid']);
         $this->assertNull($flightPlan['arrival_star']);
-        $this->assertSame([], $flightPlan['etps']);
-        $this->assertNull($flightPlan['eent_coordinates']);
-        $this->assertNull($flightPlan['eexp_coordinates']);
-    }
-
-    public function test_extract_flight_plan_data_ignores_non_all_engine_etp_scenarios(): void
-    {
-        $extractor = $this->makeExtractor();
-
-        $flightPlan = $extractor->extractFlightPlanDataFromText(<<<'TEXT'
-ETP1  KSFO-PACD  N46 01.0  W144 35.5  1EO/DRIFTDOWN/84M/320KIAS
-(FPL-CKS272-IS
--B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1
--SBKP1000
--N0487F360 OSUDO4A ASETA
--SCEL0322)
-TEXT);
-
-        $this->assertSame([], $flightPlan['etps']);
     }
 
     public function test_extract_route_uses_the_pdf_parser_output(): void
     {
         $document = $this->createMock(Document::class);
+        $document->method('getPages')->willReturn([]);
         $document->expects($this->once())
             ->method('getText')
             ->willReturn("(FPL-CKS272-IS\n-N0487F360 OSUDO4A ASETA\n-SCEL0322)");
@@ -243,6 +203,7 @@ TEXT);
     public function test_extract_flight_plan_data_uses_the_pdf_parser_output(): void
     {
         $document = $this->createMock(Document::class);
+        $document->method('getPages')->willReturn([]);
         $document->expects($this->once())
             ->method('getText')
             ->willReturn("(FPL-CKS272-IS\n-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1\n-SBKP1000\n-N0487F360 OSUDO4A ASETA\n-SCEL0322 SAME)");
@@ -266,11 +227,7 @@ TEXT);
             'arrival_runway' => null,
             'departure_sid' => null,
             'arrival_star' => null,
-            'etps' => [],
-            'eent_coordinates' => null,
-            'eexp_coordinates' => null,
-            'initial_altitude' => 'FL 360',
-            'duration' => '03h22m',
+            'distance_nautical_miles' => null,
             'route' => 'OSUDO4A ASETA',
         ], $extractor->extractFlightPlanData('/tmp/flight-release.pdf'));
     }
@@ -279,6 +236,7 @@ TEXT);
     {
         $pdfText = "(FPL-CKS272-IS\n-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1\n-SBKP1000\n-N0487F360 OSUDO4A ASETA\n-SCEL0322 SAME)";
         $document = $this->createMock(Document::class);
+        $document->method('getPages')->willReturn([]);
         $document->expects($this->once())
             ->method('getText')
             ->willReturn($pdfText);
@@ -290,7 +248,7 @@ TEXT);
             ->willReturn($document);
 
         $cache = app(Repository::class);
-        $cacheKey = 'flight-route-extractor:pdf-text:'.hash_file('sha256', __FILE__);
+        $cacheKey = 'flight-plan-extractor:v2:pdf-text:'.hash_file('sha256', __FILE__);
         $cache->forget($cacheKey);
         $firstExtractor = $this->makeExtractor($parser, cache: $cache);
         $secondExtractor = $this->makeExtractor($parser, cache: $cache);
@@ -307,11 +265,7 @@ TEXT);
             'arrival_runway' => null,
             'departure_sid' => null,
             'arrival_star' => null,
-            'etps' => [],
-            'eent_coordinates' => null,
-            'eexp_coordinates' => null,
-            'initial_altitude' => 'FL 360',
-            'duration' => '03h22m',
+            'distance_nautical_miles' => null,
             'route' => 'OSUDO4A ASETA',
         ], $secondExtractor->extractFlightPlanData(__FILE__));
         $this->assertSame($pdfText, $cache->get($cacheKey));
@@ -323,11 +277,13 @@ TEXT);
         $this->assertIsString($path);
 
         $firstDocument = $this->createMock(Document::class);
+        $firstDocument->method('getPages')->willReturn([]);
         $firstDocument->expects($this->once())
             ->method('getText')
             ->willReturn("(FPL-CKS272-IS\n-N0487F360 OSUDO4A ASETA\n-SCEL0322)");
 
         $secondDocument = $this->createMock(Document::class);
+        $secondDocument->method('getPages')->willReturn([]);
         $secondDocument->expects($this->once())
             ->method('getText')
             ->willReturn("(FPL-CKS273-IS\n-N0487F360 DCT KEMAX UL9\n-SCEL0322)");
@@ -394,7 +350,6 @@ TEXT;
         $this->assertNull($flightPlan['alternate']);
         $this->assertNull($flightPlan['alternate_airport']);
         $this->assertSame('SCEL', $flightPlan['destination']);
-        $this->assertSame('03h22m', $flightPlan['duration']);
     }
 
     public function test_extract_flight_plan_data_from_text_returns_null_airport_dtos_when_lookup_finds_no_match(): void
@@ -446,7 +401,7 @@ TEXT;
         $extractor->extractRouteFromText($text);
     }
 
-    public function test_extract_route_wraps_pdf_parser_failures_with_a_detailed_message(): void
+    public function test_extract_route_wraps_pdf_parser_failures_with_a_private_safe_message(): void
     {
         $parser = $this->createMock(Parser::class);
         $parser->expects($this->once())
@@ -457,41 +412,56 @@ TEXT;
 
         $this->expectException(FlightRouteNotFoundException::class);
         $this->expectExceptionMessage(
-            'The uploaded PDF could not be read. Object list not found. Possible secured file.'
+            'The uploaded PDF could not be read. It may be malformed, secured, or image-only.'
         );
 
         $extractor->extractRoute('/tmp/flight-release.pdf');
     }
 
-    public function test_format_for_icao_display_wraps_route_on_token_boundaries(): void
+    public function test_it_extracts_total_route_distance_from_every_repeated_page(): void
+    {
+        $extractor = $this->makeExtractor();
+        $text = 'TOTAL DIST/DEST 5549 copied page TOTAL DIST/DEST 5549';
+
+        $this->assertSame(5549, $extractor->extractDistanceNauticalMiles($text));
+        $this->assertSame(3597, $extractor->extractDistanceNauticalMiles('TOTAL DIST/DEST 3597'));
+        $this->assertNull($extractor->extractDistanceNauticalMiles('No distance listed'));
+        $this->assertNull($extractor->extractDistanceNauticalMiles(
+            'DEST RKSI 033.4 01.48 290 0896 P078',
+        ));
+    }
+
+    public function test_it_extracts_distance_when_pdf_columns_are_joined_after_stripped_line_breaks(): void
+    {
+        $extractor = $this->makeExtractor();
+        $text = 'T/O ALT NILTOTAL DIST/DEST 0896 copied page '
+            .'T/O ALT DIFFERENTTOTAL DIST/DEST 0896';
+
+        $this->assertSame(896, $extractor->extractDistanceNauticalMiles($text));
+    }
+
+    public function test_it_rejects_conflicting_distances_when_pdf_columns_are_joined(): void
     {
         $extractor = $this->makeExtractor();
 
-        $formattedRoute = $extractor->formatForIcaoDisplay(
-            'OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A'
-        );
+        $this->expectException(FlightPlanDataConflictException::class);
+        $this->expectExceptionMessage('Conflicting flight release values were found for route distance.');
 
-        $this->assertSame(
-            "OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105\n UMKAL UMKAL6A",
-            $formattedRoute
+        $extractor->extractDistanceNauticalMiles(
+            'NILTOTAL DIST/DEST 0896 DIFFERENTTOTAL DIST/DEST 0897',
         );
     }
 
-    public function test_format_for_icao_display_never_splits_fixes_coordinates_or_speed_level_tokens(): void
+    public function test_it_rejects_conflicting_total_route_distances(): void
     {
         $extractor = $this->makeExtractor();
 
-        $formattedRoute = $extractor->formatForIcaoDisplay(
-            'DCT 5230N05000W N0487F360 UM140 PRAWN DCT 52N030W KEMAX UL9'
-        );
+        $this->expectException(FlightPlanDataConflictException::class);
+        $this->expectExceptionMessage('Conflicting flight release values were found for route distance.');
 
-        $this->assertSame(
-            "DCT 5230N05000W N0487F360 UM140 PRAWN DCT 52N030W KEMAX\n UL9",
-            $formattedRoute
+        $extractor->extractDistanceNauticalMiles(
+            'TOTAL DIST/DEST 5549 copied page TOTAL DIST/DEST 5550',
         );
-        $this->assertStringNotContainsString("5230N0\n5000W", $formattedRoute);
-        $this->assertStringNotContainsString("N0487\nF360", $formattedRoute);
-        $this->assertStringNotContainsString("KE\nMAX", $formattedRoute);
     }
 
     private function makeExtractor(
@@ -500,9 +470,12 @@ TEXT;
         ?Repository $cache = null,
     ): FlightRouteExtractor {
         return new FlightRouteExtractor(
-            $parser ?? new Parser,
+            new FlightPlanTextExtractor(
+                $parser ?? new Parser,
+                $cache ?? new CacheRepository(new ArrayStore),
+                new PdfImagePageTextExtractor,
+            ),
             $airportLookupClient ?? $this->fakeAirportLookupClient(),
-            $cache ?? new CacheRepository(new ArrayStore),
         );
     }
 

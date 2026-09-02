@@ -235,7 +235,7 @@ x Adam Spencer 70853 CP TYS
 x Cameron Stovold 71835 FO LAX
 Ww Anthony Sabanski 73511 DH JAX
 Ww Tiyal Bell 4325 OB CLD
-* David Gonzalez 72860 AFO NUS
+* David Gonzalez 93614 AFO NUS
 TEXT;
 
         $parsed = app(TripInformationParser::class)->parse($text);

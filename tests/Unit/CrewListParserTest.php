@@ -15,7 +15,7 @@ class CrewListParserTest extends TestCase
             'w Jesper Brandt Jensen 71022 (OP ete)',
             'Xx Julio Rodriguez Batista 71559 FO EYW',
             'aXe Cameron Stovold 71835 DH LAX',
-            '* David Gonzalez 72860 INZe) AUS',
+            '* David Gonzalez 93614 INZe) AUS',
         ]);
 
         $this->assertCount(4, $crew);
@@ -38,7 +38,7 @@ class CrewListParserTest extends TestCase
         $this->assertTrue($crew[2]['deadheading']);
 
         $this->assertSame('David Gonzalez', $crew[3]['name']);
-        $this->assertSame('72860', $crew[3]['employee_id']);
+        $this->assertSame('93614', $crew[3]['employee_id']);
         $this->assertNull($crew[3]['role']);
         $this->assertSame('AUS', $crew[3]['base']);
         $this->assertFalse($crew[3]['deadheading']);
@@ -50,7 +50,7 @@ class CrewListParserTest extends TestCase
             'w Jesper Brandt Jensen 71022 (OP ete)',
             'w Julio Rodriguez Batista 71559 FO EYW',
             'aXe Cameron Stovold 71835 DH LAX',
-            '* David Gonzalez 72860 INZe) AUS',
+            '* David Gonzalez 93614 INZe) AUS',
         ]);
 
         $this->assertCount(4, $summary['crew']);
@@ -90,7 +90,7 @@ class CrewListParserTest extends TestCase
             'aXe Giwoong Shim 72368 FO PHX',
             'x Hani El Mir 70326 FME MLB',
             'aXe Renato Pezzulo 73441 AFO ney',
-            '* David Gonzalez 72860 AFO INOS',
+            '* David Gonzalez 93614 AFO INOS',
             'aXe Henry Garcia Santos 2847 LM YIP',
         ]);
 
@@ -106,5 +106,102 @@ class CrewListParserTest extends TestCase
         $this->assertSame('LM', $summary['crew'][5]['role']);
         $this->assertSame('YIP', $summary['crew'][5]['base']);
         $this->assertFalse($summary['crew'][5]['deadheading']);
+    }
+
+    public function test_it_types_flight_release_manifest_positions(): void
+    {
+        $this->assertSame(CrewPosition::PilotInCommand, CrewPosition::tryFrom('PIC'));
+        $this->assertSame(CrewPosition::SecondInCommand, CrewPosition::tryFrom('SIC/FO'));
+        $this->assertSame(CrewPosition::AdditionalCaptain, CrewPosition::tryFrom('ADDNTL CAPT'));
+        $this->assertSame(CrewPosition::InternationalReliefPilot, CrewPosition::tryFrom('IRP'));
+        $this->assertSame(CrewPosition::MaintenancePersonnel, CrewPosition::tryFrom('MX'));
+        $this->assertSame(CrewPosition::Loadmaster, CrewPosition::tryFrom('LM'));
+        $this->assertSame(CrewPosition::AdditionalCrewMember, CrewPosition::tryFrom('ACM'));
+    }
+
+    public function test_it_parses_id_first_manifest_rows_and_ignores_role_only_placeholders(): void
+    {
+        $summary = app(CrewListParser::class)->parseWithSummary([
+            '4387 PIC MORGAN A',
+            '72914 SIC/FO RIVERA D',
+            'ADDNTL',
+            'CAPT',
+            '73521 IRP FOSTER B',
+            '73642 IRP MCCULLOUGH M',
+            '5826 MX BENNETT B 1957 LM GARCIA T',
+            'ACM ACM',
+            'ACM ACM',
+        ]);
+
+        $this->assertSame(6, $summary['crew_count']);
+        $this->assertSame(6, $summary['operating_crew_count']);
+        $this->assertSame(0, $summary['deadheading_crew_count']);
+        $this->assertSame(
+            ['MORGAN A', 'RIVERA D', 'FOSTER B', 'MCCULLOUGH M', 'BENNETT B', 'GARCIA T'],
+            array_column($summary['crew'], 'name'),
+        );
+        $this->assertSame(
+            ['PIC', 'SIC/FO', 'IRP', 'IRP', 'MX', 'LM'],
+            array_column($summary['crew'], 'role'),
+        );
+    }
+
+    public function test_it_removes_a_flattened_additional_captain_heading_from_the_preceding_name(): void
+    {
+        $crew = app(CrewListParser::class)->parseReleaseManifestLine(
+            '72914 SIC/FO GONZALEZ D ADDNTL CAPT',
+        );
+
+        $this->assertCount(1, $crew);
+        $this->assertSame('GONZALEZ D', $crew[0]['name']);
+        $this->assertSame(CrewPosition::SecondInCommand->value, $crew[0]['role']);
+
+        $flattenedCrew = app(CrewListParser::class)->parseReleaseManifestLine(
+            '72914 SIC/FO GONZALEZ D ADDNTL CAPT 73521 IRP FOSTER B',
+        );
+
+        $this->assertSame(['GONZALEZ D', 'FOSTER B'], array_column($flattenedCrew, 'name'));
+        $this->assertSame(['SIC/FO', 'IRP'], array_column($flattenedCrew, 'role'));
+
+        $additionalCaptain = app(CrewListParser::class)->parseReleaseManifestLine(
+            '73332 ADDNTL CAPT DE LA CRUZ J',
+        );
+
+        $this->assertSame('DE LA CRUZ J', $additionalCaptain[0]['name']);
+        $this->assertSame(CrewPosition::AdditionalCaptain->value, $additionalCaptain[0]['role']);
+    }
+
+    public function test_it_parses_the_final_member_before_flattened_empty_role_columns(): void
+    {
+        $crew = app(CrewListParser::class)->parseReleaseManifestLine(
+            '4827 PIC THATCHER A 93614 SIC/FO GONZALEZ D ADDNTL CAPT 84726 IRP MCCLINTOCK A IRP MX LM ACM ACM CIRCLE THE APPROPRIATE STATUS',
+        );
+
+        $this->assertSame(['THATCHER A', 'GONZALEZ D', 'MCCLINTOCK A'], array_column($crew, 'name'));
+        $this->assertSame(['4827', '93614', '84726'], array_column($crew, 'employee_id'));
+        $this->assertSame(['PIC', 'SIC/FO', 'IRP'], array_column($crew, 'role'));
+    }
+
+    public function test_it_removes_manifest_annotations_from_names_and_flags_high_minimums_crew(): void
+    {
+        $crew = app(CrewListParser::class)->parse([
+            '4387 PIC PAYNE R ADDNTL',
+            '72914 SIC/FO GONZALEZ D IRP',
+            '73521 IRP FERGUSON S HIGH MINS',
+        ]);
+
+        $this->assertSame(['PAYNE R', 'GONZALEZ D', 'FERGUSON S'], array_column($crew, 'name'));
+        $this->assertSame([false, false, true], array_column($crew, 'high_mins'));
+    }
+
+    public function test_it_stops_manifest_name_parsing_at_a_line_break(): void
+    {
+        $crew = app(CrewListParser::class)->parseReleaseManifestLine(
+            "4387 PIC PAYNE R\nHIGH MINS",
+        );
+
+        $this->assertCount(1, $crew);
+        $this->assertSame('PAYNE R', $crew[0]['name']);
+        $this->assertFalse($crew[0]['high_mins']);
     }
 }

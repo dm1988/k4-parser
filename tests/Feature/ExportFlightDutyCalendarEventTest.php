@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Actions\BuildScheduleResult;
+use App\Actions\Schedule\BuildScheduleResult;
 use App\DTOs\DutyEvent;
 use App\Models\User;
 use App\Services\Infrastructure\EngineResultCache;

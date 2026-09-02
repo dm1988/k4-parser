@@ -51,8 +51,8 @@ class FlightDtoTest extends TestCase
         $this->assertSame('Jun 15, 11:45 PM -> Jun 16, 3:45 AM', $dto->scheduleLabel);
         $this->assertSame('4:00h', $dto->durationLabel);
         $this->assertSame(4, $dto->crewCount);
-        $this->assertSame('Jun 16 08:45', $dto->legLocalStart);
-        $this->assertSame('Jun 15 12:00', $dto->dutyLocalEnd);
+        $this->assertSame('Jun 16 08:45', $dto->schedule->etdLocal);
+        $this->assertSame('Jun 15 12:00', $dto->schedule->dutyEndLocal);
         $this->assertSame(['Crew list'], $dto->dutyRawLines);
     }
 
@@ -140,15 +140,18 @@ class FlightDtoTest extends TestCase
         $this->assertSame('Flight', $dto->typeLabel);
         $this->assertTrue($dto->isDeadhead);
         $this->assertSame('CKS 206', $dto->flightNumber);
-        $this->assertSame('13:50h', $dto->blockTime);
+        $this->assertSame('13:50h', $dto->schedule->blockDuration);
         $this->assertSame('13131', $dto->tripId);
         $this->assertSame(4, $dto->crewCount);
         $this->assertSame(3, $dto->operatingCrewCount);
-        $this->assertSame('Jun 13 08:35', $dto->legLocalStart);
-        $this->assertSame('Jun 13 22:25', $dto->dutyLocalEnd);
+        $this->assertSame('Jun 13 08:35', $dto->schedule->etdLocal);
+        $this->assertSame('Jun 13 22:25', $dto->schedule->dutyEndLocal);
         $this->assertSame(['line 1', 'line 2'], $dto->rawLines);
         $this->assertSame('CVG', $dto->origin);
         $this->assertSame('NRT', $dto->destination);
+        $this->assertFalse(property_exists($dto, 'blockTime'));
+        $this->assertFalse(property_exists($dto, 'legLocalStart'));
+        $this->assertFalse(property_exists($dto, 'dutyLocalStart'));
     }
 
     public function test_it_can_round_trip_a_flight_dto_back_to_calendar_event(): void
@@ -192,5 +195,6 @@ class FlightDtoTest extends TestCase
         $this->assertSame('FO', $event['metadata']['position']);
         $this->assertSame('Jun 13 08:35', $event['metadata']['leg_local_start']);
         $this->assertSame('Jun 13 23:10', $event['metadata']['duty_local_end']);
+        $this->assertSame('13:50h', $event['metadata']['block_time']);
     }
 }

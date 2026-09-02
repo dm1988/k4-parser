@@ -1,0 +1,7 @@
+MAINTENANCE LOG
+MEL 32-11-02
+REFERENCE: DMI-2099
+STATUS: DEFERRED
+DESCRIPTION: Left main landing gear brake temperature sensor indication
+is intermittent during taxi operations.
+END MAINTENANCE LOG

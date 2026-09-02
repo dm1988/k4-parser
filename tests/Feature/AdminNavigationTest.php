@@ -81,7 +81,8 @@ class AdminNavigationTest extends TestCase
             ->get(route('dashboard'));
 
         $response->assertOk()
-            ->assertSeeText('Extract Flight Plan')
+            ->assertSeeText('Flight Plan Brief')
+            ->assertDontSeeText('Extract Flight Plan')
             ->assertSeeText('Demo')
             ->assertSee('cc-badge inline-flex shrink-0 items-center', escape: false)
             ->assertSeeInOrder([
@@ -90,6 +91,8 @@ class AdminNavigationTest extends TestCase
                 'id="mobile-navigation"',
                 'data-demo-badge',
             ], escape: false);
+
+        $this->assertSame(2, substr_count($response->getContent(), 'Flight Plan Brief'));
     }
 
     public function test_flight_plan_navigation_is_hidden_when_demo_access_is_not_granted(): void
@@ -100,7 +103,7 @@ class AdminNavigationTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertDontSeeText('Extract Flight Plan')
+            ->assertDontSeeText('Flight Plan Brief')
             ->assertDontSee('data-demo-badge', escape: false);
 
         Config::set('features.flight_release.enabled', false);
@@ -108,7 +111,7 @@ class AdminNavigationTest extends TestCase
         $this->actingAs(User::factory()->admin()->create())
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertDontSeeText('Extract Flight Plan')
+            ->assertDontSeeText('Flight Plan Brief')
             ->assertDontSee('data-demo-badge', escape: false);
     }
 
