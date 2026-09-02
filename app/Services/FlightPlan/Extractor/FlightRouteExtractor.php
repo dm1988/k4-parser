@@ -98,14 +98,15 @@ class FlightRouteExtractor
         $departure = $matches[1];
         $destination = $matches[4];
         $alternate = $matches[6] ?? null;
+        $airports = $this->lookupAirports($departure, $destination, $alternate);
 
         return [
             'departure' => $departure,
             'destination' => $destination,
             'alternate' => $alternate,
-            'departure_airport' => $this->lookupAirport($departure),
-            'destination_airport' => $this->lookupAirport($destination),
-            'alternate_airport' => $this->lookupAirport($alternate),
+            'departure_airport' => $airports[$departure] ?? null,
+            'destination_airport' => $airports[$destination] ?? null,
+            'alternate_airport' => is_string($alternate) ? ($airports[$alternate] ?? null) : null,
             'departure_runway' => $plannedRunways['departure_runway'],
             'arrival_runway' => $plannedRunways['arrival_runway'],
             'departure_sid' => $plannedRunways['departure_sid'],
@@ -113,6 +114,24 @@ class FlightRouteExtractor
             'distance_nautical_miles' => $this->extractDistanceNauticalMiles($text),
             'route' => $route,
         ];
+    }
+
+    /**
+     * @return array<string, AirportData|null>
+     */
+    private function lookupAirports(?string ...$icaos): array
+    {
+        $airports = [];
+
+        foreach ($icaos as $icao) {
+            if (! is_string($icao) || $icao === '' || array_key_exists($icao, $airports)) {
+                continue;
+            }
+
+            $airports[$icao] = $this->lookupAirport($icao);
+        }
+
+        return $airports;
     }
 
     private function lookupAirport(?string $icao): ?AirportData

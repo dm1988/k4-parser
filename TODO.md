@@ -53,7 +53,7 @@ Current setup:
 Implementation / fixes:
 
 1. [x] Completed: Route flight-plan departure, destination, and alternate lookups through the existing `AirportCodeCache`, preserving the current airport metadata contract and failure behavior.
-2. Deduplicate airport codes before lookup so identical route stations are resolved once per parse.
+2. [x] Completed: Deduplicate airport codes before lookup so identical route stations are resolved once per parse.
 3. Add timing spans around `parseFile()`, page text extraction, and each OCR operation, including page context and whether OCR was required, without recording document contents.
 4. Add focused tests proving airport cache hits avoid provider calls, duplicate codes are resolved once, cache misses retain current results, and provider failures remain non-fatal where currently supported.
 5. Re-profile one cold-cache and one warm-cache parse, then record the timing comparison here before marking the task complete.
@@ -70,8 +70,11 @@ Outcome:
 
 - Flight-plan airport lookups now reuse cached found, missing, and unavailable resolutions. Provider failures remain non-fatal and return `null` airport metadata.
 - Focused coverage verifies cached resolutions avoid repeated provider calls and unavailable providers retain the existing nullable response contract.
+- Route stations are deduplicated before cache or provider access, while each departure, destination, and alternate field retains its expected airport metadata.
 
-Task commit message: `perf: cache flight plan airport lookups`
+Task 1 commit message: `perf: cache flight plan airport lookups`
+
+Task 2 commit message: `perf: deduplicate flight plan airport lookups`
 
 ## Refactor welcome page for use with new features
 

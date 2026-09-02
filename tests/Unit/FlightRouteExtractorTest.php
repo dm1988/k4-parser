@@ -14,6 +14,7 @@ use App\Services\Infrastructure\AirportCodeCache;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Support\Facades\Cache;
 use Smalot\PdfParser\Document;
 use Smalot\PdfParser\Parser;
 use Tests\TestCase;
@@ -361,6 +362,34 @@ TEXT;
         $this->assertSame($destinationAirport, $firstFlightPlan['destination_airport']);
         $this->assertEquals($departureAirport, $secondFlightPlan['departure_airport']);
         $this->assertEquals($destinationAirport, $secondFlightPlan['destination_airport']);
+    }
+
+    public function test_identical_route_stations_are_resolved_once_per_parse(): void
+    {
+        $airport = new AirportData('SBKP', 'VCP', 'Viracopos International Airport', 'Campinas', 'Sao Paulo', 'Brazil');
+        Cache::shouldReceive('get')
+            ->once()
+            ->with('airport:v1:icao:SBKP')
+            ->andReturnNull();
+        Cache::shouldReceive('put')->once();
+        $airportLookupClient = $this->createMock(AirportLookupClient::class);
+        $airportLookupClient->expects($this->once())
+            ->method('lookupByIcaoOrFail')
+            ->with('SBKP')
+            ->willReturn($airport);
+        $extractor = $this->makeExtractor(airportLookupClient: $airportLookupClient);
+
+        $flightPlan = $extractor->extractFlightPlanDataFromText(<<<'TEXT'
+(FPL-CKS272-IS
+-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1
+-SBKP1000
+-N0487F360 OSUDO4A ASETA
+-SBKP0322 SBKP)
+TEXT);
+
+        $this->assertSame($airport, $flightPlan['departure_airport']);
+        $this->assertSame($airport, $flightPlan['destination_airport']);
+        $this->assertSame($airport, $flightPlan['alternate_airport']);
     }
 
     public function test_airport_provider_failures_remain_non_fatal_and_are_cached(): void
