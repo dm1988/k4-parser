@@ -209,6 +209,14 @@ app/Enums/TaskTone.php
 
 -------------------------------------------------------
 
+## Completed: Repair Composer lockfile for CI
+
+- [x] Traced the GitHub Actions installation failure to malformed duplicate metadata in `composer.lock` introduced after the last valid Composer update.
+- [x] Restored the immediate pre-corruption lockfile without changing `composer.json` or dependency versions.
+- [x] Strict Composer validation passes and the install dry-run reports no package operations.
+
+Commit message: `fix: restore valid Composer lockfile for CI`
+
 ## Completed: Resolve Larastan errors in tests
 
 - [x] Typed Mockery expectation helpers against `ExpectationInterface`, refined Larastan's fluent type to `Expectation`, and removed impossible runtime type guards.
