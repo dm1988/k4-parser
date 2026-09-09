@@ -27,6 +27,26 @@ class AircraftTable
                     ->boolean(),
                 TextColumn::make('airline')
                     ->searchable(),
+                TextColumn::make('max_zero_fuel_weight')
+                    ->label('MZFW')
+                    ->numeric()
+                    ->suffix(' lb')
+                    ->sortable(),
+                TextColumn::make('max_takeoff_weight')
+                    ->label('MTOW')
+                    ->numeric()
+                    ->suffix(' lb')
+                    ->sortable(),
+                TextColumn::make('max_landing_weight')
+                    ->label('MLW')
+                    ->numeric()
+                    ->suffix(' lb')
+                    ->sortable(),
+                TextColumn::make('minimum_flight_weight')
+                    ->label('Minimum Flight Weight')
+                    ->numeric()
+                    ->suffix(' lb')
+                    ->sortable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

@@ -21,6 +21,10 @@ class AircraftResourceTest extends TestCase
 
         $firstAircraft = Aircraft::factory()->create([
             'tail_number' => 'N770CK',
+            'max_zero_fuel_weight' => 610000,
+            'max_takeoff_weight' => 870000,
+            'max_landing_weight' => 652000,
+            'minimum_flight_weight' => 352293,
         ]);
         $secondAircraft = Aircraft::factory()->create([
             'tail_number' => 'N771CK',
@@ -28,6 +32,12 @@ class AircraftResourceTest extends TestCase
 
         Livewire::test(ListAircraft::class)
             ->assertCanSeeTableRecords([$firstAircraft, $secondAircraft])
+            ->assertSee([
+                '610,000 lb',
+                '870,000 lb',
+                '652,000 lb',
+                '352,293 lb',
+            ])
             ->searchTable('N770CK')
             ->assertCanSeeTableRecords([$firstAircraft])
             ->assertCanNotSeeTableRecords([$secondAircraft]);
@@ -45,6 +55,10 @@ class AircraftResourceTest extends TestCase
                 'model' => '777-F',
                 'is_active' => true,
                 'airline' => 'Kalitta Air, LLC',
+                'max_zero_fuel_weight' => 610000,
+                'max_takeoff_weight' => 870000,
+                'max_landing_weight' => 652000,
+                'minimum_flight_weight' => 352293,
             ])
             ->call('create')
             ->assertHasNoFormErrors()
@@ -55,6 +69,10 @@ class AircraftResourceTest extends TestCase
             'manufacturer' => 'Boeing',
             'model' => '777-F',
             'is_active' => true,
+            'max_zero_fuel_weight' => 610000,
+            'max_takeoff_weight' => 870000,
+            'max_landing_weight' => 652000,
+            'minimum_flight_weight' => 352293,
         ]);
     }
 
@@ -75,6 +93,10 @@ class AircraftResourceTest extends TestCase
                 'model' => '777-300ERSF',
                 'is_active' => true,
                 'airline' => 'Kalitta Air, LLC',
+                'max_zero_fuel_weight' => 635000,
+                'max_takeoff_weight' => 875000,
+                'max_landing_weight' => 666000,
+                'minimum_flight_weight' => 353313,
             ])
             ->call('save')
             ->assertHasNoFormErrors();
@@ -83,7 +105,33 @@ class AircraftResourceTest extends TestCase
             'id' => $aircraft->getKey(),
             'type' => 'Boeing 777-300ERSF',
             'model' => '777-300ERSF',
+            'max_zero_fuel_weight' => 635000,
+            'max_takeoff_weight' => 875000,
+            'max_landing_weight' => 666000,
+            'minimum_flight_weight' => 353313,
         ]);
+    }
+
+    public function test_aircraft_weight_fields_reject_negative_values(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+
+        Livewire::test(CreateAircraft::class)
+            ->fillForm([
+                'tail_number' => 'N999CK',
+                'is_active' => true,
+                'max_zero_fuel_weight' => -1,
+                'max_takeoff_weight' => -1,
+                'max_landing_weight' => -1,
+                'minimum_flight_weight' => -1,
+            ])
+            ->call('create')
+            ->assertHasFormErrors([
+                'max_zero_fuel_weight' => 'min',
+                'max_takeoff_weight' => 'min',
+                'max_landing_weight' => 'min',
+                'minimum_flight_weight' => 'min',
+            ]);
     }
 
     public function test_aircraft_form_requires_a_tail_number_and_active_state(): void

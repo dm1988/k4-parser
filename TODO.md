@@ -29,6 +29,16 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 # Tasks
 
+## Completed: Add aircraft weight fields to Filament resource
+
+Outcome:
+
+- Added maximum zero fuel, maximum takeoff, maximum landing, and minimum flight weight inputs to the Aircraft create and edit forms.
+- Added sortable, pound-formatted columns for the four weight limits to the Aircraft table.
+- Added focused resource coverage for displaying, creating, editing, and validating the weight fields.
+
+Commit message: `feat: add weight fields to Filament Aircraft form and table, including validation for negative values`
+
 ## Github CI Tests fail
 
 Check github env

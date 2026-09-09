@@ -20,6 +20,26 @@ class AircraftForm
                 Toggle::make('is_active')
                     ->required(),
                 TextInput::make('airline'),
+                TextInput::make('max_zero_fuel_weight')
+                    ->label('Maximum Zero Fuel Weight')
+                    ->integer()
+                    ->minValue(0)
+                    ->suffix('lb'),
+                TextInput::make('max_takeoff_weight')
+                    ->label('Maximum Takeoff Weight')
+                    ->integer()
+                    ->minValue(0)
+                    ->suffix('lb'),
+                TextInput::make('max_landing_weight')
+                    ->label('Maximum Landing Weight')
+                    ->integer()
+                    ->minValue(0)
+                    ->suffix('lb'),
+                TextInput::make('minimum_flight_weight')
+                    ->label('Minimum Flight Weight')
+                    ->integer()
+                    ->minValue(0)
+                    ->suffix('lb'),
             ]);
     }
 }
