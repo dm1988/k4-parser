@@ -29,6 +29,16 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 # Tasks
 
+## Completed: Allow admins to delete aircraft
+
+Outcome:
+
+- Authorized active administrators to delete individual Aircraft records and perform bulk Aircraft deletion.
+- Preserved the existing denial for non-admin users and for restore or force-delete operations.
+- Added focused Filament resource coverage for edit-page deletion, bulk deletion, and non-admin denial.
+
+Commit message: `feat: allow admins to delete aircraft`
+
 ## Completed: Add aircraft weight fields to Filament resource
 
 Outcome:

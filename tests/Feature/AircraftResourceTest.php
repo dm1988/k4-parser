@@ -160,17 +160,36 @@ class AircraftResourceTest extends TestCase
         $this->get("/admin/aircraft/{$aircraft->getKey()}/edit")->assertForbidden();
     }
 
-    public function test_delete_actions_are_hidden_for_aircraft(): void
+    public function test_admins_can_delete_aircraft_from_resource_actions(): void
     {
         $this->actingAs($this->makeAdminUser());
         $aircraft = Aircraft::factory()->create();
 
-        Livewire::test(ListAircraft::class)
-            ->assertTableActionVisible('edit', $aircraft)
-            ->assertTableBulkActionHidden('delete');
-
         Livewire::test(EditAircraft::class, ['record' => $aircraft->getKey()])
-            ->assertActionHidden('delete');
+            ->assertActionVisible('delete')
+            ->callAction('delete')
+            ->assertRedirect();
+
+        $this->assertModelMissing($aircraft);
+
+        $aircraftToDelete = Aircraft::factory()->count(2)->create();
+
+        Livewire::test(ListAircraft::class)
+            ->assertTableBulkActionVisible('delete')
+            ->callTableBulkAction('delete', $aircraftToDelete);
+
+        foreach ($aircraftToDelete as $deletedAircraft) {
+            $this->assertModelMissing($deletedAircraft);
+        }
+    }
+
+    public function test_non_admin_users_are_not_authorized_to_delete_aircraft(): void
+    {
+        $user = User::factory()->create();
+        $aircraft = Aircraft::factory()->create();
+
+        $this->assertFalse($user->can('delete', $aircraft));
+        $this->assertFalse($user->can('deleteAny', Aircraft::class));
     }
 
     private function makeAdminUser(): User

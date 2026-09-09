@@ -32,12 +32,12 @@ class AircraftPolicy
 
     public function delete(User $user, Aircraft $aircraft): bool
     {
-        return false;
+        return $this->admin($user);
     }
 
     public function deleteAny(User $user): bool
     {
-        return false;
+        return $this->admin($user);
     }
 
     public function restore(User $user, Aircraft $aircraft): bool
