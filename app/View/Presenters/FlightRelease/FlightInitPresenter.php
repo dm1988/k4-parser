@@ -35,19 +35,29 @@ final readonly class FlightInitPresenter
         return $this->pageData?->flightPlan->flightInit?->acarsInitDate;
     }
 
+    public function alternateAirport(): ?string
+    {
+        return $this->pageData?->flightPlan->route->alternate?->value;
+    }
+
+    public function flightDuration(): ?string
+    {
+        return $this->pageData?->flightPlan->schedule->blockDuration;
+    }
+
     /** @return list<array{id: string, label: string, value: ?string}> */
     public function fields(): array
     {
         $flightPlan = $this->pageData?->flightPlan;
 
         return [
-            ['id' => 'flight-init-tail-number', 'label' => 'Tail number', 'value' => $flightPlan?->identity->tailNumber],
+            ['id' => 'flight-init-acars-init-date', 'label' => 'ACARS init date', 'value' => $this->acarsDate()],
+            ['id' => 'flight-init-departure', 'label' => 'Departure airport', 'value' => $flightPlan?->route->departure->value],
+            ['id' => 'flight-init-arrival', 'label' => 'Arrival airport', 'value' => $flightPlan?->route->destination->value],
+            ['id' => 'flight-init-alternate', 'label' => 'Alternate airport', 'value' => $this->alternateAirport()],
+            ['id' => 'flight-init-duration', 'label' => 'Flight duration', 'value' => $this->flightDuration()],
             ['id' => 'flight-init-etd', 'label' => 'ETD (UTC)', 'value' => $this->etdUtc()],
             ['id' => 'flight-init-ramp-fuel', 'label' => 'Estimated ramp fuel', 'value' => $this->rampFuel()],
-            ['id' => 'flight-init-flight-number', 'label' => 'Flight number', 'value' => $flightPlan?->identity->flightNumber],
-            ['id' => 'flight-init-departure', 'label' => 'Departure', 'value' => $flightPlan?->route->departure->value],
-            ['id' => 'flight-init-destination', 'label' => 'Destination', 'value' => $flightPlan?->route->destination->value],
-            ['id' => 'flight-init-acars-init-date', 'label' => 'ACARS init date', 'value' => $this->acarsDate()],
         ];
     }
 }

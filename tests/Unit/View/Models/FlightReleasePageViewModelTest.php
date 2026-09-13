@@ -74,6 +74,8 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertNull($viewModel->flightInitEtdUtc());
         $this->assertNull($viewModel->flightInitRampFuel());
         $this->assertNull($viewModel->flightInitAcarsDate());
+        $this->assertNull($viewModel->flightInitAlternateAirport());
+        $this->assertNull($viewModel->flightInitDuration());
         $this->assertSame([], $viewModel->flightInitCrewMembers());
         $this->assertSame('Confirmed release section', $viewModel->tlrSourceLabel());
         $this->assertNull($viewModel->tlrPlannedTakeoffWeight());
@@ -657,17 +659,37 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('0220Z', $viewModel->flightInitEtdUtc());
         $this->assertSame('225,500 LB', $viewModel->flightInitRampFuel());
         $this->assertSame('11', $viewModel->flightInitAcarsDate());
+        $this->assertSame('KRSW', $viewModel->flightInitAlternateAirport());
+        $this->assertSame('07h12m', $viewModel->flightInitDuration());
         $this->assertSame('4827', $viewModel->flightInitCrewMembers()[0]['employeeNumber']);
         $this->assertSame('CP · YIP', $viewModel->flightInitCrewMembers()[0]['details']);
         $this->assertSame([
-            'flight-init-tail-number',
+            'flight-init-acars-init-date',
+            'flight-init-departure',
+            'flight-init-arrival',
+            'flight-init-alternate',
+            'flight-init-duration',
             'flight-init-etd',
             'flight-init-ramp-fuel',
-            'flight-init-flight-number',
-            'flight-init-departure',
-            'flight-init-destination',
-            'flight-init-acars-init-date',
         ], array_column($viewModel->flightInitFields(), 'id'));
+        $this->assertSame([
+            'ACARS init date',
+            'Departure airport',
+            'Arrival airport',
+            'Alternate airport',
+            'Flight duration',
+            'ETD (UTC)',
+            'Estimated ramp fuel',
+        ], array_column($viewModel->flightInitFields(), 'label'));
+        $this->assertSame([
+            '11',
+            'PANC',
+            'KMIA',
+            'KRSW',
+            '07h12m',
+            '0220Z',
+            '225,500 LB',
+        ], array_column($viewModel->flightInitFields(), 'value'));
     }
 
     #[Test]

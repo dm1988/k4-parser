@@ -872,7 +872,7 @@ class FlightPlanBriefTest extends TestCase
                     schedule: [
                         'etd_utc' => '2026-05-25T13:55:00Z',
                         'eta_utc' => null,
-                        'block_duration' => null,
+                        'block_duration' => '07h12m',
                         'report_time_utc' => null,
                         'duty_end_utc' => null,
                         'slot_times_utc' => [],
@@ -914,25 +914,38 @@ class FlightPlanBriefTest extends TestCase
             ->assertSet('activeTask', FlightPlanTask::FlightInit->value)
             ->assertSeeHtml('wire:key="flight-plan-task-panel-flight_init"')
             ->assertSeeText('Initialization fields')
-            ->assertSeeText('Tail number')
-            ->assertSeeText('N770CK')
             ->assertSeeTextInOrder(['PANC', 'May 25, 2026', '1355z'])
             ->assertSeeHtml('<span class="text-[10px]">z</span>')
             ->assertSeeHtml('max-w-xl')
-            ->assertSeeText('ETD (UTC)')
-            ->assertSeeHtml('id="flight-init-etd"')
-            ->assertSeeText('1355Z')
-            ->assertSeeText('Estimated ramp fuel')
-            ->assertSeeText('225,500 LB')
-            ->assertSeeText('Flight number')
-            ->assertSeeText('CKS256')
-            ->assertSeeText('PANC')
-            ->assertSeeText('KMIA')
-            ->assertSeeText('ACARS INIT DATE')
+            ->assertSeeHtmlInOrder([
+                'id="flight-init-acars-init-date"',
+                'id="flight-init-departure"',
+                'id="flight-init-arrival"',
+                'id="flight-init-alternate"',
+                'id="flight-init-duration"',
+                'id="flight-init-etd"',
+                'id="flight-init-ramp-fuel"',
+                'id="flight-init-crew-heading"',
+            ])
+            ->assertSeeTextInOrder([
+                'ACARS init date',
+                '11',
+                'Departure airport',
+                'PANC',
+                'Arrival airport',
+                'KMIA',
+                'Alternate airport',
+                'KRSW',
+                'Flight duration',
+                '07h12m',
+                'ETD (UTC)',
+                '1355Z',
+                'Estimated ramp fuel',
+                '225,500 LB',
+                'Crew list',
+            ])
             ->assertDontSeeText('Filed initial altitude')
             ->assertDontSeeText('FMS initial altitude')
-            ->assertSeeHtml('id="flight-init-acars-init-date"')
-            ->assertSeeText('11')
             ->assertSeeText('not derived from the release flight date')
             ->assertSeeText('MORGAN A')
             ->assertSeeText('4387')

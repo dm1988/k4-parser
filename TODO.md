@@ -29,25 +29,16 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 # Tasks
 
-## Completed: Allow admins to delete aircraft
+## Completed: Flight init refinement
 
 Outcome:
 
-- Authorized active administrators to delete individual Aircraft records and perform bulk Aircraft deletion.
-- Preserved the existing denial for non-admin users and for restore or force-delete operations.
-- Added focused Filament resource coverage for edit-page deletion, bulk deletion, and non-admin denial.
+- Added the confirmed alternate airport and flight duration to the Flight init metrics.
+- Reordered the metrics to show ACARS init date, departure airport, arrival airport, alternate airport, flight duration, ETD, and estimated ramp fuel before the crew list.
+- Removed tail number and flight number from the metric grid because they remain visible in the release summary.
+- Added focused presenter and Livewire coverage for the values and their rendered order.
 
-Commit message: `feat: allow admins to delete aircraft`
-
-## Completed: Add aircraft weight fields to Filament resource
-
-Outcome:
-
-- Added maximum zero fuel, maximum takeoff, maximum landing, and minimum flight weight inputs to the Aircraft create and edit forms.
-- Added sortable, pound-formatted columns for the four weight limits to the Aircraft table.
-- Added focused resource coverage for displaying, creating, editing, and validating the weight fields.
-
-Commit message: `feat: add weight fields to Filament Aircraft form and table, including validation for negative values`
+Commit message: `refactor: refine flight init presentation`
 
 ## Github CI Tests fail
 
@@ -82,60 +73,6 @@ Illuminate\Foundation\ComposerScripts::postAutoloadDump
   
   Script @php artisan package:discover --ansi handling the post-autoload-dump event returned with error code 1
   Error: Process completed with exit code 1
-
-## Flight plan: Parse bottlenecks:
-
-### Completed: Reduce PDF extraction and airport lookup latency
-
-Goal:
-
-- Reduce uncached flight-plan parse time by eliminating avoidable airport API latency and identifying the slow stages within PDF parsing and OCR.
-
-Problem:
-
-- PDF parsing/OCR is the largest and most variable cost, but the current Debugbar measurements do not distinguish `parseFile()`, page text extraction, and per-page OCR.
-- Departure, destination, and alternate airport metadata requests run sequentially, adding roughly 1.1–1.5 seconds to an uncached parse.
-- Flight-plan airport lookups bypass the existing airport cache, causing repeated remote requests for airport codes already resolved elsewhere.
-
-Current setup:
-
-- A 5.77-second request spent 73.52 ms on 10 database queries, 823 μs on a missed PDF text-cache lookup, 28.62 ms writing that cache, 3.846 seconds in the extraction pipeline, and 521 ms + 283 ms + 279 ms on three sequential airport API calls. Rendering and other overhead were comparatively small.
-- A preceding 15.51-second request showed the same pattern, with 13.488 seconds spent in extraction.
-- The requests used different PDF hashes, so both legitimately missed the seven-day text cache.
-- The database-backed cache and query count are not material bottlenecks.
-
-Implementation / fixes:
-
-1. [x] Completed: Route flight-plan departure, destination, and alternate lookups through the existing `AirportCodeCache`, preserving the current airport metadata contract and failure behavior.
-2. [x] Completed: Deduplicate airport codes before lookup so identical route stations are resolved once per parse.
-3. [x] Completed: Add timing spans around `parseFile()`, page text extraction, and each OCR operation, including page context and whether OCR was required, without recording document contents.
-4. [x] Completed: Add focused tests proving airport cache hits avoid provider calls, duplicate codes are resolved once, cache misses retain current results, and provider failures remain non-fatal where currently supported.
-5. [x] Completed: Re-profile one cold-cache and one warm-cache parse, then record the timing comparison here before marking the task complete.
-
-References:
-
-- [FlightPlanTextExtractor.php](/home/dm1988/k4-parser/app/Services/FlightPlan/Extractor/FlightPlanTextExtractor.php)
-- [FlightRouteExtractor.php](/home/dm1988/k4-parser/app/Services/FlightPlan/Extractor/FlightRouteExtractor.php)
-- Existing `AirportCodeCache` implementation and its focused tests.
-
-Proposed commit message: `perf: reduce flight plan parsing bottlenecks`
-
-Outcome:
-
-- Flight-plan airport lookups now reuse cached found, missing, and unavailable resolutions. Provider failures remain non-fatal and return `null` airport metadata.
-- Focused coverage verifies cached resolutions avoid repeated provider calls and unavailable providers retain the existing nullable response contract.
-- Route stations are deduplicated before cache or provider access, while each departure, destination, and alternate field retains its expected airport metadata.
-- Debugbar now groups PDF parsing, per-page text extraction, and OCR timings under `Flight plan extraction`, recording only operation and page metadata plus whether OCR was required.
-- Focused cache, duplicate-station, provider-failure, and timing coverage passes: 30 tests with 117 assertions.
-- On September 2, 2026, the full normalized extraction service parsed `CKS025625KLAX.pdf` in 1,942.29 ms after clearing only its PDF-text key and the `KLAX`, `RKSI`, and `RKTU` airport keys. The immediate warm-cache parse took 20.14 ms, a 99.0% reduction, with equivalent route output.
-
-Task 1 commit message: `perf: cache flight plan airport lookups`
-
-Task 2 commit message: `perf: deduplicate flight plan airport lookups`
-
-Task 3 commit message: `perf: instrument flight plan text extraction`
-
-Completion commit message: `perf: complete flight plan extraction optimization`
 
 ## Refactor welcome page for use with new features
 
@@ -305,3 +242,78 @@ app/Enums/TaskTone.php
 ## Completed: Repair Composer lockfile for CI
 ## Completed: Resolve Larastan errors in tests
 ## Completed: Chore: update laravel
+
+## Completed: Allow admins to delete aircraft
+
+Outcome:
+
+- Authorized active administrators to delete individual Aircraft records and perform bulk Aircraft deletion.
+- Preserved the existing denial for non-admin users and for restore or force-delete operations.
+- Added focused Filament resource coverage for edit-page deletion, bulk deletion, and non-admin denial.
+
+Commit message: `feat: allow admins to delete aircraft`
+
+## Completed: Add aircraft weight fields to Filament resource
+
+Outcome:
+
+- Added maximum zero fuel, maximum takeoff, maximum landing, and minimum flight weight inputs to the Aircraft create and edit forms.
+- Added sortable, pound-formatted columns for the four weight limits to the Aircraft table.
+- Added focused resource coverage for displaying, creating, editing, and validating the weight fields.
+
+Commit message: `feat: add weight fields to Filament Aircraft form and table, including validation for negative values`
+
+
+## Flight plan: Parse bottlenecks:
+
+### Completed: Reduce PDF extraction and airport lookup latency
+
+Goal:
+
+- Reduce uncached flight-plan parse time by eliminating avoidable airport API latency and identifying the slow stages within PDF parsing and OCR.
+
+Problem:
+
+- PDF parsing/OCR is the largest and most variable cost, but the current Debugbar measurements do not distinguish `parseFile()`, page text extraction, and per-page OCR.
+- Departure, destination, and alternate airport metadata requests run sequentially, adding roughly 1.1–1.5 seconds to an uncached parse.
+- Flight-plan airport lookups bypass the existing airport cache, causing repeated remote requests for airport codes already resolved elsewhere.
+
+Current setup:
+
+- A 5.77-second request spent 73.52 ms on 10 database queries, 823 μs on a missed PDF text-cache lookup, 28.62 ms writing that cache, 3.846 seconds in the extraction pipeline, and 521 ms + 283 ms + 279 ms on three sequential airport API calls. Rendering and other overhead were comparatively small.
+- A preceding 15.51-second request showed the same pattern, with 13.488 seconds spent in extraction.
+- The requests used different PDF hashes, so both legitimately missed the seven-day text cache.
+- The database-backed cache and query count are not material bottlenecks.
+
+Implementation / fixes:
+
+1. [x] Completed: Route flight-plan departure, destination, and alternate lookups through the existing `AirportCodeCache`, preserving the current airport metadata contract and failure behavior.
+2. [x] Completed: Deduplicate airport codes before lookup so identical route stations are resolved once per parse.
+3. [x] Completed: Add timing spans around `parseFile()`, page text extraction, and each OCR operation, including page context and whether OCR was required, without recording document contents.
+4. [x] Completed: Add focused tests proving airport cache hits avoid provider calls, duplicate codes are resolved once, cache misses retain current results, and provider failures remain non-fatal where currently supported.
+5. [x] Completed: Re-profile one cold-cache and one warm-cache parse, then record the timing comparison here before marking the task complete.
+
+References:
+
+- [FlightPlanTextExtractor.php](/home/dm1988/k4-parser/app/Services/FlightPlan/Extractor/FlightPlanTextExtractor.php)
+- [FlightRouteExtractor.php](/home/dm1988/k4-parser/app/Services/FlightPlan/Extractor/FlightRouteExtractor.php)
+- Existing `AirportCodeCache` implementation and its focused tests.
+
+Proposed commit message: `perf: reduce flight plan parsing bottlenecks`
+
+Outcome:
+
+- Flight-plan airport lookups now reuse cached found, missing, and unavailable resolutions. Provider failures remain non-fatal and return `null` airport metadata.
+- Focused coverage verifies cached resolutions avoid repeated provider calls and unavailable providers retain the existing nullable response contract.
+- Route stations are deduplicated before cache or provider access, while each departure, destination, and alternate field retains its expected airport metadata.
+- Debugbar now groups PDF parsing, per-page text extraction, and OCR timings under `Flight plan extraction`, recording only operation and page metadata plus whether OCR was required.
+- Focused cache, duplicate-station, provider-failure, and timing coverage passes: 30 tests with 117 assertions.
+- On September 2, 2026, the full normalized extraction service parsed `CKS025625KLAX.pdf` in 1,942.29 ms after clearing only its PDF-text key and the `KLAX`, `RKSI`, and `RKTU` airport keys. The immediate warm-cache parse took 20.14 ms, a 99.0% reduction, with equivalent route output.
+
+Task 1 commit message: `perf: cache flight plan airport lookups`
+
+Task 2 commit message: `perf: deduplicate flight plan airport lookups`
+
+Task 3 commit message: `perf: instrument flight plan text extraction`
+
+Completion commit message: `perf: complete flight plan extraction optimization`

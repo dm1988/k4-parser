@@ -386,6 +386,16 @@ readonly class FlightReleasePageViewModel
         return $this->flightInitPresenter->acarsDate();
     }
 
+    public function flightInitAlternateAirport(): ?string
+    {
+        return $this->flightInitPresenter->alternateAirport();
+    }
+
+    public function flightInitDuration(): ?string
+    {
+        return $this->flightInitPresenter->flightDuration();
+    }
+
     /** @return list<array{id: string, label: string, value: ?string}> */
     public function flightInitFields(): array
     {
