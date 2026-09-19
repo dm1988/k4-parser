@@ -11,6 +11,16 @@ class FlightRouteNotFoundException extends RuntimeException
         return new self('The uploaded PDF could not be read. It may be malformed, secured, or image-only.');
     }
 
+    public static function ocrUnavailable(): self
+    {
+        return new self('The uploaded PDF contains image-only pages, but OCR is unavailable.');
+    }
+
+    public static function ocrFailed(): self
+    {
+        return new self('An image-only page in the uploaded PDF could not be read by OCR.');
+    }
+
     public static function flightPlanBlockMissing(): self
     {
         return new self('No ICAO flight plan block was found in the uploaded PDF.');

@@ -99,6 +99,8 @@ class FlightPlanTextExtractor
             }
 
             return $text;
+        } catch (FlightRouteNotFoundException $exception) {
+            throw $exception;
         } catch (Throwable $throwable) {
             try {
                 Log::error('PDF parsing failed', [

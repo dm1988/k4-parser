@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Exceptions\FlightRouteNotFoundException;
+use App\Services\FlightPlan\Extractor\Etops\EtopsRouteExtractor;
 use App\Services\FlightPlan\Extractor\FlightPlanTextExtractor;
 use App\Services\FlightPlan\Extractor\GeneralDeclarationExtractor;
 use App\Services\FlightPlan\Extractor\PdfImagePageTextExtractor;
@@ -110,6 +111,57 @@ class FlightPlanTextExtractorTest extends TestCase
         }
     }
 
+    public function test_it_does_not_cache_partial_text_when_ocr_is_unavailable(): void
+    {
+        $path = tempnam('/tmp', 'flight-plan-text-');
+        $this->assertIsString($path);
+        file_put_contents($path, 'pdf bytes');
+
+        $imagePage = $this->createMock(Page::class);
+        $imagePage->expects($this->exactly(2))->method('getText')->willReturn('');
+        $document = $this->createMock(Document::class);
+        $document->expects($this->exactly(2))->method('getText')->willReturn('FLIGHT PLAN');
+        $document->expects($this->exactly(2))->method('getPages')->willReturn([$imagePage]);
+        $parser = $this->createMock(Parser::class);
+        $parser->expects($this->exactly(2))->method('parseFile')->with($path)->willReturn($document);
+        $imagePageTextExtractor = $this->createMock(PdfImagePageTextExtractor::class);
+        $imagePageTextExtractor->expects($this->exactly(2))
+            ->method('extract')
+            ->with($path, 0)
+            ->willThrowException(FlightRouteNotFoundException::ocrUnavailable());
+        $extractor = new FlightPlanTextExtractor(
+            $parser,
+            new Repository(new ArrayStore),
+            $imagePageTextExtractor,
+        );
+
+        try {
+            foreach (range(1, 2) as $attempt) {
+                try {
+                    $extractor->extract($path);
+                    $this->fail("OCR attempt {$attempt} should fail.");
+                } catch (FlightRouteNotFoundException $exception) {
+                    $this->assertSame(
+                        'The uploaded PDF contains image-only pages, but OCR is unavailable.',
+                        $exception->getMessage(),
+                    );
+                }
+            }
+        } finally {
+            unlink($path);
+        }
+    }
+
+    public function test_image_page_extraction_fails_clearly_without_ocr_dependencies(): void
+    {
+        config()->set('services.ocr.tesseract_path', '/missing/tesseract');
+
+        $this->expectException(FlightRouteNotFoundException::class);
+        $this->expectExceptionMessage('The uploaded PDF contains image-only pages, but OCR is unavailable.');
+
+        (new PdfImagePageTextExtractor)->extract('/tmp/flight-plan.pdf', 0);
+    }
+
     public function test_it_records_safe_pdf_page_and_ocr_timing_context(): void
     {
         $path = tempnam('/tmp', 'flight-plan-text-');
@@ -191,6 +243,26 @@ class FlightPlanTextExtractorTest extends TestCase
         $result = (new GeneralDeclarationExtractor)->extract($text);
 
         $this->assertTrue($result['data']['section_present']);
+    }
+
+    public function test_private_image_only_etops_boundary_page_is_detected(): void
+    {
+        $path = storage_path('app/private/flight_releases/CKS091918ZSPD-testing.pdf');
+
+        if (! is_file($path)) {
+            $this->markTestSkipped('The private image-only ETOPS fixture is not available.');
+        }
+
+        $text = (new FlightPlanTextExtractor(
+            new Parser,
+            new Repository(new ArrayStore),
+            new PdfImagePageTextExtractor,
+        ))->extract($path);
+
+        $result = (new EtopsRouteExtractor)->extract($text);
+
+        $this->assertSame('N45 54.3 E154 20.0', $result['data']['eent_coordinates']);
+        $this->assertSame('N57 51.2 W175 26.2', $result['data']['eexp_coordinates']);
     }
 
     private function assertReceivedOnce(MockInterface $mock, string $method): VerificationDirector

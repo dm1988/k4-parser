@@ -2,6 +2,7 @@
 
 namespace App\Services\FlightPlan\Extractor;
 
+use App\Exceptions\FlightRouteNotFoundException;
 use Illuminate\Support\Facades\File;
 use Imagick;
 use Symfony\Component\Process\Process;
@@ -13,14 +14,14 @@ class PdfImagePageTextExtractor
     {
         $tesseract = config('services.ocr.tesseract_path', '/usr/bin/tesseract');
 
-        if (! is_string($tesseract) || ! is_executable($tesseract)) {
-            return '';
+        if (! class_exists(Imagick::class) || ! is_string($tesseract) || ! is_executable($tesseract)) {
+            throw FlightRouteNotFoundException::ocrUnavailable();
         }
 
         $imagePath = tempnam(storage_path('app'), 'flight-plan-ocr-');
 
         if ($imagePath === false) {
-            return '';
+            throw FlightRouteNotFoundException::ocrFailed();
         }
 
         try {
@@ -39,7 +40,7 @@ class PdfImagePageTextExtractor
         } catch (Throwable $throwable) {
             report($throwable);
 
-            return '';
+            throw FlightRouteNotFoundException::ocrFailed();
         } finally {
             File::delete($imagePath);
         }
