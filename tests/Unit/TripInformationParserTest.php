@@ -177,6 +177,38 @@ TEXT;
         $this->assertSame('United Airlines', $event['metadata']['airline_name']);
     }
 
+    public function test_it_does_not_extract_a_confirmation_number_as_a_commercial_deadhead_tail_number(): void
+    {
+        Airline::query()->create([
+            'name' => 'Cathay Pacific',
+            'iata_code' => 'CX',
+            'active' => true,
+        ]);
+
+        $text = <<<'TEXT'
+September 2026
+Details
+Sep 16 23:00 - Sep 17 02:50
+cS CX 413 Pos Cxn a
+ICN - HKG | DH 02:50h
+Leg LT
+Sep 17 08:00 - Sep 17 10:50
+Duty LT Sep 17 06:00 - Sep 17 16:55 Catering Not Ordered
+CNF #: BHJCHN
+Crew list
+Name Crew Pos Base
+* David Gonzalez 72860 DH NUS
+TEXT;
+
+        $event = app(TripInformationParser::class)->parse($text)['calendar_events'][0];
+
+        $this->assertSame(ScheduleEventType::Deadhead->value, $event['type']);
+        $this->assertSame('CX 413', $event['metadata']['flight_number']);
+        $this->assertSame('Cathay Pacific', $event['metadata']['airline_name']);
+        $this->assertArrayNotHasKey('tail_number', $event['metadata']);
+        $this->assertArrayNotHasKey('flightaware_url', $event['metadata']);
+    }
+
     public function test_it_preserves_company_flight_numbers_for_deadheads_with_an_aircraft_model(): void
     {
         $text = <<<'TEXT'

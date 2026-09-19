@@ -29,6 +29,16 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 # Tasks
 
+## Completed: Bug: Edge case - Incorrect DH extraction
+
+Outcome:
+
+- Confirmed from the source image that `BHJCHN` is labeled `CNF #` and is booking confirmation data.
+- Excluded lines labeled `CNF` or `Confirmation` from fallback tail-number extraction without changing supported aircraft-registration formats or display precedence.
+- Kept `CX 413` resolved to `Cathay Pacific` and added focused parser regression coverage.
+
+Commit message: `fix: correct commercial deadhead tail extraction`
+
 ## Completed: Flight init refinement
 
 Outcome:

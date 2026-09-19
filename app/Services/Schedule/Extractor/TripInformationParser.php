@@ -846,6 +846,10 @@ class TripInformationParser
         }
 
         foreach ($lines as $line) {
+            if (preg_match('/\b(?:CNF|CONFIRMATION)\b/i', $line) === 1) {
+                continue;
+            }
+
             if (preg_match('/\b(?:N\d{1,5}[A-Z]{0,2}|[A-Z]{1,2}-?[A-Z0-9]{3,6})\b/', $line, $matches)) {
                 return $matches[0];
             }
