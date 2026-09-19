@@ -29,7 +29,7 @@ class AdminAuthorizationPolicyTest extends TestCase
         $this->assertFalse($unverifiedAdmin->canAccessPanel($panel));
     }
 
-    public function test_aircraft_policy_allows_admin_view_create_update_but_not_delete(): void
+    public function test_aircraft_policy_allows_admin_view_create_update_and_delete(): void
     {
         $admin = $this->makeAdminUser();
         $aircraft = Aircraft::factory()->create();
@@ -38,8 +38,8 @@ class AdminAuthorizationPolicyTest extends TestCase
         $this->assertTrue($admin->can('view', $aircraft));
         $this->assertTrue($admin->can('create', Aircraft::class));
         $this->assertTrue($admin->can('update', $aircraft));
-        $this->assertFalse($admin->can('delete', $aircraft));
-        $this->assertFalse($admin->can('deleteAny', Aircraft::class));
+        $this->assertTrue($admin->can('delete', $aircraft));
+        $this->assertTrue($admin->can('deleteAny', Aircraft::class));
     }
 
     public function test_airline_policy_allows_admin_view_create_update_but_not_delete(): void

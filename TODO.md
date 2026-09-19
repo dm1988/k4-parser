@@ -28,6 +28,16 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## Remove info logging
+Currently: Every successful extraction gets logged as well as a db record added as a event request.
+
+Code:
+        Log::info('K4 extraction completed', [
+            'extract_request_id' => $extractRequest->id,
+            ...$counts,
+        ]);
+References:
+app/Services/Infrastructure/ExtractRequestLogger.php
 
 ## Completed: Bug: flight plan: EENT / EEXP not extracted
 
