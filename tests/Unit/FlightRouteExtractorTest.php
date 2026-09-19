@@ -3,7 +3,7 @@
 namespace Tests\Unit;
 
 use App\DTOs\AirportData;
-use App\Exceptions\AirportResolutionException;
+use App\DTOs\AirportResolution;
 use App\Exceptions\FlightPlanDataConflictException;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Services\Clients\AirportLookupClient;
@@ -251,7 +251,7 @@ TEXT);
             ->willReturn($document);
 
         $cache = app(Repository::class);
-        $cacheKey = 'flight-plan-extractor:v2:pdf-text:'.hash_file('sha256', __FILE__);
+        $cacheKey = 'flight-plan-extractor:v3:pdf-text:'.hash_file('sha256', __FILE__);
         $cache->forget($cacheKey);
         $firstExtractor = $this->makeExtractor($parser, cache: $cache);
         $secondExtractor = $this->makeExtractor($parser, cache: $cache);
@@ -314,12 +314,16 @@ TEXT);
     {
         $lookups = [];
         $airportLookupClient = $this->createMock(AirportLookupClient::class);
-        $airportLookupClient->expects($this->exactly(2))
-            ->method('lookupByIcaoOrFail')
-            ->willReturnCallback(function (string $icao) use (&$lookups): ?AirportData {
-                $lookups[] = $icao;
+        $airportLookupClient->expects($this->once())
+            ->method('resolveByIcaos')
+            ->with(['SBKP', 'SCEL'])
+            ->willReturnCallback(function (array $icaos) use (&$lookups): array {
+                $lookups = $icaos;
 
-                return null;
+                return [
+                    'SBKP' => AirportResolution::missing('SBKP'),
+                    'SCEL' => AirportResolution::missing('SCEL'),
+                ];
             });
         $this->app->instance(AirportLookupClient::class, $airportLookupClient);
 
@@ -340,11 +344,12 @@ TEXT);
         $departureAirport = new AirportData('SBKP', 'VCP', 'Viracopos International Airport', 'Campinas', 'Sao Paulo', 'Brazil');
         $destinationAirport = new AirportData('SCEL', 'SCL', 'Arturo Merino Benitez International Airport', 'Santiago', null, 'Chile');
         $airportLookupClient = $this->createMock(AirportLookupClient::class);
-        $airportLookupClient->expects($this->exactly(2))
-            ->method('lookupByIcaoOrFail')
-            ->willReturnMap([
-                ['SBKP', $departureAirport],
-                ['SCEL', $destinationAirport],
+        $airportLookupClient->expects($this->once())
+            ->method('resolveByIcaos')
+            ->with(['SBKP', 'SCEL'])
+            ->willReturn([
+                'SBKP' => AirportResolution::found('SBKP', $departureAirport),
+                'SCEL' => AirportResolution::found('SCEL', $destinationAirport),
             ]);
         $extractor = $this->makeExtractor(airportLookupClient: $airportLookupClient);
         $text = <<<'TEXT'
@@ -374,9 +379,11 @@ TEXT;
         Cache::shouldReceive('put')->once();
         $airportLookupClient = $this->createMock(AirportLookupClient::class);
         $airportLookupClient->expects($this->once())
-            ->method('lookupByIcaoOrFail')
-            ->with('SBKP')
-            ->willReturn($airport);
+            ->method('resolveByIcaos')
+            ->with(['SBKP'])
+            ->willReturn([
+                'SBKP' => AirportResolution::found('SBKP', $airport),
+            ]);
         $extractor = $this->makeExtractor(airportLookupClient: $airportLookupClient);
 
         $flightPlan = $extractor->extractFlightPlanDataFromText(<<<'TEXT'
@@ -395,9 +402,13 @@ TEXT);
     public function test_airport_provider_failures_remain_non_fatal_and_are_cached(): void
     {
         $airportLookupClient = $this->createMock(AirportLookupClient::class);
-        $airportLookupClient->expects($this->exactly(2))
-            ->method('lookupByIcaoOrFail')
-            ->willThrowException(AirportResolutionException::providerUnavailable());
+        $airportLookupClient->expects($this->once())
+            ->method('resolveByIcaos')
+            ->with(['SBKP', 'SCEL'])
+            ->willReturn([
+                'SBKP' => AirportResolution::unavailable('SBKP'),
+                'SCEL' => AirportResolution::unavailable('SCEL'),
+            ]);
         $extractor = $this->makeExtractor(airportLookupClient: $airportLookupClient);
         $text = <<<'TEXT'
 (FPL-CKS272-IS
@@ -570,8 +581,18 @@ TEXT;
     private function fakeAirportLookupClient(array $airports = []): AirportLookupClient
     {
         $client = $this->createMock(AirportLookupClient::class);
-        $client->method('lookupByIcaoOrFail')
-            ->willReturnCallback(static fn (string $icao): ?AirportData => $airports[$icao] ?? null);
+        $client->method('resolveByIcaos')
+            ->willReturnCallback(static function (array $icaos) use ($airports): array {
+                $resolutions = [];
+
+                foreach ($icaos as $icao) {
+                    $resolutions[$icao] = isset($airports[$icao])
+                        ? AirportResolution::found($icao, $airports[$icao])
+                        : AirportResolution::missing($icao);
+                }
+
+                return $resolutions;
+            });
 
         return $client;
     }

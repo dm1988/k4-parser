@@ -41,7 +41,7 @@ class FlightPlanTextExtractor
 
         $fileHash = hash_file('sha256', $filePath);
 
-        return $fileHash === false ? null : 'flight-plan-extractor:v2:pdf-text:'.$fileHash;
+        return $fileHash === false ? null : 'flight-plan-extractor:v3:pdf-text:'.$fileHash;
     }
 
     private function read(string $filePath): string
@@ -57,9 +57,16 @@ class FlightPlanTextExtractor
                 ]);
             }
 
-            $text = str_replace("\x00", '', $document->getText());
+            $pages = $document->getPages();
 
-            foreach ($document->getPages() as $pageIndex => $page) {
+            if ($pages === []) {
+                return str_replace("\x00", '', $document->getText());
+            }
+
+            $pageTexts = [];
+            $ocrTexts = [];
+
+            foreach ($pages as $pageIndex => $page) {
                 $pageNumber = $pageIndex + 1;
                 $pageTextStartedAt = microtime(true);
                 $ocrRequired = null;
@@ -77,6 +84,8 @@ class FlightPlanTextExtractor
                 }
 
                 if (! $ocrRequired) {
+                    $pageTexts[] = trim($pageText);
+
                     continue;
                 }
 
@@ -94,8 +103,14 @@ class FlightPlanTextExtractor
                 }
 
                 if ($ocrText !== '') {
-                    $text .= "\n".$ocrText;
+                    $ocrTexts[] = $ocrText;
                 }
+            }
+
+            $text = implode("\n\n", $pageTexts);
+
+            foreach ($ocrTexts as $ocrText) {
+                $text .= "\n".$ocrText;
             }
 
             return $text;

@@ -29,11 +29,22 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 # Tasks
 
-## Current focus: Bug: flight plan: EENT / EEXP not extracted
-Currently:
-In a particular flight release, the EENT and EEXP coordinates were not extracted.
+## Completed: Bug: flight plan: EENT / EEXP not extracted
+
+Outcome:
+
+- Identified the production-only cause as missing Imagick support on an image-only ETOPS page and prevented incomplete PDF text from being cached when OCR is unavailable or fails.
+- Added regression coverage for the exact private release and confirmed extraction of EENT `N45 54.3 E154 20.0` and EEXP `N57 51.2 W175 26.2`.
+- Removed the duplicate 146-page text traversal by assembling native PDF text and identifying OCR pages in one pass.
+- Batched uncached airport lookups through Laravel's concurrent HTTP pool while preserving found, missing, and temporarily unavailable cache states per airport.
+- Tested 150 DPI / Tesseract PSM 11 across all ten image-only pages found in the available private releases. It retained as little as 16% of PSM 6's recognized token set on one fixture, so the safer 200 DPI / PSM 6 configuration remains in place.
+
+Commit message: `perf: streamline flight release extraction`
+
+Regression evidence:
+
 Expected EENT coordinates: `N45 54.3 E154 20.0`
-Expected EEXT coordinates: `N57 51.2 W175 26.2`
+Expected EEXP coordinates: `N57 51.2 W175 26.2`
 
 Raw text:
 ```
@@ -80,8 +91,6 @@ N57 51.2 W175 26.2
 ------ 0827 059 -55 483 06.15 1... 26. we ee eee 0273
 N58 16.4 W173 34.4
 ```
-Fix: Unknown, inspect regex
-
 ## Completed: Bug: Edge case - Incorrect DH extraction
 
 Outcome:

@@ -83,7 +83,7 @@ class FlightPlanTextExtractorTest extends TestCase
         $imagePage->expects($this->once())->method('getText')->willReturn("\n");
 
         $document = $this->createMock(Document::class);
-        $document->expects($this->once())->method('getText')->willReturn('FLIGHT PLAN');
+        $document->expects($this->never())->method('getText');
         $document->expects($this->once())->method('getPages')->willReturn([$textPage, $imagePage]);
 
         $parser = $this->createMock(Parser::class);
@@ -120,7 +120,7 @@ class FlightPlanTextExtractorTest extends TestCase
         $imagePage = $this->createMock(Page::class);
         $imagePage->expects($this->exactly(2))->method('getText')->willReturn('');
         $document = $this->createMock(Document::class);
-        $document->expects($this->exactly(2))->method('getText')->willReturn('FLIGHT PLAN');
+        $document->expects($this->never())->method('getText');
         $document->expects($this->exactly(2))->method('getPages')->willReturn([$imagePage]);
         $parser = $this->createMock(Parser::class);
         $parser->expects($this->exactly(2))->method('parseFile')->with($path)->willReturn($document);
@@ -173,7 +173,7 @@ class FlightPlanTextExtractorTest extends TestCase
         $imagePage = $this->createMock(Page::class);
         $imagePage->method('getText')->willReturn('');
         $document = $this->createMock(Document::class);
-        $document->method('getText')->willReturn('PRIVATE DOCUMENT CONTENT');
+        $document->expects($this->never())->method('getText');
         $document->method('getPages')->willReturn([$textPage, $imagePage]);
         $parser = $this->createMock(Parser::class);
         $parser->method('parseFile')->with($path)->willReturn($document);

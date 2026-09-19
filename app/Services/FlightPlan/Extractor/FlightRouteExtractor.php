@@ -3,8 +3,6 @@
 namespace App\Services\FlightPlan\Extractor;
 
 use App\DTOs\AirportData;
-use App\DTOs\AirportResolution;
-use App\Exceptions\AirportResolutionException;
 use App\Exceptions\FlightPlanDataConflictException;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Services\Clients\AirportLookupClient;
@@ -122,45 +120,33 @@ class FlightRouteExtractor
     private function lookupAirports(?string ...$icaos): array
     {
         $airports = [];
+        $uncachedIcaos = [];
 
         foreach ($icaos as $icao) {
             if (! is_string($icao) || $icao === '' || array_key_exists($icao, $airports)) {
                 continue;
             }
 
-            $airports[$icao] = $this->lookupAirport($icao);
+            $cachedResolution = $this->airportCodeCache->get($icao);
+
+            if ($cachedResolution !== null) {
+                $airports[$icao] = $cachedResolution->airport;
+
+                continue;
+            }
+
+            $airports[$icao] = null;
+            $uncachedIcaos[] = $icao;
+        }
+
+        if ($uncachedIcaos !== []) {
+            foreach ($this->airportLookupClient->resolveByIcaos($uncachedIcaos) as $icao => $resolution) {
+                $this->airportCodeCache->put($resolution);
+                $airports[$icao] = $resolution->airport;
+            }
         }
 
         return $airports;
-    }
-
-    private function lookupAirport(?string $icao): ?AirportData
-    {
-        if (! is_string($icao) || $icao === '') {
-            return null;
-        }
-
-        $cachedResolution = $this->airportCodeCache->get($icao);
-
-        if ($cachedResolution !== null) {
-            return $cachedResolution->airport;
-        }
-
-        try {
-            $airport = $this->airportLookupClient->lookupByIcaoOrFail($icao);
-        } catch (AirportResolutionException) {
-            $this->airportCodeCache->put(AirportResolution::unavailable($icao));
-
-            return null;
-        }
-
-        $this->airportCodeCache->put(
-            $airport instanceof AirportData
-                ? AirportResolution::found($icao, $airport)
-                : AirportResolution::missing($icao),
-        );
-
-        return $airport;
     }
 
     /**

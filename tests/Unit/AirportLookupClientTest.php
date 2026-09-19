@@ -112,4 +112,48 @@ class AirportLookupClientTest extends TestCase
             ->withArgs(fn (string $message, array $context): bool => $message === 'Airport lookup provider remained unavailable after retries.'
                 && $context['status'] === 429);
     }
+
+    public function test_multiple_icao_lookups_are_resolved_in_one_pool(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake(function ($request) {
+            $icao = $request->data()['icao'] ?? null;
+
+            return match ($icao) {
+                'PANC' => Http::response([
+                    'data' => [
+                        'icao' => 'PANC',
+                        'iata' => 'ANC',
+                        'name' => 'Ted Stevens Anchorage International Airport',
+                        'city' => 'Anchorage',
+                        'state' => 'Alaska',
+                        'country' => 'United States',
+                    ],
+                ]),
+                'PAED' => Http::response(status: 404),
+                'ZSPD' => Http::response(status: 503),
+                default => Http::response(status: 422),
+            };
+        });
+        Log::spy();
+
+        $resolutions = app(AirportLookupClient::class)->resolveByIcaos([
+            'panc',
+            'PAED',
+            'ZSPD',
+            'PANC',
+            'invalid',
+        ]);
+
+        $this->assertSame(['PANC', 'PAED', 'ZSPD'], array_keys($resolutions));
+        $this->assertTrue($resolutions['PANC']->wasFound());
+        $this->assertSame('ANC', $resolutions['PANC']->airport?->iata);
+        $this->assertTrue($resolutions['PAED']->isMissing());
+        $this->assertTrue($resolutions['ZSPD']->isUnavailable());
+        Http::assertSentCount(5);
+        Log::shouldHaveReceived('warning')
+            ->once()
+            ->withArgs(fn (string $message, array $context): bool => $message === 'Airport lookup provider remained unavailable after retries.'
+                && $context['lookup_code'] === 'ZSPD');
+    }
 }
