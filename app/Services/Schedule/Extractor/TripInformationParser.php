@@ -842,7 +842,7 @@ class TripInformationParser
     private function detectTailNumber(array $lines): ?string
     {
         foreach ($lines as $line) {
-            if (preg_match('/\bTail\s+id\s+([A-Z0-9-]{3,10})\b/i', $line, $matches)) {
+            if (preg_match('/\bTail\s+id\s+([A-Z0-9-]{3,10})(?![A-Z0-9-])/i', $line, $matches)) {
                 return strtoupper($matches[1]);
             }
         }

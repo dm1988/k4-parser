@@ -209,6 +209,22 @@ TEXT;
         $this->assertArrayNotHasKey('flightaware_url', $event['metadata']);
     }
 
+    public function test_it_extracts_a_labeled_tail_number_with_trailing_ocr_noise_before_customer_data(): void
+    {
+        $text = <<<'TEXT'
+Sep 26 15:30 - Sep 26 21:30
+@ K4 523 Pos AC Block
+ANC - ORD | FO 77V 6:00h
+Tail id N771CK_ Leg LT Sep 26 07:30 - Sep 26 16:30 Duty LT Sep 26 05:30 - Sep 26 17:00
+Customer FEDEX LOGISTICS Catering Not Ordered
+TEXT;
+
+        $event = app(TripInformationParser::class)->parse($text)['calendar_events'][0];
+
+        $this->assertSame('N771CK', $event['metadata']['tail_number']);
+        $this->assertSame('https://www.flightaware.com/live/flight/N771CK', $event['metadata']['flightaware_url']);
+    }
+
     public function test_it_preserves_company_flight_numbers_for_deadheads_with_an_aircraft_model(): void
     {
         $text = <<<'TEXT'

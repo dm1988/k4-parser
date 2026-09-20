@@ -67,6 +67,53 @@ Outcome:
 
 Commit message: `fix: preserve partial schedule image results`
 
+## Completed: Bug: Customer extracted as Tail id
+Currently: `FEDEX` is extracted as the tail id in IMG_0473.jpg, expected `N771CK`. Could not reproduce in dev environment.
+Production produced this json output:
+(json) ```
+"type": "flight",
+"title": "CKS 523 ANC-ORD",
+"start": "2026-09-26T15:30:00+00:00",
+"end": "2026-09-26T21:30:00+00:00",
+"timezone": "UTC",
+"metadata": {
+    "destination_iata": "ORD",
+    "destination_icao": "KORD",
+    "destination_name": "Chicago O'Hare International Airport",
+    "destination_city": "Chicago",
+    "destination_state": "IL",
+    "destination_country": "US",
+    "origin_iata": "ANC",
+    "origin_icao": "PANC",
+    "origin_name": "Ted Stevens Anchorage International Airport",
+    "origin_city": "Anchorage",
+    "origin_state": "AK",
+    "origin_country": "US",
+    "flight_number": "CKS 523",
+    "origin": "ANC",
+    "destination": "ORD",
+    "position": "FO",
+    "aircraft": "77V",
+    "tail_number": "FEDEX",
+    "flightaware_url": "https://www.flightaware.com/live/flight/FEDEX",
+    "block_time": "6:00h",
+    "crew_count": 3,
+    "operating_crew_count": 3,
+    "deadheading_crew_count": 0,
+    "crew": [
+        {
+```
+References:
+app/Services/Schedule/Extractor/TripInformationParser.php
+storage/app/private/schedules/IMG_0473.jpg
+
+Outcome:
+
+- Reproduced the production result from the stored image: OCR appends an underscore to `N771CK`, causing the labeled-tail match to fail and the fallback matcher to select `FEDEX`.
+- Allowed labeled tail numbers to terminate at OCR punctuation without accepting additional registration characters.
+- Confirmed the full image extraction now returns `N771CK` and its matching FlightAware URL, with focused regression coverage.
+
+Commit message: `fix: tolerate OCR noise after labeled tail numbers`
 
 ## Slot time incorrectly extracted
 Currently:
