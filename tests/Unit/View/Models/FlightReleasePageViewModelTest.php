@@ -407,6 +407,38 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
+    public function it_compares_the_planned_arrival_with_the_arrival_slot(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['schedule']['etaUtc'] = '2026-09-17T04:31:00+00:00';
+        $payload['flight_plan_data']['schedule']['slots'] = [[
+            'direction' => 'departure',
+            'airport' => 'RJAA',
+            'instantUtc' => '2026-09-17T02:15:00+00:00',
+            'sourceTime' => '0215Z',
+            'toleranceMinutes' => 30,
+        ], [
+            'direction' => 'arrival',
+            'airport' => 'RKSI',
+            'instantUtc' => '2026-09-17T04:45:00+00:00',
+            'sourceTime' => '0445Z',
+            'toleranceMinutes' => 30,
+        ]];
+
+        $slotTimes = $this->viewModel($payload)->slotTimes();
+
+        $this->assertSame('Departure', $slotTimes[0]['direction']);
+        $this->assertSame('RJAA', $slotTimes[0]['airport']);
+        $this->assertNull($slotTimes[0]['comparison']);
+        $this->assertSame('Arrival', $slotTimes[1]['direction']);
+        $this->assertSame('RKSI', $slotTimes[1]['airport']);
+        $this->assertSame('Sep 17, 0415Z–Sep 17, 0515Z UTC', $slotTimes[1]['window']);
+        $this->assertSame('Sep 17, 0431Z UTC', $slotTimes[1]['plannedArrival']);
+        $this->assertSame('Planned ETA is within the confirmed window', $slotTimes[1]['comparison']);
+        $this->assertEqualsWithDelta(38.333333333333, $slotTimes[1]['plannedPosition'], 0.000001);
+    }
+
+    #[Test]
     public function it_reports_a_detected_general_declaration_as_available(): void
     {
         $payload = $this->resultPayload();

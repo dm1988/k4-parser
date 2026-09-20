@@ -43,6 +43,32 @@ TEXT, '2026-05-25');
         $this->assertSame('RKSI1210', $result['source_fragments']['schedule_fpl_duration']);
     }
 
+    public function test_it_extracts_compact_directional_slots_using_the_flight_route_airports(): void
+    {
+        $result = (new FlightScheduleExtractor)->extract(<<<'TEXT'
+SHETD 02.15Z/17 ETA 04.31Z
+APPROVED SLOT TIMES: DEP 0215Z (+/- 30 MIN ) ARR 0445Z (+/- 30 MIN )
+NO MORE THAN 30 MINUTES EARLY ARRIVAL
+TEXT, '2026-09-17', 'RJAA', 'RKSI');
+
+        $this->assertSame([
+            [
+                'direction' => 'departure',
+                'airport' => 'RJAA',
+                'instant_utc' => '2026-09-17T02:15:00+00:00',
+                'source_time' => '0215Z',
+                'tolerance_minutes' => 30,
+            ],
+            [
+                'direction' => 'arrival',
+                'airport' => 'RKSI',
+                'instant_utc' => '2026-09-17T04:45:00+00:00',
+                'source_time' => '0445Z',
+                'tolerance_minutes' => 30,
+            ],
+        ], $result['data']['slots']);
+    }
+
     public function test_it_rejects_a_conflicting_fpl_departure_time(): void
     {
         $this->expectException(FlightPlanDataConflictException::class);

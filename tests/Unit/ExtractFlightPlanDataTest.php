@@ -42,7 +42,7 @@ class ExtractFlightPlanDataTest extends TestCase
             'source_fragments' => ['identity_header' => 'header'],
         ]);
         $scheduleExtractor = $this->createMock(FlightScheduleExtractor::class);
-        $scheduleExtractor->expects($this->once())->method('extract')->with($text, '2026-05-25')->willReturn([
+        $scheduleExtractor->expects($this->once())->method('extract')->with($text, '2026-05-25', 'KLAX', 'RKSI')->willReturn([
             'data' => $this->schedule(),
             'source_fragments' => [],
         ]);

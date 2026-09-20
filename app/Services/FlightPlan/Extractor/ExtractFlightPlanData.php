@@ -37,8 +37,13 @@ class ExtractFlightPlanData
     public function extract(string $text): ParsedFlightPlanData
     {
         $identity = $this->identityExtractor->extract($text);
-        $schedule = $this->scheduleExtractor->extract($text, $identity['data']['flight_date']);
         $route = $this->routeExtractor->extractFlightPlanDataFromText($text);
+        $schedule = $this->scheduleExtractor->extract(
+            $text,
+            $identity['data']['flight_date'],
+            $route['departure'],
+            $route['destination'],
+        );
         $fuel = $this->fuelExtractor->extract($text);
         $crew = $this->crewExtractor->extract($text);
         $maintenance = $this->maintenanceLogExtractor->extract($text);

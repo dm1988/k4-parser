@@ -28,146 +28,18 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Completed: Bug: Schedule image extraction not working
-Currently:
-On image upload, an exception is thrown.
 
-Exception thrown: 
-  Carbon\Exceptions\InvalidFormatException
-  A textual month could not be found
-
-Fix: Investigate extraction regex.
-
-References:
-app/Services/Schedule/Extractor/TripInformationParser.php
-storage/app/private/schedules/IMG_0471.jpg
-storage/app/private/schedules/IMG_0473.jpg
+## Completed: Slot time incorrectly extracted
 
 Outcome:
 
-- Restricted Trip Information date ranges to valid three-letter month abbreviations so OCR artifacts such as `Sen` and `San` are ignored instead of passed to Carbon.
-- Confirmed both referenced images complete OCR and parsing without exceptions, each producing its expected flight and duty events.
-- Added focused regression coverage for the invalid OCR month artifacts while preserving valid schedule date ranges.
+- Parsed compact directional slot entries such as `DEP 0215Z` and `ARR 0445Z` as separate departure and arrival slots.
+- Resolved airport codes for compact slots from the extracted route, preventing `DEP` from being displayed as an airport.
+- Confirmed the referenced release now displays the RKSI arrival window as 0415Z–0515Z and reports the planned 0431Z ETA inside that window.
+- Added focused extractor, orchestration, and presentation regression coverage.
 
-Commit message: `fix: ignore invalid OCR month abbreviations`
+Commit message: `fix: parse compact directional slot times`
 
-## Completed: Allow image schedule results when exeptions are thrown
-Currently:
-With multiple image uploads, when 1 or more image fails to extract yet 1 or more images succeeds, no results are shown and an error is shown to the user.
-
-Goal:
-If there are images with errors, create a user facing model listing files with extraction errors before showing results.
-
-Outcome:
-
-- Processed multi-image uploads independently so OCR errors, parser exceptions, or zero-event parses from one image no longer discard successful results from the other images.
-- Added an accessible, keyboard-focused modal that lists each skipped filename and its extraction error before the user continues to the recovered results.
-- Preserved the existing upload error behavior when every image fails and prevented the coffee prompt from competing with the extraction-error modal.
-- Added focused coverage for mixed OCR/parser failures, zero-event images, successful partial results, modal content, and all-images-failed behavior.
-
-Commit message: `fix: preserve partial schedule image results`
-
-## Completed: Bug: Customer extracted as Tail id
-Currently: `FEDEX` is extracted as the tail id in IMG_0473.jpg, expected `N771CK`. Could not reproduce in dev environment.
-Production produced this json output:
-(json) ```
-"type": "flight",
-"title": "CKS 523 ANC-ORD",
-"start": "2026-09-26T15:30:00+00:00",
-"end": "2026-09-26T21:30:00+00:00",
-"timezone": "UTC",
-"metadata": {
-    "destination_iata": "ORD",
-    "destination_icao": "KORD",
-    "destination_name": "Chicago O'Hare International Airport",
-    "destination_city": "Chicago",
-    "destination_state": "IL",
-    "destination_country": "US",
-    "origin_iata": "ANC",
-    "origin_icao": "PANC",
-    "origin_name": "Ted Stevens Anchorage International Airport",
-    "origin_city": "Anchorage",
-    "origin_state": "AK",
-    "origin_country": "US",
-    "flight_number": "CKS 523",
-    "origin": "ANC",
-    "destination": "ORD",
-    "position": "FO",
-    "aircraft": "77V",
-    "tail_number": "FEDEX",
-    "flightaware_url": "https://www.flightaware.com/live/flight/FEDEX",
-    "block_time": "6:00h",
-    "crew_count": 3,
-    "operating_crew_count": 3,
-    "deadheading_crew_count": 0,
-    "crew": [
-        {
-```
-References:
-app/Services/Schedule/Extractor/TripInformationParser.php
-storage/app/private/schedules/IMG_0473.jpg
-
-Outcome:
-
-- Reproduced the production result from the stored image: OCR appends an underscore to `N771CK`, causing the labeled-tail match to fail and the fallback matcher to select `FEDEX`.
-- Allowed labeled tail numbers to terminate at OCR punctuation without accepting additional registration characters.
-- Confirmed the full image extraction now returns `N771CK` and its matching FlightAware URL, with focused regression coverage.
-
-Commit message: `fix: tolerate OCR noise after labeled tail numbers`
-
-## Slot time incorrectly extracted
-Currently:
-Arrival and departure slot times are confused. The example below shows an arrival slot window of 0145-0245, when that is the departure slot window. The display slider incorrectly shows outside of the window, when in reality an arrival of 0431Z UTC falls within the arrival slot time window.
-
-Extracted text:
-`APPROVED SLOT TIMES: DEP 0215Z (+/- 30 MIN ) ARR 0445Z (+/- 30 MIN )`
-(html) ```
-<ol class="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            <!--[if BLOCK]><![endif]-->                <li class="overflow-hidden rounded-xl border border-[#1B365D]/10 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                    <div class="flex items-center justify-between gap-3 border-b border-[#1B365D]/10 bg-[#F8F9FA] px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
-                        <div class="flex min-w-0 items-center gap-2">
-                            <span class="rounded-full bg-[#1B365D] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white dark:bg-blue-500/20 dark:text-blue-200">Arrival</span>
-                            <span class="font-mono text-sm font-bold text-[#1B365D] dark:text-slate-100">DEP</span>
-                        </div>
-                        <span class="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B8860B] dark:text-amber-300">UTC</span>
-                    </div>
-
-                    <dl class="grid grid-cols-2 gap-3 p-4">
-                        <div class="flex flex-col gap-1">
-                            <dt class="text-[10px] font-bold uppercase tracking-[0.14em] text-[#4A5568] dark:text-slate-400">Date</dt>
-                            <dd class="font-mono text-sm font-semibold tabular-nums text-[#0B0E14] dark:text-slate-100">Sep 17, 2026</dd>
-                        </div>
-                        <div class="flex flex-col gap-1 text-right">
-                            <dt class="text-[10px] font-bold uppercase tracking-[0.14em] text-[#4A5568] dark:text-slate-400">Time (UTC)</dt>
-                            <dd class="font-mono text-lg font-bold tabular-nums text-[#1B365D] dark:text-blue-200">0215Z</dd>
-                        </div>
-                        <!--[if BLOCK]><![endif]-->                            <div class="col-span-2 flex flex-col gap-1 border-t border-[#1B365D]/10 pt-3 dark:border-slate-700">
-                                <dt class="text-[10px] font-bold uppercase tracking-[0.14em] text-[#4A5568] dark:text-slate-400">Approved window</dt>
-                                <dd class="flex flex-wrap items-baseline justify-between gap-2 font-mono text-sm font-semibold tabular-nums text-[#0B0E14] dark:text-slate-100">
-                                    <span>Sep 17, 0145Z–Sep 17, 0245Z UTC</span>
-                                    <span class="text-[#B8860B] dark:text-amber-300">± 30 min</span>
-                                </dd>
-                            </div>
-                        <!--[if ENDBLOCK]><![endif]-->                        <!--[if BLOCK]><![endif]-->                            <div class="col-span-2 flex flex-col gap-2 border-t border-[#1B365D]/10 pt-3 dark:border-slate-700">
-                                <div class="flex flex-wrap items-baseline justify-between gap-2">
-                                    <dt class="text-[10px] font-bold uppercase tracking-[0.14em] text-[#4A5568] dark:text-slate-400">Planned arrival comparison</dt>
-                                    <dd class="font-mono text-xs font-semibold tabular-nums text-[#0B0E14] dark:text-slate-100">Sep 17, 0431Z UTC</dd>
-                                </div>
-                                <div class="relative h-3 rounded-full bg-[#1B365D]/10 dark:bg-slate-700" aria-hidden="true">
-                                    <div class="absolute inset-y-0 left-1/4 right-1/4 rounded-full bg-[#B8860B]/35 dark:bg-amber-400/30"></div>
-                                    <div class="absolute -top-1 h-5 w-1 -translate-x-1/2 rounded-full bg-[#1B365D] dark:bg-blue-300 left-full"></div>
-                                </div>
-                                <div class="flex justify-between gap-3 text-[10px] font-semibold text-[#4A5568] dark:text-slate-400">
-                                    <span>Earlier</span>
-                                    <span class="text-center text-[#B8860B] dark:text-amber-300">Confirmed window</span>
-                                    <span>Later</span>
-                                </div>
-                                <dd class="text-xs font-semibold text-[#1B365D] dark:text-blue-200">Planned ETA is outside the confirmed window</dd>
-                            </div>
-                        <!--[if ENDBLOCK]><![endif]-->                    </dl>
-                </li>
-            <!--[if ENDBLOCK]><![endif]-->        </ol>
-```
 
 ## Bug: Schedule: cannot remove selected upload images
 Users cannot remove selected images for upload without refreshing the page.
@@ -482,30 +354,9 @@ app/Enums/TaskTone.php
 ## Completed: Repair Composer lockfile for CI
 ## Completed: Resolve Larastan errors in tests
 ## Completed: Chore: update laravel
-
 ## Completed: Allow admins to delete aircraft
-
-Outcome:
-
-- Authorized active administrators to delete individual Aircraft records and perform bulk Aircraft deletion.
-- Preserved the existing denial for non-admin users and for restore or force-delete operations.
-- Added focused Filament resource coverage for edit-page deletion, bulk deletion, and non-admin denial.
-
-Commit message: `feat: allow admins to delete aircraft`
-
 ## Completed: Add aircraft weight fields to Filament resource
-
-Outcome:
-
-- Added maximum zero fuel, maximum takeoff, maximum landing, and minimum flight weight inputs to the Aircraft create and edit forms.
-- Added sortable, pound-formatted columns for the four weight limits to the Aircraft table.
-- Added focused resource coverage for displaying, creating, editing, and validating the weight fields.
-
-Commit message: `feat: add weight fields to Filament Aircraft form and table, including validation for negative values`
-
-
 ## Flight plan: Parse bottlenecks:
-
 ### Completed: Reduce PDF extraction and airport lookup latency
 
 Goal:
@@ -557,3 +408,91 @@ Task 2 commit message: `perf: deduplicate flight plan airport lookups`
 Task 3 commit message: `perf: instrument flight plan text extraction`
 
 Completion commit message: `perf: complete flight plan extraction optimization`
+
+## Completed: Bug: Schedule image extraction not working
+Currently:
+On image upload, an exception is thrown.
+
+Exception thrown: 
+  Carbon\Exceptions\InvalidFormatException
+  A textual month could not be found
+
+Fix: Investigate extraction regex.
+
+References:
+app/Services/Schedule/Extractor/TripInformationParser.php
+storage/app/private/schedules/IMG_0471.jpg
+storage/app/private/schedules/IMG_0473.jpg
+
+Outcome:
+
+- Restricted Trip Information date ranges to valid three-letter month abbreviations so OCR artifacts such as `Sen` and `San` are ignored instead of passed to Carbon.
+- Confirmed both referenced images complete OCR and parsing without exceptions, each producing its expected flight and duty events.
+- Added focused regression coverage for the invalid OCR month artifacts while preserving valid schedule date ranges.
+
+Commit message: `fix: ignore invalid OCR month abbreviations`
+
+
+## Completed: Bug: Customer extracted as Tail id
+Currently: `FEDEX` is extracted as the tail id in IMG_0473.jpg, expected `N771CK`. Could not reproduce in dev environment.
+Production produced this json output:
+(json) ```
+"type": "flight",
+"title": "CKS 523 ANC-ORD",
+"start": "2026-09-26T15:30:00+00:00",
+"end": "2026-09-26T21:30:00+00:00",
+"timezone": "UTC",
+"metadata": {
+    "destination_iata": "ORD",
+    "destination_icao": "KORD",
+    "destination_name": "Chicago O'Hare International Airport",
+    "destination_city": "Chicago",
+    "destination_state": "IL",
+    "destination_country": "US",
+    "origin_iata": "ANC",
+    "origin_icao": "PANC",
+    "origin_name": "Ted Stevens Anchorage International Airport",
+    "origin_city": "Anchorage",
+    "origin_state": "AK",
+    "origin_country": "US",
+    "flight_number": "CKS 523",
+    "origin": "ANC",
+    "destination": "ORD",
+    "position": "FO",
+    "aircraft": "77V",
+    "tail_number": "FEDEX",
+    "flightaware_url": "https://www.flightaware.com/live/flight/FEDEX",
+    "block_time": "6:00h",
+    "crew_count": 3,
+    "operating_crew_count": 3,
+    "deadheading_crew_count": 0,
+    "crew": [
+        {
+```
+References:
+app/Services/Schedule/Extractor/TripInformationParser.php
+storage/app/private/schedules/IMG_0473.jpg
+
+Outcome:
+
+- Reproduced the production result from the stored image: OCR appends an underscore to `N771CK`, causing the labeled-tail match to fail and the fallback matcher to select `FEDEX`.
+- Allowed labeled tail numbers to terminate at OCR punctuation without accepting additional registration characters.
+- Confirmed the full image extraction now returns `N771CK` and its matching FlightAware URL, with focused regression coverage.
+
+Commit message: `fix: tolerate OCR noise after labeled tail numbers`
+
+## Completed: Allow image schedule results when exeptions are thrown
+Currently:
+With multiple image uploads, when 1 or more image fails to extract yet 1 or more images succeeds, no results are shown and an error is shown to the user.
+
+Goal:
+If there are images with errors, create a user facing model listing files with extraction errors before showing results.
+
+Outcome:
+
+- Processed multi-image uploads independently so OCR errors, parser exceptions, or zero-event parses from one image no longer discard successful results from the other images.
+- Added an accessible, keyboard-focused modal that lists each skipped filename and its extraction error before the user continues to the recovered results.
+- Preserved the existing upload error behavior when every image fails and prevented the coffee prompt from competing with the extraction-error modal.
+- Added focused coverage for mixed OCR/parser failures, zero-event images, successful partial results, modal content, and all-images-failed behavior.
+
+Commit message: `fix: preserve partial schedule image results`
