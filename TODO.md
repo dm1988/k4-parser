@@ -28,20 +28,89 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Bug: Schedule image extraction not working
+## Completed: Bug: Schedule image extraction not working
 Currently:
-On image upload, an exception is thrown. With multiple image uploads, when 1 image fails to extract, no results are shown
+On image upload, an exception is thrown.
 
 Exception thrown: 
   Carbon\Exceptions\InvalidFormatException
   A textual month could not be found
 
+Fix: Investigate extraction regex.
+
 References:
 app/Services/Schedule/Extractor/TripInformationParser.php
 storage/app/private/schedules/IMG_0471.jpg
-storage/app/private/schedules/IMG_0472.jpg
 storage/app/private/schedules/IMG_0473.jpg
 
+Outcome:
+
+- Restricted Trip Information date ranges to valid three-letter month abbreviations so OCR artifacts such as `Sen` and `San` are ignored instead of passed to Carbon.
+- Confirmed both referenced images complete OCR and parsing without exceptions, each producing its expected flight and duty events.
+- Added focused regression coverage for the invalid OCR month artifacts while preserving valid schedule date ranges.
+
+Commit message: `fix: ignore invalid OCR month abbreviations`
+
+## Allow image schedule results when exeptions are thrown
+Currently:
+With multiple image uploads, when 1 or more image fails to extract yet 1 or more images succeeds, no results are shown and an error is shown to the user.
+
+Goal:
+If there are images with errors, create a user facing model listing files with extraction errors before showing results.
+
+## Slot time incorrectly extracted
+Currently:
+Arrival and departure slot times are confused. The example below shows an arrival slot window of 0145-0245, when that is the departure slot window. The display slider incorrectly shows outside of the window, when in reality an arrival of 0431Z UTC falls within the arrival slot time window.
+
+Extracted text:
+`APPROVED SLOT TIMES: DEP 0215Z (+/- 30 MIN ) ARR 0445Z (+/- 30 MIN )`
+(html) ```
+<ol class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <!--[if BLOCK]><![endif]-->                <li class="overflow-hidden rounded-xl border border-[#1B365D]/10 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                    <div class="flex items-center justify-between gap-3 border-b border-[#1B365D]/10 bg-[#F8F9FA] px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+                        <div class="flex min-w-0 items-center gap-2">
+                            <span class="rounded-full bg-[#1B365D] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white dark:bg-blue-500/20 dark:text-blue-200">Arrival</span>
+                            <span class="font-mono text-sm font-bold text-[#1B365D] dark:text-slate-100">DEP</span>
+                        </div>
+                        <span class="text-[10px] font-bold uppercase tracking-[0.16em] text-[#B8860B] dark:text-amber-300">UTC</span>
+                    </div>
+
+                    <dl class="grid grid-cols-2 gap-3 p-4">
+                        <div class="flex flex-col gap-1">
+                            <dt class="text-[10px] font-bold uppercase tracking-[0.14em] text-[#4A5568] dark:text-slate-400">Date</dt>
+                            <dd class="font-mono text-sm font-semibold tabular-nums text-[#0B0E14] dark:text-slate-100">Sep 17, 2026</dd>
+                        </div>
+                        <div class="flex flex-col gap-1 text-right">
+                            <dt class="text-[10px] font-bold uppercase tracking-[0.14em] text-[#4A5568] dark:text-slate-400">Time (UTC)</dt>
+                            <dd class="font-mono text-lg font-bold tabular-nums text-[#1B365D] dark:text-blue-200">0215Z</dd>
+                        </div>
+                        <!--[if BLOCK]><![endif]-->                            <div class="col-span-2 flex flex-col gap-1 border-t border-[#1B365D]/10 pt-3 dark:border-slate-700">
+                                <dt class="text-[10px] font-bold uppercase tracking-[0.14em] text-[#4A5568] dark:text-slate-400">Approved window</dt>
+                                <dd class="flex flex-wrap items-baseline justify-between gap-2 font-mono text-sm font-semibold tabular-nums text-[#0B0E14] dark:text-slate-100">
+                                    <span>Sep 17, 0145Z–Sep 17, 0245Z UTC</span>
+                                    <span class="text-[#B8860B] dark:text-amber-300">± 30 min</span>
+                                </dd>
+                            </div>
+                        <!--[if ENDBLOCK]><![endif]-->                        <!--[if BLOCK]><![endif]-->                            <div class="col-span-2 flex flex-col gap-2 border-t border-[#1B365D]/10 pt-3 dark:border-slate-700">
+                                <div class="flex flex-wrap items-baseline justify-between gap-2">
+                                    <dt class="text-[10px] font-bold uppercase tracking-[0.14em] text-[#4A5568] dark:text-slate-400">Planned arrival comparison</dt>
+                                    <dd class="font-mono text-xs font-semibold tabular-nums text-[#0B0E14] dark:text-slate-100">Sep 17, 0431Z UTC</dd>
+                                </div>
+                                <div class="relative h-3 rounded-full bg-[#1B365D]/10 dark:bg-slate-700" aria-hidden="true">
+                                    <div class="absolute inset-y-0 left-1/4 right-1/4 rounded-full bg-[#B8860B]/35 dark:bg-amber-400/30"></div>
+                                    <div class="absolute -top-1 h-5 w-1 -translate-x-1/2 rounded-full bg-[#1B365D] dark:bg-blue-300 left-full"></div>
+                                </div>
+                                <div class="flex justify-between gap-3 text-[10px] font-semibold text-[#4A5568] dark:text-slate-400">
+                                    <span>Earlier</span>
+                                    <span class="text-center text-[#B8860B] dark:text-amber-300">Confirmed window</span>
+                                    <span>Later</span>
+                                </div>
+                                <dd class="text-xs font-semibold text-[#1B365D] dark:text-blue-200">Planned ETA is outside the confirmed window</dd>
+                            </div>
+                        <!--[if ENDBLOCK]><![endif]-->                    </dl>
+                </li>
+            <!--[if ENDBLOCK]><![endif]-->        </ol>
+```
 ## Remove info logging
 Currently: Every successful extraction gets logged as well as a db record added as a event request.
 

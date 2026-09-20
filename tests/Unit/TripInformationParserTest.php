@@ -298,4 +298,25 @@ TEXT;
         $this->assertSame('DH', $event['metadata']['position']);
         $this->assertTrue($event['metadata']['deadhead']);
     }
+
+    public function test_it_ignores_ocr_date_ranges_with_invalid_month_abbreviations(): void
+    {
+        $text = <<<'TEXT'
+Sep 23 01:25 - Sep 23 03:45
+K4 218
+NRT - ICN | FO 77X 2:20h
+Sep 23 03:45 - Sep 23 04:15
+ICN
+0:30
+- - Sen 23 04:15 - Sen 24 00:30
+Work Period: Sep 12 00:00 - Sep 28 00:00
+San 98 00:00 - Sen 78 23:59
+TEXT;
+
+        $events = app(TripInformationParser::class)->parse($text)['calendar_events'];
+
+        $this->assertCount(2, $events);
+        $this->assertSame('CKS 218 NRT-ICN', $events[0]['title']);
+        $this->assertSame('Duty ICN', $events[1]['title']);
+    }
 }

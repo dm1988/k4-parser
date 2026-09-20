@@ -12,6 +12,8 @@ use Illuminate\Support\Carbon;
 
 class TripInformationParser
 {
+    private const string MONTH_ABBREVIATION_PATTERN = '(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)';
+
     public function __construct(
         private readonly FlightMapper $flightMapper,
         private readonly CrewListParser $crewListParser,
@@ -94,7 +96,7 @@ class TripInformationParser
                 continue;
             }
 
-            if (preg_match('/([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}\s+-\s+[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2})/', $line, $matches)) {
+            if (preg_match('/('.self::MONTH_ABBREVIATION_PATTERN.'\s+\d{1,2}\s+\d{2}:\d{2}\s+-\s+'.self::MONTH_ABBREVIATION_PATTERN.'\s+\d{1,2}\s+\d{2}:\d{2})/', $line, $matches)) {
                 $before = trim(substr($line, 0, strpos($line, $matches[1])));
                 $after = trim(substr($line, strpos($line, $matches[1]) + strlen($matches[1])));
 
@@ -316,7 +318,7 @@ class TripInformationParser
 
     private function parseDateRangeDetailBlock(array $block, array $monthYears, int $defaultYear): ?array
     {
-        if (! preg_match('/^([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2})\s+-\s+([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2})$/', $block[0], $matches)) {
+        if (! preg_match('/^('.self::MONTH_ABBREVIATION_PATTERN.'\s+\d{1,2}\s+\d{2}:\d{2})\s+-\s+('.self::MONTH_ABBREVIATION_PATTERN.'\s+\d{1,2}\s+\d{2}:\d{2})$/', $block[0], $matches)) {
             return null;
         }
 
@@ -425,7 +427,7 @@ class TripInformationParser
 
     private function extractRosterDate(string $value, array $monthYears, int $defaultYear): Carbon
     {
-        preg_match('/^([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{2}:\d{2})$/', $value, $matches);
+        preg_match('/^('.self::MONTH_ABBREVIATION_PATTERN.')\s+(\d{1,2})\s+(\d{2}:\d{2})$/', $value, $matches);
 
         $year = $monthYears[$matches[1]] ?? $defaultYear;
 
@@ -819,7 +821,7 @@ class TripInformationParser
 
     private function isDateRange(string $line): bool
     {
-        return (bool) preg_match('/^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}\s+-\s+[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}$/', $line);
+        return (bool) preg_match('/^'.self::MONTH_ABBREVIATION_PATTERN.'\s+\d{1,2}\s+\d{2}:\d{2}\s+-\s+'.self::MONTH_ABBREVIATION_PATTERN.'\s+\d{1,2}\s+\d{2}:\d{2}$/', $line);
     }
 
     private function detectAircraft(array $lines): ?string
