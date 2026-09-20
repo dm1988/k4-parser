@@ -51,12 +51,22 @@ Outcome:
 
 Commit message: `fix: ignore invalid OCR month abbreviations`
 
-## Allow image schedule results when exeptions are thrown
+## Completed: Allow image schedule results when exeptions are thrown
 Currently:
 With multiple image uploads, when 1 or more image fails to extract yet 1 or more images succeeds, no results are shown and an error is shown to the user.
 
 Goal:
 If there are images with errors, create a user facing model listing files with extraction errors before showing results.
+
+Outcome:
+
+- Processed multi-image uploads independently so OCR errors, parser exceptions, or zero-event parses from one image no longer discard successful results from the other images.
+- Added an accessible, keyboard-focused modal that lists each skipped filename and its extraction error before the user continues to the recovered results.
+- Preserved the existing upload error behavior when every image fails and prevented the coffee prompt from competing with the extraction-error modal.
+- Added focused coverage for mixed OCR/parser failures, zero-event images, successful partial results, modal content, and all-images-failed behavior.
+
+Commit message: `fix: preserve partial schedule image results`
+
 
 ## Slot time incorrectly extracted
 Currently:
@@ -111,6 +121,12 @@ Extracted text:
                 </li>
             <!--[if ENDBLOCK]><![endif]-->        </ol>
 ```
+
+## Bug: Schedule: cannot remove selected upload images
+Users cannot remove selected images for upload without refreshing the page.
+
+Expose an `X` icon remove button to deselect an image
+
 ## Remove info logging
 Currently: Every successful extraction gets logged as well as a db record added as a event request.
 

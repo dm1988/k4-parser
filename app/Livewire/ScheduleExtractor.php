@@ -43,6 +43,10 @@ class ScheduleExtractor extends Component
     #[Locked]
     public ?string $parseKey = null;
 
+    /** @var list<array{filename: string, error: string}> */
+    #[Locked]
+    public array $failedFiles = [];
+
     protected HandleExtractExecution $handleExtractExecution;
 
     protected JcaScheduleProcessor $jcaScheduleProcessor;
@@ -88,6 +92,7 @@ class ScheduleExtractor extends Component
         ));
         $this->eventTypes = $eventTypes;
         $sourceType = $this->resolveSourceType($files);
+        $this->failedFiles = [];
 
         try {
             $payload = $this->handleExtractExecution->handle(
@@ -119,11 +124,14 @@ class ScheduleExtractor extends Component
         }
 
         $this->parseKey = $result->parseKey;
+        $this->failedFiles = $payload['failed_files'] ?? [];
         $this->reset('files');
         $this->view = self::VIEW_RESULTS;
         $this->resetValidation();
 
-        if ($this->shouldPromptForCoffee->handle($user)) {
+        if ($this->failedFiles !== []) {
+            $this->dispatch('open-modal', name: 'schedule-extraction-errors');
+        } elseif ($this->shouldPromptForCoffee->handle($user)) {
             $this->dispatch('open-modal', name: 'buy-me-a-coffee');
         }
     }
@@ -184,7 +192,7 @@ class ScheduleExtractor extends Component
 
     private function resetRosterForm(): void
     {
-        $this->reset(['files', 'text']);
+        $this->reset(['files', 'text', 'failedFiles']);
         $this->resetValidation();
     }
 

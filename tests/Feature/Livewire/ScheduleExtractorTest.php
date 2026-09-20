@@ -319,6 +319,145 @@ class ScheduleExtractorTest extends TestCase
         ));
     }
 
+    public function test_it_shows_successful_results_and_a_modal_for_images_that_failed_extraction(): void
+    {
+        $files = [
+            UploadedFile::fake()->image('parse-failure.png', 300, 200),
+            UploadedFile::fake()->image('successful-page.png', 300, 200),
+            UploadedFile::fake()->image('ocr-failure.png', 300, 200),
+        ];
+
+        $this->mock(ScheduleInputResolver::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('resolve')
+                ->times(3)
+                ->andReturnUsing(function (UploadedFile $file, ?string $text): array {
+                    $this->assertNull($text);
+
+                    return match ($file->getClientOriginalName()) {
+                        'parse-failure.png' => $this->resolvedImageSource('Invalid parser text'),
+                        'successful-page.png' => $this->resolvedImageSource('Successful OCR text'),
+                        'ocr-failure.png' => throw new RuntimeException('OCR could not read this image.'),
+                    };
+                });
+        });
+        $this->mock(ScheduleFormatParser::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('parse')
+                ->twice()
+                ->andReturnUsing(fn (string $text, ?string $documentType): array => match ($text) {
+                    'Invalid parser text' => throw new RuntimeException('The schedule format was not recognized.'),
+                    'Successful OCR text' => [
+                        'trip' => [],
+                        'calendar_events' => [$this->event('Recovered duty')],
+                    ],
+                });
+        });
+
+        Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->set('files', $files)
+            ->call('extractRoster')
+            ->assertHasNoErrors()
+            ->assertSet('view', 'results')
+            ->assertSet('failedFiles', [
+                [
+                    'filename' => 'parse-failure.png',
+                    'error' => 'The schedule format was not recognized.',
+                ],
+                [
+                    'filename' => 'ocr-failure.png',
+                    'error' => 'OCR could not read this image.',
+                ],
+            ])
+            ->assertSee('Recovered duty')
+            ->assertSee('Some files could not be extracted')
+            ->assertSee('parse-failure.png')
+            ->assertSee('The schedule format was not recognized.')
+            ->assertSee('ocr-failure.png')
+            ->assertSee('OCR could not read this image.')
+            ->assertSee('View extracted results')
+            ->assertDispatched('open-modal', name: 'schedule-extraction-errors')
+            ->assertNotDispatched('open-modal', name: 'buy-me-a-coffee');
+
+        $events = app(EngineResultCache::class)->latest()?->parsed['calendar_events'] ?? [];
+
+        $this->assertCount(1, $events);
+        $this->assertSame('Recovered duty', data_get($events, '0.title'));
+    }
+
+    public function test_it_lists_an_image_with_no_events_as_failed_when_another_image_succeeds(): void
+    {
+        $files = [
+            UploadedFile::fake()->image('invalid-image.jpeg', 300, 200),
+            UploadedFile::fake()->image('valid-image.jpeg', 300, 200),
+        ];
+
+        $this->mock(ScheduleInputResolver::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('resolve')
+                ->twice()
+                ->andReturn(
+                    $this->resolvedImageSource('Unreadable schedule OCR'),
+                    $this->resolvedImageSource('Valid schedule OCR'),
+                );
+        });
+        $this->mock(ScheduleFormatParser::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('parse')
+                ->twice()
+                ->andReturn(
+                    ['trip' => [], 'calendar_events' => []],
+                    ['trip' => [], 'calendar_events' => [$this->event('Valid recovered duty')]],
+                );
+        });
+
+        Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->set('files', $files)
+            ->call('extractRoster')
+            ->assertHasNoErrors()
+            ->assertSet('view', 'results')
+            ->assertSet('failedFiles', [[
+                'filename' => 'invalid-image.jpeg',
+                'error' => 'No calendar events were found in this image.',
+            ]])
+            ->assertSee('Valid recovered duty')
+            ->assertSee('invalid-image.jpeg')
+            ->assertSee('No calendar events were found in this image.')
+            ->assertDispatched('open-modal', name: 'schedule-extraction-errors');
+    }
+
+    public function test_multiple_images_stay_on_upload_when_every_image_fails_extraction(): void
+    {
+        $files = [
+            UploadedFile::fake()->image('ocr-failure.png', 300, 200),
+            UploadedFile::fake()->image('parse-failure.png', 300, 200),
+        ];
+
+        $this->mock(ScheduleInputResolver::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('resolve')
+                ->twice()
+                ->andReturnUsing(fn (UploadedFile $file): array => match ($file->getClientOriginalName()) {
+                    'ocr-failure.png' => throw new RuntimeException('OCR could not read this image.'),
+                    'parse-failure.png' => $this->resolvedImageSource('Invalid parser text'),
+                });
+        });
+        $this->mock(ScheduleFormatParser::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('parse')
+                ->once()
+                ->andThrow(new RuntimeException('The schedule format was not recognized.'));
+        });
+
+        Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->set('files', $files)
+            ->call('extractRoster')
+            ->assertSet('view', 'upload')
+            ->assertSet('failedFiles', [])
+            ->assertHasErrors(['files'])
+            ->assertSee('Source resolution failed: OCR could not read this image.')
+            ->assertNotDispatched('open-modal', name: 'schedule-extraction-errors');
+
+        $this->assertNull(app(EngineResultCache::class)->latest());
+    }
+
     public function test_source_resolution_failure_stays_on_upload_and_preserves_the_previous_result(): void
     {
         $previous = $this->cacheResult('01JPREVIOUSPARSEKEY1234', 'Previous duty');

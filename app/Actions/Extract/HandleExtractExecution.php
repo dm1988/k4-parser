@@ -21,13 +21,15 @@ class HandleExtractExecution
      *     parsed: array<string, mixed>,
      *     result: ExtractedResultData,
      *     parser_type?: ?string,
-     *     page_count?: ?int
+     *     page_count?: ?int,
+     *     failed_files?: list<array{filename: string, error: string}>
      * }  $operation
      * @return array{
      *     parsed: array<string, mixed>,
      *     result: ExtractedResultData,
      *     parser_type?: ?string,
-     *     page_count?: ?int
+     *     page_count?: ?int,
+     *     failed_files?: list<array{filename: string, error: string}>
      * }
      */
     public function handle(

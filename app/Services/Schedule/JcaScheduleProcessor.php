@@ -87,14 +87,16 @@ class JcaScheduleProcessor
      *     parsed: array<string, mixed>,
      *     result: ExtractedResultData,
      *     parser_type: string,
-     *     page_count: ?int
+     *     page_count: ?int,
+     *     failed_files: list<array{filename: string, error: string}>
      * }
      */
     public function extractRoster(array|UploadedFile|null $file, ?string $text, array $eventTypes = []): array
     {
         $files = $file instanceof UploadedFile ? [$file] : (is_array($file) ? $file : []);
-        $sources = $this->resolveSources($files, $text);
-        $parsed = $this->parseSources($sources);
+        $processedSources = $this->processSources($files, $text);
+        $sources = $processedSources['sources'];
+        $parsed = $this->mergeParsedResults($processedSources['parsed_results']);
         $filteredParsed = $parsed;
 
         if ($eventTypes !== []) {
@@ -126,43 +128,117 @@ class JcaScheduleProcessor
             'result' => $result,
             'parser_type' => $this->parserType($sources[0]['source'], $sources[0]['document_type'] ?? null),
             'page_count' => $this->pageCount($sources),
+            'failed_files' => $processedSources['failed_files'],
         ];
     }
 
     /**
      * @param  list<UploadedFile>  $files
-     * @return list<array<string, mixed>>
+     * @return array{
+     *     sources: list<array<string, mixed>>,
+     *     parsed_results: list<array<string, mixed>>,
+     *     failed_files: list<array{filename: string, error: string}>
+     * }
      */
-    private function resolveSources(array $files, ?string $text): array
+    private function processSources(array $files, ?string $text): array
     {
-        try {
-            if ($files === []) {
-                return [$this->scheduleInputResolver->resolve(null, $text)];
+        if ($files === []) {
+            try {
+                $source = $this->scheduleInputResolver->resolve(null, $text);
+            } catch (Throwable $throwable) {
+                throw ExtractSourceResolutionException::fromThrowable($throwable, false);
             }
 
-            return array_map(
-                fn (UploadedFile $file): array => $this->scheduleInputResolver->resolve($file, null),
-                $files,
-            );
-        } catch (Throwable $throwable) {
-            throw ExtractSourceResolutionException::fromThrowable($throwable, $files !== []);
+            return [
+                'sources' => [$source],
+                'parsed_results' => [$this->scheduleFormatParser->parse(
+                    (string) $source['raw_text'],
+                    $source['document_type'] ?? null,
+                )],
+                'failed_files' => [],
+            ];
         }
+
+        $allowPartialResults = count($files) > 1;
+        $sources = [];
+        $parsedResults = [];
+
+        /** @var list<array{filename: string, error: string, throwable: Throwable, source_resolution: bool}> $failures */
+        $failures = [];
+
+        /** @var list<array{filename: string, error: string}> $failedFiles */
+        $failedFiles = [];
+
+        foreach ($files as $file) {
+            try {
+                $source = $this->scheduleInputResolver->resolve($file, null);
+            } catch (Throwable $throwable) {
+                if (! $allowPartialResults) {
+                    throw ExtractSourceResolutionException::fromThrowable($throwable, true);
+                }
+
+                $failure = $this->fileFailure($file, $throwable, true);
+                $failures[] = $failure;
+                $failedFiles[] = $this->displayedFileFailure($failure);
+
+                continue;
+            }
+
+            try {
+                $parsedResult = $this->scheduleFormatParser->parse(
+                    (string) $source['raw_text'],
+                    $source['document_type'] ?? null,
+                );
+            } catch (Throwable $throwable) {
+                if (! $allowPartialResults) {
+                    throw $throwable;
+                }
+
+                $failure = $this->fileFailure($file, $throwable, false);
+                $failures[] = $failure;
+                $failedFiles[] = $this->displayedFileFailure($failure);
+
+                continue;
+            }
+
+            if ($allowPartialResults && ($parsedResult['calendar_events'] ?? []) === []) {
+                $failedFiles[] = [
+                    'filename' => $file->getClientOriginalName(),
+                    'error' => 'No calendar events were found in this image.',
+                ];
+            }
+
+            $sources[] = $source;
+            $parsedResults[] = $parsedResult;
+        }
+
+        if ($parsedResults === []) {
+            $firstFailure = $failures[0];
+
+            if ($firstFailure['source_resolution']) {
+                throw ExtractSourceResolutionException::fromThrowable($firstFailure['throwable'], true);
+            }
+
+            throw $firstFailure['throwable'];
+        }
+
+        foreach ($failures as $failure) {
+            report($failure['throwable']);
+        }
+
+        return [
+            'sources' => $sources,
+            'parsed_results' => $parsedResults,
+            'failed_files' => $failedFiles,
+        ];
     }
 
     /**
-     * @param  list<array<string, mixed>>  $sources
+     * @param  list<array<string, mixed>>  $parsedResults
      * @return array<string, mixed>
      */
-    private function parseSources(array $sources): array
+    private function mergeParsedResults(array $parsedResults): array
     {
-        $parsedResults = array_map(
-            fn (array $source): array => $this->scheduleFormatParser->parse(
-                (string) $source['raw_text'],
-                $source['document_type'] ?? null,
-            ),
-            $sources,
-        );
-
         $parsed = $parsedResults[0];
         $events = array_merge(...array_map(
             static fn (array $result): array => is_array($result['calendar_events'] ?? null)
@@ -190,6 +266,31 @@ class JcaScheduleProcessor
         $parsed['calendar_events'] = $events;
 
         return $parsed;
+    }
+
+    /** @return array{filename: string, error: string, throwable: Throwable, source_resolution: bool} */
+    private function fileFailure(UploadedFile $file, Throwable $throwable, bool $sourceResolution): array
+    {
+        return [
+            'filename' => $file->getClientOriginalName(),
+            'error' => $throwable->getMessage() !== ''
+                ? $throwable->getMessage()
+                : 'The file could not be extracted.',
+            'throwable' => $throwable,
+            'source_resolution' => $sourceResolution,
+        ];
+    }
+
+    /**
+     * @param  array{filename: string, error: string, throwable: Throwable, source_resolution: bool}  $failure
+     * @return array{filename: string, error: string}
+     */
+    private function displayedFileFailure(array $failure): array
+    {
+        return [
+            'filename' => $failure['filename'],
+            'error' => $failure['error'],
+        ];
     }
 
     /** @param list<array<string, mixed>> $sources */
