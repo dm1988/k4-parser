@@ -41,9 +41,21 @@
                 @if ($files !== [])
                     <ul class="mt-3 grid gap-2 text-sm text-[#1B365D] dark:text-slate-200">
                         @foreach ($files as $selectedFile)
-                            <li class="flex items-center justify-between gap-3 rounded-xl border border-[#1B365D]/10 bg-white px-4 py-2 dark:border-slate-700 dark:bg-slate-900">
+                            <li wire:key="selected-upload-{{ $selectedFile->getFilename() }}" class="flex items-center justify-between gap-3 rounded-xl border border-[#1B365D]/10 bg-white px-4 py-2 dark:border-slate-700 dark:bg-slate-900">
                                 <span class="min-w-0 truncate font-medium">{{ $selectedFile->getClientOriginalName() }}</span>
-                                <span class="shrink-0 text-xs text-[#4A5568] dark:text-slate-400">{{ \Illuminate\Support\Number::fileSize($selectedFile->getSize()) }}</span>
+                                <span class="flex shrink-0 items-center gap-2">
+                                    <span class="text-xs text-[#4A5568] dark:text-slate-400">{{ \Illuminate\Support\Number::fileSize($selectedFile->getSize()) }}</span>
+                                    <button
+                                        type="button"
+                                        wire:click="$removeUpload('files', '{{ $selectedFile->getFilename() }}')"
+                                        wire:loading.attr="disabled"
+                                        wire:target="files"
+                                        class="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#4A5568] transition hover:bg-red-50 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-[#C5A059] focus:ring-offset-2 disabled:cursor-wait disabled:opacity-50 dark:text-slate-400 dark:hover:bg-red-950/50 dark:hover:text-red-300 dark:focus:ring-offset-slate-900"
+                                        aria-label="Remove {{ $selectedFile->getClientOriginalName() }}"
+                                    >
+                                        <x-heroicon-o-x-mark class="h-5 w-5" aria-hidden="true" />
+                                    </button>
+                                </span>
                             </li>
                         @endforeach
                     </ul>

@@ -65,6 +65,30 @@ class ScheduleExtractorTest extends TestCase
         $this->assertExtractButtonEnabled($component->html());
     }
 
+    public function test_selected_uploads_can_be_removed_individually(): void
+    {
+        $component = Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->set('files', [
+                UploadedFile::fake()->image('first-page.png', 300, 200),
+                UploadedFile::fake()->image('second-page.png', 300, 200),
+            ])
+            ->assertSee('Remove first-page.png')
+            ->assertSee('Remove second-page.png');
+
+        $firstUpload = $component->get('files')[0];
+
+        $this->assertInstanceOf(TemporaryUploadedFile::class, $firstUpload);
+
+        $component
+            ->call('_removeUpload', 'files', $firstUpload->getFilename())
+            ->assertCount('files', 1)
+            ->assertDontSee('first-page.png')
+            ->assertDontSee('Remove first-page.png')
+            ->assertSee('second-page.png')
+            ->assertSee('Remove second-page.png');
+    }
+
     private function assertExtractButtonDisabled(string $html): void
     {
         $button = $this->extractButtonHtml($html);

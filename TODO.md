@@ -41,10 +41,15 @@ Outcome:
 Commit message: `fix: parse compact directional slot times`
 
 
-## Bug: Schedule: cannot remove selected upload images
-Users cannot remove selected images for upload without refreshing the page.
+## Completed: Schedule: cannot remove selected upload images
 
-Expose an `X` icon remove button to deselect an image
+Outcome:
+
+- Added an accessible `X` icon button to each selected upload so images can be removed individually without refreshing the page.
+- Used Livewire's temporary-upload removal flow so the deselected file is removed from both component state and temporary storage.
+- Added focused regression coverage for removing one image while preserving the remaining selection.
+
+Commit message: `fix: allow removing selected schedule uploads`
 
 ## Remove info logging
 Currently: Every successful extraction gets logged as well as a db record added as a event request.
@@ -56,135 +61,6 @@ Code:
         ]);
 References:
 app/Services/Infrastructure/ExtractRequestLogger.php
-
-## Completed: Bug: RJAA flight release false maintenance conflict and upload error layout
-
-Outcome:
-
-- Allowed the maintenance-section parser to recognize `PASSED RAIM REQUIREMENTS` when native PDF extraction concatenates it directly to preceding text, while retaining the existing genuine duplicate-conflict guard.
-- Confirmed the 33-page `CKS021617RJAA.pdf` now extracts as flight `CKS216`, route `RJAA` to `RKSI`, with one MEL item instead of a false conflict.
-- Preserved the original extraction exception as the reported wrapper's previous exception while keeping the generic browser-visible error.
-- Applied Livewire's explicit `.flex` loading-display modifier and block prompt text so the title and upload instruction remain vertically separated after an error response.
-- Added focused parser and Livewire regression coverage for the compact maintenance boundary, exception chain, and post-error prompt markup.
-
-Commit message: `fix: handle duplicated compact maintenance records`
-
-## Completed: Bug: flight plan: EENT / EEXP not extracted
-
-Outcome:
-
-- Identified the production-only cause as missing Imagick support on an image-only ETOPS page and prevented incomplete PDF text from being cached when OCR is unavailable or fails.
-- Added regression coverage for the exact private release and confirmed extraction of EENT `N45 54.3 E154 20.0` and EEXP `N57 51.2 W175 26.2`.
-- Removed the duplicate 146-page text traversal by assembling native PDF text and identifying OCR pages in one pass.
-- Batched uncached airport lookups through Laravel's concurrent HTTP pool while preserving found, missing, and temporarily unavailable cache states per airport.
-- Tested 150 DPI / Tesseract PSM 11 across all ten image-only pages found in the available private releases. It retained as little as 16% of PSM 6's recognized token set on one fixture, so the safer 200 DPI / PSM 6 configuration remains in place.
-
-Commit message: `perf: streamline flight release extraction`
-
-Regression evidence:
-
-Expected EENT coordinates: `N45 54.3 E154 20.0`
-Expected EEXP coordinates: `N57 51.2 W175 26.2`
-
-Raw text:
-```
-ONEMU 0249 051 310 25/057 P050 500 833 028 eee ee. 0715 1184 ....
-2509 048 LGT -36 550 02.56 1... 2.6. we ee eee 0910
-- FL - 330
-N45 31.9 E153 43.2
-OPULO 0331 054 330 27/071 P049 491 831 036 wee eee 0842 1057 ....
-2178 048 -44 539 03.32 1... 2.6. wees wee 0783
-N45 54.3 E154 20.0
-(EENT) 0034 056 330 29/025 P013 487 833 004 wee ee. 0855 1044 ....
-—----- 2144 054 -48 500 03.36 1... 2.6. wees eee. 0769
-N48 59.7 E160 00.7
-OMOTO 0295 058 330 29/025 P013 487 833 036 wee eee O971 0928 ....
-1849 055 -48 500 04.12 1... 1... we ee wee 0653
-N49 00.1 E160 01.5
--PAZA ---- --- ==> --/-- = HR HF wee eee TO 0927 LL...
-Sass ene 04.12 1... 1... we ee wee 0653
-FIR FIR-> PAZA <-—
-N49 30.6 E161 07.8
-OGDEN 0054 061 330 34/017 M004 485 834 007 wee ee. 0993 0906 ....
-1795 059 -50 480 04.19 1... 26. we ee wee 0632
-N50 53.9 E164 26.4
-OPHET 0152 062 330 32/029 P001 484 834 018 wee ee. 1052 0846 ....
-1643 058 -51 484 04.37 2... cee ee ee eee 0572
-N51 21.5 E165 37.5
-OLCOT 0053 063 330 32/041 PO05 483 834 007 «ee ee. 1073 0826 ....
-1590 058 -52 488 04.44 1... 16. we ee wee 0552
-N52 53.7 E170 01.2 -ETP1
-N52 56.3 E170 09.3
-OPAKE 0192 064 330 31/063 P020 482 833 023 eee ee. 1144 0755 2...
-1398 057 -53 501 05.07 1... 2.6. wees eee 0480
-N54 15.4 E172 49.3
-ONEIL 0123 052 330 30/095 P022 481 833 015 eee ee. 1189 0710 ....
-1275 041 -54 502 05.22 1... 1.6. we ee eee 0435
-N56 05.2 E178 04.3
-OBOYD 0211 059 330 30/076 P035 479 833 024 wee ee. 1264 0635 ....
-1064 051 -55 513 05.46 1... 26. we ee eee 0360
-N57 36.6 W176 26.8
-OFORD 0202 062 330 31/050 P013 480 834 025 «ee ee. 1338 0561 ....
-0862 056 -55 491 06.11 1... 11. we ee eee. 0286
-N57 51.2 W175 26.2
-(EEXP) 0035 063 330 33/035 P004 480 834 004 eee ee. 1351 0548 2...
------- 0827 059 -55 483 06.15 1... 26. we ee eee 0273
-N58 16.4 W173 34.4
-```
-## Completed: Bug: Edge case - Incorrect DH extraction
-
-Outcome:
-
-- Confirmed from the source image that `BHJCHN` is labeled `CNF #` and is booking confirmation data.
-- Excluded lines labeled `CNF` or `Confirmation` from fallback tail-number extraction without changing supported aircraft-registration formats or display precedence.
-- Kept `CX 413` resolved to `Cathay Pacific` and added focused parser regression coverage.
-
-Commit message: `fix: correct commercial deadhead tail extraction`
-
-## Completed: Flight init refinement
-
-Outcome:
-
-- Added the confirmed alternate airport and flight duration to the Flight init metrics.
-- Reordered the metrics to show ACARS init date, departure airport, arrival airport, alternate airport, flight duration, ETD, and estimated ramp fuel before the crew list.
-- Removed tail number and flight number from the metric grid because they remain visible in the release summary.
-- Added focused presenter and Livewire coverage for the values and their rendered order.
-
-Commit message: `refactor: refine flight init presentation`
-
-## Github CI Tests fail
-
-Check github env
-
-Illuminate\Foundation\ComposerScripts::postAutoloadDump
-  > @php artisan package:discover --ansi
-  
-     InvalidArgumentException 
-  
-    Please provide a valid cache path.
-  
-    at vendor/laravel/framework/src/Illuminate/View/Compilers/Compiler.php:75
-       71▕         $compiledExtension = 'php',
-       72▕         $shouldCheckTimestamps = true,
-       73▕     ) {
-       74▕         if (! $cachePath) {
-    ➜  75▕             throw new InvalidArgumentException('Please provide a valid cache path.');
-       76▕         }
-       77▕ 
-       78▕         $this->files = $files;
-       79▕         $this->cachePath = $cachePath;
-  
-        +19 vendor frames 
-  
-    20  [internal]:0
-        Illuminate\Foundation\Application::{closure:Illuminate\Foundation\Application::boot():1138}()
-        +6 vendor frames 
-  
-    27  artisan:16
-        Illuminate\Foundation\Application::handleCommand()
-  
-  Script @php artisan package:discover --ansi handling the post-autoload-dump event returned with error code 1
-  Error: Process completed with exit code 1
 
 ## Refactor welcome page for use with new features
 
@@ -496,3 +372,132 @@ Outcome:
 - Added focused coverage for mixed OCR/parser failures, zero-event images, successful partial results, modal content, and all-images-failed behavior.
 
 Commit message: `fix: preserve partial schedule image results`
+
+## Completed: Bug: RJAA flight release false maintenance conflict and upload error layout
+
+Outcome:
+
+- Allowed the maintenance-section parser to recognize `PASSED RAIM REQUIREMENTS` when native PDF extraction concatenates it directly to preceding text, while retaining the existing genuine duplicate-conflict guard.
+- Confirmed the 33-page `CKS021617RJAA.pdf` now extracts as flight `CKS216`, route `RJAA` to `RKSI`, with one MEL item instead of a false conflict.
+- Preserved the original extraction exception as the reported wrapper's previous exception while keeping the generic browser-visible error.
+- Applied Livewire's explicit `.flex` loading-display modifier and block prompt text so the title and upload instruction remain vertically separated after an error response.
+- Added focused parser and Livewire regression coverage for the compact maintenance boundary, exception chain, and post-error prompt markup.
+
+Commit message: `fix: handle duplicated compact maintenance records`
+
+## Completed: Bug: flight plan: EENT / EEXP not extracted
+
+Outcome:
+
+- Identified the production-only cause as missing Imagick support on an image-only ETOPS page and prevented incomplete PDF text from being cached when OCR is unavailable or fails.
+- Added regression coverage for the exact private release and confirmed extraction of EENT `N45 54.3 E154 20.0` and EEXP `N57 51.2 W175 26.2`.
+- Removed the duplicate 146-page text traversal by assembling native PDF text and identifying OCR pages in one pass.
+- Batched uncached airport lookups through Laravel's concurrent HTTP pool while preserving found, missing, and temporarily unavailable cache states per airport.
+- Tested 150 DPI / Tesseract PSM 11 across all ten image-only pages found in the available private releases. It retained as little as 16% of PSM 6's recognized token set on one fixture, so the safer 200 DPI / PSM 6 configuration remains in place.
+
+Commit message: `perf: streamline flight release extraction`
+
+Regression evidence:
+
+Expected EENT coordinates: `N45 54.3 E154 20.0`
+Expected EEXP coordinates: `N57 51.2 W175 26.2`
+
+Raw text:
+```
+ONEMU 0249 051 310 25/057 P050 500 833 028 eee ee. 0715 1184 ....
+2509 048 LGT -36 550 02.56 1... 2.6. we ee eee 0910
+- FL - 330
+N45 31.9 E153 43.2
+OPULO 0331 054 330 27/071 P049 491 831 036 wee eee 0842 1057 ....
+2178 048 -44 539 03.32 1... 2.6. wees wee 0783
+N45 54.3 E154 20.0
+(EENT) 0034 056 330 29/025 P013 487 833 004 wee ee. 0855 1044 ....
+—----- 2144 054 -48 500 03.36 1... 2.6. wees eee. 0769
+N48 59.7 E160 00.7
+OMOTO 0295 058 330 29/025 P013 487 833 036 wee eee O971 0928 ....
+1849 055 -48 500 04.12 1... 1... we ee wee 0653
+N49 00.1 E160 01.5
+-PAZA ---- --- ==> --/-- = HR HF wee eee TO 0927 LL...
+Sass ene 04.12 1... 1... we ee wee 0653
+FIR FIR-> PAZA <-—
+N49 30.6 E161 07.8
+OGDEN 0054 061 330 34/017 M004 485 834 007 wee ee. 0993 0906 ....
+1795 059 -50 480 04.19 1... 26. we ee wee 0632
+N50 53.9 E164 26.4
+OPHET 0152 062 330 32/029 P001 484 834 018 wee ee. 1052 0846 ....
+1643 058 -51 484 04.37 2... cee ee ee eee 0572
+N51 21.5 E165 37.5
+OLCOT 0053 063 330 32/041 PO05 483 834 007 «ee ee. 1073 0826 ....
+1590 058 -52 488 04.44 1... 16. we ee wee 0552
+N52 53.7 E170 01.2 -ETP1
+N52 56.3 E170 09.3
+OPAKE 0192 064 330 31/063 P020 482 833 023 eee ee. 1144 0755 2...
+1398 057 -53 501 05.07 1... 2.6. wees eee 0480
+N54 15.4 E172 49.3
+ONEIL 0123 052 330 30/095 P022 481 833 015 eee ee. 1189 0710 ....
+1275 041 -54 502 05.22 1... 1.6. we ee eee 0435
+N56 05.2 E178 04.3
+OBOYD 0211 059 330 30/076 P035 479 833 024 wee ee. 1264 0635 ....
+1064 051 -55 513 05.46 1... 26. we ee eee 0360
+N57 36.6 W176 26.8
+OFORD 0202 062 330 31/050 P013 480 834 025 «ee ee. 1338 0561 ....
+0862 056 -55 491 06.11 1... 11. we ee eee. 0286
+N57 51.2 W175 26.2
+(EEXP) 0035 063 330 33/035 P004 480 834 004 eee ee. 1351 0548 2...
+------ 0827 059 -55 483 06.15 1... 26. we ee eee 0273
+N58 16.4 W173 34.4
+```
+## Completed: Bug: Edge case - Incorrect DH extraction
+
+Outcome:
+
+- Confirmed from the source image that `BHJCHN` is labeled `CNF #` and is booking confirmation data.
+- Excluded lines labeled `CNF` or `Confirmation` from fallback tail-number extraction without changing supported aircraft-registration formats or display precedence.
+- Kept `CX 413` resolved to `Cathay Pacific` and added focused parser regression coverage.
+
+Commit message: `fix: correct commercial deadhead tail extraction`
+
+## Completed: Flight init refinement
+
+Outcome:
+
+- Added the confirmed alternate airport and flight duration to the Flight init metrics.
+- Reordered the metrics to show ACARS init date, departure airport, arrival airport, alternate airport, flight duration, ETD, and estimated ramp fuel before the crew list.
+- Removed tail number and flight number from the metric grid because they remain visible in the release summary.
+- Added focused presenter and Livewire coverage for the values and their rendered order.
+
+Commit message: `refactor: refine flight init presentation`
+
+## Github CI Tests fail
+
+Check github env
+
+Illuminate\Foundation\ComposerScripts::postAutoloadDump
+  > @php artisan package:discover --ansi
+  
+     InvalidArgumentException 
+  
+    Please provide a valid cache path.
+  
+    at vendor/laravel/framework/src/Illuminate/View/Compilers/Compiler.php:75
+       71▕         $compiledExtension = 'php',
+       72▕         $shouldCheckTimestamps = true,
+       73▕     ) {
+       74▕         if (! $cachePath) {
+    ➜  75▕             throw new InvalidArgumentException('Please provide a valid cache path.');
+       76▕         }
+       77▕ 
+       78▕         $this->files = $files;
+       79▕         $this->cachePath = $cachePath;
+  
+        +19 vendor frames 
+  
+    20  [internal]:0
+        Illuminate\Foundation\Application::{closure:Illuminate\Foundation\Application::boot():1138}()
+        +6 vendor frames 
+  
+    27  artisan:16
+        Illuminate\Foundation\Application::handleCommand()
+  
+  Script @php artisan package:discover --ansi handling the post-autoload-dump event returned with error code 1
+  Error: Process completed with exit code 1
