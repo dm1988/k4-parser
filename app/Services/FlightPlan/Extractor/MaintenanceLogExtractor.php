@@ -49,7 +49,7 @@ class MaintenanceLogExtractor
             ? 'MEL\h*\/\h*CDL(?:\h*\/\h*DMI)?'
             : 'MAINTENANCE(?:\h+LOG|\h+ITEMS?)';
         $pattern = '/(?:'.$headerPattern.')\h*:?\h*'
-            .'(?<body>.*?)(?=\bEND\h+MAINTENANCE\h+LOG\b|\bPASSED\h+RAIM\h+REQUIREMENTS\b|(?:\R\h*(?:CREW|FUEL\h+SUMMARY|ROUTE|NOTAMS?|WEATHER)\b)|\z)/is';
+            .'(?<body>.*?)(?=\bEND\h+MAINTENANCE\h+LOG\b|PASSED\h+RAIM\h+REQUIREMENTS\b|(?:\R\h*(?:CREW|FUEL\h+SUMMARY|ROUTE|NOTAMS?|WEATHER)\b)|\z)/is';
         $matches = [];
 
         if (preg_match($pattern, $text, $matches) !== 1) {

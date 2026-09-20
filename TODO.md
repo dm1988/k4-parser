@@ -28,6 +28,20 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## Bug: Schedule image extraction not working
+Currently:
+On image upload, an exception is thrown. With multiple image uploads, when 1 image fails to extract, no results are shown
+
+Exception thrown: 
+  Carbon\Exceptions\InvalidFormatException
+  A textual month could not be found
+
+References:
+app/Services/Schedule/Extractor/TripInformationParser.php
+storage/app/private/schedules/IMG_0471.jpg
+storage/app/private/schedules/IMG_0472.jpg
+storage/app/private/schedules/IMG_0473.jpg
+
 ## Remove info logging
 Currently: Every successful extraction gets logged as well as a db record added as a event request.
 
@@ -38,6 +52,18 @@ Code:
         ]);
 References:
 app/Services/Infrastructure/ExtractRequestLogger.php
+
+## Completed: Bug: RJAA flight release false maintenance conflict and upload error layout
+
+Outcome:
+
+- Allowed the maintenance-section parser to recognize `PASSED RAIM REQUIREMENTS` when native PDF extraction concatenates it directly to preceding text, while retaining the existing genuine duplicate-conflict guard.
+- Confirmed the 33-page `CKS021617RJAA.pdf` now extracts as flight `CKS216`, route `RJAA` to `RKSI`, with one MEL item instead of a false conflict.
+- Preserved the original extraction exception as the reported wrapper's previous exception while keeping the generic browser-visible error.
+- Applied Livewire's explicit `.flex` loading-display modifier and block prompt text so the title and upload instruction remain vertically separated after an error response.
+- Added focused parser and Livewire regression coverage for the compact maintenance boundary, exception chain, and post-error prompt markup.
+
+Commit message: `fix: handle duplicated compact maintenance records`
 
 ## Completed: Bug: flight plan: EENT / EEXP not extracted
 

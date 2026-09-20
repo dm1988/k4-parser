@@ -78,8 +78,8 @@ class FlightPlanBrief extends Component
             $this->addError('flightRelease', $exception->getMessage());
 
             return;
-        } catch (Throwable) {
-            report(new RuntimeException('Flight plan extraction failed.'));
+        } catch (Throwable $throwable) {
+            report(new RuntimeException('Flight plan extraction failed.', previous: $throwable));
 
             $this->resetToUpload($user);
             $this->addError('flightRelease', 'We could not process that flight release. Please try again.');

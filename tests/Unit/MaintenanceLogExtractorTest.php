@@ -106,6 +106,27 @@ class MaintenanceLogExtractorTest extends TestCase
         $this->assertStringNotContainsString('PASSED RAIM', $items[7]['description']);
     }
 
+    public function test_it_terminates_a_compact_maintenance_section_when_the_raim_marker_has_no_leading_separator(): void
+    {
+        $result = $this->extractor()->extract(<<<'TEXT'
+MEL/CDLM 33-21-01-02DMI 100230985 CABIN INTERIOR ILLUMINATION-SUPERNUMERARY COMPARTMENT LIGHTS 777F/777ERSFPASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION
+MEL/CDLM 33-21-01-02DMI 100230985 CABIN INTERIOR ILLUMINATION-SUPERNUMERARY COMPARTMENT LIGHTS 777F/777ERSFPASSED RAIM REQUIREMENTS FOR PRIMARY NAVIGATION
+TEXT);
+
+        $this->assertTrue($result['data']['section_present']);
+        $this->assertSame([
+            [
+                'type' => 'MEL',
+                'number' => '33-21-01-02',
+                'description' => 'CABIN INTERIOR ILLUMINATION-SUPERNUMERARY COMPARTMENT LIGHTS 777F/777ERSF',
+                'reference' => '100230985',
+                'status' => null,
+                'limitations' => null,
+                'procedures' => null,
+            ],
+        ], $result['data']['items']);
+    }
+
     public function test_it_extracts_all_mels_with_variable_number_segments_across_a_page_break(): void
     {
         $result = $this->extractor()->extract($this->fixture('zsof-variable-mel-numbers'));

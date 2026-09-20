@@ -50,7 +50,9 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('Upload one PDF flight plan. Click to browse your files.')
             ->assertSeeHtml('class="absolute inset-0 h-full w-full cursor-pointer opacity-0"')
             ->assertSeeHtml('wire:loading.attr="disabled"')
+            ->assertSeeHtml('wire:loading.remove.flex')
             ->assertSeeHtml('wire:loading.flex')
+            ->assertSeeHtml('class="flex flex-col items-center gap-2"')
             ->assertSeeHtml('min-h-48')
             ->assertSeeText('Processing flight plan…')
             ->assertSeeText('Please wait while your PDF is uploaded and parsed.')
@@ -1601,10 +1603,11 @@ class FlightPlanBriefTest extends TestCase
         Exceptions::fake();
         $log = Log::spy();
         $privateFailure = 'PRIVATE RAW PAGE /private/flight-release.pdf';
+        $extractionException = new RuntimeException($privateFailure);
 
-        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock) use ($privateFailure): void {
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock) use ($extractionException): void {
             $this->expectOnce($mock, 'extractFile')
-                ->andThrow(new RuntimeException($privateFailure));
+                ->andThrow($extractionException);
         });
 
         $component = Livewire::actingAs(User::factory()->admin()->create())
@@ -1615,10 +1618,13 @@ class FlightPlanBriefTest extends TestCase
             ->assertSet('flightPlanKey', null)
             ->assertHasErrors(['flightRelease'])
             ->assertSeeText('We could not process that flight release. Please try again.')
+            ->assertSeeHtml('wire:loading.remove.flex')
+            ->assertSeeHtml('class="flex flex-col items-center gap-2"')
             ->assertDontSeeText($privateFailure);
 
         Exceptions::assertReported(
-            fn (RuntimeException $exception): bool => $exception->getMessage() === 'Flight plan extraction failed.',
+            fn (RuntimeException $exception): bool => $exception->getMessage() === 'Flight plan extraction failed.'
+                && $exception->getPrevious() === $extractionException,
         );
         $this->assertReceivedOnce($log, 'error')->withArgs(
             fn (string $message, array $context): bool => $message === 'K4 extraction failed'

@@ -18,21 +18,21 @@
                         class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                     >
 
-                    <span wire:loading.remove wire:target="flightRelease" class="flex flex-col items-center">
-                        <span class="mb-5 inline-flex rounded-2xl bg-[#1B365D] p-4 text-[#F8F9FA] shadow-md transition duration-300 group-hover:bg-[#C5A059] group-hover:text-[#0B0E14]" aria-hidden="true">
+                    <div wire:loading.remove.flex wire:target="flightRelease" class="flex flex-col items-center gap-2">
+                        <span class="mb-3 inline-flex rounded-2xl bg-[#1B365D] p-4 text-[#F8F9FA] shadow-md transition duration-300 group-hover:bg-[#C5A059] group-hover:text-[#0B0E14]" aria-hidden="true">
                             <svg class="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 0 1-.88-7.903A5 5 0 1 1 15.9 6H16a5 5 0 0 1 1 9.9M15 13l-3-3m0 0-3 3m3-3v12" />
                             </svg>
                         </span>
 
-                        <span class="max-w-full text-xl font-bold text-[#1B365D] dark:text-slate-100">
+                        <span class="block max-w-full text-xl font-bold text-[#1B365D] dark:text-slate-100">
                             Drop your flight plan here
                         </span>
 
-                        <span class="mt-2 max-w-md text-sm leading-6 text-[#4A5568] dark:text-slate-400">
+                        <span class="block max-w-md text-sm leading-6 text-[#4A5568] dark:text-slate-400">
                             Upload one PDF flight plan. Click to browse your files.
                         </span>
-                    </span>
+                    </div>
 
                     <span wire:loading.flex wire:target="flightRelease" class="hidden flex-col items-center gap-4" role="status">
                         <svg class="h-10 w-10 animate-spin text-[#C5A059]" viewBox="0 0 24 24" aria-hidden="true">
