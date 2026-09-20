@@ -3,6 +3,7 @@
 namespace App\View\Presenters\FlightRelease;
 
 use App\DTOs\SlotTimeData;
+use App\Enums\SlotDirection;
 use App\View\Models\FlightPlanPageData;
 use Carbon\CarbonImmutable;
 use Throwable;
@@ -60,7 +61,7 @@ final readonly class SchedulePresenter
             : $slotCount.' approved UTC '.($slotCount === 1 ? 'slot' : 'slots');
     }
 
-    /** @return list<array{direction: string, airport: string, date: string, time: string, sourceTime: string, timeBasis: string, tolerance: ?string, window: ?string, plannedArrival: ?string, comparison: ?string, plannedPosition: ?float}> */
+    /** @return list<array{direction: string, airport: string, date: string, time: string, sourceTime: string, timeBasis: string, tolerance: ?string, window: ?string, comparisonHeading: ?string, plannedTime: ?string, comparison: ?string, plannedPosition: ?float}> */
     public function slotTimes(): array
     {
         return array_map(
@@ -74,22 +75,29 @@ final readonly class SchedulePresenter
         return $this->pageData?->flightPlan->schedule->slotSourceText;
     }
 
-    /** @return array{direction: string, airport: string, date: string, time: string, sourceTime: string, timeBasis: string, tolerance: ?string, window: ?string, plannedArrival: ?string, comparison: ?string, plannedPosition: ?float} */
+    /** @return array{direction: string, airport: string, date: string, time: string, sourceTime: string, timeBasis: string, tolerance: ?string, window: ?string, comparisonHeading: ?string, plannedTime: ?string, comparison: ?string, plannedPosition: ?float} */
     private function slotTime(SlotTimeData $slot): array
     {
         $tolerance = $slot->toleranceMinutes;
-        $plannedArrival = null;
+        $plannedValue = match ($slot->direction) {
+            SlotDirection::Departure => $this->etdUtc(),
+            SlotDirection::Arrival => $this->etaUtc(),
+            default => null,
+        };
+        $comparisonHeading = $slot->direction->comparisonHeading();
+        $plannedTimeLabel = $slot->direction->plannedTimeLabel();
+        $plannedTime = null;
         $comparison = null;
         $plannedPosition = null;
 
-        if ($slot->direction->value === 'arrival' && $tolerance !== null && $tolerance > 0 && $this->etaUtc() !== null) {
+        if ($plannedValue !== null && $plannedTimeLabel !== null && $tolerance !== null && $tolerance > 0) {
             try {
-                $eta = CarbonImmutable::parse($this->etaUtc())->utc();
-                $offsetMinutes = $slot->instantUtc->diffInMinutes($eta, false);
-                $plannedArrival = $eta->format('M j, Hi\Z').' UTC';
+                $plannedInstant = CarbonImmutable::parse($plannedValue)->utc();
+                $offsetMinutes = $slot->instantUtc->diffInMinutes($plannedInstant, false);
+                $plannedTime = $plannedInstant->format('M j, Hi\Z').' UTC';
                 $comparison = abs($offsetMinutes) <= $tolerance
-                    ? 'Planned ETA is within the confirmed window'
-                    : 'Planned ETA is outside the confirmed window';
+                    ? 'Planned '.$plannedTimeLabel.' is within the confirmed window'
+                    : 'Planned '.$plannedTimeLabel.' is outside the confirmed window';
                 $plannedPosition = max(0, min(100, 50 + (($offsetMinutes / ($tolerance * 4)) * 100)));
             } catch (Throwable) {
             }
@@ -108,7 +116,8 @@ final readonly class SchedulePresenter
                 $slot->instantUtc->subMinutes($tolerance)->format('M j, Hi\Z'),
                 $slot->instantUtc->addMinutes($tolerance)->format('M j, Hi\Z'),
             ),
-            'plannedArrival' => $plannedArrival,
+            'comparisonHeading' => $comparisonHeading,
+            'plannedTime' => $plannedTime,
             'comparison' => $comparison,
             'plannedPosition' => $plannedPosition,
         ];

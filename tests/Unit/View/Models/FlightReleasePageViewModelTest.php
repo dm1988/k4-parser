@@ -387,11 +387,13 @@ class FlightReleasePageViewModelTest extends TestCase
             'timeBasis' => 'UTC',
             'tolerance' => '± 30 min',
             'window' => 'May 25, 1815Z–May 25, 1915Z UTC',
-            'plannedArrival' => null,
-            'comparison' => null,
-            'plannedPosition' => null,
+            'comparisonHeading' => 'Planned departure comparison',
+            'plannedTime' => 'May 25, 1830Z UTC',
+            'comparison' => 'Planned ETD is within the confirmed window',
+            'plannedPosition' => 37.5,
         ], $viewModel->slotTimes()[0]);
-        $this->assertSame('May 26, 0215Z UTC', $viewModel->slotTimes()[1]['plannedArrival']);
+        $this->assertSame('Planned arrival comparison', $viewModel->slotTimes()[1]['comparisonHeading']);
+        $this->assertSame('May 26, 0215Z UTC', $viewModel->slotTimes()[1]['plannedTime']);
         $this->assertSame('Planned ETA is within the confirmed window', $viewModel->slotTimes()[1]['comparison']);
         $this->assertSame(37.5, $viewModel->slotTimes()[1]['plannedPosition']);
         $this->assertSame('1 critical point · EENT · EEXP', $viewModel->overviewEtopsSummary());
@@ -410,6 +412,7 @@ class FlightReleasePageViewModelTest extends TestCase
     public function it_compares_the_planned_arrival_with_the_arrival_slot(): void
     {
         $payload = $this->resultPayload();
+        $payload['flight_plan_data']['schedule']['etdUtc'] = '2026-09-17T02:15:00+00:00';
         $payload['flight_plan_data']['schedule']['etaUtc'] = '2026-09-17T04:31:00+00:00';
         $payload['flight_plan_data']['schedule']['slots'] = [[
             'direction' => 'departure',
@@ -429,11 +432,14 @@ class FlightReleasePageViewModelTest extends TestCase
 
         $this->assertSame('Departure', $slotTimes[0]['direction']);
         $this->assertSame('RJAA', $slotTimes[0]['airport']);
-        $this->assertNull($slotTimes[0]['comparison']);
+        $this->assertSame('Planned departure comparison', $slotTimes[0]['comparisonHeading']);
+        $this->assertSame('Sep 17, 0215Z UTC', $slotTimes[0]['plannedTime']);
+        $this->assertSame('Planned ETD is within the confirmed window', $slotTimes[0]['comparison']);
+        $this->assertSame(50.0, $slotTimes[0]['plannedPosition']);
         $this->assertSame('Arrival', $slotTimes[1]['direction']);
         $this->assertSame('RKSI', $slotTimes[1]['airport']);
         $this->assertSame('Sep 17, 0415Z–Sep 17, 0515Z UTC', $slotTimes[1]['window']);
-        $this->assertSame('Sep 17, 0431Z UTC', $slotTimes[1]['plannedArrival']);
+        $this->assertSame('Sep 17, 0431Z UTC', $slotTimes[1]['plannedTime']);
         $this->assertSame('Planned ETA is within the confirmed window', $slotTimes[1]['comparison']);
         $this->assertEqualsWithDelta(38.333333333333, $slotTimes[1]['plannedPosition'], 0.000001);
     }

@@ -37,19 +37,13 @@ Outcome:
 - Resolved airport codes for compact slots from the extracted route, preventing `DEP` from being displayed as an airport.
 - Confirmed the referenced release now displays the RKSI arrival window as 0415Z–0515Z and reports the planned 0431Z ETA inside that window.
 - Added focused extractor, orchestration, and presentation regression coverage.
+- Added the same planned-time comparison for departure slots using ETD, with direction-specific heading and time labels owned by `SlotDirection`.
+- Extracted the shared departure/arrival comparison slider into a reusable Blade component.
 
 Commit message: `fix: parse compact directional slot times`
 
+Follow-up commit message: `feat: compare departure slots with planned etd`
 
-## Completed: Schedule: cannot remove selected upload images
-
-Outcome:
-
-- Added an accessible `X` icon button to each selected upload so images can be removed individually without refreshing the page.
-- Used Livewire's temporary-upload removal flow so the deselected file is removed from both component state and temporary storage.
-- Added focused regression coverage for removing one image while preserving the remaining selection.
-
-Commit message: `fix: allow removing selected schedule uploads`
 
 ## Remove info logging
 Currently: Every successful extraction gets logged as well as a db record added as a event request.
@@ -501,3 +495,14 @@ Illuminate\Foundation\ComposerScripts::postAutoloadDump
   
   Script @php artisan package:discover --ansi handling the post-autoload-dump event returned with error code 1
   Error: Process completed with exit code 1
+
+
+## Completed: Schedule: cannot remove selected upload images
+
+Outcome:
+
+- Added an accessible `X` icon button to each selected upload so images can be removed individually without refreshing the page.
+- Used Livewire's temporary-upload removal flow so the deselected file is removed from both component state and temporary storage.
+- Added focused regression coverage for removing one image while preserving the remaining selection.
+
+Commit message: `fix: allow removing selected schedule uploads`

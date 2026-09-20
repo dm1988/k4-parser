@@ -207,7 +207,7 @@ readonly class FlightReleasePageViewModel
         return $this->schedulePresenter->overviewSlotSummary();
     }
 
-    /** @return list<array{direction: string, airport: string, date: string, time: string, sourceTime: string, timeBasis: string, tolerance: ?string, window: ?string, plannedArrival: ?string, comparison: ?string, plannedPosition: ?float}> */
+    /** @return list<array{direction: string, airport: string, date: string, time: string, sourceTime: string, timeBasis: string, tolerance: ?string, window: ?string, comparisonHeading: ?string, plannedTime: ?string, comparison: ?string, plannedPosition: ?float}> */
     public function slotTimes(): array
     {
         return $this->schedulePresenter->slotTimes();
