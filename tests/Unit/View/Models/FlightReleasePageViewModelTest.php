@@ -180,7 +180,6 @@ class FlightReleasePageViewModelTest extends TestCase
             ['label' => 'Cost Index', 'value' => '200'],
             ['label' => 'Distance to Destination', 'value' => '5,549 NM'],
             ['label' => 'FMS initial altitude', 'value' => 'FL290'],
-            ['label' => 'Planned Duration', 'value' => '07h12m'],
             ['label' => 'Alternate Airport Reserves', 'value' => '5,600 LB'],
         ], $viewModel->fmsFields());
     }

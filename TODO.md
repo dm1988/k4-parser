@@ -28,7 +28,23 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Flight plan: Hide Planned Duration in FMS task
+## [x] Completed: Flight plan: Hide Planned Duration in FMS task
+
+Outcome:
+
+- Removed the `Planned Duration` metric from the FMS task's presentation fields.
+- Preserved planned duration in the release header and Flight Init, where it remains relevant.
+- Updated focused view-model and Livewire rendering coverage.
+- Validated with focused PHPUnit tests, Pint, and Larastan.
+
+Commit message: `refactor: hide planned duration from fms task`
+
+## Flight plan: Refactor overview task
+- Emphsize attention items
+- Remove duplicate data that exists in flight strip header
+- Show MELs/CDLs if they exist
+- Show ETOPS info if it exists
+
 ## Flight plan: FMS task info order
 1. AC Type
 2. Flight Number
@@ -41,36 +57,14 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 
 Place `Planned runways and procedures` section above `Airport context` section
 
-## [x] Completed: Flight plan: flight info header refactor
-
-Outcome:
-
-- Promoted the flight number to a direct sibling of the flight icon and aircraft-detail stack.
-- Increased the flight number to a 2rem medium-weight monospaced treatment with compact line height and tracking.
-- Stacked aircraft type and registration vertically using compact technical typography.
-- Removed the visible `Tail ` prefix from confirmed registrations while preserving the explicit `Tail not present` fallback.
-- Preserved the existing responsive header layout, light/dark theme styling, route summary, and release-revision presentation.
-- Updated focused Livewire rendering coverage and validated with PHPUnit, Pint, a production Vite build, and Larastan.
-
-Commit message: `refactor: prioritize flight number in release header`
 
 ## Flight release more persistent
-Due to page refreshs, repeat flight plans have to be uploaded after any timeout.
+Due to page refreshes, repeat flight plans have to be uploaded after any timeout. Users frequently have to reupload the same flight plan.
 
-## 1. [x] Completed: Remove info logging
+## Feat: flight plan: Offline fuel score
+Goal: Create link on open seperate offline fuel score with a basic java script calculator. Able to calculate ETA and FOB at each waypoint.
 
-Outcome:
-
-- Removed the routine `K4 extraction completed` info log from successful extraction completion.
-- Preserved extraction request database updates, including status, parser type, page count, duration, and detected event counts.
-- Left extraction failure and flight-route warning logging unchanged.
-- Added focused regression coverage proving successful completion persists its database record without emitting the removed info message.
-
-Commit message: `chore: remove successful extraction info logging`
-
----
-
-## 2. Refactor welcome page for use with new features
+## Refactor welcome page for use with new features
 
 ### Goal
 
@@ -145,7 +139,7 @@ The application now contains multiple extraction products, but the public entry 
 
 ---
 
-## 3. Implement Crew Compass tie-ins, branding, and marketing
+## Implement Crew Compass tie-ins, branding, and marketing
 
 ### Goal
 
@@ -212,9 +206,6 @@ K4 and Crew Compass currently behave more like separate products than parts of t
 
 `feat: integrate Crew Compass city content into schedules`
 
-## Feat: flight plan: Offline fuel score
-Goal: Create link on open seperate offline fuel score with a basic java script calculator. Able to calculate ETA and FOB at each waypoint.
-
 ## Refactor welcome page for use with new features
 
 Audit outcome:
@@ -255,12 +246,6 @@ Simple plan:
 
 ## feat: Track schedule upload count
 - For multiple file uploads within each user request
-
-## Flight plan: Refactor overview task
-- Emphsize attention items
-- Remove duplicate data that exists in flight strip header
-- Show MELs/CDLs if they exist
-- Show ETOPS info if it exists
 
 ## Flight plan: Crew list: role avatar
 - Have crew role displayed inside an avatar bubble
@@ -421,3 +406,27 @@ Outcome:
 - Validated the change with focused PHPUnit tests, Pint, a production Vite build, and Larastan.
 
 Commit message: `refactor: improve flight plan employee cards`
+
+## [x] Completed: Flight plan: flight info header refactor
+
+Outcome:
+
+- Promoted the flight number to a direct sibling of the flight icon and aircraft-detail stack.
+- Increased the flight number to a 2rem medium-weight monospaced treatment with compact line height and tracking.
+- Stacked aircraft type and registration vertically using compact technical typography.
+- Removed the visible `Tail ` prefix from confirmed registrations while preserving the explicit `Tail not present` fallback.
+- Preserved the existing responsive header layout, light/dark theme styling, route summary, and release-revision presentation.
+- Updated focused Livewire rendering coverage and validated with PHPUnit, Pint, a production Vite build, and Larastan.
+
+Commit message: `refactor: prioritize flight number in release header`
+
+## 1. [x] Completed: Remove info logging
+
+Outcome:
+
+- Removed the routine `K4 extraction completed` info log from successful extraction completion.
+- Preserved extraction request database updates, including status, parser type, page count, duration, and detected event counts.
+- Left extraction failure and flight-route warning logging unchanged.
+- Added focused regression coverage proving successful completion persists its database record without emitting the removed info message.
+
+Commit message: `chore: remove successful extraction info logging`

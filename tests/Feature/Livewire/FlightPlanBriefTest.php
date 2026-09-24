@@ -429,7 +429,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('5,549 NM')
             ->assertSeeText('FMS initial altitude')
             ->assertSeeText('FL290')
-            ->assertSeeText('Planned Duration')
+            ->assertDontSeeText('Planned Duration')
             ->assertSeeText('07h12m')
             ->assertSeeText('Alternate Airport Reserves')
             ->assertSeeText('5,600 LB')
