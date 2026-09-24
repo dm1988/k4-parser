@@ -443,6 +443,25 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('Arrival runway')
             ->assertSeeText('33R')
             ->assertSeeText('GUKDO GUKD2E')
+            ->assertSeeTextInOrder([
+                'AC Type',
+                'B777-200F',
+                'Flight Number',
+                'CKS256',
+                'Recall Number',
+                '62930',
+                'Alternate',
+                'KRSW',
+                'Distance to Destination',
+                '5,549 NM',
+                'Alternate Airport Reserves',
+                '5,600 LB',
+                'FMS initial altitude',
+                'FL290',
+                'Cost Index',
+                '200',
+            ])
+            ->assertSeeTextInOrder(['Planned runways and procedures', 'Airport context'])
             ->assertSeeTextInOrder(['DCT', 'Q139', 'TEST'])
             ->assertDontSeeText('ETOPS critical points')
             ->assertDontSee('data-copy-target=', escape: false);

@@ -28,38 +28,88 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## [x] Completed: Flight plan: Hide Planned Duration in FMS task
-
-Outcome:
-
-- Removed the `Planned Duration` metric from the FMS task's presentation fields.
-- Preserved planned duration in the release header and Flight Init, where it remains relevant.
-- Updated focused view-model and Livewire rendering coverage.
-- Validated with focused PHPUnit tests, Pint, and Larastan.
-
-Commit message: `refactor: hide planned duration from fms task`
-
-## Flight plan: Refactor overview task
+## Idea: Flight plan: Refactor overview task
 - Emphsize attention items
 - Remove duplicate data that exists in flight strip header
 - Show MELs/CDLs if they exist
 - Show ETOPS info if it exists
 
-## Flight plan: FMS task info order
-1. AC Type
-2. Flight Number
-3. Recall Number
-4. Alternate in it's own box
-5. Distance to Destination
-6. Alternate reserves
-7. Initial flight level
-8. Cost index
+## feat: add FMS programming tip
+Between the `Planned runways and procedures` and `Airport context` sections.
+Display card with idea icon with the text: `Tip: Remember to load winds and Route 2 copy after FMS activation.`
 
-Place `Planned runways and procedures` section above `Airport context` section
+## [x] Completed: Flight plan: FMS task info order
+
+Outcome:
+
+- Reordered the FMS setup metrics to AC type, flight number, recall number, alternate, destination distance, alternate reserves, initial flight level, and cost index.
+- Added the alternate airport as its own FMS metric card.
+- Moved `Planned runways and procedures` above `Airport context`.
+- Added focused view-model and Livewire regression coverage for both ordering requirements.
+
+Commit message: `refactor: reorder fms task information`
 
 
 ## Flight release more persistent
-Due to page refreshes, repeat flight plans have to be uploaded after any timeout. Users frequently have to reupload the same flight plan.
+
+### Goal
+
+Restore a user's most recently extracted flight release after a full page refresh or application/session timeout so the same PDF does not need to be uploaded and parsed again.
+
+### Current implementation
+
+`FlightPlanBrief` stores only an opaque `flightPlanKey` in Livewire component state. The normalized flight-plan payload is stored by `FlightPlanResultCache` under a user-scoped cache key for the shared extracted-results TTL, which defaults to 60 minutes.
+
+The component has no `mount()` restoration path. A full page load therefore starts with a null key even while the cached payload still exists, and an expired cache entry permanently removes the only reusable copy. The uploaded source PDF is correctly deleted after extraction and must remain ephemeral.
+
+### Problem
+
+Refreshes, expired Livewire/session state, and cache eviction return users to the upload screen. Reprocessing the same operational document is slow and unnecessary, while extending the shared cache TTL would still make an important user result dependent on cache retention and would also change Schedule Extractor behavior.
+
+### Implementation plan
+
+1. Add a dedicated `flight_plan_results` persistence model and migration with:
+
+   * one current result per user enforced by a unique `user_id`,
+   * an opaque ULID result key,
+   * an encrypted long-text payload containing the normalized serialized result,
+   * timestamps,
+   * a cascading user foreign key so account deletion removes the saved result.
+2. Replace the cache-specific service boundary with a durable flight-plan result store that can:
+
+   * save or atomically replace the user's current result,
+   * retrieve a result only when both its key and owner match,
+   * retrieve the user's latest result for initial page hydration,
+   * delete the user's current result explicitly.
+3. Keep the persistence boundary limited to the existing serialized `flight_plan_data`. Never retain the uploaded PDF, temporary storage path, source fragments, or other extractor evidence currently excluded by `FlightPlanResultSerializer`.
+4. Add `FlightPlanBrief::mount()` hydration so a new component instance restores the authenticated user's saved result and renders the Overview task without reparsing.
+5. Preserve the current successful-upload behavior: a new extraction replaces the previously saved result only after parsing succeeds. Validation or extraction failures must not destroy the last usable result.
+6. Keep `Extract another flight plan` as the explicit discard action: remove the saved result and reset the component to the upload state. A subsequent refresh must remain on the upload view until another extraction succeeds.
+7. Keep authorization at every read, write, and delete boundary. A result key must never allow another user to load or delete its payload, and no persisted payload should be serialized into Livewire client state.
+8. Add a model factory and focused tests covering:
+
+   * encrypted database persistence and single-result replacement,
+   * owner-scoped lookup and rejection of malformed or foreign keys,
+   * restoration on a fresh Livewire mount after refresh/session loss,
+   * continued restoration beyond the former cache TTL,
+   * explicit discard and user cascade deletion,
+   * preservation of the previous saved result when a replacement upload fails,
+   * continued deletion of the temporary source PDF and exclusion of private source evidence.
+9. Run the focused result-store and `FlightPlanBrief` PHPUnit tests, Pint after PHP changes, and Larastan once at the final integration checkpoint.
+
+### Acceptance criteria
+
+* A signed-in, authorized user can refresh the flight-release page and see the most recently extracted release without uploading it again.
+* The saved release survives session expiration, application restarts, and ordinary cache eviction.
+* Only one current release is retained per user; a successful new extraction replaces it.
+* Failed replacement uploads leave the previous saved release available.
+* `Extract another flight plan` explicitly removes the saved release and presents the upload view.
+* Users cannot read or delete another user's saved release, even with a valid result key.
+* The raw PDF, source fragments, and private storage paths are never persisted in the result record or exposed to Livewire.
+
+### Proposed commit message
+
+`feat: persist the latest flight release per user`
 
 ## Feat: flight plan: Offline fuel score
 Goal: Create link on open seperate offline fuel score with a basic java script calculator. Able to calculate ETA and FOB at each waypoint.
@@ -430,3 +480,14 @@ Outcome:
 - Added focused regression coverage proving successful completion persists its database record without emitting the removed info message.
 
 Commit message: `chore: remove successful extraction info logging`
+
+## [x] Completed: Flight plan: Hide Planned Duration in FMS task
+
+Outcome:
+
+- Removed the `Planned Duration` metric from the FMS task's presentation fields.
+- Preserved planned duration in the release header and Flight Init, where it remains relevant.
+- Updated focused view-model and Livewire rendering coverage.
+- Validated with focused PHPUnit tests, Pint, and Larastan.
+
+Commit message: `refactor: hide planned duration from fms task`

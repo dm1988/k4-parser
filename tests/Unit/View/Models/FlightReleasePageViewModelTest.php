@@ -174,13 +174,14 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('5,549 NM', $viewModel->fmsDistanceToDestination());
         $this->assertSame('5,600 LB', $viewModel->fmsAlternateReserve());
         $this->assertSame([
-            ['label' => 'Flight Number', 'value' => 'CKS241'],
             ['label' => 'AC Type', 'value' => 'B777-200F'],
+            ['label' => 'Flight Number', 'value' => 'CKS241'],
             ['label' => 'Recall Number', 'value' => '62930'],
-            ['label' => 'Cost Index', 'value' => '200'],
+            ['label' => 'Alternate', 'value' => 'KRSW'],
             ['label' => 'Distance to Destination', 'value' => '5,549 NM'],
-            ['label' => 'FMS initial altitude', 'value' => 'FL290'],
             ['label' => 'Alternate Airport Reserves', 'value' => '5,600 LB'],
+            ['label' => 'FMS initial altitude', 'value' => 'FL290'],
+            ['label' => 'Cost Index', 'value' => '200'],
         ], $viewModel->fmsFields());
     }
 

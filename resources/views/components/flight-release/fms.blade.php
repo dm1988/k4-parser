@@ -23,6 +23,17 @@
         </dl>
     </section>
 
+    <section aria-labelledby="fms-procedures-heading" class="flex min-w-0 flex-col gap-3">
+        <h3 id="fms-procedures-heading" class="text-xs font-bold uppercase tracking-[0.16em] text-[#1B365D] dark:text-slate-200">Planned runways and procedures</h3>
+
+        <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <x-flight-release.metric label="Departure runway" :value="$model->departureRunway()" empty-text="Not present in this release" />
+            <x-flight-release.metric label="SID" :value="$model->departureSid()" empty-text="Not present in this release" />
+            <x-flight-release.metric label="Arrival runway" :value="$model->arrivalRunway()" empty-text="Not present in this release" />
+            <x-flight-release.metric label="STAR" :value="$model->arrivalStar()" empty-text="Not present in this release" />
+        </dl>
+    </section>
+
     <section aria-labelledby="fms-airports-heading" class="overflow-hidden rounded-xl border border-[#1B365D]/10 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div class="border-b border-[#1B365D]/10 bg-[#F8F9FA] px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
             <h3 id="fms-airports-heading" class="text-xs font-bold uppercase tracking-[0.16em] text-[#1B365D] dark:text-slate-200">Airport context</h3>
@@ -49,17 +60,6 @@
                 :muted="true"
             />
         </div>
-    </section>
-
-    <section aria-labelledby="fms-procedures-heading" class="flex min-w-0 flex-col gap-3">
-        <h3 id="fms-procedures-heading" class="text-xs font-bold uppercase tracking-[0.16em] text-[#1B365D] dark:text-slate-200">Planned runways and procedures</h3>
-
-        <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <x-flight-release.metric label="Departure runway" :value="$model->departureRunway()" empty-text="Not present in this release" />
-            <x-flight-release.metric label="SID" :value="$model->departureSid()" empty-text="Not present in this release" />
-            <x-flight-release.metric label="Arrival runway" :value="$model->arrivalRunway()" empty-text="Not present in this release" />
-            <x-flight-release.metric label="STAR" :value="$model->arrivalStar()" empty-text="Not present in this release" />
-        </dl>
     </section>
 
     <section aria-labelledby="fms-route-heading" class="overflow-hidden rounded-xl border border-[#1B365D]/10 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
