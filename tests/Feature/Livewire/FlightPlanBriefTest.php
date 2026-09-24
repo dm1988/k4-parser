@@ -658,12 +658,12 @@ class FlightPlanBriefTest extends TestCase
                         'estimated_landing' => null,
                     ],
                     crewMembers: [
-                        ['name' => 'MORGAN A', 'role' => 'PIC', 'base' => null],
-                        ['name' => 'RIVERA D', 'role' => 'SIC/FO', 'base' => null],
-                        ['name' => 'FOSTER B', 'role' => 'IRP', 'base' => null],
-                        ['name' => 'MCCULLOUGH M', 'role' => 'IRP', 'base' => null],
-                        ['name' => 'BENNETT B', 'role' => 'MX', 'base' => null],
-                        ['name' => 'GARCIA T', 'role' => 'LM', 'base' => null],
+                        ['name' => 'MORGAN A', 'role' => 'PIC', 'base' => null, 'employee_number' => '4387'],
+                        ['name' => 'RIVERA D', 'role' => 'SIC/FO', 'base' => null, 'employee_number' => '72914'],
+                        ['name' => 'FOSTER B', 'role' => 'IRP', 'base' => null, 'employee_number' => '73521'],
+                        ['name' => 'MCCULLOUGH M', 'role' => 'IRP', 'base' => null, 'employee_number' => '73642'],
+                        ['name' => 'BENNETT B', 'role' => 'MX', 'base' => null, 'employee_number' => '5826'],
+                        ['name' => 'GARCIA T', 'role' => 'LM', 'base' => null, 'employee_number' => '1957'],
                     ],
                     maintenance: [
                         'section_present' => true,
@@ -768,8 +768,10 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('Source-listed operations procedure.')
             ->assertSeeText('MORGAN A')
             ->assertSeeText('PIC')
+            ->assertSeeText('4387')
             ->assertSeeText('RIVERA D')
             ->assertSeeText('SIC/FO')
+            ->assertSeeText('72914')
             ->assertSeeText('FOSTER B')
             ->assertSeeText('MCCULLOUGH M')
             ->assertSeeText('IRP')
@@ -994,12 +996,12 @@ class FlightPlanBriefTest extends TestCase
                         'release_revision' => null,
                     ],
                     crewMembers: [
-                        ['name' => 'MORGAN A', 'role' => 'PIC', 'base' => null],
-                        ['name' => 'RIVERA D', 'role' => 'SIC/FO', 'base' => null],
-                        ['name' => 'FOSTER B', 'role' => 'IRP', 'base' => null],
-                        ['name' => 'MCCULLOUGH M', 'role' => 'IRP', 'base' => null],
-                        ['name' => 'BENNETT B', 'role' => 'MX', 'base' => null],
-                        ['name' => 'GARCIA T', 'role' => 'LM', 'base' => null],
+                        ['name' => 'MORGAN A', 'role' => 'PIC', 'base' => null, 'employee_number' => '4387'],
+                        ['name' => 'RIVERA D', 'role' => 'SIC/FO', 'base' => null, 'employee_number' => '72914'],
+                        ['name' => 'FOSTER B', 'role' => 'IRP', 'base' => null, 'employee_number' => '73521'],
+                        ['name' => 'MCCULLOUGH M', 'role' => 'IRP', 'base' => null, 'employee_number' => '73642'],
+                        ['name' => 'BENNETT B', 'role' => 'MX', 'base' => null, 'employee_number' => '5826'],
+                        ['name' => 'GARCIA T', 'role' => 'LM', 'base' => null, 'employee_number' => '1957'],
                     ],
                     takeoffLandingReport: [
                         'section_present' => true,
@@ -1040,8 +1042,10 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('N774CK')
             ->assertSeeText('MORGAN A')
             ->assertSeeText('PIC')
+            ->assertDontSeeText('4387')
             ->assertSeeText('RIVERA D')
             ->assertSeeText('SIC/FO')
+            ->assertDontSeeText('72914')
             ->assertSeeText('FOSTER B')
             ->assertSeeText('MCCULLOUGH M')
             ->assertSeeText('IRP')

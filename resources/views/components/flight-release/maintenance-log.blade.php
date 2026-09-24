@@ -33,17 +33,7 @@
         @else
             <ul class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 @foreach ($model->crewMembers() as $member)
-                    <li class="flex min-w-0 items-center gap-3 rounded-lg border border-[#1B365D]/10 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1B365D] text-[#C5A059] dark:bg-slate-950">
-                            <x-heroicon-o-user class="h-4 w-4" />
-                        </span>
-                        <span class="min-w-0">
-                            <span class="block break-words text-sm font-bold text-[#0B0E14] dark:text-slate-100">{{ $member['name'] }}</span>
-                            @if ($member['details'])
-                                <span class="block font-mono text-xs text-[#4A5568] dark:text-slate-400">{{ $member['details'] }}</span>
-                            @endif
-                        </span>
-                    </li>
+                    <x-flight-release.employee-card :member="$member" />
                 @endforeach
             </ul>
         @endif

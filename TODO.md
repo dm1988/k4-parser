@@ -28,10 +28,21 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Flight plan: Employee number missing from Maintenance log task
-Currently: employee number not shown in mx log task.
+## [x] Completed: Flight plan: Employee number missing from Maintenance log task and create common component
 
-Goal: create a common employee card component. Role will have a badge rendering up to 3 characters and card will render role, name, and employee number. Name will be top aligned with top of badge and employee number will be bottom aligned with bottom of badge. Name will be on top of employee number.
+Outcome:
+
+- Added a shared employee card component based on the existing Flight Init crew-card style.
+- Reused the component in Flight Init, Maintenance Log, and Envelope crew lists.
+- Preserved each crew member's raw role and exposed the employee number through the shared presenter data.
+- Displayed confirmed employee numbers in Flight Init and Maintenance Log, with an explicit `Not confirmed` fallback when unavailable.
+- Added a reusable visibility option and disabled employee numbers in the Envelope task while keeping them visible in Flight Init and Maintenance Log.
+- Kept the planned color-coded role badge redesign scoped to the next task.
+
+Commit message: `feat: share employee cards across flight plan tasks`
+
+Follow up: `COBB S IRP MX LM` extracted as crew name. Expected `COBB S`.
+storage/app/private/flight_releases/CKS021823RJAA.pdf
 
 ## Flight plan: Refactoring Employee Card Components
 

@@ -9,25 +9,24 @@ final readonly class CrewPresenter
 {
     public function __construct(private ?FlightPlanPageData $pageData) {}
 
-    /** @return list<array{name: string, details: ?string, highMins: bool}> */
+    /** @return list<array{name: string, role: ?string, details: ?string, employeeNumber: ?string, highMins: bool}> */
     public function maintenanceMembers(): array
     {
-        return array_map(function (CrewMemberData $member): array {
-            $details = $this->details($member);
-
-            return [
-                'name' => $member->name,
-                'details' => $details,
-                'highMins' => $member->highMins,
-            ];
-        }, $this->pageData?->flightPlan->crewMembers ?? []);
+        return $this->members();
     }
 
-    /** @return list<array{name: string, details: ?string, employeeNumber: ?string, highMins: bool}> */
+    /** @return list<array{name: string, role: ?string, details: ?string, employeeNumber: ?string, highMins: bool}> */
     public function flightInitMembers(): array
+    {
+        return $this->members();
+    }
+
+    /** @return list<array{name: string, role: ?string, details: ?string, employeeNumber: ?string, highMins: bool}> */
+    private function members(): array
     {
         return array_map(fn (CrewMemberData $member): array => [
             'name' => $member->name,
+            'role' => $member->role,
             'details' => $this->details($member),
             'employeeNumber' => $member->employeeNumber,
             'highMins' => $member->highMins,

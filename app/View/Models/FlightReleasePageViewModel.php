@@ -365,7 +365,7 @@ readonly class FlightReleasePageViewModel
         return $this->maintenancePresenter->statusSummary();
     }
 
-    /** @return list<array{name: string, details: ?string, highMins: bool}> */
+    /** @return list<array{name: string, role: ?string, details: ?string, employeeNumber: ?string, highMins: bool}> */
     public function crewMembers(): array
     {
         return $this->crewPresenter->maintenanceMembers();
@@ -402,7 +402,7 @@ readonly class FlightReleasePageViewModel
         return $this->flightInitPresenter->fields();
     }
 
-    /** @return list<array{name: string, details: ?string, employeeNumber: ?string, highMins: bool}> */
+    /** @return list<array{name: string, role: ?string, details: ?string, employeeNumber: ?string, highMins: bool}> */
     public function flightInitCrewMembers(): array
     {
         return $this->crewPresenter->flightInitMembers();

@@ -463,6 +463,7 @@ class FlightReleasePageViewModelTest extends TestCase
     {
         $payload = $this->resultPayload();
         $payload['flight_plan_data']['identity']['tripNumber'] = '109546';
+        $payload['flight_plan_data']['crewMembers'][0]['employeeNumber'] = '4827';
         $payload['flight_plan_data']['fuelPlan'] = [
             'ramp' => ['amount' => 216800.0, 'unit' => 'lb'],
             'taxi' => null,
@@ -490,7 +491,9 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertStringContainsString('bg-red-100', $viewModel->maintenanceItems()[0]['typeBadgeColor']);
         $this->assertTrue($viewModel->maintenanceItems()[0]['copyable']);
         $this->assertTrue($viewModel->maintenanceItems()[1]['copyable']);
+        $this->assertSame('CP', $viewModel->crewMembers()[0]['role']);
         $this->assertSame('CP · YIP', $viewModel->crewMembers()[0]['details']);
+        $this->assertSame('4827', $viewModel->crewMembers()[0]['employeeNumber']);
         $this->assertFalse($viewModel->crewMembers()[0]['highMins']);
     }
 
@@ -700,6 +703,7 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('KRSW', $viewModel->flightInitAlternateAirport());
         $this->assertSame('07h12m', $viewModel->flightInitDuration());
         $this->assertSame('4827', $viewModel->flightInitCrewMembers()[0]['employeeNumber']);
+        $this->assertSame('CP', $viewModel->flightInitCrewMembers()[0]['role']);
         $this->assertSame('CP · YIP', $viewModel->flightInitCrewMembers()[0]['details']);
         $this->assertSame([
             'flight-init-acars-init-date',
