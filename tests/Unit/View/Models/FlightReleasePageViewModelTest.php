@@ -492,7 +492,9 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertTrue($viewModel->maintenanceItems()[0]['copyable']);
         $this->assertTrue($viewModel->maintenanceItems()[1]['copyable']);
         $this->assertSame('CP', $viewModel->crewMembers()[0]['role']);
-        $this->assertSame('CP · YIP', $viewModel->crewMembers()[0]['details']);
+        $this->assertSame('CP', $viewModel->crewMembers()[0]['roleBadgeLabel']);
+        $this->assertStringContainsString('bg-emerald-600', $viewModel->crewMembers()[0]['roleBadgeColor']);
+        $this->assertSame('YIP', $viewModel->crewMembers()[0]['details']);
         $this->assertSame('4827', $viewModel->crewMembers()[0]['employeeNumber']);
         $this->assertFalse($viewModel->crewMembers()[0]['highMins']);
     }
@@ -704,7 +706,9 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('07h12m', $viewModel->flightInitDuration());
         $this->assertSame('4827', $viewModel->flightInitCrewMembers()[0]['employeeNumber']);
         $this->assertSame('CP', $viewModel->flightInitCrewMembers()[0]['role']);
-        $this->assertSame('CP · YIP', $viewModel->flightInitCrewMembers()[0]['details']);
+        $this->assertSame('CP', $viewModel->flightInitCrewMembers()[0]['roleBadgeLabel']);
+        $this->assertStringContainsString('bg-emerald-600', $viewModel->flightInitCrewMembers()[0]['roleBadgeColor']);
+        $this->assertSame('YIP', $viewModel->flightInitCrewMembers()[0]['details']);
         $this->assertSame([
             'flight-init-acars-init-date',
             'flight-init-departure',

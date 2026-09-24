@@ -45,52 +45,87 @@ Commit message: `feat: share employee cards across flight plan tasks`
 
 Follow-up commit message: `fix: trim empty crew role columns from names`
 
-## Flight plan: Refactoring Employee Card Components
+## [x] Completed: Flight plan: Refactoring Employee Card Components
+
+Outcome:
+
+- Refactored the shared employee card into a compact horizontal row with a square role badge, prominent employee name, and monospaced employee number.
+- Moved role badge labels and color ownership into `CrewPosition`, including emerald captain, blue second-in-command, amber relief pilot, and purple additional crew categories.
+- Rendered the compact `SIC` badge while retaining the full `SIC/FO` role in its accessible label.
+- Preserved explicit `Not confirmed` employee-number states, optional employee-number visibility, high-minimums status, base information, light/dark themes, and consumer-supplied card classes.
+- Updated focused enum, component, presenter/view-model, and Livewire integration coverage.
+- Validated the change with focused PHPUnit tests, Pint, a production Vite build, and Larastan.
+
+Commit message: `refactor: improve flight plan employee cards`
+
+## Flight plan: flight header refactor
+## UI Refactor: Flight Information Header
 
 **Context**
-Refactoring a grid of employee cards (`li` elements within `ul.grid`) to improve visual hierarchy and data presentation. The focus was on transforming the layout from a vertical list to a horizontal row featuring a color-coded role badge, prominent name, and stylized employee number.
+Refactoring the flight information display within a flex container (`.flex.min-w-0.items-center.gap-3`) to prioritize flight number visibility and streamline aircraft technical data.
 
 **Diagnostics**
-The following technical issues were identified and resolved during the session:
+The original layout nested the flight number and aircraft details within a single container, using a horizontal separator and the prefix "Tail " for registration numbers.
 
-| Issue | Observation | Resolution |
+| Component Element | Original Property | Target Property |
 | :--- | :--- | :--- |
-| **Visibility** | `ul` grid container had `visibility: hidden !important`. | Removed `visibility` override and `__web-inspector-hide-shortcut__` class. |
-
-| **Hierarchy** | Initial layout lacked clear focal points. | Increased name font size and added high-contrast role badges. |
+| **Flight Number** | Nested `h2` (font-black) | Direct sibling to icon (font-mono, weight: 500) |
+| **Aircraft Details** | Horizontal `p` tag | Vertical flex column |
+| **Tail Number** | Included "Tail " prefix | Plain registration number (e.g., N772CK) |
 
 **Actionable Findings**
-* **Role Badge:** A square, high-contrast container (`h-12 w-12`) using `font-black` and `tracking-tighter` to maximize the visibility of the 3-character role code.
-* **Typography:** The name uses `text-base font-extrabold` to establish a primary focal point, while the employee number uses a `font-mono` sub-font style.
-* **Color Mapping:** Enum should own role color. Roles are categorized by color to aid quick recognition:
-    * **PIC:** Emerald (`bg-emerald-600`)
-    * **SIC:** Blue (`bg-blue-600`)
-    * **IRP:** Amber (`bg-amber-600`)
-    * **ACM:** Purple (`bg-purple-600`)
+*   **Structural Change:** To allow the flight number to span the full height of the icon container (48px), it was moved out of the shared text container to become a direct child of the parent flex wrapper.
+*   **Detail Stacking:** The Aircraft Type and Tail Number were moved into a new `flex-direction: column` container to the right of the flight number.
+*   **Typography:** The flight number was scaled to `2rem` (32px) and assigned a monospace font stack to ensure technical clarity. The font weight was adjusted to a medium setting (`500`) to avoid excessive visual weight.
+*   **Content Cleanup:** The "Tail " prefix was removed from the registration string as requested.
 
 **Code Fixes**
-The following structure was identified as the preferred layout for the employee cards. These Tailwind CSS classes and HTML structures should be adapted for the component template:
+The following changes were identified as a potential fix for the live page structure and styling:
 
 
 `````html
+<!-- Proposed Refined Structure -->
+<div class="flex items-center gap-3 lg:min-w-[280px]">
+  <!-- Icon Container (3rem/48px height) -->
+  <div class="flex h-12 w-12 items-center justify-center rounded-full bg-[#1B365D]/10">
+    <svg class="h-6 w-6">...</svg>
+  </div>
 
-  <!-- Role Badge: Example for PIC role -->
-  <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-xs font-black tracking-tighter text-white dark:bg-emerald-500/20 dark:text-emerald-400 ring-1 ring-black/5">
-    PIC
+  <!-- Flight Number (Prominent focus) -->
+  <h2 class="font-mono text-[2rem] leading-none tracking-tighter font-medium" 
+      style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">
+    CKS218
+  </h2>
+
+  <!-- Vertical Stack for Aircraft Data -->
+  <div class="flex flex-col justify-center leading-tight gap-[1px]">
+    <div class="text-[10px] font-extrabold uppercase text-[#4A5568]">B777-200F</div>
+    <div class="text-[10px] font-medium opacity-70">N772CK</div>
   </div>
-  
-  <div class="flex flex-col leading-tight">
-    <!-- Employee Name -->
-    <span class="text-base font-extrabold text-[#0B0E14] dark:text-slate-100">
-      SMITH B
-    </span>
-    <!-- Employee Number -->
-    <div class="flex items-baseline gap-1 font-mono text-xs text-[#64748b] dark:text-slate-400">
-      <span class="text-[10px] opacity-60">#</span>
-      <span>732997</span>
-    </div>
-  </div>
+</div>
 `````
+
+
+
+`````css
+/* Style adjustments for flight number clarity */
+h2.flight-number {
+  font-size: 2rem;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-family: monospace;
+}
+
+/* Detail stack refinement */
+.details-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+`````
+
+*Note: The code fixes and findings above were identified on a live page in DevTools. When applying them to your codebase, please adapt them to your project's specific technical stack (e.g., Tailwind CSS classes, CSS modules, framework components) rather than applying them as literal CSS overrides.*
 
 ## Flight release more persistent
 Due to page refreshs, repeat flight plans have to be uploaded after any timeout.

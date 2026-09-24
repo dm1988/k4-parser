@@ -24,6 +24,38 @@ enum CrewPosition: string
     case AdditionalCrewMember = 'ACM';
     case Loadmaster = 'LM';
 
+    public function badgeLabel(): string
+    {
+        return match ($this) {
+            self::SecondInCommand => 'SIC',
+            self::AdditionalCaptain => 'CAPT',
+            default => $this->value,
+        };
+    }
+
+    public function badgeColor(): string
+    {
+        return match ($this) {
+            self::Captain,
+            self::CaptainPilot,
+            self::CaptainLong,
+            self::PilotInCommand,
+            self::AdditionalCaptain => 'bg-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400',
+            self::SecondInCommand,
+            self::FirstOfficer,
+            self::AugmentedFirstOfficer => 'bg-blue-600 dark:bg-blue-500/20 dark:text-blue-400',
+            self::InternationalReliefPilot => 'bg-amber-600 dark:bg-amber-500/20 dark:text-amber-400',
+            self::AugmentedCrew,
+            self::AdditionalCrewMember => 'bg-purple-600 dark:bg-purple-500/20 dark:text-purple-400',
+            default => self::defaultBadgeColor(),
+        };
+    }
+
+    public static function defaultBadgeColor(): string
+    {
+        return 'bg-[#1B365D] dark:bg-slate-700 dark:text-slate-100';
+    }
+
     /**
      * @return list<string>
      */

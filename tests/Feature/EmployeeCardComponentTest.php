@@ -13,7 +13,9 @@ class EmployeeCardComponentTest extends TestCase
             'member' => [
                 'name' => 'GONZALEZ D',
                 'role' => 'SIC/FO',
-                'details' => 'SIC/FO · YIP',
+                'roleBadgeLabel' => 'SIC',
+                'roleBadgeColor' => 'bg-blue-600 dark:bg-blue-500/20 dark:text-blue-400',
+                'details' => 'YIP',
                 'employeeNumber' => '72914',
                 'highMins' => true,
             ],
@@ -21,10 +23,16 @@ class EmployeeCardComponentTest extends TestCase
 
         $this->assertStringContainsString('data-employee-card', $html);
         $this->assertStringContainsString('GONZALEZ D', $html);
-        $this->assertStringContainsString('SIC/FO · YIP', $html);
+        $this->assertStringContainsString('aria-label="Crew role SIC/FO"', $html);
+        $this->assertStringContainsString('bg-blue-600 dark:bg-blue-500/20 dark:text-blue-400', $html);
+        $this->assertMatchesRegularExpression('/>\s*SIC\s*</', $html);
+        $this->assertStringContainsString('YIP', $html);
         $this->assertStringContainsString('Employee number', $html);
+        $this->assertStringContainsString('aria-hidden="true"', $html);
         $this->assertStringContainsString('72914', $html);
         $this->assertStringContainsString('High mins', $html);
+        $this->assertStringContainsString('flex min-w-0 items-center gap-3', $html);
+        $this->assertStringContainsString('text-base font-extrabold', $html);
     }
 
     public function test_it_labels_an_unconfirmed_employee_number(): void
@@ -33,7 +41,9 @@ class EmployeeCardComponentTest extends TestCase
             'member' => [
                 'name' => 'MORGAN A',
                 'role' => 'PIC',
-                'details' => 'PIC',
+                'roleBadgeLabel' => 'PIC',
+                'roleBadgeColor' => 'bg-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400',
+                'details' => null,
                 'employeeNumber' => null,
                 'highMins' => false,
             ],
@@ -41,6 +51,7 @@ class EmployeeCardComponentTest extends TestCase
 
         $this->assertStringContainsString('MORGAN A', $html);
         $this->assertStringContainsString('PIC', $html);
+        $this->assertStringContainsString('bg-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400', $html);
         $this->assertStringContainsString('Not confirmed', $html);
         $this->assertStringNotContainsString('High mins', $html);
     }
@@ -53,7 +64,9 @@ class EmployeeCardComponentTest extends TestCase
                 'member' => [
                     'name' => 'MORGAN A',
                     'role' => 'PIC',
-                    'details' => 'PIC',
+                    'roleBadgeLabel' => 'PIC',
+                    'roleBadgeColor' => 'bg-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400',
+                    'details' => null,
                     'employeeNumber' => '4387',
                     'highMins' => false,
                 ],
