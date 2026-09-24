@@ -28,104 +28,31 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## [x] Completed: Flight plan: Employee number missing from Maintenance log task and create common component
+## Flight plan: Hide Planned Duration in FMS task
+## Flight plan: FMS task info order
+1. AC Type
+2. Flight Number
+3. Recall Number
+4. Alternate in it's own box
+5. Distance to Destination
+6. Alternate reserves
+7. Initial flight level
+8. Cost index
+
+Place `Planned runways and procedures` section above `Airport context` section
+
+## [x] Completed: Flight plan: flight info header refactor
 
 Outcome:
 
-- Added a shared employee card component based on the existing Flight Init crew-card style.
-- Reused the component in Flight Init, Maintenance Log, and Envelope crew lists.
-- Preserved each crew member's raw role and exposed the employee number through the shared presenter data.
-- Displayed confirmed employee numbers in Flight Init and Maintenance Log, with an explicit `Not confirmed` fallback when unavailable.
-- Added a reusable visibility option and disabled employee numbers in the Envelope task while keeping them visible in Flight Init and Maintenance Log.
-- Kept the planned color-coded role badge redesign scoped to the next task.
-- Trimmed flattened empty `IRP`, `MX`, `LM`, and `ACM` role columns from the preceding crew name.
-- Confirmed `CKS021823RJAA.pdf` now extracts `COBB S` as employee `73315` with the `IRP` role.
+- Promoted the flight number to a direct sibling of the flight icon and aircraft-detail stack.
+- Increased the flight number to a 2rem medium-weight monospaced treatment with compact line height and tracking.
+- Stacked aircraft type and registration vertically using compact technical typography.
+- Removed the visible `Tail ` prefix from confirmed registrations while preserving the explicit `Tail not present` fallback.
+- Preserved the existing responsive header layout, light/dark theme styling, route summary, and release-revision presentation.
+- Updated focused Livewire rendering coverage and validated with PHPUnit, Pint, a production Vite build, and Larastan.
 
-Commit message: `feat: share employee cards across flight plan tasks`
-
-Follow-up commit message: `fix: trim empty crew role columns from names`
-
-## [x] Completed: Flight plan: Refactoring Employee Card Components
-
-Outcome:
-
-- Refactored the shared employee card into a compact horizontal row with a square role badge, prominent employee name, and monospaced employee number.
-- Moved role badge labels and color ownership into `CrewPosition`, including emerald captain, blue second-in-command, amber relief pilot, and purple additional crew categories.
-- Rendered the compact `SIC` badge while retaining the full `SIC/FO` role in its accessible label.
-- Preserved explicit `Not confirmed` employee-number states, optional employee-number visibility, high-minimums status, base information, light/dark themes, and consumer-supplied card classes.
-- Updated focused enum, component, presenter/view-model, and Livewire integration coverage.
-- Validated the change with focused PHPUnit tests, Pint, a production Vite build, and Larastan.
-
-Commit message: `refactor: improve flight plan employee cards`
-
-## Flight plan: flight header refactor
-## UI Refactor: Flight Information Header
-
-**Context**
-Refactoring the flight information display within a flex container (`.flex.min-w-0.items-center.gap-3`) to prioritize flight number visibility and streamline aircraft technical data.
-
-**Diagnostics**
-The original layout nested the flight number and aircraft details within a single container, using a horizontal separator and the prefix "Tail " for registration numbers.
-
-| Component Element | Original Property | Target Property |
-| :--- | :--- | :--- |
-| **Flight Number** | Nested `h2` (font-black) | Direct sibling to icon (font-mono, weight: 500) |
-| **Aircraft Details** | Horizontal `p` tag | Vertical flex column |
-| **Tail Number** | Included "Tail " prefix | Plain registration number (e.g., N772CK) |
-
-**Actionable Findings**
-*   **Structural Change:** To allow the flight number to span the full height of the icon container (48px), it was moved out of the shared text container to become a direct child of the parent flex wrapper.
-*   **Detail Stacking:** The Aircraft Type and Tail Number were moved into a new `flex-direction: column` container to the right of the flight number.
-*   **Typography:** The flight number was scaled to `2rem` (32px) and assigned a monospace font stack to ensure technical clarity. The font weight was adjusted to a medium setting (`500`) to avoid excessive visual weight.
-*   **Content Cleanup:** The "Tail " prefix was removed from the registration string as requested.
-
-**Code Fixes**
-The following changes were identified as a potential fix for the live page structure and styling:
-
-
-`````html
-<!-- Proposed Refined Structure -->
-<div class="flex items-center gap-3 lg:min-w-[280px]">
-  <!-- Icon Container (3rem/48px height) -->
-  <div class="flex h-12 w-12 items-center justify-center rounded-full bg-[#1B365D]/10">
-    <svg class="h-6 w-6">...</svg>
-  </div>
-
-  <!-- Flight Number (Prominent focus) -->
-  <h2 class="font-mono text-[2rem] leading-none tracking-tighter font-medium" 
-      style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">
-    CKS218
-  </h2>
-
-  <!-- Vertical Stack for Aircraft Data -->
-  <div class="flex flex-col justify-center leading-tight gap-[1px]">
-    <div class="text-[10px] font-extrabold uppercase text-[#4A5568]">B777-200F</div>
-    <div class="text-[10px] font-medium opacity-70">N772CK</div>
-  </div>
-</div>
-`````
-
-
-
-`````css
-/* Style adjustments for flight number clarity */
-h2.flight-number {
-  font-size: 2rem;
-  line-height: 1;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  font-family: monospace;
-}
-
-/* Detail stack refinement */
-.details-column {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-`````
-
-*Note: The code fixes and findings above were identified on a live page in DevTools. When applying them to your codebase, please adapt them to your project's specific technical stack (e.g., Tailwind CSS classes, CSS modules, framework components) rather than applying them as literal CSS overrides.*
+Commit message: `refactor: prioritize flight number in release header`
 
 ## Flight release more persistent
 Due to page refreshs, repeat flight plans have to be uploaded after any timeout.
@@ -465,15 +392,32 @@ app/Enums/TaskTone.php
 ## Github CI Tests fail
 ## Completed: Schedule: cannot remove selected upload images
 ## Completed: Slot time incorrectly extracted
+## [x] Completed: Flight plan: Employee number missing from Maintenance log task and create common component
+
 Outcome:
 
-- Parsed compact directional slot entries such as `DEP 0215Z` and `ARR 0445Z` as separate departure and arrival slots.
-- Resolved airport codes for compact slots from the extracted route, preventing `DEP` from being displayed as an airport.
-- Confirmed the referenced release now displays the RKSI arrival window as 0415Z–0515Z and reports the planned 0431Z ETA inside that window.
-- Added focused extractor, orchestration, and presentation regression coverage.
-- Added the same planned-time comparison for departure slots using ETD, with direction-specific heading and time labels owned by `SlotDirection`.
-- Extracted the shared departure/arrival comparison slider into a reusable Blade component.
+- Added a shared employee card component based on the existing Flight Init crew-card style.
+- Reused the component in Flight Init, Maintenance Log, and Envelope crew lists.
+- Preserved each crew member's raw role and exposed the employee number through the shared presenter data.
+- Displayed confirmed employee numbers in Flight Init and Maintenance Log, with an explicit `Not confirmed` fallback when unavailable.
+- Added a reusable visibility option and disabled employee numbers in the Envelope task while keeping them visible in Flight Init and Maintenance Log.
+- Kept the planned color-coded role badge redesign scoped to the next task.
+- Trimmed flattened empty `IRP`, `MX`, `LM`, and `ACM` role columns from the preceding crew name.
+- Confirmed `CKS021823RJAA.pdf` now extracts `COBB S` as employee `73315` with the `IRP` role.
 
-Commit message: `fix: parse compact directional slot times`
+Commit message: `feat: share employee cards across flight plan tasks`
 
-Follow-up commit message: `feat: compare departure slots with planned etd`
+Follow-up commit message: `fix: trim empty crew role columns from names`
+
+## [x] Completed: Flight plan: Refactoring Employee Card Components
+
+Outcome:
+
+- Refactored the shared employee card into a compact horizontal row with a square role badge, prominent employee name, and monospaced employee number.
+- Moved role badge labels and color ownership into `CrewPosition`, including emerald captain, blue second-in-command, amber relief pilot, and purple additional crew categories.
+- Rendered the compact `SIC` badge while retaining the full `SIC/FO` role in its accessible label.
+- Preserved explicit `Not confirmed` employee-number states, optional employee-number visibility, high-minimums status, base information, light/dark themes, and consumer-supplied card classes.
+- Updated focused enum, component, presenter/view-model, and Livewire integration coverage.
+- Validated the change with focused PHPUnit tests, Pint, a production Vite build, and Larastan.
+
+Commit message: `refactor: improve flight plan employee cards`

@@ -10,14 +10,16 @@
                 <x-heroicon-s-paper-airplane class="h-6 w-6" aria-hidden="true" />
             </div>
 
-            <div class="min-w-0 flex-1">
-                <h2 class="truncate font-mono text-lg font-black tracking-[0.04em] text-[#0B0E14] dark:text-white">
-                    {{ $model->flightNumber() ?? 'Flight not present' }}
-                </h2>
-                <p class="truncate text-xs font-semibold text-[#4A5568] dark:text-slate-400">
+            <h2 class="min-w-0 truncate font-mono text-[2rem] font-medium leading-none tracking-tighter text-[#0B0E14] dark:text-white">
+                {{ $model->flightNumber() ?? 'Flight not present' }}
+            </h2>
+
+            <div class="flex shrink-0 flex-col justify-center gap-px leading-tight">
+                <p class="text-[10px] font-extrabold uppercase text-[#4A5568] dark:text-slate-400">
                     {{ $model->aircraftType() ?? 'Aircraft not present' }}
-                    <span aria-hidden="true"> · </span>
-                    {{ $model->tailNumber() === null ? 'Tail not present' : 'Tail '.$model->tailNumber() }}
+                </p>
+                <p class="font-mono text-[10px] font-medium text-[#4A5568] opacity-70 dark:text-slate-400">
+                    {{ $model->tailNumber() ?? 'Tail not present' }}
                 </p>
             </div>
         </div>
