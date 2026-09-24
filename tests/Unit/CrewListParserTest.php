@@ -182,6 +182,20 @@ class CrewListParserTest extends TestCase
         $this->assertSame(['PIC', 'SIC/FO', 'IRP'], array_column($crew, 'role'));
     }
 
+    public function test_it_removes_flattened_empty_role_columns_before_the_next_crew_member(): void
+    {
+        $crew = app(CrewListParser::class)->parseReleaseManifestLine(
+            '70897 PIC BALSKE B 72860 SIC/FO GONZALEZ D ADDNTL CAPT 73315 IRP COBB S IRP MX LM 3893 ACM THATCHER A 72319 ACM DAHAQUA J ACM ACM ACM CIRCLE THE APPROPRIATE STATUS',
+        );
+
+        $this->assertSame(
+            ['BALSKE B', 'GONZALEZ D', 'COBB S', 'THATCHER A', 'DAHAQUA J'],
+            array_column($crew, 'name'),
+        );
+        $this->assertSame(['70897', '72860', '73315', '3893', '72319'], array_column($crew, 'employee_id'));
+        $this->assertSame(['PIC', 'SIC/FO', 'IRP', 'ACM', 'ACM'], array_column($crew, 'role'));
+    }
+
     public function test_it_removes_manifest_annotations_from_names_and_flags_high_minimums_crew(): void
     {
         $crew = app(CrewListParser::class)->parse([

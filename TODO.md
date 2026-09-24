@@ -38,11 +38,12 @@ Outcome:
 - Displayed confirmed employee numbers in Flight Init and Maintenance Log, with an explicit `Not confirmed` fallback when unavailable.
 - Added a reusable visibility option and disabled employee numbers in the Envelope task while keeping them visible in Flight Init and Maintenance Log.
 - Kept the planned color-coded role badge redesign scoped to the next task.
+- Trimmed flattened empty `IRP`, `MX`, `LM`, and `ACM` role columns from the preceding crew name.
+- Confirmed `CKS021823RJAA.pdf` now extracts `COBB S` as employee `73315` with the `IRP` role.
 
 Commit message: `feat: share employee cards across flight plan tasks`
 
-Follow up: `COBB S IRP MX LM` extracted as crew name. Expected `COBB S`.
-storage/app/private/flight_releases/CKS021823RJAA.pdf
+Follow-up commit message: `fix: trim empty crew role columns from names`
 
 ## Flight plan: Refactoring Employee Card Components
 

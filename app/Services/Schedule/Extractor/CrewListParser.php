@@ -58,7 +58,7 @@ class CrewListParser
             $position = CrewPosition::from($match['role']);
             $highMins = preg_match('/\h+HIGH\h+MINS$/', $match['name']) === 1;
             $name = Str::of($match['name'])
-                ->replaceMatches('/\h+(?:ADDNTL(?:\h+CAPT)?|IRP|HIGH\h+MINS)$/', '')
+                ->replaceMatches('/\h+(?:ADDNTL(?:\h+CAPT)?|HIGH\h+MINS|(?:IRP|MX|LM|ACM)(?:\h+(?:IRP|MX|LM|ACM))*)$/', '')
                 ->squish()
                 ->toString();
 
