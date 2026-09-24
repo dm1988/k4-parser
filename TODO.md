@@ -28,33 +28,218 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## Flight plan: Employee number missing from Maintenance log task
+Currently: employee number not shown in mx log task.
 
-## Completed: Slot time incorrectly extracted
+Goal: create a common employee card component. Role will have a badge rendering up to 3 characters and card will render role, name, and employee number. Name will be top aligned with top of badge and employee number will be bottom aligned with bottom of badge. Name will be on top of employee number.
+
+## Flight plan: Refactoring Employee Card Components
+
+**Context**
+Refactoring a grid of employee cards (`li` elements within `ul.grid`) to improve visual hierarchy and data presentation. The focus was on transforming the layout from a vertical list to a horizontal row featuring a color-coded role badge, prominent name, and stylized employee number.
+
+**Diagnostics**
+The following technical issues were identified and resolved during the session:
+
+| Issue | Observation | Resolution |
+| :--- | :--- | :--- |
+| **Visibility** | `ul` grid container had `visibility: hidden !important`. | Removed `visibility` override and `__web-inspector-hide-shortcut__` class. |
+
+| **Hierarchy** | Initial layout lacked clear focal points. | Increased name font size and added high-contrast role badges. |
+
+**Actionable Findings**
+* **Role Badge:** A square, high-contrast container (`h-12 w-12`) using `font-black` and `tracking-tighter` to maximize the visibility of the 3-character role code.
+* **Typography:** The name uses `text-base font-extrabold` to establish a primary focal point, while the employee number uses a `font-mono` sub-font style.
+* **Color Mapping:** Enum should own role color. Roles are categorized by color to aid quick recognition:
+    * **PIC:** Emerald (`bg-emerald-600`)
+    * **SIC:** Blue (`bg-blue-600`)
+    * **IRP:** Amber (`bg-amber-600`)
+    * **ACM:** Purple (`bg-purple-600`)
+
+**Code Fixes**
+The following structure was identified as the preferred layout for the employee cards. These Tailwind CSS classes and HTML structures should be adapted for the component template:
+
+
+`````html
+
+  <!-- Role Badge: Example for PIC role -->
+  <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-xs font-black tracking-tighter text-white dark:bg-emerald-500/20 dark:text-emerald-400 ring-1 ring-black/5">
+    PIC
+  </div>
+  
+  <div class="flex flex-col leading-tight">
+    <!-- Employee Name -->
+    <span class="text-base font-extrabold text-[#0B0E14] dark:text-slate-100">
+      SMITH B
+    </span>
+    <!-- Employee Number -->
+    <div class="flex items-baseline gap-1 font-mono text-xs text-[#64748b] dark:text-slate-400">
+      <span class="text-[10px] opacity-60">#</span>
+      <span>732997</span>
+    </div>
+  </div>
+`````
+
+## Flight release more persistent
+Due to page refreshs, repeat flight plans have to be uploaded after any timeout.
+
+## 1. [x] Completed: Remove info logging
 
 Outcome:
 
-- Parsed compact directional slot entries such as `DEP 0215Z` and `ARR 0445Z` as separate departure and arrival slots.
-- Resolved airport codes for compact slots from the extracted route, preventing `DEP` from being displayed as an airport.
-- Confirmed the referenced release now displays the RKSI arrival window as 0415Z–0515Z and reports the planned 0431Z ETA inside that window.
-- Added focused extractor, orchestration, and presentation regression coverage.
-- Added the same planned-time comparison for departure slots using ETD, with direction-specific heading and time labels owned by `SlotDirection`.
-- Extracted the shared departure/arrival comparison slider into a reusable Blade component.
+- Removed the routine `K4 extraction completed` info log from successful extraction completion.
+- Preserved extraction request database updates, including status, parser type, page count, duration, and detected event counts.
+- Left extraction failure and flight-route warning logging unchanged.
+- Added focused regression coverage proving successful completion persists its database record without emitting the removed info message.
 
-Commit message: `fix: parse compact directional slot times`
+Commit message: `chore: remove successful extraction info logging`
 
-Follow-up commit message: `feat: compare departure slots with planned etd`
+---
 
+## 2. Refactor welcome page for use with new features
 
-## Remove info logging
-Currently: Every successful extraction gets logged as well as a db record added as a event request.
+### Goal
 
-Code:
-        Log::info('K4 extraction completed', [
-            'extract_request_id' => $extractRequest->id,
-            ...$counts,
-        ]);
-References:
-app/Services/Infrastructure/ExtractRequestLogger.php
+Turn the welcome page from a Schedule Extractor landing page into the branded Crew Compass / K4 Extractor product entry point for both Schedule Extractor and Flight Plan Extractor.
+
+### Current implementation
+
+The current page is centered almost entirely on the Jeppesen Crew Access Schedule Extractor. The title, hero, screenshot, benefits, CTA, and security messaging all reinforce that single feature.
+
+Reusable Crew Compass branding, `cc-*` styles, theme controls, and existing entitlement methods are already available.
+
+### Problem
+
+The application now contains multiple extraction products, but the public entry page still presents K4 as a single-purpose schedule tool. Its visual hierarchy, branding, accessibility, and authenticated CTAs also need to be brought in line with the current product/UI rules.
+
+### Implementation plan
+
+1. Reframe page metadata, navigation, and hero around:
+
+   * Crew Compass as the parent brand.
+   * K4 Extractor as the application.
+   * A single descriptive page `h1`.
+2. Replace Schedule-only hero messaging with product-level copy describing document-to-reviewable-information extraction.
+3. Keep Jeppesen Crew Access references within Schedule Extractor-specific content rather than as the overall product identity.
+4. Add a reusable feature-card Blade component and present:
+
+   * Schedule Extractor.
+   * Flight Plan Extractor.
+5. Give both tools equal hierarchy and keep the existing Flight Plan `Demo` state visible while applicable.
+6. Move the current schedule screenshot into Schedule-specific supporting content rather than using it as the product-wide hero.
+7. Make CTAs access-aware using the existing:
+
+   * `User::canUseScheduleExtractor()`
+   * `User::canUseFlightRelease()`
+8. Do not introduce authorization logic into Blade or rely on hidden navigation as authorization.
+9. Restyle the page using existing Crew Compass utilities and the documented Aviation Blue / Compass Gold visual system.
+10. Improve:
+
+    * semantic landmarks,
+    * heading hierarchy,
+    * image alt text,
+    * keyboard focus,
+    * light/dark states,
+    * responsive behavior.
+11. Update focused feature tests covering:
+
+    * Crew Compass / K4 branding,
+    * both extractor summaries,
+    * guest CTAs,
+    * authenticated CTAs,
+    * disabled-feature states,
+    * Flight Plan demo badge,
+    * theme controls,
+    * disclaimer/footer content,
+    * removal of Schedule-only assumptions.
+12. Validate with focused PHPUnit tests, Pint, production Vite build, and a final Larastan pass.
+
+### Acceptance criteria
+
+* The welcome page clearly represents K4 Extractor as a multi-tool Crew Compass application.
+* Schedule and Flight Plan Extractors are both visible with equivalent product hierarchy.
+* CTA behavior reflects existing user entitlements.
+* Authorization remains enforced by the existing backend mechanisms.
+* The page follows the documented Crew Compass palette and light/dark themes.
+* There is only one page-level `h1`.
+* All controls have visible keyboard focus and accessible names.
+* Existing public navigation, privacy, feedback, login/registration, and independence messaging remains available.
+
+### Proposed commit message
+
+`refactor: make welcome page a branded product hub`
+
+---
+
+## 3. Implement Crew Compass tie-ins, branding, and marketing
+
+### Goal
+
+Integrate useful Crew Compass city and layover information into K4 schedule results so extracted trips naturally connect users back to Crew Compass destination content.
+
+### Current implementation
+
+Airport information is already enriched for flight origins and destinations.
+
+Crew Compass content is not currently surfaced directly within schedule cards, and layover events expose a station code without resolving that station to a canonical Crew Compass city.
+
+### Problem
+
+K4 and Crew Compass currently behave more like separate products than parts of the same ecosystem. Layovers are particularly valuable moments to surface Crew Compass information, but their station codes are not yet enriched with city/guide/place data.
+
+### Implementation plan
+
+1. Extend the Crew Compass airport/provider response with a typed city summary containing:
+
+   * canonical city identifier or slug,
+   * guide availability,
+   * guide URL,
+   * available places count,
+   * city URL.
+2. Resolve Crew Compass cities using airport/station codes rather than city-name matching.
+3. Extend schedule enrichment to collect unique layover station codes alongside flight origins and destinations.
+4. Reuse the existing cached airport-resolution/provider flow rather than introducing Blade-side requests.
+5. Attach the resulting Crew Compass city summary to layover metadata.
+6. Expose the same typed summary through the relevant event and flight-card view models.
+7. Build a reusable Blade city-summary component.
+8. Render the component:
+
+   * primarily below hotel details on layover cards,
+   * secondarily inside origin/destination airport popovers.
+9. Do not duplicate the summary inside the expanded airport-details accordion.
+10. For layovers, display:
+
+    * resolved city,
+    * whether a layover guide exists,
+    * number of available places,
+    * guide/city links when available.
+11. Handle provider failures and cities with no guide or places without breaking schedule rendering.
+12. Add focused tests for:
+
+    * available guide and places,
+    * no guide,
+    * zero places,
+    * duplicate city/station resolution,
+    * provider failure,
+    * layover enrichment,
+    * flight-card/popover rendering.
+
+### Acceptance criteria
+
+* Layover stations resolve to canonical Crew Compass city data when available.
+* Crew Compass summaries appear on layover cards below hotel information.
+* Compact summaries appear in origin and destination airport popovers.
+* Duplicate station/city lookups do not cause redundant provider calls.
+* Blade components perform no parsing, querying, normalization, or authorization.
+* Missing Crew Compass data is shown as unavailable rather than as empty or misleading values.
+* Provider failure does not prevent schedule results from rendering.
+
+### Proposed commit message
+
+`feat: integrate Crew Compass city content into schedules`
+
+## Feat: flight plan: Offline fuel score
+Goal: Create link on open seperate offline fuel score with a basic java script calculator. Able to calculate ETA and FOB at each waypoint.
 
 ## Refactor welcome page for use with new features
 
@@ -228,281 +413,20 @@ app/Enums/TaskTone.php
 ## Completed: Add aircraft weight fields to Filament resource
 ## Flight plan: Parse bottlenecks:
 ### Completed: Reduce PDF extraction and airport lookup latency
-
-Goal:
-
-- Reduce uncached flight-plan parse time by eliminating avoidable airport API latency and identifying the slow stages within PDF parsing and OCR.
-
-Problem:
-
-- PDF parsing/OCR is the largest and most variable cost, but the current Debugbar measurements do not distinguish `parseFile()`, page text extraction, and per-page OCR.
-- Departure, destination, and alternate airport metadata requests run sequentially, adding roughly 1.1–1.5 seconds to an uncached parse.
-- Flight-plan airport lookups bypass the existing airport cache, causing repeated remote requests for airport codes already resolved elsewhere.
-
-Current setup:
-
-- A 5.77-second request spent 73.52 ms on 10 database queries, 823 μs on a missed PDF text-cache lookup, 28.62 ms writing that cache, 3.846 seconds in the extraction pipeline, and 521 ms + 283 ms + 279 ms on three sequential airport API calls. Rendering and other overhead were comparatively small.
-- A preceding 15.51-second request showed the same pattern, with 13.488 seconds spent in extraction.
-- The requests used different PDF hashes, so both legitimately missed the seven-day text cache.
-- The database-backed cache and query count are not material bottlenecks.
-
-Implementation / fixes:
-
-1. [x] Completed: Route flight-plan departure, destination, and alternate lookups through the existing `AirportCodeCache`, preserving the current airport metadata contract and failure behavior.
-2. [x] Completed: Deduplicate airport codes before lookup so identical route stations are resolved once per parse.
-3. [x] Completed: Add timing spans around `parseFile()`, page text extraction, and each OCR operation, including page context and whether OCR was required, without recording document contents.
-4. [x] Completed: Add focused tests proving airport cache hits avoid provider calls, duplicate codes are resolved once, cache misses retain current results, and provider failures remain non-fatal where currently supported.
-5. [x] Completed: Re-profile one cold-cache and one warm-cache parse, then record the timing comparison here before marking the task complete.
-
-References:
-
-- [FlightPlanTextExtractor.php](/home/dm1988/k4-parser/app/Services/FlightPlan/Extractor/FlightPlanTextExtractor.php)
-- [FlightRouteExtractor.php](/home/dm1988/k4-parser/app/Services/FlightPlan/Extractor/FlightRouteExtractor.php)
-- Existing `AirportCodeCache` implementation and its focused tests.
-
-Proposed commit message: `perf: reduce flight plan parsing bottlenecks`
-
-Outcome:
-
-- Flight-plan airport lookups now reuse cached found, missing, and unavailable resolutions. Provider failures remain non-fatal and return `null` airport metadata.
-- Focused coverage verifies cached resolutions avoid repeated provider calls and unavailable providers retain the existing nullable response contract.
-- Route stations are deduplicated before cache or provider access, while each departure, destination, and alternate field retains its expected airport metadata.
-- Debugbar now groups PDF parsing, per-page text extraction, and OCR timings under `Flight plan extraction`, recording only operation and page metadata plus whether OCR was required.
-- Focused cache, duplicate-station, provider-failure, and timing coverage passes: 30 tests with 117 assertions.
-- On September 2, 2026, the full normalized extraction service parsed `CKS025625KLAX.pdf` in 1,942.29 ms after clearing only its PDF-text key and the `KLAX`, `RKSI`, and `RKTU` airport keys. The immediate warm-cache parse took 20.14 ms, a 99.0% reduction, with equivalent route output.
-
-Task 1 commit message: `perf: cache flight plan airport lookups`
-
-Task 2 commit message: `perf: deduplicate flight plan airport lookups`
-
-Task 3 commit message: `perf: instrument flight plan text extraction`
-
-Completion commit message: `perf: complete flight plan extraction optimization`
-
 ## Completed: Bug: Schedule image extraction not working
-Currently:
-On image upload, an exception is thrown.
-
-Exception thrown: 
-  Carbon\Exceptions\InvalidFormatException
-  A textual month could not be found
-
-Fix: Investigate extraction regex.
-
-References:
-app/Services/Schedule/Extractor/TripInformationParser.php
-storage/app/private/schedules/IMG_0471.jpg
-storage/app/private/schedules/IMG_0473.jpg
-
-Outcome:
-
-- Restricted Trip Information date ranges to valid three-letter month abbreviations so OCR artifacts such as `Sen` and `San` are ignored instead of passed to Carbon.
-- Confirmed both referenced images complete OCR and parsing without exceptions, each producing its expected flight and duty events.
-- Added focused regression coverage for the invalid OCR month artifacts while preserving valid schedule date ranges.
-
-Commit message: `fix: ignore invalid OCR month abbreviations`
-
-
 ## Completed: Bug: Customer extracted as Tail id
-Currently: `FEDEX` is extracted as the tail id in IMG_0473.jpg, expected `N771CK`. Could not reproduce in dev environment.
-Production produced this json output:
-(json) ```
-"type": "flight",
-"title": "CKS 523 ANC-ORD",
-"start": "2026-09-26T15:30:00+00:00",
-"end": "2026-09-26T21:30:00+00:00",
-"timezone": "UTC",
-"metadata": {
-    "destination_iata": "ORD",
-    "destination_icao": "KORD",
-    "destination_name": "Chicago O'Hare International Airport",
-    "destination_city": "Chicago",
-    "destination_state": "IL",
-    "destination_country": "US",
-    "origin_iata": "ANC",
-    "origin_icao": "PANC",
-    "origin_name": "Ted Stevens Anchorage International Airport",
-    "origin_city": "Anchorage",
-    "origin_state": "AK",
-    "origin_country": "US",
-    "flight_number": "CKS 523",
-    "origin": "ANC",
-    "destination": "ORD",
-    "position": "FO",
-    "aircraft": "77V",
-    "tail_number": "FEDEX",
-    "flightaware_url": "https://www.flightaware.com/live/flight/FEDEX",
-    "block_time": "6:00h",
-    "crew_count": 3,
-    "operating_crew_count": 3,
-    "deadheading_crew_count": 0,
-    "crew": [
-        {
-```
-References:
-app/Services/Schedule/Extractor/TripInformationParser.php
-storage/app/private/schedules/IMG_0473.jpg
-
-Outcome:
-
-- Reproduced the production result from the stored image: OCR appends an underscore to `N771CK`, causing the labeled-tail match to fail and the fallback matcher to select `FEDEX`.
-- Allowed labeled tail numbers to terminate at OCR punctuation without accepting additional registration characters.
-- Confirmed the full image extraction now returns `N771CK` and its matching FlightAware URL, with focused regression coverage.
-
-Commit message: `fix: tolerate OCR noise after labeled tail numbers`
-
-## Completed: Allow image schedule results when exeptions are thrown
-Currently:
-With multiple image uploads, when 1 or more image fails to extract yet 1 or more images succeeds, no results are shown and an error is shown to the user.
-
-Goal:
-If there are images with errors, create a user facing model listing files with extraction errors before showing results.
-
-Outcome:
-
-- Processed multi-image uploads independently so OCR errors, parser exceptions, or zero-event parses from one image no longer discard successful results from the other images.
-- Added an accessible, keyboard-focused modal that lists each skipped filename and its extraction error before the user continues to the recovered results.
-- Preserved the existing upload error behavior when every image fails and prevented the coffee prompt from competing with the extraction-error modal.
-- Added focused coverage for mixed OCR/parser failures, zero-event images, successful partial results, modal content, and all-images-failed behavior.
-
-Commit message: `fix: preserve partial schedule image results`
-
-## Completed: Bug: RJAA flight release false maintenance conflict and upload error layout
-
-Outcome:
-
-- Allowed the maintenance-section parser to recognize `PASSED RAIM REQUIREMENTS` when native PDF extraction concatenates it directly to preceding text, while retaining the existing genuine duplicate-conflict guard.
-- Confirmed the 33-page `CKS021617RJAA.pdf` now extracts as flight `CKS216`, route `RJAA` to `RKSI`, with one MEL item instead of a false conflict.
-- Preserved the original extraction exception as the reported wrapper's previous exception while keeping the generic browser-visible error.
-- Applied Livewire's explicit `.flex` loading-display modifier and block prompt text so the title and upload instruction remain vertically separated after an error response.
-- Added focused parser and Livewire regression coverage for the compact maintenance boundary, exception chain, and post-error prompt markup.
-
-Commit message: `fix: handle duplicated compact maintenance records`
-
-## Completed: Bug: flight plan: EENT / EEXP not extracted
-
-Outcome:
-
-- Identified the production-only cause as missing Imagick support on an image-only ETOPS page and prevented incomplete PDF text from being cached when OCR is unavailable or fails.
-- Added regression coverage for the exact private release and confirmed extraction of EENT `N45 54.3 E154 20.0` and EEXP `N57 51.2 W175 26.2`.
-- Removed the duplicate 146-page text traversal by assembling native PDF text and identifying OCR pages in one pass.
-- Batched uncached airport lookups through Laravel's concurrent HTTP pool while preserving found, missing, and temporarily unavailable cache states per airport.
-- Tested 150 DPI / Tesseract PSM 11 across all ten image-only pages found in the available private releases. It retained as little as 16% of PSM 6's recognized token set on one fixture, so the safer 200 DPI / PSM 6 configuration remains in place.
-
-Commit message: `perf: streamline flight release extraction`
-
-Regression evidence:
-
-Expected EENT coordinates: `N45 54.3 E154 20.0`
-Expected EEXP coordinates: `N57 51.2 W175 26.2`
-
-Raw text:
-```
-ONEMU 0249 051 310 25/057 P050 500 833 028 eee ee. 0715 1184 ....
-2509 048 LGT -36 550 02.56 1... 2.6. we ee eee 0910
-- FL - 330
-N45 31.9 E153 43.2
-OPULO 0331 054 330 27/071 P049 491 831 036 wee eee 0842 1057 ....
-2178 048 -44 539 03.32 1... 2.6. wees wee 0783
-N45 54.3 E154 20.0
-(EENT) 0034 056 330 29/025 P013 487 833 004 wee ee. 0855 1044 ....
-—----- 2144 054 -48 500 03.36 1... 2.6. wees eee. 0769
-N48 59.7 E160 00.7
-OMOTO 0295 058 330 29/025 P013 487 833 036 wee eee O971 0928 ....
-1849 055 -48 500 04.12 1... 1... we ee wee 0653
-N49 00.1 E160 01.5
--PAZA ---- --- ==> --/-- = HR HF wee eee TO 0927 LL...
-Sass ene 04.12 1... 1... we ee wee 0653
-FIR FIR-> PAZA <-—
-N49 30.6 E161 07.8
-OGDEN 0054 061 330 34/017 M004 485 834 007 wee ee. 0993 0906 ....
-1795 059 -50 480 04.19 1... 26. we ee wee 0632
-N50 53.9 E164 26.4
-OPHET 0152 062 330 32/029 P001 484 834 018 wee ee. 1052 0846 ....
-1643 058 -51 484 04.37 2... cee ee ee eee 0572
-N51 21.5 E165 37.5
-OLCOT 0053 063 330 32/041 PO05 483 834 007 «ee ee. 1073 0826 ....
-1590 058 -52 488 04.44 1... 16. we ee wee 0552
-N52 53.7 E170 01.2 -ETP1
-N52 56.3 E170 09.3
-OPAKE 0192 064 330 31/063 P020 482 833 023 eee ee. 1144 0755 2...
-1398 057 -53 501 05.07 1... 2.6. wees eee 0480
-N54 15.4 E172 49.3
-ONEIL 0123 052 330 30/095 P022 481 833 015 eee ee. 1189 0710 ....
-1275 041 -54 502 05.22 1... 1.6. we ee eee 0435
-N56 05.2 E178 04.3
-OBOYD 0211 059 330 30/076 P035 479 833 024 wee ee. 1264 0635 ....
-1064 051 -55 513 05.46 1... 26. we ee eee 0360
-N57 36.6 W176 26.8
-OFORD 0202 062 330 31/050 P013 480 834 025 «ee ee. 1338 0561 ....
-0862 056 -55 491 06.11 1... 11. we ee eee. 0286
-N57 51.2 W175 26.2
-(EEXP) 0035 063 330 33/035 P004 480 834 004 eee ee. 1351 0548 2...
------- 0827 059 -55 483 06.15 1... 26. we ee eee 0273
-N58 16.4 W173 34.4
-```
-## Completed: Bug: Edge case - Incorrect DH extraction
-
-Outcome:
-
-- Confirmed from the source image that `BHJCHN` is labeled `CNF #` and is booking confirmation data.
-- Excluded lines labeled `CNF` or `Confirmation` from fallback tail-number extraction without changing supported aircraft-registration formats or display precedence.
-- Kept `CX 413` resolved to `Cathay Pacific` and added focused parser regression coverage.
-
-Commit message: `fix: correct commercial deadhead tail extraction`
-
-## Completed: Flight init refinement
-
-Outcome:
-
-- Added the confirmed alternate airport and flight duration to the Flight init metrics.
-- Reordered the metrics to show ACARS init date, departure airport, arrival airport, alternate airport, flight duration, ETD, and estimated ramp fuel before the crew list.
-- Removed tail number and flight number from the metric grid because they remain visible in the release summary.
-- Added focused presenter and Livewire coverage for the values and their rendered order.
-
-Commit message: `refactor: refine flight init presentation`
-
 ## Github CI Tests fail
-
-Check github env
-
-Illuminate\Foundation\ComposerScripts::postAutoloadDump
-  > @php artisan package:discover --ansi
-  
-     InvalidArgumentException 
-  
-    Please provide a valid cache path.
-  
-    at vendor/laravel/framework/src/Illuminate/View/Compilers/Compiler.php:75
-       71▕         $compiledExtension = 'php',
-       72▕         $shouldCheckTimestamps = true,
-       73▕     ) {
-       74▕         if (! $cachePath) {
-    ➜  75▕             throw new InvalidArgumentException('Please provide a valid cache path.');
-       76▕         }
-       77▕ 
-       78▕         $this->files = $files;
-       79▕         $this->cachePath = $cachePath;
-  
-        +19 vendor frames 
-  
-    20  [internal]:0
-        Illuminate\Foundation\Application::{closure:Illuminate\Foundation\Application::boot():1138}()
-        +6 vendor frames 
-  
-    27  artisan:16
-        Illuminate\Foundation\Application::handleCommand()
-  
-  Script @php artisan package:discover --ansi handling the post-autoload-dump event returned with error code 1
-  Error: Process completed with exit code 1
-
-
 ## Completed: Schedule: cannot remove selected upload images
-
+## Completed: Slot time incorrectly extracted
 Outcome:
 
-- Added an accessible `X` icon button to each selected upload so images can be removed individually without refreshing the page.
-- Used Livewire's temporary-upload removal flow so the deselected file is removed from both component state and temporary storage.
-- Added focused regression coverage for removing one image while preserving the remaining selection.
+- Parsed compact directional slot entries such as `DEP 0215Z` and `ARR 0445Z` as separate departure and arrival slots.
+- Resolved airport codes for compact slots from the extracted route, preventing `DEP` from being displayed as an airport.
+- Confirmed the referenced release now displays the RKSI arrival window as 0415Z–0515Z and reports the planned 0431Z ETA inside that window.
+- Added focused extractor, orchestration, and presentation regression coverage.
+- Added the same planned-time comparison for departure slots using ETD, with direction-specific heading and time labels owned by `SlotDirection`.
+- Extracted the shared departure/arrival comparison slider into a reusable Blade component.
 
-Commit message: `fix: allow removing selected schedule uploads`
+Commit message: `fix: parse compact directional slot times`
+
+Follow-up commit message: `feat: compare departure slots with planned etd`

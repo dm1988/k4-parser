@@ -66,11 +66,6 @@ class ExtractRequestLogger
             'page_count' => $pageCount,
             ...$counts,
         ]);
-
-        Log::info('K4 extraction completed', [
-            'extract_request_id' => $extractRequest->id,
-            ...$counts,
-        ]);
     }
 
     public function error(ExtractRequest $extractRequest, int $startedAt, Throwable $e): void
