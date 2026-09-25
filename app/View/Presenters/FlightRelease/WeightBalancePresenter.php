@@ -25,14 +25,14 @@ final readonly class WeightBalancePresenter
                 'label' => 'Base & Payload',
                 'description' => 'Operating weight plus payload establishes planned zero-fuel weight.',
                 'fields' => [
-                    $this->field('Basic operating weight', $weightBalance->basicOperatingWeight),
-                    $this->field('Payload', $weightBalance->plannedPayload),
                     $this->field(
                         'Zero-fuel weight',
                         $weightBalance->plannedZeroFuelWeight,
                         comparesToLimit: true,
                         integratesLimitInProgress: true,
                     ),
+                    $this->field('Basic operating weight', $weightBalance->basicOperatingWeight),
+                    $this->field('Payload', $weightBalance->plannedPayload),
                 ],
             ],
             [
@@ -45,13 +45,13 @@ final readonly class WeightBalancePresenter
                         comparesToLimit: true,
                         integratesLimitInProgress: true,
                     ),
-                    $this->field('Takeoff fuel', $weightBalance->plannedTakeoffFuel),
                     $this->field(
                         'Takeoff gross weight',
                         $weightBalance->plannedTakeoffGrossWeight,
                         comparesToLimit: true,
                         integratesLimitInProgress: true,
                     ),
+                    $this->field('Takeoff fuel', $weightBalance->plannedTakeoffFuel),
                 ],
             ],
             [

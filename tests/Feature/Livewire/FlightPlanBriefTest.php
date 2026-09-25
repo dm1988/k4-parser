@@ -1282,6 +1282,18 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('Base & Payload')
             ->assertSeeText('Departure')
             ->assertSeeText('Arrival')
+            ->assertSeeTextInOrder([
+                'Base & Payload',
+                'Zero-fuel weight',
+                'Basic operating weight',
+                'Payload',
+                'Departure',
+                'Ramp weight',
+                'Takeoff gross weight',
+                'Takeoff fuel',
+                'Arrival',
+                'Estimated landing weight',
+            ])
             ->assertSeeText('Basic operating weight')
             ->assertSeeText('335,858')
             ->assertSeeText('Payload')

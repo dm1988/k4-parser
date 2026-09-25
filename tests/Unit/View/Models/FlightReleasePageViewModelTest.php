@@ -8,6 +8,7 @@ use App\Enums\FlightPlanTaskAvailability;
 use App\Enums\OperationsSpecification;
 use App\Enums\RouteTokenType;
 use App\Enums\TaskTone;
+use App\View\Models\FlightRelease\WeightBalanceFieldViewModel;
 use App\View\Models\FlightReleasePageViewModel;
 use App\View\Models\FlightReleasePageViewModelFactory;
 use Illuminate\Support\Facades\Blade;
@@ -492,6 +493,29 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertStringNotContainsString(
             'wire:key="flight-plan-overview-card-weight_and_balance"',
             $this->renderWorkspace($safeViewModel, FlightPlanTask::Overview),
+        );
+    }
+
+    #[Test]
+    public function it_orders_weight_balance_fields_for_operational_review(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['weightBalance'] = [];
+
+        $groups = $this->viewModel($payload)->weightBalanceGroups();
+
+        $this->assertSame(['Base & Payload', 'Departure', 'Arrival'], array_column($groups, 'label'));
+        $this->assertSame(
+            ['Zero-fuel weight', 'Basic operating weight', 'Payload'],
+            array_map(static fn (WeightBalanceFieldViewModel $field): string => $field->label, $groups[0]['fields']),
+        );
+        $this->assertSame(
+            ['Ramp weight', 'Takeoff gross weight', 'Takeoff fuel'],
+            array_map(static fn (WeightBalanceFieldViewModel $field): string => $field->label, $groups[1]['fields']),
+        );
+        $this->assertSame(
+            ['Estimated landing weight'],
+            array_map(static fn (WeightBalanceFieldViewModel $field): string => $field->label, $groups[2]['fields']),
         );
     }
 

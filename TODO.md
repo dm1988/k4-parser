@@ -31,69 +31,18 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 ## Flight plan: Overview: Full card link
 Goal: create a component option to have the whole card a clickable link
 
-## Flight plan: W&B Card order
-The task targets cards inside the dedicated Weight & Balance screen—not the Overview dashboard card.
+## [x] Completed: Flight plan: W&B Card order
 
-## Flight plan: W&B Card order
-### Goal
+Goal: Prioritize calculated operational totals before their supporting inputs on the dedicated Weight & Balance screen.
 
-Prioritize calculated operational totals before their supporting inputs so crews can scan the most consequential weights first.
+Outcome:
 
-### Current implementation
+- Reordered Base & Payload to zero-fuel weight, basic operating weight, then payload.
+- Reordered Departure to ramp weight, takeoff gross weight, then takeoff fuel.
+- Preserved Arrival order, comparison configuration, values, calculations, and responsive styling.
+- Added focused presenter-output and rendered DOM-order coverage.
 
-`WeightBalancePresenter::groups()` currently returns:
-
-1. Base & Payload
-   - Basic operating weight
-   - Payload
-   - Zero-fuel weight
-2. Departure
-   - Ramp weight
-   - Takeoff fuel
-   - Takeoff gross weight
-3. Arrival
-   - Estimated landing weight
-
-Blade renders fields in the presenter-provided order.
-
-### Desired order
-
-1. Base & Payload
-   - Zero-fuel weight
-   - Basic operating weight
-   - Payload
-2. Departure
-   - Ramp weight
-   - Takeoff gross weight
-   - Takeoff fuel
-3. Arrival
-   - Estimated landing weight
-
-### Implementation plan
-
-1. Reorder the field arrays in `WeightBalancePresenter::groups()`.
-2. Keep each field’s limit-comparison configuration attached to the same field.
-3. Do not change extraction, calculations, serialization, thresholds, values, or responsive styling.
-4. Add a unit assertion for the exact group and field-label order.
-5. Add a Livewire rendering assertion confirming DOM order matches visual/read order.
-6. Run the focused unit and Livewire tests, Pint, and final Larastan check.
-
-### Acceptance criteria
-
-- Group order remains Base & Payload, Departure, Arrival.
-- Fields appear in the exact requested order.
-- Keyboard, screen-reader, DOM, and visual order agree; no CSS `order-*` workaround is used.
-- Missing, conflicting, derived, and limit-comparison states remain unchanged.
-- Existing Weight & Balance calculations and alert counts continue to pass.
-
-References:
-
-- `app/View/Presenters/FlightRelease/WeightBalancePresenter.php`
-- `resources/views/components/flight-release/weight-and-balance.blade.php`
-- `tests/Feature/Livewire/FlightPlanBriefTest.php`
-- `tests/Unit/View/Models/FlightReleasePageViewModelTest.php`
-
-Proposed commit: `refactor: reorder weight balance cards for review flow`
+Commit message: `refactor: reorder weight balance cards for review flow`
 
 ## Feat: flight plan: Offline fuel score
 Goal: Create link on open seperate offline fuel score with a basic java script calculator. Able to calculate ETA and FOB at each waypoint. Link opens in new browser tab.
