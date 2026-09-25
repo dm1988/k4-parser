@@ -8,6 +8,7 @@ use App\Enums\FlightPlanTaskAvailability;
 use App\Enums\OperationsSpecification;
 use App\Enums\RouteTokenType;
 use App\Enums\TaskTone;
+use App\View\Models\FlightRelease\WeightBalanceFieldViewModel;
 use App\View\Presenters\FlightRelease\CrewPresenter;
 use App\View\Presenters\FlightRelease\EtopsPresenter;
 use App\View\Presenters\FlightRelease\FlightInitPresenter;
@@ -497,7 +498,7 @@ readonly class FlightReleasePageViewModel
         return $this->takeoffLandingReportPresenter->warnings();
     }
 
-    /** @return list<array{label: string, description: string, fields: list<array<string, mixed>>}> */
+    /** @return list<array{label: string, description: string, fields: list<WeightBalanceFieldViewModel>}> */
     public function weightBalanceGroups(): array
     {
         return $this->weightBalancePresenter->groups();

@@ -3,6 +3,7 @@
 namespace App\Services\FlightPlan;
 
 use App\DTOs\FuelPlanData;
+use App\DTOs\WeightBalance\AircraftWeightLimits;
 use App\DTOs\WeightBalance\WeightBalanceData;
 use App\DTOs\WeightBalance\WeightBalanceFieldData;
 use App\Enums\WeightBalanceSourceStatus;
@@ -13,19 +14,30 @@ use InvalidArgumentException;
 class WeightBalanceDataBuilder
 {
     /** @param array<string, array{amount?: ?int, unit?: string, status?: string}> $source */
-    public function build(array $source, ?FuelPlanData $fuelPlan, array $fuelSource = []): WeightBalanceData
-    {
+    public function build(
+        array $source,
+        ?FuelPlanData $fuelPlan,
+        array $fuelSource = [],
+        ?AircraftWeightLimits $limits = null,
+    ): WeightBalanceData {
         $zeroFuelWeight = $this->sourceField($source['planned_zero_fuel_weight'] ?? null);
         $rampFuel = $this->fuelField($fuelPlan?->ramp, $fuelSource['ramp_status'] ?? null);
+        $rampWeight = $this->rampWeight($zeroFuelWeight, $rampFuel);
 
         return new WeightBalanceData(
             basicOperatingWeight: $this->sourceField($source['basic_operating_weight'] ?? null),
             plannedPayload: $this->sourceField($source['planned_payload'] ?? null),
             plannedTakeoffFuel: $this->fuelField($fuelPlan?->takeoff, $fuelSource['takeoff_status'] ?? null),
-            plannedZeroFuelWeight: $zeroFuelWeight,
-            plannedRampWeight: $this->rampWeight($zeroFuelWeight, $rampFuel),
-            plannedTakeoffGrossWeight: $this->sourceField($source['planned_takeoff_gross_weight'] ?? null),
-            plannedEstimatedLandingWeight: $this->sourceField($source['planned_estimated_landing_weight'] ?? null),
+            plannedZeroFuelWeight: $this->withLimit($zeroFuelWeight, $limits?->zeroFuel),
+            plannedRampWeight: $this->withLimit($rampWeight, $limits?->ramp),
+            plannedTakeoffGrossWeight: $this->withLimit(
+                $this->sourceField($source['planned_takeoff_gross_weight'] ?? null),
+                $limits?->takeoff,
+            ),
+            plannedEstimatedLandingWeight: $this->withLimit(
+                $this->sourceField($source['planned_estimated_landing_weight'] ?? null),
+                $limits?->landing,
+            ),
         );
     }
 
@@ -153,6 +165,21 @@ class WeightBalanceDataBuilder
             ),
             sourceStatus: WeightBalanceSourceStatus::Confirmed,
             derived: true,
+        );
+    }
+
+    private function withLimit(
+        WeightBalanceFieldData $field,
+        ?WeightQuantity $limit,
+    ): WeightBalanceFieldData {
+        return new WeightBalanceFieldData(
+            plannedValue: $field->plannedValue,
+            sourceStatus: $field->sourceStatus,
+            permittedLimit: $limit,
+            limitStatus: $limit === null
+                ? WeightBalanceSourceStatus::LimitUnavailable
+                : WeightBalanceSourceStatus::Confirmed,
+            derived: $field->derived,
         );
     }
 }

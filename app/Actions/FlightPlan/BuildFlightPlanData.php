@@ -13,6 +13,7 @@ use App\DTOs\ReleaseAuthorizationData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
 use App\DTOs\SlotTimeData;
+use App\DTOs\WeightBalance\AircraftWeightLimits;
 use App\Enums\OperationsSpecification;
 use App\Services\FlightPlan\CrewMemberDataBuilder;
 use App\Services\FlightPlan\EtopsDataBuilder;
@@ -43,8 +44,10 @@ class BuildFlightPlanData
         private readonly TakeoffLandingReportDataBuilder $takeoffLandingReportDataBuilder,
     ) {}
 
-    public function handle(ParsedFlightPlanData $parsed): FlightPlanData
-    {
+    public function handle(
+        ParsedFlightPlanData $parsed,
+        ?AircraftWeightLimits $aircraftWeightLimits = null,
+    ): FlightPlanData {
         $fuelPlan = $this->fuelPlan($parsed);
 
         return new FlightPlanData(
@@ -90,7 +93,12 @@ class BuildFlightPlanData
             flightInit: $this->flightInit($parsed),
             etops: $this->etopsDataBuilder->fromExtracted($parsed->etops),
             weather: $this->weatherDataBuilder->fromExtracted($parsed->weather),
-            weightBalance: $this->weightBalanceDataBuilder->build($parsed->weightBalance, $fuelPlan, $parsed->fuel),
+            weightBalance: $this->weightBalanceDataBuilder->build(
+                $parsed->weightBalance,
+                $fuelPlan,
+                $parsed->fuel,
+                $aircraftWeightLimits,
+            ),
             generalDeclaration: new GeneralDeclarationData(
                 sectionPresent: ($parsed->generalDeclaration['section_present'] ?? false) === true,
             ),

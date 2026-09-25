@@ -33,103 +33,56 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Remove duplicate data that exists in flight strip header
 - Show MELs/CDLs if they exist
 - Show ETOPS info if it exists
-## Flight plan: weight & balance visually compare against limits
-Currently: only raw data is shown. No limits are shown. Limits exist in the aircraft table. 
 
-Goal: Reference the flight plan aircraft, render limits from aircraft model, visually render a planned weight vs limit weight for ZFW, Ramp weight, TO weight, and Landing weight.
-
-**Context**
-The session focused on redesigning the data visualization for aircraft weight parameters (Max Ramp, Take-off, Landing, and Zero-Fuel weights). The goal was to better represent "Planned" weights against their respective "Structural Limits" within a Tailwind-based dashboard.
-
-**Diagnostics**
-The existing layout utilized a flex-column container (`.flex.flex-1.flex-col.gap-3`) holding simple article cards. These cards only displayed a single "Planned" metric, lacking comparative context for structural limitations.
-
-**Actionable Findings**
-*   **Visual Safety Margins:** Implementing a progress bar provides an immediate visual cue for how much of the structural envelope is being utilized.
-*   **Semantic Color Coding:** Using conditional colors based on percentage thresholds improves situational awareness:
-    *   **Emerald/Green:** Safe operating margin (<90%).
-    *   **Blue:** Standard/Heavy operation (90-97%).
-    *   **Amber/Yellow:** Near-limit caution (>98%).
-    *   **Red:** Limit exceeded.
-*   **Typography:** Using mono-spaced fonts for weight values ensures numerical alignment and readability for rapid scanning.
-
-**Code Fixes**
-The following structure was identified as the target pattern for weight comparison cards. This template replaces the single-value cards to provide comparative diagnostics.
-
-
-`````html
-<article class="flex min-w-0 flex-col gap-3 rounded-lg border border-[#1B365D]/10 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-    <div class="flex items-start justify-between gap-3">
-        <h3 class="text-xs font-bold uppercase tracking-[0.14em] text-[#1B365D] dark:text-slate-200">
-            [Weight Category Name]
-        </h3>
-    </div>
-    <div class="space-y-4">
-        <div class="flex items-center justify-between gap-4">
-            <div class="flex-1">
-                <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-[#4A5568] dark:text-slate-400">Planned</p>
-                <p class="mt-1 flex items-baseline gap-1.5 font-mono text-[#0B0E14] dark:text-slate-100">
-                    <span class="text-xl font-black tracking-tight">[Planned Value]</span>
-                    <span class="text-[10px] font-bold tracking-[0.12em] text-[#4A5568] dark:text-slate-400">LB</span>
-                </p>
-            </div>
-            <div class="text-right">
-                <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-[#4A5568] dark:text-slate-400">Limit</p>
-                <p class="mt-1 flex items-baseline justify-end gap-1.5 font-mono [ColorClass] dark:opacity-90">
-                    <span class="text-xl font-black tracking-tight">[Limit Value]</span>
-                    <span class="text-[10px] font-bold tracking-[0.12em] opacity-70">LB</span>
-                </p>
-            </div>
-        </div>
-        
-        <div class="relative pt-1">
-            <div class="flex items-center justify-between mb-1">
-                <span class="text-[10px] font-semibold inline-block [TextColorClass]">
-                    [Percentage]% of structural limit
-                </span>
-            </div>
-            <div class="overflow-hidden h-2 text-xs flex rounded bg-slate-100 dark:bg-slate-800">
-                <div style="width: [Percentage]%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center [BgColorClass]"></div>
-            </div>
-        </div>
-    </div>
-</article>
-`````
-
-
-**Weight Data Comparison**
-The following thresholds and configurations were prototyped for the 777-200F:
-
-| Weight Category | Planned (LB) | Limit (LB) | % of Limit | Status Color |
-| :--- | :--- | :--- | :--- | :--- |
-| **Max Ramp** | 768,000 | 768,800 | 99.9% | Amber |
-| **Max Take-off** | 650,000 | 766,000 | 84.8% | Blue |
-| **Max Landing (MLW)** | 540,000 | 554,000 | 97.5% | Blue |
-| **Zero-Fuel (ZFW)** | 314,905 | 527,000 | 59.7% | Emerald |
-
-
-
-## [x] Completed: Add FMS programming tip
+## [x] Completed: Flight plan: weight & balance visually compare against limits
 
 Outcome:
 
-- Added a gold-accent programming tip card with a light-bulb icon to the FMS task.
-- Positioned the tip between `Planned runways and procedures` and `Airport context`.
-- Added focused Livewire coverage for the tip content and placement.
+- Resolved structural limits from the aircraft matched by the normalized flight-release tail number.
+- Persisted the applicable ramp, zero-fuel, takeoff, and landing limits with the normalized release result.
+- Added planned-versus-limit cards with labeled units, utilization percentages, accessible progress indicators, and green, blue, amber, or red operating-margin states.
+- Reported unmatched aircraft, absent limits, and incompatible units as unavailable without inferring operational values.
+- Added focused resolver, normalization, persistence, threshold, unavailable-state, and Livewire rendering coverage.
 
-Commit message: `feat: add fms programming tip`
+Commit message: `feat: compare planned weights with aircraft limits`
 
-## [x] Completed: Flight release more persistent
+## Follow up:
+Derived / Calculated Indicators: The card note mentions "Derived server-side from confirmed zero-fuel weight...". Adding a small info icon or tooltip next to derived values helps distinguish between manually entered inputs and system-calculated totals.
+
+## [x] Completed: UI optimization for maximum-limit weight cards
 
 Outcome:
 
-- Persisted one encrypted, opaque-keyed flight-plan result per user with cascade deletion and owner-scoped reads and deletes.
-- Restored the latest authorized result on fresh Livewire mounts independently of cache or session lifetime.
-- Preserved the prior saved release when replacement extraction fails, while explicit discard removes it across refreshes.
-- Kept uploaded PDFs ephemeral and limited persistence to the serializer's normalized `flight_plan_data` payload.
-- Added focused coverage for encryption, replacement, authorization boundaries, restoration, discard, failure preservation, and cleanup.
+- Consolidated percentage, maximum weight, unit, and limit label inside the progress bar for zero-fuel, ramp, takeoff, and landing weight cards.
+- Removed each maximum-limit card's redundant structural-limit column and external operating-state labels.
+- Increased progress-bar height and added a responsive, truncated, high-contrast overlay that remains readable across all status colors.
+- Preserved accessible progress names and value text, plus explicit unavailable-limit handling.
+- Added focused Livewire coverage for all four integrated limit cards.
 
-Commit message: `feat: persist the latest flight release per user`
+Commit message: `refactor: consolidate weight limits into progress bars`
+
+## [x] Completed: Progress bar text overlay visual fix
+
+Outcome:
+
+- Corrected the optical vertical alignment of maximum-limit progress-bar text with a compact line height and slight top offset.
+- Removed the dark pill background and shadow from the text while preserving its responsive truncation and contrast.
+- Added focused Livewire assertions for the overlay alignment and simplified text treatment.
+
+Commit message: `fix: align weight progress bar overlays`
+
+## [x] Completed: Extract weight-balance field rendering logic
+
+Outcome:
+
+- Added a typed weight-balance field view model for formatted values, status styling, comparison state, progress values, and accessibility labels.
+- Added enums that own comparison labels, progress and text classes, plus source-status badge classes.
+- Reduced the Blade component to declarative rendering against named view-model values and predicates.
+- Added cross-browser progress-fill styling so safe, heavy, caution, and exceeded states render their intended colors.
+- Set the heavy progress fill to the specified high-visibility blue, including an explicit WebKit override.
+- Added focused coverage for integrated limits, exceeded limits, source conflicts, incompatible units, and all rendered tone classes.
+
+Commit message: `refactor: extract weight balance field view model`
 
 ## Feat: flight plan: Offline fuel score
 Goal: Create link on open seperate offline fuel score with a basic java script calculator. Able to calculate ETA and FOB at each waypoint.
@@ -440,19 +393,8 @@ app/Enums/TaskTone.php
 ## [x] Completed: Flight plan: Employee number missing from Maintenance log task and create common component
 ## [x] Completed: Flight plan: Refactoring Employee Card Components
 ## [x] Completed: Flight plan: flight info header refactor
-## 1. [x] Completed: Remove info logging
-
+## [x] Completed: Remove info logging
 ## [x] Completed: Flight plan: Hide Planned Duration in FMS task
-
-Outcome:
-
-- Removed the `Planned Duration` metric from the FMS task's presentation fields.
-- Preserved planned duration in the release header and Flight Init, where it remains relevant.
-- Updated focused view-model and Livewire rendering coverage.
-- Validated with focused PHPUnit tests, Pint, and Larastan.
-
-Commit message: `refactor: hide planned duration from fms task`
-
 ## [x] Completed: Flight plan: FMS task info order
 
 Outcome:
@@ -463,3 +405,25 @@ Outcome:
 - Added focused view-model and Livewire regression coverage for both ordering requirements.
 
 Commit message: `refactor: reorder fms task information`
+
+## [x] Completed: Add FMS programming tip
+
+Outcome:
+
+- Added a gold-accent programming tip card with a light-bulb icon to the FMS task.
+- Positioned the tip between `Planned runways and procedures` and `Airport context`.
+- Added focused Livewire coverage for the tip content and placement.
+
+Commit message: `feat: add fms programming tip`
+
+## [x] Completed: Flight release more persistent
+
+Outcome:
+
+- Persisted one encrypted, opaque-keyed flight-plan result per user with cascade deletion and owner-scoped reads and deletes.
+- Restored the latest authorized result on fresh Livewire mounts independently of cache or session lifetime.
+- Preserved the prior saved release when replacement extraction fails, while explicit discard removes it across refreshes.
+- Kept uploaded PDFs ephemeral and limited persistence to the serializer's normalized `flight_plan_data` payload.
+- Added focused coverage for encryption, replacement, authorization boundaries, restoration, discard, failure preservation, and cleanup.
+
+Commit message: `feat: persist the latest flight release per user`

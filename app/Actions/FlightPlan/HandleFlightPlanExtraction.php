@@ -5,6 +5,7 @@ namespace App\Actions\FlightPlan;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Models\ExtractRequest;
 use App\Models\User;
+use App\Services\FlightPlan\AircraftWeightLimitResolver;
 use App\Services\FlightPlan\Extractor\ExtractFlightPlanData;
 use App\Services\FlightPlan\FlightPlanResultSerializer;
 use App\Services\Infrastructure\ExtractRequestLogger;
@@ -20,6 +21,7 @@ class HandleFlightPlanExtraction
         private readonly ExtractFlightPlanData $extractor,
         private readonly BuildFlightPlanData $builder,
         private readonly FlightPlanResultSerializer $serializer,
+        private readonly AircraftWeightLimitResolver $aircraftWeightLimitResolver,
         private readonly ExtractRequestLogger $extractRequestLogger,
     ) {}
 
@@ -45,7 +47,14 @@ class HandleFlightPlanExtraction
                 $uploadedFile,
             );
             $parsedFlightPlan = $this->extractor->extractFile($disk->path($path));
-            $flightPlan = $this->serializer->serialize($this->builder->handle($parsedFlightPlan));
+            $tailNumber = $parsedFlightPlan->identity['tail_number'] ?? null;
+            $aircraftWeightLimits = $this->aircraftWeightLimitResolver->resolve(
+                is_string($tailNumber) ? $tailNumber : null,
+            );
+            $flightPlan = $this->serializer->serialize($this->builder->handle(
+                $parsedFlightPlan,
+                $aircraftWeightLimits,
+            ));
 
             $this->extractRequestLogger->complete(
                 $extractRequest,

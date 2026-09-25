@@ -10,6 +10,7 @@ use App\DTOs\ParsedFlightPlanData;
 use App\Enums\FlightPlanTask;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Livewire\FlightPlanBrief;
+use App\Models\Aircraft;
 use App\Models\ExtractRequest;
 use App\Models\FlightPlanResult;
 use App\Models\User;
@@ -1223,9 +1224,21 @@ class FlightPlanBriefTest extends TestCase
     public function test_weight_and_balance_renders_planned_values_independent_statuses_and_server_derived_ramp_weight(): void
     {
         Storage::fake('user_flight_releases');
+        Aircraft::factory()->create([
+            'tail_number' => 'N774CK',
+            'max_ramp_weight' => 600000,
+            'max_zero_fuel_weight' => 400000,
+            'max_takeoff_weight' => 580000,
+            'max_landing_weight' => 370000,
+        ]);
+        $user = User::factory()->admin()->create();
 
         $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
             $this->expectOnce($mock, 'extractFile')->andReturn($this->parsedFlightPlan(
+                identity: [
+                    'aircraft_type' => 'B777-200F',
+                    'tail_number' => 'N774CK',
+                ],
                 fuel: [
                     'ramp' => ['amount' => 225500.0, 'unit' => 'lb'],
                     'taxi' => null,
@@ -1245,12 +1258,12 @@ class FlightPlanBriefTest extends TestCase
                 ],
             ));
         });
-        Livewire::actingAs(User::factory()->admin()->create())
+        $component = Livewire::actingAs($user)
             ->test(FlightPlanBrief::class)
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
             ->call('selectTask', FlightPlanTask::WeightAndBalance->value)
             ->assertSet('activeTask', FlightPlanTask::WeightAndBalance->value)
-            ->assertSeeText('Planned source values')
+            ->assertSeeText('Planned weights and structural limits')
             ->assertSeeText('Base & Payload')
             ->assertSeeText('Departure')
             ->assertSeeText('Arrival')
@@ -1266,10 +1279,83 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('Takeoff gross weight')
             ->assertSeeText('Estimated landing weight')
             ->assertSeeText('LB')
+            ->assertSeeText('400,000')
+            ->assertSeeText('600,000')
+            ->assertSeeText('580,000')
+            ->assertSeeText('370,000')
+            ->assertSeeText('88.5% OF 400,000 LB LIMIT')
+            ->assertSeeText('96.6% OF 600,000 LB LIMIT')
+            ->assertSeeText('99.5% OF 580,000 LB LIMIT')
+            ->assertSeeText('100.5% OF 370,000 LB LIMIT')
+            ->assertSeeHtml('aria-label="Zero-fuel weight utilization"')
+            ->assertSeeHtml('aria-label="Ramp weight utilization"')
+            ->assertSeeHtml('aria-label="Takeoff gross weight utilization"')
+            ->assertSeeHtml('aria-label="Estimated landing weight utilization"')
+            ->assertSeeHtml('relative h-3.5 overflow-hidden rounded-full')
+            ->assertSeeHtml('pointer-events-none absolute inset-0 flex items-center px-1.5 pt-0.5 font-mono text-[8px] font-extrabold leading-none tracking-wide')
+            ->assertSeeHtml('truncate rounded-full px-1.5 text-white')
+            ->assertDontSeeHtml('bg-[#0B0E14]/75')
+            ->assertDontSeeHtml('px-1.5 text-white shadow-sm')
+            ->assertSeeHtml('cc-weight-progress-safe')
+            ->assertSeeHtml('cc-weight-progress-heavy')
+            ->assertSeeHtml('cc-weight-progress-caution')
+            ->assertSeeHtml('cc-weight-progress-exceeded')
             ->assertSeeText('Derived server-side from confirmed zero-fuel weight and ramp fuel.')
-            ->assertDontSeeText('Permitted limit')
             ->assertDontSeeText('Limit unavailable')
+            ->assertDontSeeText('Within operating margin')
+            ->assertDontSeeText('Heavy operation')
+            ->assertDontSeeText('Near structural limit')
+            ->assertDontSeeText('Structural limit exceeded')
             ->assertDontSeeText('Confirmed');
+
+        $flightPlanKey = $component->get('flightPlanKey');
+        $this->assertIsString($flightPlanKey);
+        $storedFlightPlan = app(FlightPlanResultStore::class)->get(
+            $user,
+            $flightPlanKey,
+        );
+
+        $this->assertSame(
+            580000,
+            $storedFlightPlan['flight_plan_data']['weightBalance']['plannedTakeoffGrossWeight']['permittedLimit']['amount'] ?? null,
+        );
+    }
+
+    public function test_weight_and_balance_reports_unavailable_limits_for_an_unmatched_aircraft(): void
+    {
+        Storage::fake('user_flight_releases');
+
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')->andReturn($this->parsedFlightPlan(
+                identity: [
+                    'aircraft_type' => 'B777-200F',
+                    'tail_number' => 'N999ZZ',
+                ],
+                fuel: [
+                    'ramp' => ['amount' => 225500.0, 'unit' => 'lb'],
+                    'taxi' => null,
+                    'takeoff' => null,
+                    'trip' => null,
+                    'contingency' => null,
+                    'alternate' => null,
+                    'final_reserve' => null,
+                    'estimated_landing' => null,
+                ],
+                weightBalance: [
+                    'planned_zero_fuel_weight' => ['amount' => 353858, 'unit' => 'lb', 'status' => 'confirmed'],
+                    'planned_takeoff_gross_weight' => ['amount' => 577347, 'unit' => 'lb', 'status' => 'confirmed'],
+                    'planned_estimated_landing_weight' => ['amount' => 371893, 'unit' => 'lb', 'status' => 'confirmed'],
+                ],
+            ));
+        });
+
+        Livewire::actingAs(User::factory()->admin()->create())
+            ->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->call('selectTask', FlightPlanTask::WeightAndBalance->value)
+            ->assertSeeText('Limit unavailable')
+            ->assertDontSeeHtml('aria-label="Zero-fuel weight utilization"')
+            ->assertDontSeeText('% of structural limit');
     }
 
     public function test_maintenance_log_exposes_shared_context_when_the_item_section_is_absent(): void

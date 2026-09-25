@@ -18,4 +18,13 @@ enum WeightBalanceSourceStatus: string
             self::LimitUnavailable => 'Limit unavailable',
         };
     }
+
+    public function badgeClasses(): string
+    {
+        return match ($this) {
+            self::Confirmed => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-200',
+            self::Conflict => 'bg-red-100 text-red-800 dark:bg-red-400/15 dark:text-red-200',
+            self::NotPresent, self::LimitUnavailable => 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
+        };
+    }
 }

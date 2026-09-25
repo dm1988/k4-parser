@@ -26,6 +26,16 @@ final readonly class WeightQuantity implements JsonSerializable
         $this->unit = $unit;
     }
 
+    public static function pounds(int $amount): self
+    {
+        return new self($amount, 'lb');
+    }
+
+    public static function kilograms(int $amount): self
+    {
+        return new self($amount, 'kg');
+    }
+
     /** @return array{amount: int, unit: 'lb'|'kg'} */
     public function toArray(): array
     {

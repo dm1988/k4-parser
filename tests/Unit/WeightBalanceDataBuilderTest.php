@@ -3,9 +3,11 @@
 namespace Tests\Unit;
 
 use App\DTOs\FuelPlanData;
+use App\DTOs\WeightBalance\AircraftWeightLimits;
 use App\Enums\WeightBalanceSourceStatus;
 use App\Services\FlightPlan\WeightBalanceDataBuilder;
 use App\ValueObjects\FuelQuantity;
+use App\ValueObjects\WeightQuantity;
 use PHPUnit\Framework\TestCase;
 
 class WeightBalanceDataBuilderTest extends TestCase
@@ -18,6 +20,12 @@ class WeightBalanceDataBuilderTest extends TestCase
                 ramp: FuelQuantity::pounds(225500),
                 takeoff: FuelQuantity::pounds(223489),
             ),
+            limits: new AircraftWeightLimits(
+                ramp: WeightQuantity::pounds(768000),
+                zeroFuel: WeightQuantity::pounds(547000),
+                takeoff: WeightQuantity::pounds(766000),
+                landing: WeightQuantity::pounds(575000),
+            ),
         );
 
         $this->assertSame(223489, $data->plannedTakeoffFuel->plannedValue?->amount);
@@ -25,7 +33,11 @@ class WeightBalanceDataBuilderTest extends TestCase
         $this->assertSame('lb', $data->plannedRampWeight->plannedValue->unit);
         $this->assertTrue($data->plannedRampWeight->derived);
         $this->assertSame(WeightBalanceSourceStatus::Confirmed, $data->plannedRampWeight->sourceStatus);
-        $this->assertSame(WeightBalanceSourceStatus::LimitUnavailable, $data->plannedRampWeight->limitStatus);
+        $this->assertSame(768000, $data->plannedRampWeight->permittedLimit?->amount);
+        $this->assertSame(547000, $data->plannedZeroFuelWeight->permittedLimit?->amount);
+        $this->assertSame(766000, $data->plannedTakeoffGrossWeight->permittedLimit?->amount);
+        $this->assertSame(575000, $data->plannedEstimatedLandingWeight->permittedLimit?->amount);
+        $this->assertSame(WeightBalanceSourceStatus::Confirmed, $data->plannedRampWeight->limitStatus);
     }
 
     public function test_it_does_not_convert_units_when_deriving_ramp_weight(): void

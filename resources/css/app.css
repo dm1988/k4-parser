@@ -26,4 +26,40 @@
 	.cc-file-input {
 		@apply block w-full rounded-md border border-[#4A5568]/30 bg-[#F8F9FA] p-3 text-sm text-[#0B0E14] file:me-3 file:rounded-md file:border-0 file:bg-[#1B365D] file:px-3 file:py-2 file:font-semibold file:text-white dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:file:bg-[#C5A059] dark:file:text-[#0B0E14];
 	}
+
+	.cc-weight-progress {
+		@apply appearance-none overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800;
+	}
+
+	.cc-weight-progress::-webkit-progress-bar {
+		@apply rounded-full bg-slate-100 dark:bg-slate-800;
+	}
+
+	.cc-weight-progress::-webkit-progress-value {
+		background-color: var(--cc-weight-progress-color);
+	}
+
+	.cc-weight-progress::-moz-progress-bar {
+		background-color: var(--cc-weight-progress-color);
+	}
+
+	.cc-weight-progress-safe {
+		--cc-weight-progress-color: #10b981;
+	}
+
+	.cc-weight-progress-heavy {
+		--cc-weight-progress-color: #001bfc;
+	}
+
+	.cc-weight-progress-heavy::-webkit-progress-value {
+		background-color: #001bfc !important;
+	}
+
+	.cc-weight-progress-caution {
+		--cc-weight-progress-color: #f59e0b;
+	}
+
+	.cc-weight-progress-exceeded {
+		--cc-weight-progress-color: #dc2626;
+	}
 }

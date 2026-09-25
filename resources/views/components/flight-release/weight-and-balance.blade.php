@@ -5,8 +5,8 @@
         <div class="flex items-start gap-3">
             <x-heroicon-o-scale class="mt-0.5 h-5 w-5 shrink-0" />
             <div class="flex min-w-0 flex-col gap-1">
-                <p class="font-bold">Planned source values</p>
-                <p class="leading-5 opacity-90">This task displays planned source values only. Actual weights are not implemented.</p>
+                <p class="font-bold">Planned weights and structural limits</p>
+                <p class="leading-5 opacity-90">Planned release weights are compared with the matched aircraft limits. Actual weights are not implemented.</p>
             </div>
         </div>
     </div>
