@@ -147,6 +147,9 @@ class FlightPlanBrief extends Component
             'model' => $viewModel,
             'isResultsView' => $viewModel->hasFlightPlan(),
             'tasks' => $viewModel->tasks(),
+            'fuelCalculatorUrl' => $this->flightPlanKey === null
+                ? null
+                : route('flight-release.fuel-score', ['flightPlanKey' => $this->flightPlanKey]),
         ]);
     }
 

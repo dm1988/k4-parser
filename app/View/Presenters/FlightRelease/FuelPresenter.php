@@ -52,6 +52,41 @@ final readonly class FuelPresenter
         );
     }
 
+    /**
+     * @return array{fuelUnit: ?string, takeoffFuel: array{amount: float, unit: 'kg'|'lb'}|null, estimatedLandingFuel: array{amount: float, unit: 'kg'|'lb'}|null, waypoints: list<array{identifier: string, tbo: ?string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: array{amount: float, unit: 'kg'|'lb'}|null}>}
+     */
+    public function calculatorData(): array
+    {
+        $waypoints = $this->pageData?->flightPlan->waypoints ?? [];
+        $fuelUnit = $this->pageData?->flightPlan->fuelPlan?->takeoff?->unit;
+
+        if ($fuelUnit === null) {
+            foreach ($waypoints as $waypoint) {
+                if ($waypoint->remainingFuel !== null) {
+                    $fuelUnit = $waypoint->remainingFuel->unit;
+
+                    break;
+                }
+            }
+        }
+
+        return [
+            'fuelUnit' => $fuelUnit,
+            'takeoffFuel' => $this->pageData?->flightPlan->fuelPlan?->takeoff?->toArray(),
+            'estimatedLandingFuel' => $this->pageData?->flightPlan->fuelPlan?->estimatedLanding?->toArray(),
+            'waypoints' => array_map(
+                fn (WaypointData $waypoint): array => [
+                    'identifier' => $waypoint->identifier,
+                    'tbo' => $waypoint->tbo,
+                    'legDurationMinutes' => $waypoint->legDurationMinutes,
+                    'cumulativeDurationMinutes' => $waypoint->cumulativeDurationMinutes,
+                    'remainingFuel' => $waypoint->remainingFuel?->toArray(),
+                ],
+                $waypoints,
+            ),
+        ];
+    }
+
     /** @return array{label: string, value: ?string, unit: ?string} */
     private function field(string $label, ?FuelQuantity $quantity): array
     {

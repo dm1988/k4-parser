@@ -18,7 +18,7 @@ class WaypointExtractor
 
     /**
      * @return array{
-     *     data: list<array{coordinate: string, identifier: string, time: ?string, total_time: ?string, remaining_fuel: ?string}>,
+     *     data: list<array{coordinate: string, identifier: string, time: ?string, total_time: ?string, remaining_fuel: ?string, tbo: ?string}>,
      *     source_fragments: array<string, string>
      * }
      */
@@ -50,6 +50,7 @@ class WaypointExtractor
                 'time' => $detail['time'],
                 'total_time' => $totalTime,
                 'remaining_fuel' => $detail['remaining_fuel'],
+                'tbo' => $detail['tbo'],
             ];
 
             $sourceLines[] = implode(' ', array_filter([
@@ -58,6 +59,7 @@ class WaypointExtractor
                 $detail['time'],
                 $totalTime,
                 $detail['remaining_fuel'],
+                $detail['tbo'],
             ], static fn (?string $value): bool => $value !== null));
         }
 
@@ -121,7 +123,7 @@ class WaypointExtractor
         return $records;
     }
 
-    /** @return array{identifier: string, time: ?string, remaining_fuel: ?string}|null */
+    /** @return array{identifier: string, time: ?string, remaining_fuel: ?string, tbo: ?string}|null */
     private function detail(string $line): ?array
     {
         $matches = [];
@@ -135,6 +137,10 @@ class WaypointExtractor
             ? $timeMatches['time']
             : null;
         $fuelMatches = [];
+        $tboMatches = [];
+        $tbo = preg_match('/\h(?:\d{3}|---)\h+(?:\.{2,3}|\d{4})\h+(?:\.{2,3}|\d{4})\h+(?<tbo>\d{4}|----)\h+(?:\d{4}|----)(?:\h|$)/', $matches['details'], $tboMatches) === 1
+            ? $tboMatches['tbo']
+            : null;
         $remainingFuel = preg_match('/\h(?:\d{4}|----)\h+(?<fuel>\d{4}|----)\h+(?:\d{4}|\.{2,4})(?:\h|$)/', $matches['details'], $fuelMatches) === 1
             ? $fuelMatches['fuel']
             : null;
@@ -143,6 +149,7 @@ class WaypointExtractor
             'identifier' => Str::upper($matches['identifier']),
             'time' => $time === '---' ? null : $time,
             'remaining_fuel' => $remainingFuel === '----' ? null : $remainingFuel,
+            'tbo' => $tbo === '----' ? null : $tbo,
         ];
     }
 

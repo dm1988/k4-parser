@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ExtractController;
 use App\Http\Controllers\FlightReleaseController;
+use App\Http\Controllers\OfflineFuelScoreController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -36,6 +37,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware(['feature:flight_release', 'can:use-flight-release'])->group(function () {
         Route::get('/flight-route-extractor', [FlightReleaseController::class, 'index'])->name('flight-release.index');
+        Route::get('/flight-route-extractor/fuel-score/{flightPlanKey}', OfflineFuelScoreController::class)
+            ->name('flight-release.fuel-score');
     });
 });
 

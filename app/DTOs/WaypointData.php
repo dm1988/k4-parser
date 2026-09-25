@@ -13,10 +13,11 @@ final readonly class WaypointData implements JsonSerializable
         public ?int $legDurationMinutes = null,
         public ?int $cumulativeDurationMinutes = null,
         public ?FuelQuantity $remainingFuel = null,
+        public ?string $tbo = null,
     ) {}
 
     /**
-     * @return array{identifier: string, coordinate: string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: array{amount: float, unit: 'kg'|'lb'}|null}
+     * @return array{identifier: string, coordinate: string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: array{amount: float, unit: 'kg'|'lb'}|null, tbo: ?string}
      */
     public function toArray(): array
     {
@@ -26,11 +27,12 @@ final readonly class WaypointData implements JsonSerializable
             'legDurationMinutes' => $this->legDurationMinutes,
             'cumulativeDurationMinutes' => $this->cumulativeDurationMinutes,
             'remainingFuel' => $this->remainingFuel?->toArray(),
+            'tbo' => $this->tbo,
         ];
     }
 
     /**
-     * @return array{identifier: string, coordinate: string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: array{amount: float, unit: 'kg'|'lb'}|null}
+     * @return array{identifier: string, coordinate: string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: array{amount: float, unit: 'kg'|'lb'}|null, tbo: ?string}
      */
     public function jsonSerialize(): array
     {

@@ -69,6 +69,7 @@
                 :tasks="$tasks"
                 :active-task="$activeTaskCase"
                 :model="$model"
+                :fuel-calculator-url="$fuelCalculatorUrl"
             />
         </section>
     @endif

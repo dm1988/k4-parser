@@ -1,15 +1,16 @@
 # Codex Usage Rules
 
 Follow these rules for every remaining task:
-1. Do not start work unless sail is available. Use elevated sail access if needed.
+1. Do not start code change tasks unless sail is available. Use elevated sail access if needed. Document only changes are the only excemption.
 2. Work on one task at a time marked by ##.
-3. Run only focused tests while implementing a task.
-4. Run Pint after PHP files change.
-5. Larastan once at the final integration checkpoint, not after every small edit.
-6. Preserve unrelated working-tree changes.
-7. Update TODO.md with outcomes instead of adding another plan or duplicate checklist.
-8. Create a commit message for each ## task
-
+3. Preserve unrelated working-tree changes.
+4. At the final integration checkpoint:
+   1. Run only focused tests.
+   2. Run Pint after PHP files change.
+   3. Larastan once, not after every small edit.
+   4. Create a commit message for each ## task
+   5. Update TODO.md with outcomes instead of adding another plan or duplicate checklist.
+   
 <laravel-boost-guidelines>
 === .ai/GUIDELINES rules ===
 

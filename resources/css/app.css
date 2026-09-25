@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+	[x-cloak] {
+		display: none !important;
+	}
+}
+
 @layer components {
 	.cc-card {
 		@apply rounded-lg border border-[#1B365D]/15 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900;

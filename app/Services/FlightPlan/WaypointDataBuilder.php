@@ -32,6 +32,7 @@ class WaypointDataBuilder
                 legDurationMinutes: $this->legDurationMinutes($waypoint['time'] ?? null),
                 cumulativeDurationMinutes: $this->cumulativeDurationMinutes($waypoint['total_time'] ?? null),
                 remainingFuel: $this->extractedFuel($waypoint['remaining_fuel'] ?? null, $fuelUnit),
+                tbo: $this->tbo($waypoint['tbo'] ?? null),
             );
         }
 
@@ -65,6 +66,7 @@ class WaypointDataBuilder
                 legDurationMinutes: $this->nonNegativeInteger($waypoint['legDurationMinutes'] ?? null),
                 cumulativeDurationMinutes: $this->nonNegativeInteger($waypoint['cumulativeDurationMinutes'] ?? null),
                 remainingFuel: $this->serializedFuel($waypoint['remainingFuel'] ?? null),
+                tbo: $this->tbo($waypoint['tbo'] ?? null),
             );
         }
 
@@ -133,6 +135,11 @@ class WaypointDataBuilder
     private function nonNegativeInteger(mixed $value): ?int
     {
         return is_int($value) && $value >= 0 ? $value : null;
+    }
+
+    private function tbo(mixed $value): ?string
+    {
+        return is_string($value) && preg_match('/^\d{4}$/', $value) === 1 ? $value : null;
     }
 
     private function nullableString(mixed $value): ?string

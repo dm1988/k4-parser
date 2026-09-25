@@ -2,6 +2,7 @@
     'tasks',
     'activeTask',
     'model',
+    'fuelCalculatorUrl' => null,
 ])
 
 @php($availability = $model->availabilityFor($activeTask))
@@ -67,6 +68,10 @@
                         :destination-airport="$model->destinationAirport()"
                         :alternate-airport="$model->alternateAirport()"
                     />
+                    @break
+
+                @case($activeTask === \App\Enums\FlightPlanTask::FuelScore)
+                    <x-flight-release.fuel-score :model="$model" :calculator-url="$fuelCalculatorUrl" />
                     @break
 
                 @default

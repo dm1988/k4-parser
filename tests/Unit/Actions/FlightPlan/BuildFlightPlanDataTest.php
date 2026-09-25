@@ -140,7 +140,7 @@ class BuildFlightPlanDataTest extends TestCase
             generalDeclaration: ['section_present' => true],
             releaseAuthorization: ['operations_specification' => 'b44'],
             waypoints: [
-                ['identifier' => 'FIX01', 'coordinate' => 'N01 02.3 E004 05.6', 'time' => '005', 'total_time' => '00.11', 'remaining_fuel' => '0000'],
+                ['identifier' => 'FIX01', 'coordinate' => 'N01 02.3 E004 05.6', 'time' => '005', 'total_time' => '00.11', 'remaining_fuel' => '0000', 'tbo' => '0011'],
                 ['identifier' => 'FIX01', 'coordinate' => 'N02 03.4 E005 06.7', 'time' => null, 'total_time' => null, 'remaining_fuel' => null],
             ],
         );
@@ -181,6 +181,7 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame(['FIX01', 'FIX01'], array_column($flightPlan->waypoints, 'identifier'));
         $this->assertSame(11, $flightPlan->waypoints[0]->cumulativeDurationMinutes);
         $this->assertSame(0.0, $flightPlan->waypoints[0]->remainingFuel?->amount);
+        $this->assertSame('0011', $flightPlan->waypoints[0]->tbo);
         $this->assertSame('lb', $flightPlan->waypoints[0]->remainingFuel->unit);
         $this->assertNull($flightPlan->waypoints[1]->legDurationMinutes);
         $this->assertSame('KLAX', $flightPlan->weather?->departure?->airport->value);

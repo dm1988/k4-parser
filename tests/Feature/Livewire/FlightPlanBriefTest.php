@@ -1679,12 +1679,15 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('No score or status inferred')
             ->assertSeeText('does not calculate a fuel score')
             ->assertSeeText('Waypoint fuel')
-            ->assertSeeText('Off time (UTC)')
-            ->assertSeeText('Planned ETA')
+            ->assertSeeText('Open offline fuel calculator')
+            ->assertSeeHtml('target="_blank" rel="noopener noreferrer"')
             ->assertSeeText('Remaining fuel')
             ->assertSee('147.7 k lbs')
-            ->assertSeeText('does not alter extracted release data')
             ->assertSee('FIX01')
+            ->assertDontSeeText('Off time (UTC)')
+            ->assertDontSeeText('Planned ETA')
+            ->assertDontSeeText('More…')
+            ->assertDontSeeHtml('x-data="waypointFuelMonitor')
             ->assertDontSeeText('Coordinate')
             ->assertDontSeeText('Its dedicated operational layout is scheduled in the next focused task.');
 
