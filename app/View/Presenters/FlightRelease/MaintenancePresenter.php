@@ -52,6 +52,16 @@ final readonly class MaintenancePresenter
 
     public function counterBadgeColor(): ?string
     {
+        return $this->highestPriorityItemType()?->badgeColor();
+    }
+
+    public function counterMetricTextColor(): ?string
+    {
+        return $this->highestPriorityItemType()?->metricTextColor();
+    }
+
+    private function highestPriorityItemType(): ?MaintenanceItemType
+    {
         $itemTypes = array_map(
             static fn (MaintenanceItemData $item): MaintenanceItemType => $item->type,
             $this->pageData?->flightPlan->maintenanceLog->items ?? [],
@@ -59,7 +69,7 @@ final readonly class MaintenancePresenter
 
         foreach (MaintenanceItemType::counterPriority() as $type) {
             if (in_array($type, $itemTypes, true)) {
-                return $type->badgeColor();
+                return $type;
             }
         }
 

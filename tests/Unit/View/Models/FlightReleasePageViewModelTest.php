@@ -547,6 +547,7 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame(2, $viewModel->overviewMelCdlItemCount());
         $this->assertTrue($viewModel->hasOverviewMelCdlItems());
         $this->assertSame('2 Active MEL/CDL Items', $viewModel->overviewMelCdlItemCountLabel());
+        $this->assertSame('text-red-700 dark:text-red-300', $viewModel->overviewMelCdlItemCountColorClasses());
         $this->assertNull($viewModel->taskCounter(FlightPlanTask::MaintenanceLog));
         $this->assertNotContains(FlightPlanTask::SlotTimes, $viewModel->tasks());
         $this->assertSame(0, $viewModel->taskCounter(FlightPlanTask::SlotTimes));
@@ -560,6 +561,7 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame(0, $emptyViewModel->overviewMelCdlItemCount());
         $this->assertFalse($emptyViewModel->hasOverviewMelCdlItems());
         $this->assertSame('0 Active MEL/CDL Items', $emptyViewModel->overviewMelCdlItemCountLabel());
+        $this->assertNull($emptyViewModel->overviewMelCdlItemCountColorClasses());
         $this->assertNotContains('Maintenance', array_column($emptyViewModel->overviewUnsupportedIndicators(), 'label'));
 
         $missingSectionPayload = $this->resultPayload();
@@ -575,13 +577,13 @@ class FlightReleasePageViewModelTest extends TestCase
     public function it_colors_the_maintenance_counter_by_the_highest_priority_item_type(): void
     {
         $cases = [
-            [['DMI', 'NEF', 'CDL', 'MEL'], 'bg-red-100 text-red-900 dark:bg-red-400/15 dark:text-red-200'],
-            [['DMI', 'NEF', 'CDL'], 'bg-orange-100 text-orange-900 dark:bg-orange-400/15 dark:text-orange-200'],
-            [['DMI', 'NEF'], 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100'],
-            [['DMI'], 'bg-yellow-100 text-yellow-900 dark:bg-yellow-400/15 dark:text-yellow-200'],
+            [['DMI', 'NEF', 'CDL', 'MEL'], 'bg-red-100 text-red-900 dark:bg-red-400/15 dark:text-red-200', 'text-red-700 dark:text-red-300'],
+            [['DMI', 'NEF', 'CDL'], 'bg-orange-100 text-orange-900 dark:bg-orange-400/15 dark:text-orange-200', 'text-orange-700 dark:text-orange-300'],
+            [['DMI', 'NEF'], 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100', 'text-gray-700 dark:text-gray-300'],
+            [['DMI'], 'bg-yellow-100 text-yellow-900 dark:bg-yellow-400/15 dark:text-yellow-200', 'text-yellow-700 dark:text-yellow-300'],
         ];
 
-        foreach ($cases as [$types, $expectedClasses]) {
+        foreach ($cases as [$types, $expectedBadgeClasses, $expectedMetricClasses]) {
             $payload = $this->resultPayload();
             $payload['flight_plan_data']['maintenanceLog']['items'] = array_map(
                 static fn (string $type): array => [
@@ -599,13 +601,21 @@ class FlightReleasePageViewModelTest extends TestCase
             $viewModel = $this->viewModel($payload);
 
             $this->assertSame(
-                $expectedClasses,
+                $expectedBadgeClasses,
                 $viewModel->taskCounterColorClasses(FlightPlanTask::ReviewMelCdl),
             );
+            $this->assertSame($expectedMetricClasses, $viewModel->overviewMelCdlItemCountColorClasses());
             $this->assertStringContainsString(
-                $expectedClasses,
+                $expectedBadgeClasses,
                 $this->renderWorkspace($viewModel, FlightPlanTask::Overview),
             );
+
+            if ($viewModel->hasOverviewMelCdlItems()) {
+                $this->assertStringContainsString(
+                    'font-mono text-5xl font-black leading-none '.$expectedMetricClasses,
+                    $this->renderWorkspace($viewModel, FlightPlanTask::Overview),
+                );
+            }
         }
 
         $payload = $this->resultPayload();

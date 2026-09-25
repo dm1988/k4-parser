@@ -34,5 +34,9 @@ class MaintenanceItemTypeTest extends TestCase
             'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100',
             MaintenanceItemType::Nef->badgeColor(),
         );
+        $this->assertSame('text-red-700 dark:text-red-300', MaintenanceItemType::Mel->metricTextColor());
+        $this->assertSame('text-orange-700 dark:text-orange-300', MaintenanceItemType::Cdl->metricTextColor());
+        $this->assertSame('text-gray-700 dark:text-gray-300', MaintenanceItemType::Nef->metricTextColor());
+        $this->assertSame('text-yellow-700 dark:text-yellow-300', MaintenanceItemType::Dmi->metricTextColor());
     }
 }

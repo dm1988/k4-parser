@@ -399,6 +399,11 @@ readonly class FlightReleasePageViewModel
         return $this->maintenancePresenter->melCdlItemCountLabel();
     }
 
+    public function overviewMelCdlItemCountColorClasses(): ?string
+    {
+        return $this->maintenancePresenter->counterMetricTextColor();
+    }
+
     public function maintenanceTypeSummary(): ?string
     {
         return $this->maintenancePresenter->typeSummary();

@@ -44,4 +44,14 @@ enum MaintenanceItemType: string
             self::Dmi => 'bg-yellow-100 text-yellow-900 dark:bg-yellow-400/15 dark:text-yellow-200',
         };
     }
+
+    public function metricTextColor(): string
+    {
+        return match ($this) {
+            self::Mel => 'text-red-700 dark:text-red-300',
+            self::Cdl => 'text-orange-700 dark:text-orange-300',
+            self::Nef => 'text-gray-700 dark:text-gray-300',
+            self::Dmi => 'text-yellow-700 dark:text-yellow-300',
+        };
+    }
 }

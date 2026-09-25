@@ -32,9 +32,17 @@
         >
             @if ($model->hasOverviewMelCdlItems())
                 <div class="flex flex-col gap-3">
-                    <span class="inline-flex w-fit rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900 dark:bg-amber-400/15 dark:text-amber-200">
-                        {{ $model->overviewMelCdlItemCountLabel() }}
-                    </span>
+                    <div class="flex items-end gap-3">
+                        <span
+                            aria-label="{{ $model->overviewMelCdlItemCountLabel() }}"
+                            class="font-mono text-5xl font-black leading-none {{ $model->overviewMelCdlItemCountColorClasses() }}"
+                        >
+                            {{ $model->overviewMelCdlItemCount() }}
+                        </span>
+                        <p class="pb-1 text-sm font-semibold leading-5 text-[#4A5568] dark:text-slate-300">
+                            Active MEL/CDL restrictions
+                        </p>
+                    </div>
                     <p class="text-sm font-medium leading-5 text-[#4A5568] dark:text-slate-300">
                         Review the source-listed MEL/CDL items and associated limitations.
                     </p>

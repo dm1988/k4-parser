@@ -31,53 +31,80 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 ## Flight plan: Overview: Full card link
 Goal: create a component option to have the whole card a clickable link
 
-## [x] Completed: Feat: Establish MEL badge color heiracrchy
-Currently: badge colors are used on individual maintenance items. Badge counts are always rendered in yellow with no context to the maintenance items within them.
+## Flight plan: W&B Card order
+The task targets cards inside the dedicated Weight & Balance screen—not the Overview dashboard card.
 
-Goal: Use context aware badge colors.
-If MEL items exist, badge count should be rendered in red. If no MELS, but CDLs exist, render count in orange. If no MEL or CDL but NEFs exist, render in gray, If only DMIs exist, render in yellow.
+## Flight plan: W&B Card order
+### Goal
 
-```public function badgeColor(): string
-    {
-        return match ($this) {
-            self::Mel => 'bg-red-100 text-red-900 dark:bg-red-400/15 dark:text-red-200',
-            self::Cdl => 'bg-orange-100 text-orange-900 dark:bg-orange-400/15 dark:text-orange-200',
-            self::Nef => 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100',
-            self::Dmi => 'bg-yellow-100 text-yellow-900 dark:bg-yellow-400/15 dark:text-yellow-200',
-        };
-    }
-```
+Prioritize calculated operational totals before their supporting inputs so crews can scan the most consequential weights first.
+
+### Current implementation
+
+`WeightBalancePresenter::groups()` currently returns:
+
+1. Base & Payload
+   - Basic operating weight
+   - Payload
+   - Zero-fuel weight
+2. Departure
+   - Ramp weight
+   - Takeoff fuel
+   - Takeoff gross weight
+3. Arrival
+   - Estimated landing weight
+
+Blade renders fields in the presenter-provided order.
+
+### Desired order
+
+1. Base & Payload
+   - Zero-fuel weight
+   - Basic operating weight
+   - Payload
+2. Departure
+   - Ramp weight
+   - Takeoff gross weight
+   - Takeoff fuel
+3. Arrival
+   - Estimated landing weight
+
+### Implementation plan
+
+1. Reorder the field arrays in `WeightBalancePresenter::groups()`.
+2. Keep each field’s limit-comparison configuration attached to the same field.
+3. Do not change extraction, calculations, serialization, thresholds, values, or responsive styling.
+4. Add a unit assertion for the exact group and field-label order.
+5. Add a Livewire rendering assertion confirming DOM order matches visual/read order.
+6. Run the focused unit and Livewire tests, Pint, and final Larastan check.
+
+### Acceptance criteria
+
+- Group order remains Base & Payload, Departure, Arrival.
+- Fields appear in the exact requested order.
+- Keyboard, screen-reader, DOM, and visual order agree; no CSS `order-*` workaround is used.
+- Missing, conflicting, derived, and limit-comparison states remain unchanged.
+- Existing Weight & Balance calculations and alert counts continue to pass.
 
 References:
-app/View/Presenters/FlightRelease/MaintenancePresenter.php
-app/Enums/TaskTone.php
 
-Outcome:
+- `app/View/Presenters/FlightRelease/WeightBalancePresenter.php`
+- `resources/views/components/flight-release/weight-and-balance.blade.php`
+- `tests/Feature/Livewire/FlightPlanBriefTest.php`
+- `tests/Unit/View/Models/FlightReleasePageViewModelTest.php`
 
-- Added an enum-owned maintenance priority of MEL, CDL, NEF, then DMI for the task counter.
-- Reused each maintenance type's existing badge palette: red, orange, gray, and yellow respectively.
-- Preserved the green zero-item counter state and kept badge policy out of Blade.
-- Added focused hierarchy and Livewire rendering coverage.
-
-Commit message: `feat: color maintenance counters by item priority`
-
-## Refactor: MEL Dashboard Metric Card
-
-**Context**
-Refactoring a badge-style notification into a dashboard metric card. 
-
-**Diagnostics**
-Initial analysis of the element structure and content:
-
-Goal: Emphasize MEL count using a font size of 48. Count color should correspond to MEL badge color previously implemented in the Maintenance badge count.
+Proposed commit: `refactor: reorder weight balance cards for review flow`
 
 ## Feat: flight plan: Offline fuel score
-Goal: Create link on open seperate offline fuel score with a basic java script calculator. Able to calculate ETA and FOB at each waypoint.
+Goal: Create link on open seperate offline fuel score with a basic java script calculator. Able to calculate ETA and FOB at each waypoint. Link opens in new browser tab.
 
 ## Idea: Flight plan: Refactor overview task
 - Show ETOPS info if it exists
 - Count of ETP points
 - ETOPS time (e.g. 180, 210, 240)
+
+## Overview: whole card color change
+Instead of 5-xl metric color change
 
 ## Refactor welcome page for use with new features
 
@@ -370,40 +397,8 @@ This view repeats the confirmed source result. It does not calculate an envelope
 ## [x] Completed: Extract weight-balance field rendering logic
 ## [x] Completed: Add ramp weight to Filament aircraft resource
 ### [x] Completed: Flight plan: Weight & Balance: Operational badging
-
-Outcome:
-
-- Added a Weight & Balance task navigator badge that counts Heavy, Caution, and Exceeded weight comparisons.
-- Colored the badge for the most severe comparison present, with shared CSS color values matching the existing progress bars.
-- Kept safe and unavailable comparisons unbadged so missing data is not presented as an operational status.
-- Preserved the existing amber and emerald counter badge markup used by other tasks.
-
-Commit message: `feat: add weight balance operational badge`
-
 ### [x] Completed: Flight plan: Overview: Remove Redundant Data (De-cluttering)
-
-Outcome:
-
-- Removed the standalone departure and destination metrics from the Overview route card because those ICAOs remain prominent in the flight strip header.
-- Condensed the route card to alternate airport, initial altitude, and route distance.
-- Preserved detailed departure, destination, and alternate airport context in the separate expandable Airport details section.
-- Added focused rendering coverage to prevent redundant route metrics from returning.
-
-Commit message: `refactor: de-clutter flight plan overview`
-
 ### [x] Completed: Flight plan: Overview: Integrate MEL / CDL Summary Block
-
-Outcome:
-
-- Added a dedicated Overview card that counts MEL and CDL restrictions without mislabeling DMI or NEF records.
-- Added an active-item badge and direct Review MEL / CDL Details action when MEL/CDL items exist.
-- Added a low-contrast No active MEL/CDL restrictions state when the count is zero.
-- Removed the redundant Maintenance indicator from Operational support status.
-- Added focused view-model and Livewire coverage for active, empty, and missing-section states.
-
-Commit message: `feat: add mel cdl overview summary`
-
-Follow up:
 
 ## [x] Completed: Flight plan: Overview: Weight and Balance
 Goal: If heavy, caution, or exceeded items exist, render an overview card with a large count. Decide where this logic should exist. Count color should correspond to badge color of condition, i.e. heavy in blue, or exceeded limit in red.
@@ -418,3 +413,52 @@ Outcome:
 - Added focused coverage for conditional visibility, heavy and exceeded styling, severity summaries, and the task action.
 
 Commit message: `feat: add weight balance overview alert card`
+
+## [x] Completed: Feat: Establish MEL badge color heiracrchy
+Currently: badge colors are used on individual maintenance items. Badge counts are always rendered in yellow with no context to the maintenance items within them.
+
+Goal: Use context aware badge colors.
+If MEL items exist, badge count should be rendered in red. If no MELS, but CDLs exist, render count in orange. If no MEL or CDL but NEFs exist, render in gray, If only DMIs exist, render in yellow.
+
+```public function badgeColor(): string
+    {
+        return match ($this) {
+            self::Mel => 'bg-red-100 text-red-900 dark:bg-red-400/15 dark:text-red-200',
+            self::Cdl => 'bg-orange-100 text-orange-900 dark:bg-orange-400/15 dark:text-orange-200',
+            self::Nef => 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100',
+            self::Dmi => 'bg-yellow-100 text-yellow-900 dark:bg-yellow-400/15 dark:text-yellow-200',
+        };
+    }
+```
+
+References:
+app/View/Presenters/FlightRelease/MaintenancePresenter.php
+app/Enums/TaskTone.php
+
+Outcome:
+
+- Added an enum-owned maintenance priority of MEL, CDL, NEF, then DMI for the task counter.
+- Reused each maintenance type's existing badge palette: red, orange, gray, and yellow respectively.
+- Preserved the green zero-item counter state and kept badge policy out of Blade.
+- Added focused hierarchy and Livewire rendering coverage.
+
+Commit message: `feat: color maintenance counters by item priority`
+
+## [x] Completed: Refactor: MEL Dashboard Metric Card
+
+**Context**
+Refactoring a badge-style notification into a dashboard metric card. 
+
+**Diagnostics**
+Initial analysis of the element structure and content:
+
+Goal: Emphasize MEL count using a font size of 5-xl similar to weight and balance overview card. Count color should correspond to MEL badge color previously implemented in the Maintenance badge count.
+
+Outcome:
+
+- Replaced the small MEL/CDL badge in the Overview card with a 5xl dashboard metric.
+- Colored the metric from the highest-priority maintenance type using the enum-owned palette.
+- Preserved the MEL/CDL-only count, review action, explanatory copy, accessible count label, and empty state.
+- Added focused enum, view-model, and Livewire rendering coverage.
+
+Commit message: `refactor: present mel cdl count as overview metric`
