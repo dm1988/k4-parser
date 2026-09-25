@@ -180,7 +180,7 @@ final readonly class WeightBalanceFieldViewModel
         return round(($planned->amount / $limit->amount) * 100, 1);
     }
 
-    private function comparisonTone(): ?WeightBalanceComparisonTone
+    public function comparisonTone(): ?WeightBalanceComparisonTone
     {
         $utilizationPercent = $this->utilizationPercent();
 

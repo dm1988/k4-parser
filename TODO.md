@@ -28,14 +28,20 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Flight plan: Weight & Balance: Operational badging
-Currently: No badging exists. Users need to navigate to W&B section for info. Critical info may be missed.
+## Flight plan: Overview: Weight and Balance
+If heavy, caution, or exceeded items exist, render an overview card with a large count. Count color should correspond to badge color of condition, i.e. heavy in blue, or exceeded limit in red.
+Use action link to navigate to weight and balance task.
 
-Goal: If a weight is heavy, caution, or exceeded, render a badge count in the task navigator with the corresponding color. Badge colors should match currently implemented progress bar colors.
+### [x] Completed: Flight plan: Weight & Balance: Operational badging
 
-References:
-app/Enums/WeightBalanceComparisonTone.php
-resources/css/app.css
+Outcome:
+
+- Added a Weight & Balance task navigator badge that counts Heavy, Caution, and Exceeded weight comparisons.
+- Colored the badge for the most severe comparison present, with shared CSS color values matching the existing progress bars.
+- Kept safe and unavailable comparisons unbadged so missing data is not presented as an operational status.
+- Preserved the existing amber and emerald counter badge markup used by other tasks.
+
+Commit message: `feat: add weight balance operational badge`
 
 ## Idea: Flight plan: Refactor overview task
 - Show ETOPS info if it exists
@@ -65,7 +71,7 @@ Commit message: `feat: add mel cdl overview summary`
 
 Follow up:
 
-## Current focus: Feat: Establish MEL badge color heiracrchy
+## Feat: Establish MEL badge color heiracrchy
 Currently: badge colors are used on individual maintenance items. Badge counts are always rendered in yellow with no context to the maintenance items within them.
 
 Goal: If MEL items exist, badge count should be rendered in red. If no MELS, but CDLs exist, render count in orange. If no MEL or CDL but NEFs exist, render in gray, If only DMIs exist, render in yellow.

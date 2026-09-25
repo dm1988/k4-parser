@@ -3,6 +3,7 @@
 namespace App\View\Presenters\FlightRelease;
 
 use App\DTOs\WeightBalance\WeightBalanceFieldData;
+use App\Enums\WeightBalanceComparisonTone;
 use App\View\Models\FlightPlanPageData;
 use App\View\Models\FlightRelease\WeightBalanceFieldViewModel;
 
@@ -66,6 +67,49 @@ final readonly class WeightBalancePresenter
                 ],
             ],
         ];
+    }
+
+    public function operationalAlertCount(): int
+    {
+        return count(array_filter(
+            $this->comparisonTones(),
+            static fn (WeightBalanceComparisonTone $tone): bool => $tone->isOperationalAlert(),
+        ));
+    }
+
+    public function operationalAlertTone(): ?WeightBalanceComparisonTone
+    {
+        $highestTone = null;
+
+        foreach ($this->comparisonTones() as $tone) {
+            if (! $tone->isOperationalAlert()) {
+                continue;
+            }
+
+            if ($highestTone === null || $tone->severity() > $highestTone->severity()) {
+                $highestTone = $tone;
+            }
+        }
+
+        return $highestTone;
+    }
+
+    /** @return list<WeightBalanceComparisonTone> */
+    private function comparisonTones(): array
+    {
+        $tones = [];
+
+        foreach ($this->groups() as $group) {
+            foreach ($group['fields'] as $field) {
+                $tone = $field->comparisonTone();
+
+                if ($tone !== null) {
+                    $tones[] = $tone;
+                }
+            }
+        }
+
+        return $tones;
     }
 
     private function field(

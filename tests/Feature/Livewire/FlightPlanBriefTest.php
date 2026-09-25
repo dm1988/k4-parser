@@ -1306,6 +1306,8 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeHtml('cc-weight-progress-heavy')
             ->assertSeeHtml('cc-weight-progress-caution')
             ->assertSeeHtml('cc-weight-progress-exceeded')
+            ->assertSeeHtml('aria-label="Weight &amp; Balance: 3 operational weight alerts"')
+            ->assertSeeHtml('cc-weight-badge cc-weight-badge-exceeded text-white')
             ->assertSeeText('Derived server-side from confirmed zero-fuel weight and ramp fuel.')
             ->assertDontSeeText('Limit unavailable')
             ->assertDontSeeText('Within operating margin')
@@ -1360,6 +1362,7 @@ class FlightPlanBriefTest extends TestCase
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
             ->call('selectTask', FlightPlanTask::WeightAndBalance->value)
             ->assertSeeText('Limit unavailable')
+            ->assertDontSeeHtml('aria-label="Weight &amp; Balance:')
             ->assertDontSeeHtml('aria-label="Zero-fuel weight utilization"')
             ->assertDontSeeText('% of structural limit');
     }

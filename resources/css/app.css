@@ -43,11 +43,17 @@
 		background-color: var(--cc-weight-progress-color);
 	}
 
-	.cc-weight-progress-safe {
+	.cc-weight-badge {
+		background-color: var(--cc-weight-progress-color);
+	}
+
+	.cc-weight-progress-safe,
+	.cc-weight-badge-safe {
 		--cc-weight-progress-color: #10b981;
 	}
 
-	.cc-weight-progress-heavy {
+	.cc-weight-progress-heavy,
+	.cc-weight-badge-heavy {
 		--cc-weight-progress-color: #001bfc;
 	}
 
@@ -55,11 +61,13 @@
 		background-color: #001bfc !important;
 	}
 
-	.cc-weight-progress-caution {
+	.cc-weight-progress-caution,
+	.cc-weight-badge-caution {
 		--cc-weight-progress-color: #f59e0b;
 	}
 
-	.cc-weight-progress-exceeded {
+	.cc-weight-progress-exceeded,
+	.cc-weight-badge-exceeded {
 		--cc-weight-progress-color: #dc2626;
 	}
 }

@@ -38,4 +38,29 @@ enum WeightBalanceComparisonTone: string
             self::Exceeded => 'cc-weight-progress-exceeded',
         };
     }
+
+    public function badgeClasses(): string
+    {
+        return match ($this) {
+            self::Safe => 'cc-weight-badge cc-weight-badge-safe text-white',
+            self::Heavy => 'cc-weight-badge cc-weight-badge-heavy text-white',
+            self::Caution => 'cc-weight-badge cc-weight-badge-caution text-[#0B0E14]',
+            self::Exceeded => 'cc-weight-badge cc-weight-badge-exceeded text-white',
+        };
+    }
+
+    public function isOperationalAlert(): bool
+    {
+        return $this !== self::Safe;
+    }
+
+    public function severity(): int
+    {
+        return match ($this) {
+            self::Safe => 0,
+            self::Heavy => 1,
+            self::Caution => 2,
+            self::Exceeded => 3,
+        };
+    }
 }

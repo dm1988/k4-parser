@@ -57,9 +57,11 @@
                         :noun="match ($task) {
                             \App\Enums\FlightPlanTask::SlotTimes => 'approved slot',
                             \App\Enums\FlightPlanTask::Etops => 'equal-time point',
+                            \App\Enums\FlightPlanTask::WeightAndBalance => 'operational weight alert',
                             default => 'item',
                         }"
                         :tone="$task === \App\Enums\FlightPlanTask::ReviewMelCdl && $taskCounter === 0 ? 'success' : 'warning'"
+                        :color-classes="$model->taskCounterColorClasses($task)"
                     />
                 @endif
                 @unless ($task === \App\Enums\FlightPlanTask::ReviewMelCdl)

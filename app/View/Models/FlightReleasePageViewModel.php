@@ -100,6 +100,15 @@ readonly class FlightReleasePageViewModel
             FlightPlanTask::ReviewMelCdl => $this->maintenanceItemCount(),
             FlightPlanTask::SlotTimes => count($this->slotTimes()),
             FlightPlanTask::Etops => count($this->etps()),
+            FlightPlanTask::WeightAndBalance => $this->weightBalancePresenter->operationalAlertCount() ?: null,
+            default => null,
+        };
+    }
+
+    public function taskCounterColorClasses(FlightPlanTask $task): ?string
+    {
+        return match ($task) {
+            FlightPlanTask::WeightAndBalance => $this->weightBalancePresenter->operationalAlertTone()?->badgeClasses(),
             default => null,
         };
     }
