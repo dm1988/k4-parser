@@ -34,21 +34,15 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Show MELs/CDLs if they exist
 - Show ETOPS info if it exists
 
-## feat: add FMS programming tip
-Between the `Planned runways and procedures` and `Airport context` sections.
-Display card with idea icon with the text: `Tip: Remember to load winds and Route 2 copy after FMS activation.`
-
-## [x] Completed: Flight plan: FMS task info order
+## [x] Completed: Add FMS programming tip
 
 Outcome:
 
-- Reordered the FMS setup metrics to AC type, flight number, recall number, alternate, destination distance, alternate reserves, initial flight level, and cost index.
-- Added the alternate airport as its own FMS metric card.
-- Moved `Planned runways and procedures` above `Airport context`.
-- Added focused view-model and Livewire regression coverage for both ordering requirements.
+- Added a gold-accent programming tip card with a light-bulb icon to the FMS task.
+- Positioned the tip between `Planned runways and procedures` and `Airport context`.
+- Added focused Livewire coverage for the tip content and placement.
 
-Commit message: `refactor: reorder fms task information`
-
+Commit message: `feat: add fms programming tip`
 
 ## Flight release more persistent
 
@@ -415,71 +409,12 @@ app/Enums/TaskTone.php
 
 -------------------------------------------------------
 
-## Completed: Repair Composer lockfile for CI
-## Completed: Resolve Larastan errors in tests
-## Completed: Chore: update laravel
-## Completed: Allow admins to delete aircraft
-## Completed: Add aircraft weight fields to Filament resource
-## Flight plan: Parse bottlenecks:
-### Completed: Reduce PDF extraction and airport lookup latency
-## Completed: Bug: Schedule image extraction not working
-## Completed: Bug: Customer extracted as Tail id
-## Github CI Tests fail
 ## Completed: Schedule: cannot remove selected upload images
 ## Completed: Slot time incorrectly extracted
 ## [x] Completed: Flight plan: Employee number missing from Maintenance log task and create common component
-
-Outcome:
-
-- Added a shared employee card component based on the existing Flight Init crew-card style.
-- Reused the component in Flight Init, Maintenance Log, and Envelope crew lists.
-- Preserved each crew member's raw role and exposed the employee number through the shared presenter data.
-- Displayed confirmed employee numbers in Flight Init and Maintenance Log, with an explicit `Not confirmed` fallback when unavailable.
-- Added a reusable visibility option and disabled employee numbers in the Envelope task while keeping them visible in Flight Init and Maintenance Log.
-- Kept the planned color-coded role badge redesign scoped to the next task.
-- Trimmed flattened empty `IRP`, `MX`, `LM`, and `ACM` role columns from the preceding crew name.
-- Confirmed `CKS021823RJAA.pdf` now extracts `COBB S` as employee `73315` with the `IRP` role.
-
-Commit message: `feat: share employee cards across flight plan tasks`
-
-Follow-up commit message: `fix: trim empty crew role columns from names`
-
 ## [x] Completed: Flight plan: Refactoring Employee Card Components
-
-Outcome:
-
-- Refactored the shared employee card into a compact horizontal row with a square role badge, prominent employee name, and monospaced employee number.
-- Moved role badge labels and color ownership into `CrewPosition`, including emerald captain, blue second-in-command, amber relief pilot, and purple additional crew categories.
-- Rendered the compact `SIC` badge while retaining the full `SIC/FO` role in its accessible label.
-- Preserved explicit `Not confirmed` employee-number states, optional employee-number visibility, high-minimums status, base information, light/dark themes, and consumer-supplied card classes.
-- Updated focused enum, component, presenter/view-model, and Livewire integration coverage.
-- Validated the change with focused PHPUnit tests, Pint, a production Vite build, and Larastan.
-
-Commit message: `refactor: improve flight plan employee cards`
-
 ## [x] Completed: Flight plan: flight info header refactor
-
-Outcome:
-
-- Promoted the flight number to a direct sibling of the flight icon and aircraft-detail stack.
-- Increased the flight number to a 2rem medium-weight monospaced treatment with compact line height and tracking.
-- Stacked aircraft type and registration vertically using compact technical typography.
-- Removed the visible `Tail ` prefix from confirmed registrations while preserving the explicit `Tail not present` fallback.
-- Preserved the existing responsive header layout, light/dark theme styling, route summary, and release-revision presentation.
-- Updated focused Livewire rendering coverage and validated with PHPUnit, Pint, a production Vite build, and Larastan.
-
-Commit message: `refactor: prioritize flight number in release header`
-
 ## 1. [x] Completed: Remove info logging
-
-Outcome:
-
-- Removed the routine `K4 extraction completed` info log from successful extraction completion.
-- Preserved extraction request database updates, including status, parser type, page count, duration, and detected event counts.
-- Left extraction failure and flight-route warning logging unchanged.
-- Added focused regression coverage proving successful completion persists its database record without emitting the removed info message.
-
-Commit message: `chore: remove successful extraction info logging`
 
 ## [x] Completed: Flight plan: Hide Planned Duration in FMS task
 
@@ -491,3 +426,14 @@ Outcome:
 - Validated with focused PHPUnit tests, Pint, and Larastan.
 
 Commit message: `refactor: hide planned duration from fms task`
+
+## [x] Completed: Flight plan: FMS task info order
+
+Outcome:
+
+- Reordered the FMS setup metrics to AC type, flight number, recall number, alternate, destination distance, alternate reserves, initial flight level, and cost index.
+- Added the alternate airport as its own FMS metric card.
+- Moved `Planned runways and procedures` above `Airport context`.
+- Added focused view-model and Livewire regression coverage for both ordering requirements.
+
+Commit message: `refactor: reorder fms task information`

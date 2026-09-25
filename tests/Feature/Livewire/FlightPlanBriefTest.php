@@ -461,7 +461,12 @@ class FlightPlanBriefTest extends TestCase
                 'Cost Index',
                 '200',
             ])
-            ->assertSeeTextInOrder(['Planned runways and procedures', 'Airport context'])
+            ->assertSeeHtml('data-fms-programming-tip')
+            ->assertSeeTextInOrder([
+                'Planned runways and procedures',
+                'Tip: Remember to load winds and Route 2 copy after FMS activation.',
+                'Airport context',
+            ])
             ->assertSeeTextInOrder(['DCT', 'Q139', 'TEST'])
             ->assertDontSeeText('ETOPS critical points')
             ->assertDontSee('data-copy-target=', escape: false);

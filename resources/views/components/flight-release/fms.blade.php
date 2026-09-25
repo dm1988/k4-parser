@@ -34,6 +34,13 @@
         </dl>
     </section>
 
+    <aside data-fms-programming-tip class="rounded-lg border border-[#C5A059]/35 bg-[#C5A059]/10 p-4 text-sm text-[#1B365D] dark:border-[#C5A059]/25 dark:bg-[#C5A059]/10 dark:text-[#E8D2A5]">
+        <div class="flex items-start gap-3">
+            <x-heroicon-o-light-bulb class="mt-0.5 h-5 w-5 shrink-0" />
+            <p class="min-w-0 font-semibold leading-5">Tip: Remember to load winds and Route 2 copy after FMS activation.</p>
+        </div>
+    </aside>
+
     <section aria-labelledby="fms-airports-heading" class="overflow-hidden rounded-xl border border-[#1B365D]/10 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div class="border-b border-[#1B365D]/10 bg-[#F8F9FA] px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
             <h3 id="fms-airports-heading" class="text-xs font-bold uppercase tracking-[0.16em] text-[#1B365D] dark:text-slate-200">Airport context</h3>
