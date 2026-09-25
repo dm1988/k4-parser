@@ -13,12 +13,10 @@
                 <x-flight-release.b44-badge :label="$model->b44BadgeLabel()" />
             </x-slot:badge>
 
-            <dl class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                <x-flight-release.metric label="Departure" :value="$model->departure()" empty-text="Not present in this release" />
-                <x-flight-release.metric label="Destination" :value="$model->destination()" empty-text="Not present in this release" />
+            <dl class="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <x-flight-release.metric label="Alternate" :value="$model->alternate()" empty-text="Not present in this release" />
                 <x-flight-release.metric label="Initial altitude" :value="$model->overviewInitialAltitude()" empty-text="Not present in this release" />
-                <x-flight-release.metric label="Distance" :value="$model->overviewRouteDistance()" empty-text="Not present in this release" class="sm:col-span-2" />
+                <x-flight-release.metric label="Distance" :value="$model->overviewRouteDistance()" empty-text="Not present in this release" />
             </dl>
         </x-flight-release.overview-card>
 

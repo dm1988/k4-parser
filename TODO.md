@@ -28,34 +28,41 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## Flight plan: Weight & Balance: Operational badging
+Currently: No badging exists. Users need to navigate to W&B section for info. Critical info may be missed.
+
+Goal: If a weight is heavy, caution, or exceeded, render a badge count in the task navigator with the corresponding color. Badge colors should match currently implemented progress bar colors.
+
+References:
+app/Enums/WeightBalanceComparisonTone.php
+resources/css/app.css
+
 ## Idea: Flight plan: Refactor overview task
-- Emphsize attention items
-- Remove duplicate data within cards that exists in flight strip header
-- Show MELs/CDLs if they exist
 - Show ETOPS info if it exists
 
-## Flight plan: Overview: Integrate MEL / CDL Summary Block
+### [x] Completed: Flight plan: Overview: Remove Redundant Data (De-cluttering)
+
+Outcome:
+
+- Removed the standalone departure and destination metrics from the Overview route card because those ICAOs remain prominent in the flight strip header.
+- Condensed the route card to alternate airport, initial altitude, and route distance.
+- Preserved detailed departure, destination, and alternate airport context in the separate expandable Airport details section.
+- Added focused rendering coverage to prevent redundant route metrics from returning.
+
+Commit message: `refactor: de-clutter flight plan overview`
+
+### Current focus: Flight plan: Overview: Integrate MEL / CDL Summary Block
 Instead of forcing the crew to tab over to Review MEL/CDL to see if defects exist, bring high-level visibility into the Overview:
 
-Conditional MEL/CDL Card: If open MEL/CDL items exist, display a dedicated summary card featuring:
+Conditional MEL/CDL Card: If open MEL/CDL items exist, display a dedicated summary card within the Overview task featuring:
 
 Total count badge (e.g., 8 Active MEL/CDL Items).
-
-A brief list of primary operational restrictions (e.g., NO DISPATCH INTO KNOWN ICING, PERF PENALTY APPLIES).
 
 Direct action link: Review MEL / CDL Details →.
 
 Zero-Defect State: If there are no items, show a clean, low-contrast indicator (No active MEL/CDL restrictions).
 
-## [x] Completed: Add ramp weight to Filament aircraft resource
-
-Outcome:
-
-- Added maximum ramp weight to the aircraft create and edit forms with pounds labeling and non-negative integer validation.
-- Added a sortable MRW column to the aircraft resource table.
-- Extended focused resource coverage for display, creation, editing, and validation.
-
-Commit message: `feat: add ramp weight to aircraft resource`
+This will replace the Maintenance item and badge found within `Operational support status` section.
 
 ## Feat: flight plan: Offline fuel score
 Goal: Create link on open seperate offline fuel score with a basic java script calculator. Able to calculate ETA and FOB at each waypoint.
@@ -451,3 +458,13 @@ Outcome:
 - Added focused coverage for integrated limits, exceeded limits, source conflicts, incompatible units, and all rendered tone classes.
 
 Commit message: `refactor: extract weight balance field view model`
+
+## [x] Completed: Add ramp weight to Filament aircraft resource
+
+Outcome:
+
+- Added maximum ramp weight to the aircraft create and edit forms with pounds labeling and non-negative integer validation.
+- Added a sortable MRW column to the aircraft resource table.
+- Extended focused resource coverage for display, creation, editing, and validation.
+
+Commit message: `feat: add ramp weight to aircraft resource`

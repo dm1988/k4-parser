@@ -1533,6 +1533,20 @@ class FlightPlanBriefTest extends TestCase
             ->assertDontSeeText('On plan')
             ->assertDontSeeText('Dispatchable');
 
+        $this->assertSame(
+            1,
+            preg_match(
+                '/<article[^>]*wire:key="flight-plan-overview-card-fms"[^>]*>.*?<\/article>/s',
+                $component->html(),
+                $routeOverviewCard,
+            ),
+        );
+        $this->assertStringNotContainsString('Departure', $routeOverviewCard[0]);
+        $this->assertStringNotContainsString('Destination', $routeOverviewCard[0]);
+        $this->assertStringContainsString('Alternate', $routeOverviewCard[0]);
+        $this->assertStringContainsString('Initial altitude', $routeOverviewCard[0]);
+        $this->assertStringContainsString('Distance', $routeOverviewCard[0]);
+
         $flightPlanKey = $component->get('flightPlanKey');
         $detailTasks = [
             FlightPlanTask::Fms,
