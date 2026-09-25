@@ -287,13 +287,6 @@ readonly class FlightReleasePageViewModel
                     : FlightPlanTaskAvailability::NotPresent,
             ],
             ['label' => 'Weather / RAIM', 'availability' => $this->availabilityFor(FlightPlanTask::Weather)],
-            [
-                'label' => 'Maintenance',
-                'availability' => $this->maintenanceItemCount() > 0
-                    ? FlightPlanTaskAvailability::Available
-                    : FlightPlanTaskAvailability::NotPresent,
-                'absenceIsGood' => $this->hasMaintenanceSection(),
-            ],
         ];
 
         if ($this->etopsApplicability() === EtopsApplicability::ConfirmedNonEtops) {
@@ -354,6 +347,21 @@ readonly class FlightReleasePageViewModel
     public function maintenanceItemCount(): int
     {
         return $this->maintenancePresenter->itemCount();
+    }
+
+    public function overviewMelCdlItemCount(): int
+    {
+        return $this->maintenancePresenter->melCdlItemCount();
+    }
+
+    public function hasOverviewMelCdlItems(): bool
+    {
+        return $this->overviewMelCdlItemCount() > 0;
+    }
+
+    public function overviewMelCdlItemCountLabel(): string
+    {
+        return $this->maintenancePresenter->melCdlItemCountLabel();
     }
 
     public function maintenanceTypeSummary(): ?string

@@ -50,6 +50,25 @@ final readonly class MaintenancePresenter
         return count($this->pageData?->flightPlan->maintenanceLog->items ?? []);
     }
 
+    public function melCdlItemCount(): int
+    {
+        return count(array_filter(
+            $this->pageData?->flightPlan->maintenanceLog->items ?? [],
+            static fn (MaintenanceItemData $item): bool => in_array(
+                $item->type,
+                [MaintenanceItemType::Mel, MaintenanceItemType::Cdl],
+                true,
+            ),
+        ));
+    }
+
+    public function melCdlItemCountLabel(): string
+    {
+        $count = $this->melCdlItemCount();
+
+        return $count.' Active MEL/CDL '.($count === 1 ? 'Item' : 'Items');
+    }
+
     public function typeSummary(): ?string
     {
         $counts = [];

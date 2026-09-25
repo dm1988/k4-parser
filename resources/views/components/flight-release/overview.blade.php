@@ -21,6 +21,33 @@
         </x-flight-release.overview-card>
 
         <x-flight-release.overview-card
+            :task="\App\Enums\FlightPlanTask::ReviewMelCdl"
+            title="MEL / CDL restrictions"
+            icon="wrench-screwdriver"
+            :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::ReviewMelCdl)"
+            :show-action="$model->hasOverviewMelCdlItems()"
+            :show-status="false"
+            action-label="Review MEL / CDL Details"
+            class="xl:col-span-3"
+        >
+            @if ($model->hasOverviewMelCdlItems())
+                <div class="flex flex-col gap-3">
+                    <span class="inline-flex w-fit rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900 dark:bg-amber-400/15 dark:text-amber-200">
+                        {{ $model->overviewMelCdlItemCountLabel() }}
+                    </span>
+                    <p class="text-sm font-medium leading-5 text-[#4A5568] dark:text-slate-300">
+                        Review the source-listed MEL/CDL items and associated limitations.
+                    </p>
+                </div>
+            @else
+                <div class="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2.5 text-sm font-medium text-[#4A5568] dark:bg-slate-800 dark:text-slate-300">
+                    <x-heroicon-o-check-circle class="h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
+                    <span>No active MEL/CDL restrictions</span>
+                </div>
+            @endif
+        </x-flight-release.overview-card>
+
+        <x-flight-release.overview-card
             :task="\App\Enums\FlightPlanTask::SlotTimes"
             title="Schedule and slots"
             icon="clock"

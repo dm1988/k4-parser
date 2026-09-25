@@ -404,11 +404,6 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame([
             ['label' => 'GENDEC', 'availability' => FlightPlanTaskAvailability::NotPresent],
             ['label' => 'Weather / RAIM', 'availability' => FlightPlanTaskAvailability::NotPresent],
-            [
-                'label' => 'Maintenance',
-                'availability' => FlightPlanTaskAvailability::Available,
-                'absenceIsGood' => true,
-            ],
         ], $viewModel->overviewUnsupportedIndicators());
     }
 
@@ -511,6 +506,9 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame(FlightPlanTask::Overview, $viewModel->tasks()[0]);
         $this->assertSame(FlightPlanTask::ReviewMelCdl, $viewModel->tasks()[1]);
         $this->assertSame(2, $viewModel->taskCounter(FlightPlanTask::ReviewMelCdl));
+        $this->assertSame(2, $viewModel->overviewMelCdlItemCount());
+        $this->assertTrue($viewModel->hasOverviewMelCdlItems());
+        $this->assertSame('2 Active MEL/CDL Items', $viewModel->overviewMelCdlItemCountLabel());
         $this->assertNull($viewModel->taskCounter(FlightPlanTask::MaintenanceLog));
         $this->assertNotContains(FlightPlanTask::SlotTimes, $viewModel->tasks());
         $this->assertSame(0, $viewModel->taskCounter(FlightPlanTask::SlotTimes));
@@ -521,21 +519,18 @@ class FlightReleasePageViewModelTest extends TestCase
 
         $this->assertSame(FlightPlanTask::ReviewMelCdl, $emptyViewModel->tasks()[array_key_last($emptyViewModel->tasks())]);
         $this->assertSame(0, $emptyViewModel->taskCounter(FlightPlanTask::ReviewMelCdl));
-        $this->assertSame([
-            'label' => 'Maintenance',
-            'availability' => FlightPlanTaskAvailability::NotPresent,
-            'absenceIsGood' => true,
-        ], $emptyViewModel->overviewUnsupportedIndicators()[2]);
+        $this->assertSame(0, $emptyViewModel->overviewMelCdlItemCount());
+        $this->assertFalse($emptyViewModel->hasOverviewMelCdlItems());
+        $this->assertSame('0 Active MEL/CDL Items', $emptyViewModel->overviewMelCdlItemCountLabel());
+        $this->assertNotContains('Maintenance', array_column($emptyViewModel->overviewUnsupportedIndicators(), 'label'));
 
         $missingSectionPayload = $this->resultPayload();
         $missingSectionPayload['flight_plan_data']['maintenanceLog'] = null;
         $missingSectionViewModel = $this->viewModel($missingSectionPayload);
 
-        $this->assertSame([
-            'label' => 'Maintenance',
-            'availability' => FlightPlanTaskAvailability::NotPresent,
-            'absenceIsGood' => false,
-        ], $missingSectionViewModel->overviewUnsupportedIndicators()[2]);
+        $this->assertSame(0, $missingSectionViewModel->overviewMelCdlItemCount());
+        $this->assertFalse($missingSectionViewModel->hasOverviewMelCdlItems());
+        $this->assertNotContains('Maintenance', array_column($missingSectionViewModel->overviewUnsupportedIndicators(), 'label'));
     }
 
     #[Test]

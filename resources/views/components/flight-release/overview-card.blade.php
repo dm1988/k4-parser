@@ -5,6 +5,7 @@
     'availability',
     'showAction' => true,
     'showStatus' => true,
+    'actionLabel' => null,
 ])
 
 <article
@@ -41,10 +42,10 @@
             wire:click="selectTask('{{ $task->value }}')"
             wire:loading.attr="disabled"
             wire:target="selectTask('{{ $task->value }}')"
-            aria-label="{{ $task->actionLabel() }}"
+            aria-label="{{ $actionLabel ?? $task->actionLabel() }}"
             class="flex w-full items-center justify-between gap-3 border-t border-[#1B365D]/10 pt-3 text-xs font-bold text-[#1B365D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059] disabled:cursor-wait disabled:opacity-70 dark:border-slate-700 dark:text-[#C5A059]"
         >
-            {{ $task->actionLabel() }}
+            {{ $actionLabel ?? $task->actionLabel() }}
             <x-heroicon-o-arrow-right class="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5" />
         </button>
     @endif

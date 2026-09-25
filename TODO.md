@@ -51,18 +51,44 @@ Outcome:
 
 Commit message: `refactor: de-clutter flight plan overview`
 
-### Current focus: Flight plan: Overview: Integrate MEL / CDL Summary Block
-Instead of forcing the crew to tab over to Review MEL/CDL to see if defects exist, bring high-level visibility into the Overview:
+### [x] Completed: Flight plan: Overview: Integrate MEL / CDL Summary Block
 
-Conditional MEL/CDL Card: If open MEL/CDL items exist, display a dedicated summary card within the Overview task featuring:
+Outcome:
 
-Total count badge (e.g., 8 Active MEL/CDL Items).
+- Added a dedicated Overview card that counts MEL and CDL restrictions without mislabeling DMI or NEF records.
+- Added an active-item badge and direct Review MEL / CDL Details action when MEL/CDL items exist.
+- Added a low-contrast No active MEL/CDL restrictions state when the count is zero.
+- Removed the redundant Maintenance indicator from Operational support status.
+- Added focused view-model and Livewire coverage for active, empty, and missing-section states.
 
-Direct action link: Review MEL / CDL Details →.
+Commit message: `feat: add mel cdl overview summary`
 
-Zero-Defect State: If there are no items, show a clean, low-contrast indicator (No active MEL/CDL restrictions).
+Follow up:
 
-This will replace the Maintenance item and badge found within `Operational support status` section.
+## Current focus: Feat: Establish MEL badge color heiracrchy
+Currently: badge colors are used on individual maintenance items. Badge counts are always rendered in yellow with no context to the maintenance items within them.
+
+Goal: If MEL items exist, badge count should be rendered in red. If no MELS, but CDLs exist, render count in orange. If no MEL or CDL but NEFs exist, render in gray, If only DMIs exist, render in yellow.
+
+
+    public function badgeColor(): string
+    {
+        return match ($this) {
+            self::Mel => 'bg-red-100 text-red-900 dark:bg-red-400/15 dark:text-red-200',
+            self::Cdl => 'bg-orange-100 text-orange-900 dark:bg-orange-400/15 dark:text-orange-200',
+            self::Nef => 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100',
+            self::Dmi => 'bg-yellow-100 text-yellow-900 dark:bg-yellow-400/15 dark:text-yellow-200',
+        };
+    }
+## Refactor: MEL Dashboard Metric Card
+
+**Context**
+Refactoring a badge-style notification into a dashboard metric card. 
+
+**Diagnostics**
+Initial analysis of the element structure and content:
+
+Goal: Emphasize MEL count using a font size of 48. Count color should correspond to MEL badge color previously implemented in the Maintenance badge count.
 
 ## Feat: flight plan: Offline fuel score
 Goal: Create link on open seperate offline fuel score with a basic java script calculator. Able to calculate ETA and FOB at each waypoint.

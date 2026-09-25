@@ -830,6 +830,10 @@ class FlightPlanBriefTest extends TestCase
                 'wire:key="flight-plan-task-nav-jepp_pd_pro"',
             ])
             ->assertSeeHtml('aria-label="Review MEL / CDL: 4 items"')
+            ->assertSeeHtml('wire:key="flight-plan-overview-card-review_mel_cdl"')
+            ->assertSeeText('2 Active MEL/CDL Items')
+            ->assertSeeText('Review MEL / CDL Details')
+            ->assertSeeHtml('aria-label="Review MEL / CDL Details"')
             ->call('selectTask', FlightPlanTask::MaintenanceLog->value)
             ->assertSet('activeTask', FlightPlanTask::MaintenanceLog->value)
             ->assertSeeHtml('wire:key="flight-plan-task-panel-maintenance_log"')
@@ -954,6 +958,8 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeHtml('aria-label="Review MEL / CDL: 0 items"')
             ->assertSeeHtml('rounded-full bg-emerald-100 px-1.5')
             ->assertDontSeeHtml('bg-emerald-500 dark:bg-emerald-400')
+            ->assertSeeText('No active MEL/CDL restrictions')
+            ->assertDontSeeText('Review MEL / CDL Details')
             ->call('selectTask', FlightPlanTask::MaintenanceLog->value)
             ->assertSeeText('No maintenance items listed')
             ->assertSeeText('0 source-listed items')
@@ -1529,7 +1535,8 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('Available')
             ->assertDontSeeText('Flight plan filing')
             ->assertSeeText('Weather / RAIM')
-            ->assertSeeText('Maintenance')
+            ->assertSeeText('MEL / CDL restrictions')
+            ->assertSeeText('No active MEL/CDL restrictions')
             ->assertDontSeeText('On plan')
             ->assertDontSeeText('Dispatchable');
 
