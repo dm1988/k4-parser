@@ -20,6 +20,11 @@ class AircraftForm
                 Toggle::make('is_active')
                     ->required(),
                 TextInput::make('airline'),
+                TextInput::make('max_ramp_weight')
+                    ->label('Maximum Ramp Weight')
+                    ->integer()
+                    ->minValue(0)
+                    ->suffix('lb'),
                 TextInput::make('max_zero_fuel_weight')
                     ->label('Maximum Zero Fuel Weight')
                     ->integer()

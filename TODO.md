@@ -30,59 +30,32 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 # Tasks
 ## Idea: Flight plan: Refactor overview task
 - Emphsize attention items
-- Remove duplicate data that exists in flight strip header
+- Remove duplicate data within cards that exists in flight strip header
 - Show MELs/CDLs if they exist
 - Show ETOPS info if it exists
 
-## [x] Completed: Flight plan: weight & balance visually compare against limits
+## Flight plan: Overview: Integrate MEL / CDL Summary Block
+Instead of forcing the crew to tab over to Review MEL/CDL to see if defects exist, bring high-level visibility into the Overview:
+
+Conditional MEL/CDL Card: If open MEL/CDL items exist, display a dedicated summary card featuring:
+
+Total count badge (e.g., 8 Active MEL/CDL Items).
+
+A brief list of primary operational restrictions (e.g., NO DISPATCH INTO KNOWN ICING, PERF PENALTY APPLIES).
+
+Direct action link: Review MEL / CDL Details →.
+
+Zero-Defect State: If there are no items, show a clean, low-contrast indicator (No active MEL/CDL restrictions).
+
+## [x] Completed: Add ramp weight to Filament aircraft resource
 
 Outcome:
 
-- Resolved structural limits from the aircraft matched by the normalized flight-release tail number.
-- Persisted the applicable ramp, zero-fuel, takeoff, and landing limits with the normalized release result.
-- Added planned-versus-limit cards with labeled units, utilization percentages, accessible progress indicators, and green, blue, amber, or red operating-margin states.
-- Reported unmatched aircraft, absent limits, and incompatible units as unavailable without inferring operational values.
-- Added focused resolver, normalization, persistence, threshold, unavailable-state, and Livewire rendering coverage.
+- Added maximum ramp weight to the aircraft create and edit forms with pounds labeling and non-negative integer validation.
+- Added a sortable MRW column to the aircraft resource table.
+- Extended focused resource coverage for display, creation, editing, and validation.
 
-Commit message: `feat: compare planned weights with aircraft limits`
-
-## Follow up:
-Derived / Calculated Indicators: The card note mentions "Derived server-side from confirmed zero-fuel weight...". Adding a small info icon or tooltip next to derived values helps distinguish between manually entered inputs and system-calculated totals.
-
-## [x] Completed: UI optimization for maximum-limit weight cards
-
-Outcome:
-
-- Consolidated percentage, maximum weight, unit, and limit label inside the progress bar for zero-fuel, ramp, takeoff, and landing weight cards.
-- Removed each maximum-limit card's redundant structural-limit column and external operating-state labels.
-- Increased progress-bar height and added a responsive, truncated, high-contrast overlay that remains readable across all status colors.
-- Preserved accessible progress names and value text, plus explicit unavailable-limit handling.
-- Added focused Livewire coverage for all four integrated limit cards.
-
-Commit message: `refactor: consolidate weight limits into progress bars`
-
-## [x] Completed: Progress bar text overlay visual fix
-
-Outcome:
-
-- Corrected the optical vertical alignment of maximum-limit progress-bar text with a compact line height and slight top offset.
-- Removed the dark pill background and shadow from the text while preserving its responsive truncation and contrast.
-- Added focused Livewire assertions for the overlay alignment and simplified text treatment.
-
-Commit message: `fix: align weight progress bar overlays`
-
-## [x] Completed: Extract weight-balance field rendering logic
-
-Outcome:
-
-- Added a typed weight-balance field view model for formatted values, status styling, comparison state, progress values, and accessibility labels.
-- Added enums that own comparison labels, progress and text classes, plus source-status badge classes.
-- Reduced the Blade component to declarative rendering against named view-model values and predicates.
-- Added cross-browser progress-fill styling so safe, heavy, caution, and exceeded states render their intended colors.
-- Set the heavy progress fill to the specified high-visibility blue, including an explicit WebKit override.
-- Added focused coverage for integrated limits, exceeded limits, source conflicts, incompatible units, and all rendered tone classes.
-
-Commit message: `refactor: extract weight balance field view model`
+Commit message: `feat: add ramp weight to aircraft resource`
 
 ## Feat: flight plan: Offline fuel score
 Goal: Create link on open seperate offline fuel score with a basic java script calculator. Able to calculate ETA and FOB at each waypoint.
@@ -427,3 +400,54 @@ Outcome:
 - Added focused coverage for encryption, replacement, authorization boundaries, restoration, discard, failure preservation, and cleanup.
 
 Commit message: `feat: persist the latest flight release per user`
+
+
+## [x] Completed: Flight plan: weight & balance visually compare against limits
+
+Outcome:
+
+- Resolved structural limits from the aircraft matched by the normalized flight-release tail number.
+- Persisted the applicable ramp, zero-fuel, takeoff, and landing limits with the normalized release result.
+- Added planned-versus-limit cards with labeled units, utilization percentages, accessible progress indicators, and green, blue, amber, or red operating-margin states.
+- Reported unmatched aircraft, absent limits, and incompatible units as unavailable without inferring operational values.
+- Added focused resolver, normalization, persistence, threshold, unavailable-state, and Livewire rendering coverage.
+
+Commit message: `feat: compare planned weights with aircraft limits`
+
+## Follow up:
+Derived / Calculated Indicators: The card note mentions "Derived server-side from confirmed zero-fuel weight...". Adding a small info icon or tooltip next to derived values helps distinguish between manually entered inputs and system-calculated totals.
+
+## [x] Completed: UI optimization for maximum-limit weight cards
+
+Outcome:
+
+- Consolidated percentage, maximum weight, unit, and limit label inside the progress bar for zero-fuel, ramp, takeoff, and landing weight cards.
+- Removed each maximum-limit card's redundant structural-limit column and external operating-state labels.
+- Increased progress-bar height and added a responsive, truncated, high-contrast overlay that remains readable across all status colors.
+- Preserved accessible progress names and value text, plus explicit unavailable-limit handling.
+- Added focused Livewire coverage for all four integrated limit cards.
+
+Commit message: `refactor: consolidate weight limits into progress bars`
+
+## [x] Completed: Progress bar text overlay visual fix
+
+Outcome:
+
+- Corrected the optical vertical alignment of maximum-limit progress-bar text with a compact line height and slight top offset.
+- Removed the dark pill background and shadow from the text while preserving its responsive truncation and contrast.
+- Added focused Livewire assertions for the overlay alignment and simplified text treatment.
+
+Commit message: `fix: align weight progress bar overlays`
+
+## [x] Completed: Extract weight-balance field rendering logic
+
+Outcome:
+
+- Added a typed weight-balance field view model for formatted values, status styling, comparison state, progress values, and accessibility labels.
+- Added enums that own comparison labels, progress and text classes, plus source-status badge classes.
+- Reduced the Blade component to declarative rendering against named view-model values and predicates.
+- Added cross-browser progress-fill styling so safe, heavy, caution, and exceeded states render their intended colors.
+- Set the heavy progress fill to the specified high-visibility blue, including an explicit WebKit override.
+- Added focused coverage for integrated limits, exceeded limits, source conflicts, incompatible units, and all rendered tone classes.
+
+Commit message: `refactor: extract weight balance field view model`

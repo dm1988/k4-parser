@@ -27,6 +27,11 @@ class AircraftTable
                     ->boolean(),
                 TextColumn::make('airline')
                     ->searchable(),
+                TextColumn::make('max_ramp_weight')
+                    ->label('MRW')
+                    ->numeric()
+                    ->suffix(' lb')
+                    ->sortable(),
                 TextColumn::make('max_zero_fuel_weight')
                     ->label('MZFW')
                     ->numeric()

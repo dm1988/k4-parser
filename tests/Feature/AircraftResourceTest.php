@@ -21,6 +21,7 @@ class AircraftResourceTest extends TestCase
 
         $firstAircraft = Aircraft::factory()->create([
             'tail_number' => 'N770CK',
+            'max_ramp_weight' => 872000,
             'max_zero_fuel_weight' => 610000,
             'max_takeoff_weight' => 870000,
             'max_landing_weight' => 652000,
@@ -33,6 +34,7 @@ class AircraftResourceTest extends TestCase
         Livewire::test(ListAircraft::class)
             ->assertCanSeeTableRecords([$firstAircraft, $secondAircraft])
             ->assertSee([
+                '872,000 lb',
                 '610,000 lb',
                 '870,000 lb',
                 '652,000 lb',
@@ -55,6 +57,7 @@ class AircraftResourceTest extends TestCase
                 'model' => '777-F',
                 'is_active' => true,
                 'airline' => 'Kalitta Air, LLC',
+                'max_ramp_weight' => 872000,
                 'max_zero_fuel_weight' => 610000,
                 'max_takeoff_weight' => 870000,
                 'max_landing_weight' => 652000,
@@ -69,6 +72,7 @@ class AircraftResourceTest extends TestCase
             'manufacturer' => 'Boeing',
             'model' => '777-F',
             'is_active' => true,
+            'max_ramp_weight' => 872000,
             'max_zero_fuel_weight' => 610000,
             'max_takeoff_weight' => 870000,
             'max_landing_weight' => 652000,
@@ -93,6 +97,7 @@ class AircraftResourceTest extends TestCase
                 'model' => '777-300ERSF',
                 'is_active' => true,
                 'airline' => 'Kalitta Air, LLC',
+                'max_ramp_weight' => 877000,
                 'max_zero_fuel_weight' => 635000,
                 'max_takeoff_weight' => 875000,
                 'max_landing_weight' => 666000,
@@ -105,6 +110,7 @@ class AircraftResourceTest extends TestCase
             'id' => $aircraft->getKey(),
             'type' => 'Boeing 777-300ERSF',
             'model' => '777-300ERSF',
+            'max_ramp_weight' => 877000,
             'max_zero_fuel_weight' => 635000,
             'max_takeoff_weight' => 875000,
             'max_landing_weight' => 666000,
@@ -120,6 +126,7 @@ class AircraftResourceTest extends TestCase
             ->fillForm([
                 'tail_number' => 'N999CK',
                 'is_active' => true,
+                'max_ramp_weight' => -1,
                 'max_zero_fuel_weight' => -1,
                 'max_takeoff_weight' => -1,
                 'max_landing_weight' => -1,
@@ -127,6 +134,7 @@ class AircraftResourceTest extends TestCase
             ])
             ->call('create')
             ->assertHasFormErrors([
+                'max_ramp_weight' => 'min',
                 'max_zero_fuel_weight' => 'min',
                 'max_takeoff_weight' => 'min',
                 'max_landing_weight' => 'min',
