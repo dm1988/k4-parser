@@ -296,7 +296,11 @@ class FlightReleasePageViewModelTest extends TestCase
         $viewModel = $this->viewModel($payload);
 
         $this->assertSame('0 KG', $viewModel->fmsAlternateReserve());
-        $this->assertSame('0 KG', $viewModel->fmsFields()[7]['value']);
+        $alternateReserveField = collect($viewModel->fmsFields())
+            ->firstWhere('label', 'Alternate Airport Reserves');
+
+        $this->assertIsArray($alternateReserveField);
+        $this->assertSame('0 KG', $alternateReserveField['value']);
     }
 
     #[Test]
