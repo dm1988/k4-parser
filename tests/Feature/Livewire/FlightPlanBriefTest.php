@@ -11,14 +11,16 @@ use App\Enums\FlightPlanTask;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Livewire\FlightPlanBrief;
 use App\Models\ExtractRequest;
+use App\Models\FlightPlanResult;
 use App\Models\User;
 use App\Services\FlightPlan\Extractor\ExtractFlightPlanData;
 use App\Services\Infrastructure\ExtractRequestLogger;
-use App\Services\Infrastructure\FlightPlanResultCache;
+use App\Services\Infrastructure\FlightPlanResultStore;
 use App\View\Models\FlightPlanPageData;
 use App\View\Models\FlightReleasePageViewModel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Log;
@@ -223,16 +225,16 @@ class FlightPlanBriefTest extends TestCase
         $this->assertStringNotContainsString($privateEvidence, $serializedSnapshot);
         $this->assertStringNotContainsString($privateStoragePath, $serializedSnapshot);
 
-        $cachedFlightPlan = app(FlightPlanResultCache::class)->get($user, $flightPlanKey);
+        $storedFlightPlan = app(FlightPlanResultStore::class)->get($user, $flightPlanKey);
 
-        $this->assertIsArray($cachedFlightPlan);
-        $this->assertSame(['flight_plan_data'], array_keys($cachedFlightPlan));
-        $this->assertArrayNotHasKey('sensitive_internal_marker', $cachedFlightPlan);
-        $this->assertSame('PANC', $cachedFlightPlan['flight_plan_data']['route']['departure']);
-        $this->assertArrayNotHasKey('sourceFragments', $cachedFlightPlan['flight_plan_data']);
-        $serializedCache = json_encode($cachedFlightPlan, JSON_THROW_ON_ERROR);
-        $this->assertStringNotContainsString($privateEvidence, $serializedCache);
-        $this->assertStringNotContainsString($privateStoragePath, $serializedCache);
+        $this->assertIsArray($storedFlightPlan);
+        $this->assertSame(['flight_plan_data'], array_keys($storedFlightPlan));
+        $this->assertArrayNotHasKey('sensitive_internal_marker', $storedFlightPlan);
+        $this->assertSame('PANC', $storedFlightPlan['flight_plan_data']['route']['departure']);
+        $this->assertArrayNotHasKey('sourceFragments', $storedFlightPlan['flight_plan_data']);
+        $serializedResult = json_encode($storedFlightPlan, JSON_THROW_ON_ERROR);
+        $this->assertStringNotContainsString($privateEvidence, $serializedResult);
+        $this->assertStringNotContainsString($privateStoragePath, $serializedResult);
         $this->assertStringNotContainsString($privateEvidence, $component->html());
         $this->assertStringNotContainsString($privateStoragePath, $component->html());
         $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
@@ -253,7 +255,12 @@ class FlightPlanBriefTest extends TestCase
             ->assertDontSeeText('Extracted flight plan');
 
         $this->assertFalse($component->viewData('isResultsView'));
-        $this->assertNull(app(FlightPlanResultCache::class)->get($user, $flightPlanKey));
+        $this->assertNull(app(FlightPlanResultStore::class)->get($user, $flightPlanKey));
+
+        Livewire::actingAs($user)
+            ->test(FlightPlanBrief::class)
+            ->assertSet('flightPlanKey', null)
+            ->assertSeeText('Drop your flight plan here');
     }
 
     public function test_the_task_workspace_is_responsive_accessible_and_rehydrates_without_reparsing(): void
@@ -362,6 +369,76 @@ class FlightPlanBriefTest extends TestCase
             ->assertDontSee('data-copy-target=', escape: false);
 
         $this->assertSame($flightPlanKey, $component->get('flightPlanKey'));
+    }
+
+    public function test_a_fresh_mount_restores_the_saved_result_beyond_the_former_cache_ttl_without_reparsing(): void
+    {
+        Storage::fake('user_flight_releases');
+        Config::set('cache.extracted_results_ttl', 1);
+        $user = User::factory()->admin()->create();
+
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')
+                ->andReturn($this->parsedFlightPlan());
+        });
+        $this->mock(ShouldPromptForCoffee::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'handle')->andReturn(false);
+        });
+
+        $firstComponent = Livewire::actingAs($user)
+            ->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->assertSeeText('Operational support status');
+
+        $flightPlanKey = $firstComponent->get('flightPlanKey');
+        $this->assertIsString($flightPlanKey);
+
+        $this->travel(61)->minutes();
+        Cache::flush();
+
+        Livewire::actingAs($user)
+            ->test(FlightPlanBrief::class)
+            ->assertSet('flightPlanKey', $flightPlanKey)
+            ->assertSet('activeTask', FlightPlanTask::Overview->value)
+            ->assertSeeText('Operational support status')
+            ->assertSeeText('PANC');
+    }
+
+    public function test_a_failed_replacement_upload_preserves_the_previous_saved_result(): void
+    {
+        Storage::fake('user_flight_releases');
+        $user = User::factory()->admin()->create();
+
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('extractFile')
+                ->once()
+                ->andReturn($this->parsedFlightPlan());
+            $mock->shouldReceive('extractFile')
+                ->once()
+                ->andThrow(FlightRouteNotFoundException::routeSegmentMissing());
+        });
+        $this->mock(ShouldPromptForCoffee::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'handle')->andReturn(false);
+        });
+
+        $component = Livewire::actingAs($user)
+            ->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('first-flight-release.pdf', 120, 'application/pdf'))
+            ->assertSeeText('Operational support status');
+
+        $flightPlanKey = $component->get('flightPlanKey');
+        $this->assertIsString($flightPlanKey);
+
+        $component
+            ->set('flightRelease', UploadedFile::fake()->create('replacement-flight-release.pdf', 120, 'application/pdf'))
+            ->assertSet('flightPlanKey', $flightPlanKey)
+            ->assertSet('flightRelease', null)
+            ->assertHasErrors(['flightRelease'])
+            ->assertSeeText('Operational support status');
+
+        $this->assertSame(1, FlightPlanResult::query()->count());
+        $this->assertIsArray(app(FlightPlanResultStore::class)->get($user, $flightPlanKey));
+        $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
     }
 
     public function test_fms_uses_a_dedicated_non_copyable_route_layout_while_jepp_preserves_its_existing_panel(): void
@@ -1485,7 +1562,7 @@ class FlightPlanBriefTest extends TestCase
             ->assertDontSeeText('ETOPS source data');
     }
 
-    public function test_a_missing_cached_result_derives_the_upload_view_without_mutating_component_state(): void
+    public function test_a_missing_stored_result_derives_the_upload_view_without_mutating_component_state(): void
     {
         Storage::fake('user_flight_releases');
         $user = User::factory()->admin()->create();
@@ -1508,7 +1585,7 @@ class FlightPlanBriefTest extends TestCase
         $flightPlanKey = $component->get('flightPlanKey');
         $this->assertIsString($flightPlanKey);
 
-        app(FlightPlanResultCache::class)->forget($user, $flightPlanKey);
+        app(FlightPlanResultStore::class)->delete($user, $flightPlanKey);
 
         $component
             ->call('$refresh')

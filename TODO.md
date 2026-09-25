@@ -33,6 +33,81 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Remove duplicate data that exists in flight strip header
 - Show MELs/CDLs if they exist
 - Show ETOPS info if it exists
+## Flight plan: weight & balance visually compare against limits
+Currently: only raw data is shown. No limits are shown. Limits exist in the aircraft table. 
+
+Goal: Reference the flight plan aircraft, render limits from aircraft model, visually render a planned weight vs limit weight for ZFW, Ramp weight, TO weight, and Landing weight.
+
+**Context**
+The session focused on redesigning the data visualization for aircraft weight parameters (Max Ramp, Take-off, Landing, and Zero-Fuel weights). The goal was to better represent "Planned" weights against their respective "Structural Limits" within a Tailwind-based dashboard.
+
+**Diagnostics**
+The existing layout utilized a flex-column container (`.flex.flex-1.flex-col.gap-3`) holding simple article cards. These cards only displayed a single "Planned" metric, lacking comparative context for structural limitations.
+
+**Actionable Findings**
+*   **Visual Safety Margins:** Implementing a progress bar provides an immediate visual cue for how much of the structural envelope is being utilized.
+*   **Semantic Color Coding:** Using conditional colors based on percentage thresholds improves situational awareness:
+    *   **Emerald/Green:** Safe operating margin (<90%).
+    *   **Blue:** Standard/Heavy operation (90-97%).
+    *   **Amber/Yellow:** Near-limit caution (>98%).
+    *   **Red:** Limit exceeded.
+*   **Typography:** Using mono-spaced fonts for weight values ensures numerical alignment and readability for rapid scanning.
+
+**Code Fixes**
+The following structure was identified as the target pattern for weight comparison cards. This template replaces the single-value cards to provide comparative diagnostics.
+
+
+`````html
+<article class="flex min-w-0 flex-col gap-3 rounded-lg border border-[#1B365D]/10 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+    <div class="flex items-start justify-between gap-3">
+        <h3 class="text-xs font-bold uppercase tracking-[0.14em] text-[#1B365D] dark:text-slate-200">
+            [Weight Category Name]
+        </h3>
+    </div>
+    <div class="space-y-4">
+        <div class="flex items-center justify-between gap-4">
+            <div class="flex-1">
+                <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-[#4A5568] dark:text-slate-400">Planned</p>
+                <p class="mt-1 flex items-baseline gap-1.5 font-mono text-[#0B0E14] dark:text-slate-100">
+                    <span class="text-xl font-black tracking-tight">[Planned Value]</span>
+                    <span class="text-[10px] font-bold tracking-[0.12em] text-[#4A5568] dark:text-slate-400">LB</span>
+                </p>
+            </div>
+            <div class="text-right">
+                <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-[#4A5568] dark:text-slate-400">Limit</p>
+                <p class="mt-1 flex items-baseline justify-end gap-1.5 font-mono [ColorClass] dark:opacity-90">
+                    <span class="text-xl font-black tracking-tight">[Limit Value]</span>
+                    <span class="text-[10px] font-bold tracking-[0.12em] opacity-70">LB</span>
+                </p>
+            </div>
+        </div>
+        
+        <div class="relative pt-1">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-[10px] font-semibold inline-block [TextColorClass]">
+                    [Percentage]% of structural limit
+                </span>
+            </div>
+            <div class="overflow-hidden h-2 text-xs flex rounded bg-slate-100 dark:bg-slate-800">
+                <div style="width: [Percentage]%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center [BgColorClass]"></div>
+            </div>
+        </div>
+    </div>
+</article>
+`````
+
+
+**Weight Data Comparison**
+The following thresholds and configurations were prototyped for the 777-200F:
+
+| Weight Category | Planned (LB) | Limit (LB) | % of Limit | Status Color |
+| :--- | :--- | :--- | :--- | :--- |
+| **Max Ramp** | 768,000 | 768,800 | 99.9% | Amber |
+| **Max Take-off** | 650,000 | 766,000 | 84.8% | Blue |
+| **Max Landing (MLW)** | 540,000 | 554,000 | 97.5% | Blue |
+| **Zero-Fuel (ZFW)** | 314,905 | 527,000 | 59.7% | Emerald |
+
+
 
 ## [x] Completed: Add FMS programming tip
 
@@ -44,66 +119,17 @@ Outcome:
 
 Commit message: `feat: add fms programming tip`
 
-## Flight release more persistent
+## [x] Completed: Flight release more persistent
 
-### Goal
+Outcome:
 
-Restore a user's most recently extracted flight release after a full page refresh or application/session timeout so the same PDF does not need to be uploaded and parsed again.
+- Persisted one encrypted, opaque-keyed flight-plan result per user with cascade deletion and owner-scoped reads and deletes.
+- Restored the latest authorized result on fresh Livewire mounts independently of cache or session lifetime.
+- Preserved the prior saved release when replacement extraction fails, while explicit discard removes it across refreshes.
+- Kept uploaded PDFs ephemeral and limited persistence to the serializer's normalized `flight_plan_data` payload.
+- Added focused coverage for encryption, replacement, authorization boundaries, restoration, discard, failure preservation, and cleanup.
 
-### Current implementation
-
-`FlightPlanBrief` stores only an opaque `flightPlanKey` in Livewire component state. The normalized flight-plan payload is stored by `FlightPlanResultCache` under a user-scoped cache key for the shared extracted-results TTL, which defaults to 60 minutes.
-
-The component has no `mount()` restoration path. A full page load therefore starts with a null key even while the cached payload still exists, and an expired cache entry permanently removes the only reusable copy. The uploaded source PDF is correctly deleted after extraction and must remain ephemeral.
-
-### Problem
-
-Refreshes, expired Livewire/session state, and cache eviction return users to the upload screen. Reprocessing the same operational document is slow and unnecessary, while extending the shared cache TTL would still make an important user result dependent on cache retention and would also change Schedule Extractor behavior.
-
-### Implementation plan
-
-1. Add a dedicated `flight_plan_results` persistence model and migration with:
-
-   * one current result per user enforced by a unique `user_id`,
-   * an opaque ULID result key,
-   * an encrypted long-text payload containing the normalized serialized result,
-   * timestamps,
-   * a cascading user foreign key so account deletion removes the saved result.
-2. Replace the cache-specific service boundary with a durable flight-plan result store that can:
-
-   * save or atomically replace the user's current result,
-   * retrieve a result only when both its key and owner match,
-   * retrieve the user's latest result for initial page hydration,
-   * delete the user's current result explicitly.
-3. Keep the persistence boundary limited to the existing serialized `flight_plan_data`. Never retain the uploaded PDF, temporary storage path, source fragments, or other extractor evidence currently excluded by `FlightPlanResultSerializer`.
-4. Add `FlightPlanBrief::mount()` hydration so a new component instance restores the authenticated user's saved result and renders the Overview task without reparsing.
-5. Preserve the current successful-upload behavior: a new extraction replaces the previously saved result only after parsing succeeds. Validation or extraction failures must not destroy the last usable result.
-6. Keep `Extract another flight plan` as the explicit discard action: remove the saved result and reset the component to the upload state. A subsequent refresh must remain on the upload view until another extraction succeeds.
-7. Keep authorization at every read, write, and delete boundary. A result key must never allow another user to load or delete its payload, and no persisted payload should be serialized into Livewire client state.
-8. Add a model factory and focused tests covering:
-
-   * encrypted database persistence and single-result replacement,
-   * owner-scoped lookup and rejection of malformed or foreign keys,
-   * restoration on a fresh Livewire mount after refresh/session loss,
-   * continued restoration beyond the former cache TTL,
-   * explicit discard and user cascade deletion,
-   * preservation of the previous saved result when a replacement upload fails,
-   * continued deletion of the temporary source PDF and exclusion of private source evidence.
-9. Run the focused result-store and `FlightPlanBrief` PHPUnit tests, Pint after PHP changes, and Larastan once at the final integration checkpoint.
-
-### Acceptance criteria
-
-* A signed-in, authorized user can refresh the flight-release page and see the most recently extracted release without uploading it again.
-* The saved release survives session expiration, application restarts, and ordinary cache eviction.
-* Only one current release is retained per user; a successful new extraction replaces it.
-* Failed replacement uploads leave the previous saved release available.
-* `Extract another flight plan` explicitly removes the saved release and presents the upload view.
-* Users cannot read or delete another user's saved release, even with a valid result key.
-* The raw PDF, source fragments, and private storage paths are never persisted in the result record or exposed to Livewire.
-
-### Proposed commit message
-
-`feat: persist the latest flight release per user`
+Commit message: `feat: persist the latest flight release per user`
 
 ## Feat: flight plan: Offline fuel score
 Goal: Create link on open seperate offline fuel score with a basic java script calculator. Able to calculate ETA and FOB at each waypoint.

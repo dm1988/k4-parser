@@ -8,7 +8,7 @@ use App\Actions\ShouldPromptForCoffee;
 use App\Enums\FlightPlanTask;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Models\User;
-use App\Services\Infrastructure\FlightPlanResultCache;
+use App\Services\Infrastructure\FlightPlanResultStore;
 use App\Validation\FlightPlanValidationRules;
 use App\View\Models\FlightReleasePageViewModel;
 use App\View\Models\FlightReleasePageViewModelFactory;
@@ -39,7 +39,7 @@ class FlightPlanBrief extends Component
 
     protected ShouldPromptForCoffee $shouldPromptForCoffee;
 
-    protected FlightPlanResultCache $flightPlanResultCache;
+    protected FlightPlanResultStore $flightPlanResultStore;
 
     protected BuildFlightPlanPageData $buildFlightPlanPageData;
 
@@ -48,15 +48,26 @@ class FlightPlanBrief extends Component
     public function boot(
         HandleFlightPlanExtraction $handleFlightPlanExtraction,
         ShouldPromptForCoffee $shouldPromptForCoffee,
-        FlightPlanResultCache $flightPlanResultCache,
+        FlightPlanResultStore $flightPlanResultStore,
         BuildFlightPlanPageData $buildFlightPlanPageData,
         FlightReleasePageViewModelFactory $flightReleasePageViewModelFactory,
     ): void {
         $this->handleFlightPlanExtraction = $handleFlightPlanExtraction;
         $this->shouldPromptForCoffee = $shouldPromptForCoffee;
-        $this->flightPlanResultCache = $flightPlanResultCache;
+        $this->flightPlanResultStore = $flightPlanResultStore;
         $this->buildFlightPlanPageData = $buildFlightPlanPageData;
         $this->flightReleasePageViewModelFactory = $flightReleasePageViewModelFactory;
+    }
+
+    public function mount(): void
+    {
+        $user = auth()->user();
+
+        if (! $user instanceof User || ! $this->canAccessFlightRelease($user)) {
+            return;
+        }
+
+        $this->flightPlanKey = $this->flightPlanResultStore->latest($user)?->result_key;
     }
 
     public function extractFlightPlan(): void
@@ -71,17 +82,17 @@ class FlightPlanBrief extends Component
 
         try {
             $flightPlan = $this->handleFlightPlanExtraction->handle($user, $uploadedFile);
-            $this->flightPlanKey = $this->flightPlanResultCache->put($user, $flightPlan);
+            $this->flightPlanKey = $this->flightPlanResultStore->save($user, $flightPlan);
             $this->activeTask = FlightPlanTask::Overview->value;
         } catch (FlightRouteNotFoundException $exception) {
-            $this->resetToUpload($user);
+            $this->resetFailedUpload();
             $this->addError('flightRelease', $exception->getMessage());
 
             return;
         } catch (Throwable $throwable) {
             report(new RuntimeException('Flight plan extraction failed.', previous: $throwable));
 
-            $this->resetToUpload($user);
+            $this->resetFailedUpload();
             $this->addError('flightRelease', 'We could not process that flight release. Please try again.');
 
             return;
@@ -151,20 +162,30 @@ class FlightPlanBrief extends Component
     {
         $user = auth()->user();
 
-        if (! $user instanceof User || $this->flightPlanKey === null) {
+        if (
+            ! $user instanceof User
+            || $this->flightPlanKey === null
+            || ! $this->canAccessFlightRelease($user)
+        ) {
             return null;
         }
 
-        return $this->flightPlanResultCache->get($user, $this->flightPlanKey);
+        return $this->flightPlanResultStore->get($user, $this->flightPlanKey);
     }
 
     private function resetToUpload(User $user): void
     {
         if ($this->flightPlanKey !== null) {
-            $this->flightPlanResultCache->forget($user, $this->flightPlanKey);
+            $this->flightPlanResultStore->delete($user, $this->flightPlanKey);
         }
 
         $this->reset(['flightRelease', 'flightPlanKey', 'activeTask']);
+        $this->resetValidation();
+    }
+
+    private function resetFailedUpload(): void
+    {
+        $this->reset('flightRelease');
         $this->resetValidation();
     }
 
@@ -179,5 +200,12 @@ class FlightPlanBrief extends Component
         Gate::authorize('use-flight-release');
 
         return $user;
+    }
+
+    private function canAccessFlightRelease(User $user): bool
+    {
+        return $user->hasVerifiedEmail()
+            && (bool) config('features.flight_release.enabled', true)
+            && Gate::allows('use-flight-release');
     }
 }
