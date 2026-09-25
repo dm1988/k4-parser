@@ -47,6 +47,29 @@
             @endif
         </x-flight-release.overview-card>
 
+        @if ($model->hasOverviewWeightBalanceAlerts())
+            <x-flight-release.overview-card
+                :task="\App\Enums\FlightPlanTask::WeightAndBalance"
+                title="Weight & Balance"
+                icon="scale"
+                :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::WeightAndBalance)"
+                :show-status="false"
+                class="xl:col-span-2"
+            >
+                <div class="flex items-end gap-3">
+                    <span
+                        aria-label="{{ $model->overviewWeightBalanceAlertCountLabel() }}"
+                        class="font-mono text-5xl font-black leading-none {{ $model->overviewWeightBalanceAlertColorClasses() }}"
+                    >
+                        {{ $model->overviewWeightBalanceAlertCount() }}
+                    </span>
+                    <p class="pb-1 text-sm font-semibold leading-5 text-[#4A5568] dark:text-slate-300">
+                        {{ $model->overviewWeightBalanceAlertSummary() }}
+                    </p>
+                </div>
+            </x-flight-release.overview-card>
+        @endif
+
         <x-flight-release.overview-card
             :task="\App\Enums\FlightPlanTask::SlotTimes"
             title="Schedule and slots"

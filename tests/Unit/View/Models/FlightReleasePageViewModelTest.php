@@ -458,6 +458,44 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
+    public function it_presents_only_operational_weight_alerts_on_the_overview(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['weightBalance'] = [
+            'plannedZeroFuelWeight' => [
+                'plannedValue' => ['amount' => 900, 'unit' => 'lb'],
+                'sourceStatus' => 'confirmed',
+                'permittedLimit' => ['amount' => 1000, 'unit' => 'lb'],
+                'limitStatus' => 'confirmed',
+            ],
+        ];
+
+        $heavyViewModel = $this->viewModel($payload);
+
+        $this->assertTrue($heavyViewModel->hasOverviewWeightBalanceAlerts());
+        $this->assertSame(1, $heavyViewModel->overviewWeightBalanceAlertCount());
+        $this->assertSame('1 operational weight alert', $heavyViewModel->overviewWeightBalanceAlertCountLabel());
+        $this->assertSame('text-[#1B365D] dark:text-sky-300', $heavyViewModel->overviewWeightBalanceAlertColorClasses());
+        $this->assertSame('Heavy weight operation', $heavyViewModel->overviewWeightBalanceAlertSummary());
+        $this->assertStringContainsString(
+            'wire:key="flight-plan-overview-card-weight_and_balance"',
+            $this->renderWorkspace($heavyViewModel, FlightPlanTask::Overview),
+        );
+
+        $payload['flight_plan_data']['weightBalance']['plannedZeroFuelWeight']['plannedValue']['amount'] = 899;
+        $safeViewModel = $this->viewModel($payload);
+
+        $this->assertFalse($safeViewModel->hasOverviewWeightBalanceAlerts());
+        $this->assertSame(0, $safeViewModel->overviewWeightBalanceAlertCount());
+        $this->assertNull($safeViewModel->overviewWeightBalanceAlertColorClasses());
+        $this->assertNull($safeViewModel->overviewWeightBalanceAlertSummary());
+        $this->assertStringNotContainsString(
+            'wire:key="flight-plan-overview-card-weight_and_balance"',
+            $this->renderWorkspace($safeViewModel, FlightPlanTask::Overview),
+        );
+    }
+
+    #[Test]
     public function it_formats_maintenance_context_items_statuses_and_crew_from_typed_data(): void
     {
         $payload = $this->resultPayload();

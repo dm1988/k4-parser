@@ -28,48 +28,19 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Flight plan: Overview: Weight and Balance
-If heavy, caution, or exceeded items exist, render an overview card with a large count. Count color should correspond to badge color of condition, i.e. heavy in blue, or exceeded limit in red.
+## [x] Completed: Flight plan: Overview: Weight and Balance
+Goal: If heavy, caution, or exceeded items exist, render an overview card with a large count. Decide where this logic should exist. Count color should correspond to badge color of condition, i.e. heavy in blue, or exceeded limit in red.
 Use action link to navigate to weight and balance task.
 
-### [x] Completed: Flight plan: Weight & Balance: Operational badging
-
 Outcome:
 
-- Added a Weight & Balance task navigator badge that counts Heavy, Caution, and Exceeded weight comparisons.
-- Colored the badge for the most severe comparison present, with shared CSS color values matching the existing progress bars.
-- Kept safe and unavailable comparisons unbadged so missing data is not presented as an operational status.
-- Preserved the existing amber and emerald counter badge markup used by other tasks.
+- Added a conditional Weight & Balance overview card for heavy, caution, and exceeded comparisons.
+- Kept alert counting and highest-severity color selection in the weight-and-balance presenter, outside Blade.
+- Rendered a large count using the most severe matching condition color and linked directly to the Weight & Balance task.
+- Added context-aware condition summaries with caution and exceeded counts, plus a dedicated `Heavy weight operation` label.
+- Added focused coverage for conditional visibility, heavy and exceeded styling, severity summaries, and the task action.
 
-Commit message: `feat: add weight balance operational badge`
-
-## Idea: Flight plan: Refactor overview task
-- Show ETOPS info if it exists
-
-### [x] Completed: Flight plan: Overview: Remove Redundant Data (De-cluttering)
-
-Outcome:
-
-- Removed the standalone departure and destination metrics from the Overview route card because those ICAOs remain prominent in the flight strip header.
-- Condensed the route card to alternate airport, initial altitude, and route distance.
-- Preserved detailed departure, destination, and alternate airport context in the separate expandable Airport details section.
-- Added focused rendering coverage to prevent redundant route metrics from returning.
-
-Commit message: `refactor: de-clutter flight plan overview`
-
-### [x] Completed: Flight plan: Overview: Integrate MEL / CDL Summary Block
-
-Outcome:
-
-- Added a dedicated Overview card that counts MEL and CDL restrictions without mislabeling DMI or NEF records.
-- Added an active-item badge and direct Review MEL / CDL Details action when MEL/CDL items exist.
-- Added a low-contrast No active MEL/CDL restrictions state when the count is zero.
-- Removed the redundant Maintenance indicator from Operational support status.
-- Added focused view-model and Livewire coverage for active, empty, and missing-section states.
-
-Commit message: `feat: add mel cdl overview summary`
-
-Follow up:
+Commit message: `feat: add weight balance overview alert card`
 
 ## Feat: Establish MEL badge color heiracrchy
 Currently: badge colors are used on individual maintenance items. Badge counts are always rendered in yellow with no context to the maintenance items within them.
@@ -86,6 +57,8 @@ Goal: If MEL items exist, badge count should be rendered in red. If no MELS, but
             self::Dmi => 'bg-yellow-100 text-yellow-900 dark:bg-yellow-400/15 dark:text-yellow-200',
         };
     }
+app/Enums/TaskTone.php
+
 ## Refactor: MEL Dashboard Metric Card
 
 **Context**
@@ -98,6 +71,11 @@ Goal: Emphasize MEL count using a font size of 48. Count color should correspond
 
 ## Feat: flight plan: Offline fuel score
 Goal: Create link on open seperate offline fuel score with a basic java script calculator. Able to calculate ETA and FOB at each waypoint.
+
+## Idea: Flight plan: Refactor overview task
+- Show ETOPS info if it exists
+- Count of ETP points
+- ETOPS time (e.g. 180, 210, 240)
 
 ## Refactor welcome page for use with new features
 
@@ -282,38 +260,30 @@ Simple plan:
 ## feat: Track schedule upload count
 - For multiple file uploads within each user request
 
-## Flight plan: Crew list: role avatar
-- Have crew role displayed inside an avatar bubble
-Entry: Crew Card UI Refactor
-Goal Improve the visual hierarchy and scannability of the crew roster by moving the "Crew Role" (e.g., PIC, SIC, MX) from a secondary text line into a prominent "Avatar Bubble" anchor. The design must be professional, differentiate roles at a glance, and maintain high readability in both light and dark modes without being visually overwhelming.
+## Flight plan: Crew list: WCAG 2.2 AA compliance
 
-Current Setup
+Currently: Crew role avatars use 12px white text on role-specific solid backgrounds. The emerald-600 and amber-600 light-mode combinations measure approximately 3.77:1 and 3.19:1, below the 4.5:1 WCAG 2.2 AA minimum for normal text. Existing component and enum tests preserve these failing color combinations.
 
-Container: ul grid using grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 for responsive layout.
-Card Structure:
-Horizontal flex layout (flex items-center gap-3).
-Backgrounds: bg-white (light) / bg-slate-900 (dark).
-Borders: Subtle navy tint border-[#1B365D]/10.
-Avatar Bubble: A 12x10 (48px wide) flex container with a uniform background (bg-[#1B365D]/5) and role-specific text coloring.
-Details: A vertical stack containing the Name (bold) and Employee Number (monospace, prefixed with #).
-Implementation Details
+Goal: Make the reusable crew card WCAG 2.2 AA compliant in Maintenance Log, Envelope, and Flight Init while retaining a compact, scannable role avatar.
 
-Layout Logic:
-Switched from flex-col to flex-row (using items-center) to place the role avatar as a visual "bullet" on the left.
-Role-Based Semantic Styling:
-Unified Background: All bubbles use bg-[#1B365D]/5 to maintain page consistency.
-Text Color Palette:
-PIC: text-blue-600
-SIC/FO: text-indigo-600
-MX: text-amber-600
-LM: text-emerald-600
-Others: text-slate-600
-Typography:
-Role: text-[10px] font-black uppercase tracking-wider for a "badge" aesthetic.
-Employee ID: Simplified to a small secondary row (text-[10px]) to reduce vertical height.
-Dark Mode Support: All colors include dark: variants (e.g., dark:bg-slate-800 for the bubble and dark:text-blue-400 for role text) to ensure WCAG contrast compliance.
+Acceptance criteria:
+
+- Every role-label foreground/background combination reaches at least 4.5:1 contrast in light and dark modes.
+- Role identity remains available as visible text and through an accurate accessible name; color must not be the only distinguishing cue.
+- Names, employee numbers, base details, missing-value labels, and High mins status retain sufficient contrast and meaningful reading order.
+- Crew cards remain readable at 200% zoom and reflow without clipped role labels, names, or identifiers at supported breakpoints.
+- Update role-color and employee-card tests to cover every palette group, fallback roles, missing roles, accessible labels, and both theme palettes.
+- Perform a browser accessibility check for contrast, semantics, and reflow after the focused automated tests pass.
+
+References:
+
+- `app/Enums/CrewPosition.php`
+- `resources/views/components/flight-release/employee-card.blade.php`
+- `tests/Unit/Enums/CrewPositionTest.php`
+- `tests/Feature/EmployeeCardComponentTest.php`
 
 ## Flight plan: Add task: Takeoff and Landing Report
+Feat: TLR Validity check
 
 Naming outcome: Renamed the view-model presentation API from the ambiguous `envelope*` prefix to `tlr*`. The normalized payload continues using its existing `envelope` storage key until the broader data contract is migrated.
 
@@ -374,25 +344,14 @@ This view repeats the confirmed source result. It does not calculate an envelope
 - Naming
 - Layering
 
-## Flight plan: Aircraft lookup and display weights
-- Lookup aircraft by tail_number in db
-- Expose weights to user
-- Compare planned weights to aircraft weight limits
-
 ## 17. Flight plan: Reserve fuel
 - Create distinction between Alternate airport burn and Reserve fuel calculation. 
 - Differed due to needing aircraft type fixture and distintion between 747 and 777 aircraft type
-- Requires full fleet in production database.
+- Requires full fleet in production database. Implemented.
 - coincides with future 747 seeder into production
-- will have to add migration for reserve fuel additive
+- Add migration for reserve fuel additive
 
-## Flight plan: Smart maintenance counter badges
-- If MELs exist render in warning
-- If no MELs but CDLs present, render caution
-- If no MEL and CDLs but NEF or COI carry over, render Neutral
-- No maintenance items, render success
 
-app/Enums/TaskTone.php
   
 -------------------------------------------------------
 
@@ -400,103 +359,46 @@ app/Enums/TaskTone.php
 
 -------------------------------------------------------
 
-## Completed: Schedule: cannot remove selected upload images
-## Completed: Slot time incorrectly extracted
-## [x] Completed: Flight plan: Employee number missing from Maintenance log task and create common component
-## [x] Completed: Flight plan: Refactoring Employee Card Components
-## [x] Completed: Flight plan: flight info header refactor
-## [x] Completed: Remove info logging
-## [x] Completed: Flight plan: Hide Planned Duration in FMS task
 ## [x] Completed: Flight plan: FMS task info order
-
-Outcome:
-
-- Reordered the FMS setup metrics to AC type, flight number, recall number, alternate, destination distance, alternate reserves, initial flight level, and cost index.
-- Added the alternate airport as its own FMS metric card.
-- Moved `Planned runways and procedures` above `Airport context`.
-- Added focused view-model and Livewire regression coverage for both ordering requirements.
-
-Commit message: `refactor: reorder fms task information`
-
 ## [x] Completed: Add FMS programming tip
-
-Outcome:
-
-- Added a gold-accent programming tip card with a light-bulb icon to the FMS task.
-- Positioned the tip between `Planned runways and procedures` and `Airport context`.
-- Added focused Livewire coverage for the tip content and placement.
-
-Commit message: `feat: add fms programming tip`
-
 ## [x] Completed: Flight release more persistent
-
-Outcome:
-
-- Persisted one encrypted, opaque-keyed flight-plan result per user with cascade deletion and owner-scoped reads and deletes.
-- Restored the latest authorized result on fresh Livewire mounts independently of cache or session lifetime.
-- Preserved the prior saved release when replacement extraction fails, while explicit discard removes it across refreshes.
-- Kept uploaded PDFs ephemeral and limited persistence to the serializer's normalized `flight_plan_data` payload.
-- Added focused coverage for encryption, replacement, authorization boundaries, restoration, discard, failure preservation, and cleanup.
-
-Commit message: `feat: persist the latest flight release per user`
-
-
 ## [x] Completed: Flight plan: weight & balance visually compare against limits
-
-Outcome:
-
-- Resolved structural limits from the aircraft matched by the normalized flight-release tail number.
-- Persisted the applicable ramp, zero-fuel, takeoff, and landing limits with the normalized release result.
-- Added planned-versus-limit cards with labeled units, utilization percentages, accessible progress indicators, and green, blue, amber, or red operating-margin states.
-- Reported unmatched aircraft, absent limits, and incompatible units as unavailable without inferring operational values.
-- Added focused resolver, normalization, persistence, threshold, unavailable-state, and Livewire rendering coverage.
-
-Commit message: `feat: compare planned weights with aircraft limits`
-
-## Follow up:
-Derived / Calculated Indicators: The card note mentions "Derived server-side from confirmed zero-fuel weight...". Adding a small info icon or tooltip next to derived values helps distinguish between manually entered inputs and system-calculated totals.
-
 ## [x] Completed: UI optimization for maximum-limit weight cards
-
-Outcome:
-
-- Consolidated percentage, maximum weight, unit, and limit label inside the progress bar for zero-fuel, ramp, takeoff, and landing weight cards.
-- Removed each maximum-limit card's redundant structural-limit column and external operating-state labels.
-- Increased progress-bar height and added a responsive, truncated, high-contrast overlay that remains readable across all status colors.
-- Preserved accessible progress names and value text, plus explicit unavailable-limit handling.
-- Added focused Livewire coverage for all four integrated limit cards.
-
-Commit message: `refactor: consolidate weight limits into progress bars`
-
 ## [x] Completed: Progress bar text overlay visual fix
-
-Outcome:
-
-- Corrected the optical vertical alignment of maximum-limit progress-bar text with a compact line height and slight top offset.
-- Removed the dark pill background and shadow from the text while preserving its responsive truncation and contrast.
-- Added focused Livewire assertions for the overlay alignment and simplified text treatment.
-
-Commit message: `fix: align weight progress bar overlays`
-
 ## [x] Completed: Extract weight-balance field rendering logic
-
-Outcome:
-
-- Added a typed weight-balance field view model for formatted values, status styling, comparison state, progress values, and accessibility labels.
-- Added enums that own comparison labels, progress and text classes, plus source-status badge classes.
-- Reduced the Blade component to declarative rendering against named view-model values and predicates.
-- Added cross-browser progress-fill styling so safe, heavy, caution, and exceeded states render their intended colors.
-- Set the heavy progress fill to the specified high-visibility blue, including an explicit WebKit override.
-- Added focused coverage for integrated limits, exceeded limits, source conflicts, incompatible units, and all rendered tone classes.
-
-Commit message: `refactor: extract weight balance field view model`
-
 ## [x] Completed: Add ramp weight to Filament aircraft resource
+### [x] Completed: Flight plan: Weight & Balance: Operational badging
 
 Outcome:
 
-- Added maximum ramp weight to the aircraft create and edit forms with pounds labeling and non-negative integer validation.
-- Added a sortable MRW column to the aircraft resource table.
-- Extended focused resource coverage for display, creation, editing, and validation.
+- Added a Weight & Balance task navigator badge that counts Heavy, Caution, and Exceeded weight comparisons.
+- Colored the badge for the most severe comparison present, with shared CSS color values matching the existing progress bars.
+- Kept safe and unavailable comparisons unbadged so missing data is not presented as an operational status.
+- Preserved the existing amber and emerald counter badge markup used by other tasks.
 
-Commit message: `feat: add ramp weight to aircraft resource`
+Commit message: `feat: add weight balance operational badge`
+
+### [x] Completed: Flight plan: Overview: Remove Redundant Data (De-cluttering)
+
+Outcome:
+
+- Removed the standalone departure and destination metrics from the Overview route card because those ICAOs remain prominent in the flight strip header.
+- Condensed the route card to alternate airport, initial altitude, and route distance.
+- Preserved detailed departure, destination, and alternate airport context in the separate expandable Airport details section.
+- Added focused rendering coverage to prevent redundant route metrics from returning.
+
+Commit message: `refactor: de-clutter flight plan overview`
+
+### [x] Completed: Flight plan: Overview: Integrate MEL / CDL Summary Block
+
+Outcome:
+
+- Added a dedicated Overview card that counts MEL and CDL restrictions without mislabeling DMI or NEF records.
+- Added an active-item badge and direct Review MEL / CDL Details action when MEL/CDL items exist.
+- Added a low-contrast No active MEL/CDL restrictions state when the count is zero.
+- Removed the redundant Maintenance indicator from Operational support status.
+- Added focused view-model and Livewire coverage for active, empty, and missing-section states.
+
+Commit message: `feat: add mel cdl overview summary`
+
+Follow up:

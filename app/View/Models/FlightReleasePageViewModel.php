@@ -212,6 +212,31 @@ readonly class FlightReleasePageViewModel
         return $this->fuelPresenter->overviewRampFuel();
     }
 
+    public function overviewWeightBalanceAlertCount(): int
+    {
+        return $this->weightBalancePresenter->operationalAlertCount();
+    }
+
+    public function overviewWeightBalanceAlertCountLabel(): string
+    {
+        return $this->weightBalancePresenter->operationalAlertCountLabel();
+    }
+
+    public function overviewWeightBalanceAlertColorClasses(): ?string
+    {
+        return $this->weightBalancePresenter->operationalAlertTextClasses();
+    }
+
+    public function overviewWeightBalanceAlertSummary(): ?string
+    {
+        return $this->weightBalancePresenter->operationalAlertSummary();
+    }
+
+    public function hasOverviewWeightBalanceAlerts(): bool
+    {
+        return $this->overviewWeightBalanceAlertCount() > 0;
+    }
+
     public function overviewSlotSummary(): ?string
     {
         return $this->schedulePresenter->overviewSlotSummary();

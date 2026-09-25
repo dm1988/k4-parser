@@ -77,6 +77,40 @@ final readonly class WeightBalancePresenter
         ));
     }
 
+    public function operationalAlertCountLabel(): string
+    {
+        $count = $this->operationalAlertCount();
+
+        return $count.' operational weight '.($count === 1 ? 'alert' : 'alerts');
+    }
+
+    public function operationalAlertTextClasses(): ?string
+    {
+        return $this->operationalAlertTone()?->textClasses();
+    }
+
+    public function operationalAlertSummary(): ?string
+    {
+        $heavyCount = $this->comparisonToneCount(WeightBalanceComparisonTone::Heavy);
+        $cautionCount = $this->comparisonToneCount(WeightBalanceComparisonTone::Caution);
+        $exceededCount = $this->comparisonToneCount(WeightBalanceComparisonTone::Exceeded);
+        $summaryParts = [];
+
+        if ($heavyCount > 0) {
+            $summaryParts[] = 'Heavy weight operation';
+        }
+
+        if ($cautionCount > 0) {
+            $summaryParts[] = $this->conditionCountLabel($cautionCount, 'caution');
+        }
+
+        if ($exceededCount > 0) {
+            $summaryParts[] = $this->conditionCountLabel($exceededCount, 'exceeded');
+        }
+
+        return $summaryParts === [] ? null : implode(' · ', $summaryParts);
+    }
+
     public function operationalAlertTone(): ?WeightBalanceComparisonTone
     {
         $highestTone = null;
@@ -110,6 +144,19 @@ final readonly class WeightBalancePresenter
         }
 
         return $tones;
+    }
+
+    private function comparisonToneCount(WeightBalanceComparisonTone $comparisonTone): int
+    {
+        return count(array_filter(
+            $this->comparisonTones(),
+            static fn (WeightBalanceComparisonTone $tone): bool => $tone === $comparisonTone,
+        ));
+    }
+
+    private function conditionCountLabel(int $count, string $condition): string
+    {
+        return $count.' '.$condition.' '.($count === 1 ? 'item' : 'items');
     }
 
     private function field(
