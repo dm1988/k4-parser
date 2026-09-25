@@ -8,6 +8,7 @@ use App\DTOs\CrewManifestInputData;
 use App\DTOs\Maintenance\MaintenanceInputData;
 use App\DTOs\ParsedFlightPlanData;
 use App\Enums\FlightPlanTask;
+use App\Enums\FlightPlanTaskAvailability;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Livewire\FlightPlanBrief;
 use App\Models\Aircraft;
@@ -38,6 +39,36 @@ use Tests\TestCase;
 class FlightPlanBriefTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_overview_card_full_card_action_is_opt_out(): void
+    {
+        $componentData = [
+            'task' => FlightPlanTask::Fms,
+            'availability' => FlightPlanTaskAvailability::Available,
+        ];
+
+        $fullCard = $this->blade(
+            '<x-flight-release.overview-card :task="$task" title="Route" icon="calculator" :availability="$availability">Summary</x-flight-release.overview-card>',
+            $componentData,
+        );
+
+        $fullCard
+            ->assertSeeHtml('<div aria-hidden="true" class="flex w-full')
+            ->assertSeeHtml('aria-label="Program FMS"')
+            ->assertSeeHtml('absolute inset-0 z-10 cursor-pointer rounded-xl')
+            ->assertSeeHtml('focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#C5A059]')
+            ->assertSeeHtml('disabled:cursor-wait disabled:bg-white/40 dark:disabled:bg-slate-950/40');
+
+        $footerActionCard = $this->blade(
+            '<x-flight-release.overview-card :task="$task" title="Route" icon="calculator" :availability="$availability" :full-card-action="false">Summary</x-flight-release.overview-card>',
+            $componentData,
+        );
+
+        $footerActionCard
+            ->assertSeeHtml('wire:click="selectTask(\'fms\')"')
+            ->assertDontSeeHtml('absolute inset-0 z-10 cursor-pointer rounded-xl')
+            ->assertDontSeeHtml('<div aria-hidden="true" class="flex w-full');
+    }
 
     public function test_it_starts_on_the_upload_view_with_accessible_loading_states(): void
     {
@@ -1578,6 +1609,20 @@ class FlightPlanBriefTest extends TestCase
         $this->assertStringContainsString('Alternate', $routeOverviewCard[0]);
         $this->assertStringContainsString('Initial altitude', $routeOverviewCard[0]);
         $this->assertStringContainsString('Distance', $routeOverviewCard[0]);
+        $this->assertStringContainsString('<div aria-hidden="true" class="flex w-full', $routeOverviewCard[0]);
+        $this->assertStringContainsString('aria-label="Program FMS"', $routeOverviewCard[0]);
+        $this->assertStringContainsString('absolute inset-0 z-10 cursor-pointer rounded-xl', $routeOverviewCard[0]);
+        $this->assertSame(1, substr_count($routeOverviewCard[0], 'wire:click="selectTask(\'fms\')"'));
+
+        $this->assertSame(
+            1,
+            preg_match(
+                '/<article[^>]*wire:key="flight-plan-overview-card-review_mel_cdl"[^>]*>.*?<\/article>/s',
+                $component->html(),
+                $emptyMaintenanceOverviewCard,
+            ),
+        );
+        $this->assertStringNotContainsString('wire:click="selectTask(\'review_mel_cdl\')"', $emptyMaintenanceOverviewCard[0]);
 
         $flightPlanKey = $component->get('flightPlanKey');
         $detailTasks = [
@@ -1592,6 +1637,7 @@ class FlightPlanBriefTest extends TestCase
                 ->call('selectTask', FlightPlanTask::Overview->value)
                 ->assertSeeHtml('wire:key="flight-plan-overview-card-'.$task->value.'"')
                 ->assertSeeHtml('aria-label="'.$task->actionLabel().'"')
+                ->assertSeeHtml('absolute inset-0 z-10 cursor-pointer rounded-xl')
                 ->call('selectTask', $task->value)
                 ->assertSet('activeTask', $task->value);
         }

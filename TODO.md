@@ -28,21 +28,19 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Flight plan: Overview: Full card link
-Goal: create a component option to have the whole card a clickable link
+## [x] Completed: Flight plan: Overview: Full card link
+Currently: The only link in an overview card is in the action label footer.
 
-## [x] Completed: Flight plan: W&B Card order
-
-Goal: Prioritize calculated operational totals before their supporting inputs on the dedicated Weight & Balance screen.
+Goal: create a component option to have the whole card a clickable link.
 
 Outcome:
 
-- Reordered Base & Payload to zero-fuel weight, basic operating weight, then payload.
-- Reordered Departure to ramp weight, takeoff gross weight, then takeoff fuel.
-- Preserved Arrival order, comparison configuration, values, calculations, and responsive styling.
-- Added focused presenter-output and rendered DOM-order coverage.
+- Made the reusable Overview card action cover the full card by default, with an explicit opt-out option.
+- Applied it to actionable Overview cards while leaving unavailable and empty cards non-interactive.
+- Preserved the footer as a visual action cue and used one full-card Livewire button to avoid nested controls.
+- Added full-card keyboard focus, accessible names, loading feedback, and focused Livewire coverage.
 
-Commit message: `refactor: reorder weight balance cards for review flow`
+Commit message: `feat: make overview cards fully actionable`
 
 ## Feat: flight plan: Offline fuel score
 Goal: Create link on open seperate offline fuel score with a basic java script calculator. Able to calculate ETA and FOB at each waypoint. Link opens in new browser tab.
@@ -54,6 +52,13 @@ Goal: Create link on open seperate offline fuel score with a basic java script c
 
 ## Overview: whole card color change
 Instead of 5-xl metric color change
+
+## Flight plan: Overview: Slot times overview card refactor
+Large 5-xl metric for slot time count
+
+Buffer time from planned departure to earliest slot window time.
+
+Context aware `Do not depart early` messaging if planned etd is equal to departure min slot window or if planned eta is equal to planned arrival min slot window
 
 ## Refactor welcome page for use with new features
 
@@ -329,8 +334,6 @@ This view repeats the confirmed source result. It does not calculate an envelope
 - coincides with future 747 seeder into production
 - Add migration for reserve fuel additive
 
-
-  
 -------------------------------------------------------
 
 # Completed Tasks
@@ -348,21 +351,7 @@ This view repeats the confirmed source result. It does not calculate an envelope
 ### [x] Completed: Flight plan: Weight & Balance: Operational badging
 ### [x] Completed: Flight plan: Overview: Remove Redundant Data (De-cluttering)
 ### [x] Completed: Flight plan: Overview: Integrate MEL / CDL Summary Block
-
 ## [x] Completed: Flight plan: Overview: Weight and Balance
-Goal: If heavy, caution, or exceeded items exist, render an overview card with a large count. Decide where this logic should exist. Count color should correspond to badge color of condition, i.e. heavy in blue, or exceeded limit in red.
-Use action link to navigate to weight and balance task.
-
-Outcome:
-
-- Added a conditional Weight & Balance overview card for heavy, caution, and exceeded comparisons.
-- Kept alert counting and highest-severity color selection in the weight-and-balance presenter, outside Blade.
-- Rendered a large count using the most severe matching condition color and linked directly to the Weight & Balance task.
-- Added context-aware condition summaries with caution and exceeded counts, plus a dedicated `Heavy weight operation` label.
-- Added focused coverage for conditional visibility, heavy and exceeded styling, severity summaries, and the task action.
-
-Commit message: `feat: add weight balance overview alert card`
-
 ## [x] Completed: Feat: Establish MEL badge color heiracrchy
 Currently: badge colors are used on individual maintenance items. Badge counts are always rendered in yellow with no context to the maintenance items within them.
 
@@ -411,3 +400,16 @@ Outcome:
 - Added focused enum, view-model, and Livewire rendering coverage.
 
 Commit message: `refactor: present mel cdl count as overview metric`
+
+## [x] Completed: Flight plan: W&B Card order
+
+Goal: Prioritize calculated operational totals before their supporting inputs on the dedicated Weight & Balance screen.
+
+Outcome:
+
+- Reordered Base & Payload to zero-fuel weight, basic operating weight, then payload.
+- Reordered Departure to ramp weight, takeoff gross weight, then takeoff fuel.
+- Preserved Arrival order, comparison configuration, values, calculations, and responsive styling.
+- Added focused presenter-output and rendered DOM-order coverage.
+
+Commit message: `refactor: reorder weight balance cards for review flow`
