@@ -108,6 +108,7 @@ readonly class FlightReleasePageViewModel
     public function taskCounterColorClasses(FlightPlanTask $task): ?string
     {
         return match ($task) {
+            FlightPlanTask::ReviewMelCdl => $this->maintenancePresenter->counterBadgeColor(),
             FlightPlanTask::WeightAndBalance => $this->weightBalancePresenter->operationalAlertTone()?->badgeClasses(),
             default => null,
         };

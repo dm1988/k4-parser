@@ -830,6 +830,7 @@ class FlightPlanBriefTest extends TestCase
                 'wire:key="flight-plan-task-nav-jepp_pd_pro"',
             ])
             ->assertSeeHtml('aria-label="Review MEL / CDL: 4 items"')
+            ->assertSeeHtml('bg-red-100 text-red-900 dark:bg-red-400/15 dark:text-red-200')
             ->assertSeeHtml('wire:key="flight-plan-overview-card-review_mel_cdl"')
             ->assertSeeText('2 Active MEL/CDL Items')
             ->assertSeeText('Review MEL / CDL Details')
@@ -911,7 +912,6 @@ class FlightPlanBriefTest extends TestCase
             ->assertSet('activeTask', FlightPlanTask::ReviewMelCdl->value)
             ->assertSeeHtml('wire:key="flight-plan-task-panel-review_mel_cdl"')
             ->assertSeeHtml('aria-label="Review MEL / CDL: 4 items"')
-            ->assertSeeHtml('rounded-full bg-amber-100 px-1.5')
             ->assertDontSeeHtml('bg-emerald-500 dark:bg-emerald-400')
             ->assertSeeText('4 source-listed items')
             ->assertSeeText('28-22-01')

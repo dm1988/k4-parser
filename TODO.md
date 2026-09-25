@@ -28,27 +28,16 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## [x] Completed: Flight plan: Overview: Weight and Balance
-Goal: If heavy, caution, or exceeded items exist, render an overview card with a large count. Decide where this logic should exist. Count color should correspond to badge color of condition, i.e. heavy in blue, or exceeded limit in red.
-Use action link to navigate to weight and balance task.
+## Flight plan: Overview: Full card link
+Goal: create a component option to have the whole card a clickable link
 
-Outcome:
-
-- Added a conditional Weight & Balance overview card for heavy, caution, and exceeded comparisons.
-- Kept alert counting and highest-severity color selection in the weight-and-balance presenter, outside Blade.
-- Rendered a large count using the most severe matching condition color and linked directly to the Weight & Balance task.
-- Added context-aware condition summaries with caution and exceeded counts, plus a dedicated `Heavy weight operation` label.
-- Added focused coverage for conditional visibility, heavy and exceeded styling, severity summaries, and the task action.
-
-Commit message: `feat: add weight balance overview alert card`
-
-## Feat: Establish MEL badge color heiracrchy
+## [x] Completed: Feat: Establish MEL badge color heiracrchy
 Currently: badge colors are used on individual maintenance items. Badge counts are always rendered in yellow with no context to the maintenance items within them.
 
-Goal: If MEL items exist, badge count should be rendered in red. If no MELS, but CDLs exist, render count in orange. If no MEL or CDL but NEFs exist, render in gray, If only DMIs exist, render in yellow.
+Goal: Use context aware badge colors.
+If MEL items exist, badge count should be rendered in red. If no MELS, but CDLs exist, render count in orange. If no MEL or CDL but NEFs exist, render in gray, If only DMIs exist, render in yellow.
 
-
-    public function badgeColor(): string
+```public function badgeColor(): string
     {
         return match ($this) {
             self::Mel => 'bg-red-100 text-red-900 dark:bg-red-400/15 dark:text-red-200',
@@ -57,7 +46,20 @@ Goal: If MEL items exist, badge count should be rendered in red. If no MELS, but
             self::Dmi => 'bg-yellow-100 text-yellow-900 dark:bg-yellow-400/15 dark:text-yellow-200',
         };
     }
+```
+
+References:
+app/View/Presenters/FlightRelease/MaintenancePresenter.php
 app/Enums/TaskTone.php
+
+Outcome:
+
+- Added an enum-owned maintenance priority of MEL, CDL, NEF, then DMI for the task counter.
+- Reused each maintenance type's existing badge palette: red, orange, gray, and yellow respectively.
+- Preserved the green zero-item counter state and kept badge policy out of Blade.
+- Added focused hierarchy and Livewire rendering coverage.
+
+Commit message: `feat: color maintenance counters by item priority`
 
 ## Refactor: MEL Dashboard Metric Card
 
@@ -402,3 +404,17 @@ Outcome:
 Commit message: `feat: add mel cdl overview summary`
 
 Follow up:
+
+## [x] Completed: Flight plan: Overview: Weight and Balance
+Goal: If heavy, caution, or exceeded items exist, render an overview card with a large count. Decide where this logic should exist. Count color should correspond to badge color of condition, i.e. heavy in blue, or exceeded limit in red.
+Use action link to navigate to weight and balance task.
+
+Outcome:
+
+- Added a conditional Weight & Balance overview card for heavy, caution, and exceeded comparisons.
+- Kept alert counting and highest-severity color selection in the weight-and-balance presenter, outside Blade.
+- Rendered a large count using the most severe matching condition color and linked directly to the Weight & Balance task.
+- Added context-aware condition summaries with caution and exceeded counts, plus a dedicated `Heavy weight operation` label.
+- Added focused coverage for conditional visibility, heavy and exceeded styling, severity summaries, and the task action.
+
+Commit message: `feat: add weight balance overview alert card`

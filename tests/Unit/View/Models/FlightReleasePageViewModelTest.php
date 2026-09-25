@@ -572,6 +572,54 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
+    public function it_colors_the_maintenance_counter_by_the_highest_priority_item_type(): void
+    {
+        $cases = [
+            [['DMI', 'NEF', 'CDL', 'MEL'], 'bg-red-100 text-red-900 dark:bg-red-400/15 dark:text-red-200'],
+            [['DMI', 'NEF', 'CDL'], 'bg-orange-100 text-orange-900 dark:bg-orange-400/15 dark:text-orange-200'],
+            [['DMI', 'NEF'], 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100'],
+            [['DMI'], 'bg-yellow-100 text-yellow-900 dark:bg-yellow-400/15 dark:text-yellow-200'],
+        ];
+
+        foreach ($cases as [$types, $expectedClasses]) {
+            $payload = $this->resultPayload();
+            $payload['flight_plan_data']['maintenanceLog']['items'] = array_map(
+                static fn (string $type): array => [
+                    'type' => $type,
+                    'number' => $type.'-1',
+                    'description' => $type.' test item.',
+                    'reference' => null,
+                    'status' => null,
+                    'limitations' => null,
+                    'procedures' => null,
+                ],
+                $types,
+            );
+
+            $viewModel = $this->viewModel($payload);
+
+            $this->assertSame(
+                $expectedClasses,
+                $viewModel->taskCounterColorClasses(FlightPlanTask::ReviewMelCdl),
+            );
+            $this->assertStringContainsString(
+                $expectedClasses,
+                $this->renderWorkspace($viewModel, FlightPlanTask::Overview),
+            );
+        }
+
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['maintenanceLog']['items'] = [];
+        $emptyViewModel = $this->viewModel($payload);
+
+        $this->assertNull($emptyViewModel->taskCounterColorClasses(FlightPlanTask::ReviewMelCdl));
+        $this->assertStringContainsString(
+            'bg-emerald-100 px-1.5',
+            $this->renderWorkspace($emptyViewModel, FlightPlanTask::Overview),
+        );
+    }
+
+    #[Test]
     public function it_uses_etops_applicability_to_control_overview_and_task_visibility(): void
     {
         $confirmedEtops = $this->viewModel($this->resultPayload());

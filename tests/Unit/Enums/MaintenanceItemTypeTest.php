@@ -7,6 +7,16 @@ use PHPUnit\Framework\TestCase;
 
 class MaintenanceItemTypeTest extends TestCase
 {
+    public function test_it_defines_the_counter_badge_priority(): void
+    {
+        $this->assertSame([
+            MaintenanceItemType::Mel,
+            MaintenanceItemType::Cdl,
+            MaintenanceItemType::Nef,
+            MaintenanceItemType::Dmi,
+        ], MaintenanceItemType::counterPriority());
+    }
+
     public function test_it_exposes_maintenance_titles_descriptions_and_badge_colors(): void
     {
         $this->assertSame('Minimum Equipment List', MaintenanceItemType::Mel->title());

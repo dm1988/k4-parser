@@ -9,6 +9,12 @@ enum MaintenanceItemType: string
     case Nef = 'NEF';
     case Dmi = 'DMI';
 
+    /** @return list<self> */
+    public static function counterPriority(): array
+    {
+        return [self::Mel, self::Cdl, self::Nef, self::Dmi];
+    }
+
     public function title(): string
     {
         return match ($this) {

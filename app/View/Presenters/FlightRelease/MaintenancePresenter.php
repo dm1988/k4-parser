@@ -50,6 +50,22 @@ final readonly class MaintenancePresenter
         return count($this->pageData?->flightPlan->maintenanceLog->items ?? []);
     }
 
+    public function counterBadgeColor(): ?string
+    {
+        $itemTypes = array_map(
+            static fn (MaintenanceItemData $item): MaintenanceItemType => $item->type,
+            $this->pageData?->flightPlan->maintenanceLog->items ?? [],
+        );
+
+        foreach (MaintenanceItemType::counterPriority() as $type) {
+            if (in_array($type, $itemTypes, true)) {
+                return $type->badgeColor();
+            }
+        }
+
+        return null;
+    }
+
     public function melCdlItemCount(): int
     {
         return count(array_filter(
