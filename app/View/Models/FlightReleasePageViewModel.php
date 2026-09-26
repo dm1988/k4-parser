@@ -259,6 +259,16 @@ readonly class FlightReleasePageViewModel
         return $this->etopsPresenter->overviewSummary();
     }
 
+    public function overviewEtpCount(): ?int
+    {
+        return $this->etopsPresenter->overviewEqualTimePointCount();
+    }
+
+    public function overviewEtopsTime(): ?string
+    {
+        return $this->etopsPresenter->overviewRating();
+    }
+
     public function fmsDistanceToDestination(): ?string
     {
         return $this->overviewRouteDistance();

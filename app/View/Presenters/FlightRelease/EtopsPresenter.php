@@ -45,6 +45,26 @@ final readonly class EtopsPresenter
         return implode(' · ', $summary);
     }
 
+    public function overviewEqualTimePointCount(): ?int
+    {
+        $etops = $this->pageData?->flightPlan->etops;
+
+        if ($etops?->applicability !== EtopsApplicability::ConfirmedEtops) {
+            return null;
+        }
+
+        $count = count($etops->equalTimePoints);
+
+        return $count > 0 ? $count : null;
+    }
+
+    public function overviewRating(): ?string
+    {
+        $ratingMinutes = $this->confirmedRatingMinutes();
+
+        return $ratingMinutes === null ? null : $ratingMinutes.' min';
+    }
+
     /** @return list<array{label: string, airports: string, coordinates: string, scenario: string}> */
     public function criticalPoints(): array
     {
@@ -158,12 +178,19 @@ final readonly class EtopsPresenter
 
     public function badgeLabel(): ?string
     {
+        $ratingMinutes = $this->confirmedRatingMinutes();
+
+        return $ratingMinutes === null ? null : 'ETOPS '.$ratingMinutes;
+    }
+
+    private function confirmedRatingMinutes(): ?int
+    {
         $etops = $this->pageData?->flightPlan->etops;
 
-        if ($etops?->applicability !== EtopsApplicability::ConfirmedEtops || $etops->ratingMinutes === null) {
+        if ($etops?->applicability !== EtopsApplicability::ConfirmedEtops) {
             return null;
         }
 
-        return 'ETOPS '.$etops->ratingMinutes;
+        return $etops->ratingMinutes;
     }
 }

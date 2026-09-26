@@ -116,8 +116,9 @@
                 :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::Etops)"
                 class="xl:col-span-2"
             >
-                <dl>
-                    <x-flight-release.metric label="Confirmed release fields" :value="$model->overviewEtopsSummary()" empty-text="Not present in this release" />
+                <dl class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <x-flight-release.metric label="ETP points" :value="$model->overviewEtpCount()" empty-text="Not present in this release" />
+                    <x-flight-release.metric label="ETOPS time" :value="$model->overviewEtopsTime()" empty-text="Not present in this release" />
                 </dl>
             </x-flight-release.overview-card>
         @endif

@@ -50,6 +50,8 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertNull($viewModel->overviewSlotSummary());
         $this->assertFalse($viewModel->hasSlotTimes());
         $this->assertNull($viewModel->overviewEtopsSummary());
+        $this->assertNull($viewModel->overviewEtpCount());
+        $this->assertNull($viewModel->overviewEtopsTime());
         $this->assertNull($viewModel->fmsDistanceToDestination());
         $this->assertNull($viewModel->fmsAlternateReserve());
         $this->assertSame([], $viewModel->fmsFields());
@@ -402,6 +404,8 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('Planned ETA is within the confirmed window', $viewModel->slotTimes()[1]['comparison']);
         $this->assertSame(37.5, $viewModel->slotTimes()[1]['plannedPosition']);
         $this->assertSame('1 critical point · EENT · EEXP', $viewModel->overviewEtopsSummary());
+        $this->assertSame(1, $viewModel->overviewEtpCount());
+        $this->assertSame('180 min', $viewModel->overviewEtopsTime());
         $this->assertSame([
             ['label' => 'GENDEC', 'availability' => FlightPlanTaskAvailability::NotPresent],
             ['label' => 'Weather / RAIM', 'availability' => FlightPlanTaskAvailability::NotPresent],
@@ -659,6 +663,9 @@ class FlightReleasePageViewModelTest extends TestCase
         $confirmedEtops = $this->viewModel($this->resultPayload());
 
         $this->assertTrue($confirmedEtops->shouldShowEtopsOverviewCard());
+        $this->assertSame(1, $confirmedEtops->overviewEtpCount());
+        $this->assertSame('180 min', $confirmedEtops->overviewEtopsTime());
+        $this->assertSame('ETOPS 180', $confirmedEtops->etopsBadgeLabel());
         $this->assertTrue($confirmedEtops->isTaskVisible(FlightPlanTask::Etops));
         $this->assertContains(FlightPlanTask::Etops, $confirmedEtops->tasks());
 
@@ -676,6 +683,9 @@ class FlightReleasePageViewModelTest extends TestCase
         $confirmedNonEtops = $this->viewModel($nonEtopsPayload);
 
         $this->assertFalse($confirmedNonEtops->shouldShowEtopsOverviewCard());
+        $this->assertNull($confirmedNonEtops->overviewEtpCount());
+        $this->assertNull($confirmedNonEtops->overviewEtopsTime());
+        $this->assertNull($confirmedNonEtops->etopsBadgeLabel());
         $this->assertFalse($confirmedNonEtops->isTaskVisible(FlightPlanTask::Etops));
         $this->assertNotContains(FlightPlanTask::Etops, $confirmedNonEtops->tasks());
         $this->assertSame([
@@ -690,9 +700,43 @@ class FlightReleasePageViewModelTest extends TestCase
         $unknown = $this->viewModel($unknownPayload);
 
         $this->assertFalse($unknown->shouldShowEtopsOverviewCard());
+        $this->assertNull($unknown->overviewEtpCount());
+        $this->assertNull($unknown->overviewEtopsTime());
+        $this->assertNull($unknown->etopsBadgeLabel());
         $this->assertFalse($unknown->isTaskVisible(FlightPlanTask::Etops));
         $this->assertNotContains(FlightPlanTask::Etops, $unknown->tasks());
         $this->assertNotContains('ETOPS', array_column($unknown->overviewUnsupportedIndicators(), 'label'));
+    }
+
+    #[Test]
+    public function it_presents_only_source_backed_etp_count_and_etops_time_in_the_overview(): void
+    {
+        $payload = $this->resultPayload();
+        $secondPoint = $payload['flight_plan_data']['etops']['equalTimePoints'][0];
+        $secondPoint['label'] = 'ETP2';
+        $secondPoint['sequence'] = 3;
+        $payload['flight_plan_data']['etops']['equalTimePoints'][] = $secondPoint;
+        $payload['flight_plan_data']['etops']['ratingMinutes'] = 210;
+
+        $viewModel = $this->viewModel($payload);
+
+        $this->assertSame(2, $viewModel->overviewEtpCount());
+        $this->assertSame('210 min', $viewModel->overviewEtopsTime());
+        $this->assertSame('ETOPS 210', $viewModel->etopsBadgeLabel());
+
+        $payload['flight_plan_data']['etops']['equalTimePoints'] = [];
+        $payload['flight_plan_data']['etops']['ratingMinutes'] = null;
+        $missingValues = $this->viewModel($payload);
+
+        $this->assertTrue($missingValues->shouldShowEtopsOverviewCard());
+        $this->assertNull($missingValues->overviewEtpCount());
+        $this->assertNull($missingValues->overviewEtopsTime());
+        $this->assertNull($missingValues->etopsBadgeLabel());
+        $overview = $this->renderWorkspace($missingValues, FlightPlanTask::Overview);
+        $this->assertSame(1, preg_match('/<article[^>]*wire:key="flight-plan-overview-card-etops"[^>]*>.*?<\/article>/s', $overview, $card));
+        $this->assertStringContainsString('ETP points', $card[0]);
+        $this->assertStringContainsString('ETOPS time', $card[0]);
+        $this->assertSame(2, substr_count($card[0], 'Not present in this release'));
     }
 
     #[Test]
