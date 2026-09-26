@@ -71,6 +71,9 @@ This feature has its own master flag and entitlement gate. Treat it as distinct 
 - **Confirmed fixtures** - Sanitized, representative source-document samples whose expected fields, units, layouts, variants, and important edge cases have been verified. A task awaiting confirmed fixtures must not invent a parser, calculation, warning, or operational status from assumptions.
 - **Source-backed** - Extracted or displayed information that can be traced to a confirmed value in the source document or fixture. Source-backed values may be normalized or formatted for presentation, but their meaning must not be inferred, expanded, or assigned an operational status without a documented rule.
 - **General Declaration / GENDEC** - A General Declaration (GENDEC) is an official international aviation and customs document required by border control, immigration, custom, and public health authorities when an aircraft arrives in or departs from a foreign country.
+- **Domestic Flight** - A flight that operates entirely within the sovereign territory and airspace of a single country, departing and landing at airports located in the same nation without crossing or clearing international customs boundaries (e.g., PANC to CONUS, or Hawaii to CONUS).
+
+**International Flight** - A flight where the departure airport and arrival airport (or intermediate technical/operational stops) are located in different sovereign countries or territories, requiring clearance through international customs, immigration, and agricultural control authorities (e.g., PANC to NRT, or CONUS to YVR).
 
 Prefer these established terms in UI copy, class names, tests, and documentation. Do not introduce near-synonyms when an existing term is accurate.
 

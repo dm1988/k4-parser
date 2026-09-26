@@ -84,9 +84,9 @@ final readonly class WeightBalancePresenter
         return $count.' operational weight '.($count === 1 ? 'alert' : 'alerts');
     }
 
-    public function operationalAlertTextClasses(): ?string
+    public function operationalAlertCardClasses(): ?string
     {
-        return $this->operationalAlertTone()?->textClasses();
+        return $this->operationalAlertTone()?->overviewCardClasses();
     }
 
     public function operationalAlertSummary(): ?string

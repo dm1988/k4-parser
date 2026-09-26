@@ -55,9 +55,9 @@ final readonly class MaintenancePresenter
         return $this->highestPriorityItemType()?->badgeColor();
     }
 
-    public function counterMetricTextColor(): ?string
+    public function overviewCardClasses(): ?string
     {
-        return $this->highestPriorityItemType()?->metricTextColor();
+        return $this->highestPriorityItemType()?->overviewCardClasses();
     }
 
     private function highestPriorityItemType(): ?MaintenanceItemType

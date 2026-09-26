@@ -223,9 +223,9 @@ readonly class FlightReleasePageViewModel
         return $this->weightBalancePresenter->operationalAlertCountLabel();
     }
 
-    public function overviewWeightBalanceAlertColorClasses(): ?string
+    public function overviewWeightBalanceAlertCardClasses(): ?string
     {
-        return $this->weightBalancePresenter->operationalAlertTextClasses();
+        return $this->weightBalancePresenter->operationalAlertCardClasses();
     }
 
     public function overviewWeightBalanceAlertSummary(): ?string
@@ -409,9 +409,9 @@ readonly class FlightReleasePageViewModel
         return $this->maintenancePresenter->melCdlItemCountLabel();
     }
 
-    public function overviewMelCdlItemCountColorClasses(): ?string
+    public function overviewMelCdlCardClasses(): ?string
     {
-        return $this->maintenancePresenter->counterMetricTextColor();
+        return $this->maintenancePresenter->overviewCardClasses();
     }
 
     public function maintenanceTypeSummary(): ?string

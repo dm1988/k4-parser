@@ -29,6 +29,16 @@ enum WeightBalanceComparisonTone: string
         };
     }
 
+    public function overviewCardClasses(): string
+    {
+        return match ($this) {
+            self::Safe => 'border-emerald-500/30 border-l-4 border-l-emerald-500 bg-emerald-500/5 backdrop-blur dark:border-emerald-400/30 dark:border-l-emerald-400 dark:bg-emerald-400/10',
+            self::Heavy => 'border-[#1B365D]/30 border-l-4 border-l-[#1B365D] bg-[#1B365D]/5 backdrop-blur dark:border-sky-400/30 dark:border-l-sky-400 dark:bg-sky-400/10',
+            self::Caution => 'border-amber-500/30 border-l-4 border-l-amber-500 bg-amber-500/5 backdrop-blur dark:border-amber-400/30 dark:border-l-amber-400 dark:bg-amber-400/10',
+            self::Exceeded => 'border-red-500/30 border-l-4 border-l-red-500 bg-red-500/5 backdrop-blur dark:border-red-400/30 dark:border-l-red-400 dark:bg-red-400/10',
+        };
+    }
+
     public function progressClass(): string
     {
         return match ($this) {

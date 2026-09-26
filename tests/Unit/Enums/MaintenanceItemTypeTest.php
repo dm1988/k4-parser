@@ -34,9 +34,21 @@ class MaintenanceItemTypeTest extends TestCase
             'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100',
             MaintenanceItemType::Nef->badgeColor(),
         );
-        $this->assertSame('text-red-700 dark:text-red-300', MaintenanceItemType::Mel->metricTextColor());
-        $this->assertSame('text-orange-700 dark:text-orange-300', MaintenanceItemType::Cdl->metricTextColor());
-        $this->assertSame('text-gray-700 dark:text-gray-300', MaintenanceItemType::Nef->metricTextColor());
-        $this->assertSame('text-yellow-700 dark:text-yellow-300', MaintenanceItemType::Dmi->metricTextColor());
+        $this->assertSame(
+            'border-red-500/30 border-l-4 border-l-red-500 bg-red-500/5 backdrop-blur dark:border-red-400/30 dark:border-l-red-400 dark:bg-red-400/10',
+            MaintenanceItemType::Mel->overviewCardClasses(),
+        );
+        $this->assertSame(
+            'border-orange-500/30 border-l-4 border-l-orange-500 bg-orange-500/5 backdrop-blur dark:border-orange-400/30 dark:border-l-orange-400 dark:bg-orange-400/10',
+            MaintenanceItemType::Cdl->overviewCardClasses(),
+        );
+        $this->assertSame(
+            'border-gray-500/30 border-l-4 border-l-gray-500 bg-gray-500/5 backdrop-blur dark:border-gray-400/30 dark:border-l-gray-400 dark:bg-gray-400/10',
+            MaintenanceItemType::Nef->overviewCardClasses(),
+        );
+        $this->assertSame(
+            'border-yellow-500/30 border-l-4 border-l-yellow-500 bg-yellow-500/5 backdrop-blur dark:border-yellow-400/30 dark:border-l-yellow-400 dark:bg-yellow-400/10',
+            MaintenanceItemType::Dmi->overviewCardClasses(),
+        );
     }
 }

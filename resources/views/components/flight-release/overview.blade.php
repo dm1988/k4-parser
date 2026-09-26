@@ -27,6 +27,7 @@
             :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::ReviewMelCdl)"
             :show-action="$model->hasOverviewMelCdlItems()"
             :show-status="false"
+            :surface-classes="$model->overviewMelCdlCardClasses()"
             action-label="Review MEL / CDL Details"
             class="xl:col-span-3"
         >
@@ -35,7 +36,7 @@
                     <div class="flex items-end gap-3">
                         <span
                             aria-label="{{ $model->overviewMelCdlItemCountLabel() }}"
-                            class="font-mono text-5xl font-black leading-none {{ $model->overviewMelCdlItemCountColorClasses() }}"
+                            class="font-mono text-5xl font-black leading-none text-[#0B0E14] dark:text-slate-100"
                         >
                             {{ $model->overviewMelCdlItemCount() }}
                         </span>
@@ -62,12 +63,13 @@
                 icon="scale"
                 :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::WeightAndBalance)"
                 :show-status="false"
+                :surface-classes="$model->overviewWeightBalanceAlertCardClasses()"
                 class="xl:col-span-2"
             >
                 <div class="flex items-end gap-3">
                     <span
                         aria-label="{{ $model->overviewWeightBalanceAlertCountLabel() }}"
-                        class="font-mono text-5xl font-black leading-none {{ $model->overviewWeightBalanceAlertColorClasses() }}"
+                        class="font-mono text-5xl font-black leading-none text-[#0B0E14] dark:text-slate-100"
                     >
                         {{ $model->overviewWeightBalanceAlertCount() }}
                     </span>

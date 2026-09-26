@@ -28,34 +28,91 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## [x] Completed: feat: Flight plan: overview: ETOPS card
-- Rendered only if ETOPS flight
-- Count of ETP points
-- ETOPS time (e.g. 180, 210, 240)
+## [x] Completed: Overview: whole card color change
+Instead of 5-xl metric color change, change the whole card color. For the 5xl stat,
 
-Goal: Show a compact, source-backed ETOPS overview card only when the flight is confirmed ETOPS. Present the number of equal-time points and the confirmed ETOPS rating in minutes.
+Overview cards affected:
+- W&B
+- MEL
+- Slot (metric not yet implemented)
+- GENDEC (not yet implemented)
 
-Current implementation: The overview already conditionally renders an ETOPS evidence card, but it shows a generic summary of critical points and boundary-point labels. Typed ETOPS data already contains applicability, rating minutes, and equal-time points.
 
-Problem: The card does not directly answer how many ETPs were extracted or what ETOPS time applies. An empty ETP list or missing rating must not appear as a confirmed zero or invented rating.
+**Context**
+Styling adjustment for status cards within a flight plan task panel. The goal was to shift the visual emphasis from the individual metric (`.text-5xl`) to the entire card container (`article`) using subtle, "glassmorphism" design techniques.
 
-Implementation plan: Add nullable ETP-count and rating display methods to the existing ETOPS presenter and page view model; replace the generic overview metric with two labeled metrics; keep the existing confirmed-ETOPS visibility rule and detail navigation; cover confirmed, non-ETOPS, and missing-source states with focused tests.
+**Diagnostics**
+The target elements were identified within a grid container (`.grid.xl\:grid-cols-6`).
 
-Outcome: The confirmed-ETOPS overview card now shows source-backed ETP count and ETOPS time in minutes. Entry and exit boundary points are excluded from the count. When either value is unavailable, its metric says `Not present in this release` instead of showing zero or an inferred rating. Non-ETOPS flights still have no ETOPS card, and the detailed ETOPS view remains unchanged. Focused view-model and Livewire tests, Pint, the Vite build, and Larastan pass.
+| Element Type | Primary Selector | Status Logic |
+| :--- | :--- | :--- |
+| **Alert Card** | `article` containing `.text-red-700` | Red status (e.g., MEL/CDL) |
+| **Info Card** | `article` containing `.text-[#1B365D]` | Blue status (e.g., Weight & Balance) |
 
-Follow-up outcome: The overview time and ETOPS badge now share one confirmed-rating lookup while retaining their separate `180 min` and `ETOPS 180` formats. Focused view-model tests cover confirmed ratings, absent ratings, non-ETOPS flights, and missing ETOPS data.
+**Actionable Findings**
+* **Container Styling:** To avoid overwhelming the UI, solid backgrounds were replaced with low-opacity tints (5-10%) and a `backdrop-filter: blur(8px)` to create a glass effect.
+* **Accent Indicators:** A 4px left-border was identified as a more effective status indicator than full-card saturation.
 
-Commit message: `feat: show ETP count and ETOPS time on overview card`
+**Code Fixes**
+The following CSS strategy was identified to achieve the glassmorphism effect and specific link overrides. These styles should be adapted into the project's Tailwind configuration or CSS modules.
 
-## Overview: whole card color change
-Instead of 5-xl metric color change, change the whole card color
+
+`````css
+/* Example styling for Alert/Red cards */
+.card-alert {
+  background-color: rgba(239, 68, 68, 0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-left: 4px solid #ef4444;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Example styling for Info/Blue cards */
+.card-info {
+  background-color: rgba(14, 165, 233, 0.05);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  border-left: 4px solid #0ea5e9;
+}
+`````
+
+**Outcome**
+
+- Moved MEL/CDL and Weight & Balance status emphasis from the 5xl metric to the full Overview card surface.
+- Added subtle 5–10% status tints, an 8px backdrop blur, a 4px left accent, light/dark borders, and neutral high-contrast metric text.
+- Preserved maintenance priority and Weight & Balance severity palettes while adding a reusable custom-surface option for future Slot and GENDEC cards.
+- Added focused enum, view-model, and Livewire rendering coverage. Focused tests, Pint, the production Vite build, and Larastan pass.
+
+Commit message: `refactor: move overview status color to cards`
 
 ## Flight plan: Overview: Slot times overview card refactor
 Large 5-xl metric for slot time count
 
 Buffer time from planned departure to earliest slot window time.
 
-Context aware `Do not depart early` messaging if planned etd is equal to departure min slot window or if planned eta is equal to planned arrival min slot window
+Context aware `Do not depart early` messaging if planned etd is equal to departure min slot window or if planned eta is equal to planned arrival min slot window. Render card in caution amber.
+
+## Feat: Domestic / international flight determine
+Domestic Flight: A flight that operates entirely within the sovereign territory and airspace of a single country, departing and landing at airports located in the same nation without crossing or clearing international customs boundaries (e.g., PANC to CONUS, or Hawaii to CONUS).
+
+International Flight: A flight where the departure airport and arrival airport (or intermediate technical/operational stops) are located in different sovereign countries or territories, requiring clearance through international customs, immigration, and agricultural control authorities (e.g., PANC to NRT, or CONUS to YVR).
+
+Will determine if a GENDEC is needed. GENDECs are not typically needed on domestic flights. For the flight plan purpose, PANC to Conus or Hawaii to conus are domestic flights.
+
+Logic:
+* **PANC to CONUS:** Domestic -> No GENDEC required
+* **PHNL / PHOG to CONUS:** Domestic -> No GENDEC required *(Note: State-specific agricultural declarations may apply, but not an international GENDEC)*
+* **PANC / CONUS to Foreign Destination (or vice-versa):** International -> GENDEC required
+
+## Feat: GENDEC card
+After Domestic / Int flight task is complete and international flights can be determined:
+Move from GENDEC in operational status to it's own dedicated card. 
+If GENDEC not available and domestic flight, render `Domestic flight: GENDEC likely not required`. If intl and no GENDEC, render card in caution amber with message `GENDEC not found in flight plan. Verify against actual flight plan.`
+
+## feat: Overview cards Spatial Organization (Grid & Layout)
+Responsive Flow: Switch the grid from fixed columns to a repeat(auto-fit, minmax(280px, 1fr)) pattern. This ensures that cards resize intelligently based on screen width, preventing data from feeling cramped or overly stretched.
+Whitespace: Increased padding and gaps to create "breathable" space, which reduces cognitive load and allows the eye to focus on individual metrics.
 
 ## Refactor welcome page for use with new features
 
@@ -273,114 +330,19 @@ This view repeats the confirmed source result. It does not calculate an envelope
 
 -------------------------------------------------------
 
-## [x] Completed: Flight plan: FMS task info order
-## [x] Completed: Add FMS programming tip
-## [x] Completed: Flight release more persistent
-## [x] Completed: Flight plan: weight & balance visually compare against limits
-## [x] Completed: UI optimization for maximum-limit weight cards
-## [x] Completed: Progress bar text overlay visual fix
-## [x] Completed: Extract weight-balance field rendering logic
-## [x] Completed: Add ramp weight to Filament aircraft resource
 ### [x] Completed: Flight plan: Weight & Balance: Operational badging
 ### [x] Completed: Flight plan: Overview: Remove Redundant Data (De-cluttering)
 ### [x] Completed: Flight plan: Overview: Integrate MEL / CDL Summary Block
 ## [x] Completed: Flight plan: Overview: Weight and Balance
 ## [x] Completed: Feat: Establish MEL badge color heiracrchy
-Currently: badge colors are used on individual maintenance items. Badge counts are always rendered in yellow with no context to the maintenance items within them.
-
-Goal: Use context aware badge colors.
-If MEL items exist, badge count should be rendered in red. If no MELS, but CDLs exist, render count in orange. If no MEL or CDL but NEFs exist, render in gray, If only DMIs exist, render in yellow.
-
-```public function badgeColor(): string
-    {
-        return match ($this) {
-            self::Mel => 'bg-red-100 text-red-900 dark:bg-red-400/15 dark:text-red-200',
-            self::Cdl => 'bg-orange-100 text-orange-900 dark:bg-orange-400/15 dark:text-orange-200',
-            self::Nef => 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100',
-            self::Dmi => 'bg-yellow-100 text-yellow-900 dark:bg-yellow-400/15 dark:text-yellow-200',
-        };
-    }
-```
-
-References:
-app/View/Presenters/FlightRelease/MaintenancePresenter.php
-app/Enums/TaskTone.php
-
-Outcome:
-
-- Added an enum-owned maintenance priority of MEL, CDL, NEF, then DMI for the task counter.
-- Reused each maintenance type's existing badge palette: red, orange, gray, and yellow respectively.
-- Preserved the green zero-item counter state and kept badge policy out of Blade.
-- Added focused hierarchy and Livewire rendering coverage.
-
-Commit message: `feat: color maintenance counters by item priority`
-
 ## [x] Completed: Refactor: MEL Dashboard Metric Card
-
-**Context**
-Refactoring a badge-style notification into a dashboard metric card. 
-
-**Diagnostics**
-Initial analysis of the element structure and content:
-
-Goal: Emphasize MEL count using a font size of 5-xl similar to weight and balance overview card. Count color should correspond to MEL badge color previously implemented in the Maintenance badge count.
-
-Outcome:
-
-- Replaced the small MEL/CDL badge in the Overview card with a 5xl dashboard metric.
-- Colored the metric from the highest-priority maintenance type using the enum-owned palette.
-- Preserved the MEL/CDL-only count, review action, explanatory copy, accessible count label, and empty state.
-- Added focused enum, view-model, and Livewire rendering coverage.
-
-Commit message: `refactor: present mel cdl count as overview metric`
-
 ## [x] Completed: Flight plan: W&B Card order
-
-Goal: Prioritize calculated operational totals before their supporting inputs on the dedicated Weight & Balance screen.
-
-Outcome:
-
-- Reordered Base & Payload to zero-fuel weight, basic operating weight, then payload.
-- Reordered Departure to ramp weight, takeoff gross weight, then takeoff fuel.
-- Preserved Arrival order, comparison configuration, values, calculations, and responsive styling.
-- Added focused presenter-output and rendered DOM-order coverage.
-
-Commit message: `refactor: reorder weight balance cards for review flow`
-
 ## [x] Completed: Flight plan: Overview: Full card link
-Currently: The only link in an overview card is in the action label footer.
-
-Goal: create a component option to have the whole card a clickable link.
-
-Outcome:
-
-- Made the reusable Overview card action cover the full card by default, with an explicit opt-out option.
-- Applied it to actionable Overview cards while leaving unavailable and empty cards non-interactive.
-- Preserved the footer as a visual action cue and used one full-card Livewire button to avoid nested controls.
-- Added full-card keyboard focus, accessible names, loading feedback, and focused Livewire coverage.
-
-Commit message: `feat: make overview cards fully actionable`
-
-
 ## [x] Completed: feat: flight plan: Offline fuel score
 
 ### Goal
 
 Add a link from the Flight Plan Brief fuel task to a separate, focused fuel-score calculator that opens in a new browser tab. After the page loads, the calculator must work entirely in the browser and calculate an estimated UTC arrival time and fuel on board (FOB) for each supported waypoint.
-
-### Current implementation
-
-The Fuel Score task already renders extracted release fuel values and waypoint data through `FuelPresenter` and `fuel-score.blade.php`.
-
-The existing `waypoint-fuel-monitor.js` module accepts an Off time in UTC and calculates each waypoint's planned ETA from its confirmed cumulative duration. It displays extracted remaining fuel, but does not calculate waypoint FOB from a user-entered starting value. The calculator is embedded in the main Livewire workspace, the waypoint list is nested inside a `More…` details accordion, and there is no dedicated new-tab route or page.
-
-Flight-plan extraction results are already stored behind a user-owned `flightPlanKey`, so the standalone page can resolve the current result without placing release data in the URL or duplicating extraction.
-
-### Problem
-
-The current embedded view is not a separate offline workspace, and its waypoint fuel column only repeats release values. The Livewire page mixes source review with interactive ETA calculation, while the waypoint list requires an unnecessary accordion control even though it is core fuel-task content. A crew member cannot enter the actual Off time and starting FOB once and receive calculated ETA and FOB targets for each waypoint in a distraction-free tab.
-
-The calculation contract, unavailable-data behavior, authorization boundary, fuel units, rounding, and meaning of "offline" also need to be explicit so the feature does not imply a dispatch determination or silently invent operational values.
 
 ### Calculation contract
 
@@ -450,70 +412,20 @@ Focused route and Livewire tests, JavaScript calculator tests, Pint, the product
 `feat: add standalone offline waypoint fuel calculator`
 
 ### [x] Follow up
-- Allow ETA calculations without "Starting FOB" entered
-- Remove Calculated FOB column
-- De bold waypoint names
-
-- Column order:
-  1. Waypoint
-  2. ETA (UTC)
-  3. Cumulative
-  4. Planned remaining fuel
-
-- Add 2 user input text fields for
-  - ATA (HHMM)
-    - Below TBO
-  - AFOB
-    - Below FRMG
-- Calculate over under AFOB:
-  - positive values shown in green represent over planned FOB with plus sign
-  - negative values shown in red represent under planned FOB with minus sign
-  - render result below AFOB
-- Calculate over under burn
-  - positive values shown in green represent under planned burn with plus sign
-  - negative values shown in red represent over planned burn with minus sign
-  - render results below ABO
-- Calculate estimated fuel at destination
-  - render at the right most column
 
 Follow-up outcome: ETA now depends only on Off time and confirmed cumulative duration. The standalone table uses the requested column order, normal-weight waypoint labels, source TBO above ATA, source FRMG above AFOB, actual burn (ABO) above its signed comparison, and a rightmost destination estimate. Burn comparison uses the previous actual fuel reading (or starting FOB for the first leg). Destination fuel projects the entered AFOB using the release's confirmed estimated landing fuel; unavailable or inconsistent source values remain uncalculated. Focused extraction, page-data, route-rendering, and JavaScript tests pass.
 
 ### [x] Follow up 2
-- Declutter with no user data entered. Remove:
-`FOB vs plan: Unable to calculate`
-`Enter a non-negative AFOB.`
-`Burn vs plan: Unable to calculate`
-`Enter AFOB.`
-`Unable to calculate`
-`Enter AFOB.`
-- Rename `Planned remaining fuel` column header to `Fuel on board`
-  - Add subheader under clarifying data
-  - 'Planned FOB' and 'AFOB'
-- Add `+` collapsable for each waypoint
-  - Collapsed state shows:
-    - Waypoint
-    - ETA
-    - Planned remaining fuel
-    - Estimated fuel at destination
-  - Expanded state shows all existing data and implemented user inputs.
 
 Follow-up 2 outcome: Every waypoint defaults to collapsed and expands independently with a keyboard-accessible `+` control. Collapsed rows show waypoint, ETA, cumulative duration, planned FOB, and destination estimate; TBO, ATA, AFOB, and fuel/burn comparisons are shown on expansion. Empty inputs display quiet placeholders instead of unavailable-calculation prompts, while entered invalid data still receives a reason. The fuel column is labeled `Fuel on board` with `Planned FOB · AFOB` beneath it.
 
 ## [x] Completed: Follow up 3
-- Calculate waypoint ETA / ATA difference
-  - Rendered below ATA user input
-  - Green means ahead of planned with (+)
-  - Red means behind planned ETA with a minus
 
 Outcome: Each expanded waypoint displays a signed UTC minute difference below ATA once a valid ATA is entered. Positive means ahead, negative means behind, and zero means on time. The calculation handles midnight rollover by using the shorter clock difference; an exact 12-hour separation is left unclassified because the waypoint date is unavailable. Focused JavaScript and page-rendering tests cover the result and empty or invalid inputs.
 
 Commit message: `feat: compare waypoint ETA and ATA in offline fuel score`
 
 ## [x] Completed: Follow up 4
-Currently: Each waypoint burn is calculated from previous waypoint. Previous waypoint burn data is usually not known.
-
-Goal:
-TBO is cumulative for total burn. Just calculate the ABO using AFOB minus the take off fuel. Render the cumulative burn results, not the fuel burn between each waypoint.
 
 Outcome: Each waypoint's cumulative ABO is the entered actual Starting FOB at takeoff minus that waypoint's AFOB; earlier waypoint AFOB entries are no longer required. The cumulative planned burn comes from the waypoint's TBO, interpreted in the release fuel unit at the same ×100 scale as FRMG. The signed comparison is TBO minus ABO, so positive means below planned burn. The page labels cumulative values and explains missing starting FOB, TBO, or fuel units. Focused JavaScript and page tests, Pint, and the production build pass.
 
@@ -521,85 +433,11 @@ Commit message: `feat: compare cumulative waypoint burn with TBO`
 
 ## [x] Completed: Follow up 5: Table Refactor: Waypoint Estimates
 
-**Context**
-Refactoring of a flight waypoint estimates table to prioritize vertical space, simplify headers, and remove redundant metadata labels.
-
-**Diagnostics**
-The table was identified within a content section (`section.min-w-0`) containing columns for Waypoints, ETA, and Fuel metrics. Initial analysis showed significant vertical space usage due to secondary metadata (e.g., ATA, TBO, and descriptive labels) nested within single cells.
-
-**Actionable Findings**
-*   **Header Labels:** Removing " (UTC)" from the ETA header and renaming "CUMULATIVE" to "T/TME" provides more horizontal space and improves clarity.
-*   **Row Height Constraints:** Secondary information like "Planned FOB (FRMG)" and detailed TBO/ATA metrics forced multi-line cell content, increasing row height.
-*   **Vertical Padding:** Standard cell padding contributed to excessive height in the collapsed view.
-
-**Table Refactor Summary**
-
-| Original Header | Updated Header | Changes Made |
-| :--- | :--- | :--- |
-| `ETA (UTC)` | `ETA` | Removed suffix; stripped secondary ATA/ETA vs ATA text from cells. |
-| `CUMULATIVE` | `T/TME` | Renamed for brevity. |
-| `FUEL ON BOARD` | `FUEL ON BOARD` | Removed "Planned FOB (FRMG)" label from every cell. |
-
-**Code Fixes**
-The following logic was applied to the live page to achieve a compact, single-line row layout. These changes serve as a template for source code updates:
-
-
-`````js
-// Example: Stripping labels and metadata for minimum row height
-const table = document.querySelector('table');
-const rows = Array.from(table.querySelectorAll('tbody tr'));
-
-rows.forEach(row => {
-  // Remove redundant labels like 'Planned FOB (FRMG)'
-  Array.from(row.cells).forEach(cell => {
-    if (cell.innerText.includes('Planned FOB (FRMG)')) {
-      cell.innerText = cell.innerText.replace('Planned FOB (FRMG)', '').trim();
-    }
-
-    // Minimize padding and force vertical alignment
-    cell.style.paddingTop = '4px';
-    cell.style.paddingBottom = '4px';
-    cell.style.verticalAlign = 'middle';
-  });
-
-  // Ensure row height is minimal
-  row.style.height = 'auto';
-  row.style.minHeight = '0px';
-});
-`````
-
-
-**Actionable Recommendations**
-*   **CSS Optimization:** Apply a utility class (e.g., Tailwind's `h-8` or `py-1`) to table cells to maintain the minimized height programmatically.
-*   **Data Stripping:** Modify the front-end rendering logic to exclude secondary text (like "ATA (UTC, HHMM)") when the table is in a collapsed state to prevent layout shifts.
-
 Outcome: The standalone waypoint table now uses compact, single-line collapsed rows with `ETA`, `T/TME`, and `Fuel on board` headers. ATA, TBO, AFOB, comparisons, and calculation guidance live in a separate expandable detail row, so they do not increase the collapsed row height. Summary cells use `py-1` and middle alignment; the detail row is cloaked until Alpine initializes. Existing UTC and fuel-unit guidance remains visible above the table. Focused page and JavaScript tests, Pint, and the production build pass.
 
 Commit message: `refactor: compact offline waypoint estimates table`
 
 ### [x] Follow up 6: Fuel score table refinements
-1. Soften the + Expand Icons
-Reduce Opacity / Contrast: Change the + color from bright white (#FFFFFF / text-white) to a subtle muted blue-gray or slate tone (e.g., text-slate-400, text-slate-500, or opacity-60).
-
-Use a Cleaner Icon Set: Replace the heavy, high-contrast + text/button with an SVG icon such as a subtle chevron (▸ or v), a thin stroke plus icon (Heroicons or Lucide), or an icon button with a soft hover state background (hover:bg-slate-800).
-
-2. Standardize Column Alignment & Data Formatting
-Right-Align Numerical Data:
-
-Align ETA, T/TME, Fuel On Board, and EFD to the right. Numbers are much easier to scan vertically when standard right alignment is applied.
-
-Keep Waypoint left-aligned.
-
-Mute Units & Secondary Text: Style the units (LB, min) in a lighter gray or smaller font size (text-xs text-slate-400) while keeping the values bolded or normal weight. This reduces visual noise when reading down a list of 40+ waypoints.
-
-3. Improve Table Contrast & Readability
-Subtle Alternating Rows or Border Tweaks:
-
-Instead of sharp solid horizontal borders (border-slate-700), use a softer border color (border-slate-800 or border-slate-800/60).
-
-Add a subtle hover state (hover:bg-slate-800/40) to rows to clarify which waypoint is being targeted for expansion.
-
-De-emphasize Empty/Placeholder Data: Style the dash — in Estimated Fuel At Destination in a lower-contrast color (text-slate-600) so it doesn't draw the eye away from active values.
 
 Outcome: Replaced the high-contrast expand glyph with a muted, thin-stroke chevron that rotates when a waypoint opens. ETA, T/TME, planned FOB, and destination fuel are right-aligned; `min` and fuel units render in smaller secondary text while preserving explicit zero and unavailable states. Softer row borders, a subtle hover state, and a muted destination dash improve scanability. Focused JavaScript and page tests, Pint, and the production build pass.
 
@@ -610,3 +448,22 @@ Commit message: `refactor: refine offline fuel score waypoint table`
 Outcome: Wrapped the takeoff Starting FOB caption, including its dynamic fuel unit, in one non-wrapping span. The column flex label now has one caption item above its input instead of separate text fragments. A focused page test checks the rendered markup; Pint and the production build pass.
 
 Commit message: `fix: keep takeoff FOB label on one line`
+
+## [x] Completed: feat: Flight plan: overview: ETOPS card
+- Rendered only if ETOPS flight
+- Count of ETP points
+- ETOPS time (e.g. 180, 210, 240)
+
+Goal: Show a compact, source-backed ETOPS overview card only when the flight is confirmed ETOPS. Present the number of equal-time points and the confirmed ETOPS rating in minutes.
+
+Current implementation: The overview already conditionally renders an ETOPS evidence card, but it shows a generic summary of critical points and boundary-point labels. Typed ETOPS data already contains applicability, rating minutes, and equal-time points.
+
+Problem: The card does not directly answer how many ETPs were extracted or what ETOPS time applies. An empty ETP list or missing rating must not appear as a confirmed zero or invented rating.
+
+Implementation plan: Add nullable ETP-count and rating display methods to the existing ETOPS presenter and page view model; replace the generic overview metric with two labeled metrics; keep the existing confirmed-ETOPS visibility rule and detail navigation; cover confirmed, non-ETOPS, and missing-source states with focused tests.
+
+Outcome: The confirmed-ETOPS overview card now shows source-backed ETP count and ETOPS time in minutes. Entry and exit boundary points are excluded from the count. When either value is unavailable, its metric says `Not present in this release` instead of showing zero or an inferred rating. Non-ETOPS flights still have no ETOPS card, and the detailed ETOPS view remains unchanged. Focused view-model and Livewire tests, Pint, the Vite build, and Larastan pass.
+
+Follow-up outcome: The overview time and ETOPS badge now share one confirmed-rating lookup while retaining their separate `180 min` and `ETOPS 180` formats. Focused view-model tests cover confirmed ratings, absent ratings, non-ETOPS flights, and missing ETOPS data.
+
+Commit message: `feat: show ETP count and ETOPS time on overview card`

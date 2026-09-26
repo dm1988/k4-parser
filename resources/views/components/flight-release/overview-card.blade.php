@@ -7,13 +7,17 @@
     'showStatus' => true,
     'actionLabel' => null,
     'fullCardAction' => true,
+    'surfaceClasses' => null,
 ])
 
 <article
     wire:key="flight-plan-overview-card-{{ $task->value }}"
     {{ $attributes->class([
-        'relative flex min-w-0 flex-col gap-4 rounded-xl border border-[#1B365D]/10 bg-white p-4 text-left shadow-sm dark:border-slate-700 dark:bg-slate-900',
-        'group transition hover:-translate-y-0.5 hover:border-[#C5A059]/70 hover:shadow-md' => $showAction,
+        'relative flex min-w-0 flex-col gap-4 rounded-xl border p-4 text-left shadow-sm',
+        'border-[#1B365D]/10 bg-white dark:border-slate-700 dark:bg-slate-900' => blank($surfaceClasses),
+        $surfaceClasses => filled($surfaceClasses),
+        'group transition hover:-translate-y-0.5 hover:shadow-md' => $showAction,
+        'hover:border-[#C5A059]/70' => $showAction && blank($surfaceClasses),
         'cursor-pointer' => $showAction && $fullCardAction,
     ]) }}
 >

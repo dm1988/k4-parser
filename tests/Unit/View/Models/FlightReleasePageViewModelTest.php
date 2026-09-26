@@ -480,7 +480,10 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertTrue($heavyViewModel->hasOverviewWeightBalanceAlerts());
         $this->assertSame(1, $heavyViewModel->overviewWeightBalanceAlertCount());
         $this->assertSame('1 operational weight alert', $heavyViewModel->overviewWeightBalanceAlertCountLabel());
-        $this->assertSame('text-[#1B365D] dark:text-sky-300', $heavyViewModel->overviewWeightBalanceAlertColorClasses());
+        $this->assertSame(
+            'border-[#1B365D]/30 border-l-4 border-l-[#1B365D] bg-[#1B365D]/5 backdrop-blur dark:border-sky-400/30 dark:border-l-sky-400 dark:bg-sky-400/10',
+            $heavyViewModel->overviewWeightBalanceAlertCardClasses(),
+        );
         $this->assertSame('Heavy weight operation', $heavyViewModel->overviewWeightBalanceAlertSummary());
         $this->assertStringContainsString(
             'wire:key="flight-plan-overview-card-weight_and_balance"',
@@ -492,7 +495,7 @@ class FlightReleasePageViewModelTest extends TestCase
 
         $this->assertFalse($safeViewModel->hasOverviewWeightBalanceAlerts());
         $this->assertSame(0, $safeViewModel->overviewWeightBalanceAlertCount());
-        $this->assertNull($safeViewModel->overviewWeightBalanceAlertColorClasses());
+        $this->assertNull($safeViewModel->overviewWeightBalanceAlertCardClasses());
         $this->assertNull($safeViewModel->overviewWeightBalanceAlertSummary());
         $this->assertStringNotContainsString(
             'wire:key="flight-plan-overview-card-weight_and_balance"',
@@ -575,7 +578,10 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame(2, $viewModel->overviewMelCdlItemCount());
         $this->assertTrue($viewModel->hasOverviewMelCdlItems());
         $this->assertSame('2 Active MEL/CDL Items', $viewModel->overviewMelCdlItemCountLabel());
-        $this->assertSame('text-red-700 dark:text-red-300', $viewModel->overviewMelCdlItemCountColorClasses());
+        $this->assertSame(
+            'border-red-500/30 border-l-4 border-l-red-500 bg-red-500/5 backdrop-blur dark:border-red-400/30 dark:border-l-red-400 dark:bg-red-400/10',
+            $viewModel->overviewMelCdlCardClasses(),
+        );
         $this->assertNull($viewModel->taskCounter(FlightPlanTask::MaintenanceLog));
         $this->assertNotContains(FlightPlanTask::SlotTimes, $viewModel->tasks());
         $this->assertSame(0, $viewModel->taskCounter(FlightPlanTask::SlotTimes));
@@ -589,7 +595,7 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame(0, $emptyViewModel->overviewMelCdlItemCount());
         $this->assertFalse($emptyViewModel->hasOverviewMelCdlItems());
         $this->assertSame('0 Active MEL/CDL Items', $emptyViewModel->overviewMelCdlItemCountLabel());
-        $this->assertNull($emptyViewModel->overviewMelCdlItemCountColorClasses());
+        $this->assertNull($emptyViewModel->overviewMelCdlCardClasses());
         $this->assertNotContains('Maintenance', array_column($emptyViewModel->overviewUnsupportedIndicators(), 'label'));
 
         $missingSectionPayload = $this->resultPayload();
@@ -605,13 +611,13 @@ class FlightReleasePageViewModelTest extends TestCase
     public function it_colors_the_maintenance_counter_by_the_highest_priority_item_type(): void
     {
         $cases = [
-            [['DMI', 'NEF', 'CDL', 'MEL'], 'bg-red-100 text-red-900 dark:bg-red-400/15 dark:text-red-200', 'text-red-700 dark:text-red-300'],
-            [['DMI', 'NEF', 'CDL'], 'bg-orange-100 text-orange-900 dark:bg-orange-400/15 dark:text-orange-200', 'text-orange-700 dark:text-orange-300'],
-            [['DMI', 'NEF'], 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100', 'text-gray-700 dark:text-gray-300'],
-            [['DMI'], 'bg-yellow-100 text-yellow-900 dark:bg-yellow-400/15 dark:text-yellow-200', 'text-yellow-700 dark:text-yellow-300'],
+            [['DMI', 'NEF', 'CDL', 'MEL'], 'bg-red-100 text-red-900 dark:bg-red-400/15 dark:text-red-200', 'border-red-500/30 border-l-4 border-l-red-500 bg-red-500/5 backdrop-blur dark:border-red-400/30 dark:border-l-red-400 dark:bg-red-400/10'],
+            [['DMI', 'NEF', 'CDL'], 'bg-orange-100 text-orange-900 dark:bg-orange-400/15 dark:text-orange-200', 'border-orange-500/30 border-l-4 border-l-orange-500 bg-orange-500/5 backdrop-blur dark:border-orange-400/30 dark:border-l-orange-400 dark:bg-orange-400/10'],
+            [['DMI', 'NEF'], 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100', 'border-gray-500/30 border-l-4 border-l-gray-500 bg-gray-500/5 backdrop-blur dark:border-gray-400/30 dark:border-l-gray-400 dark:bg-gray-400/10'],
+            [['DMI'], 'bg-yellow-100 text-yellow-900 dark:bg-yellow-400/15 dark:text-yellow-200', 'border-yellow-500/30 border-l-4 border-l-yellow-500 bg-yellow-500/5 backdrop-blur dark:border-yellow-400/30 dark:border-l-yellow-400 dark:bg-yellow-400/10'],
         ];
 
-        foreach ($cases as [$types, $expectedBadgeClasses, $expectedMetricClasses]) {
+        foreach ($cases as [$types, $expectedBadgeClasses, $expectedCardClasses]) {
             $payload = $this->resultPayload();
             $payload['flight_plan_data']['maintenanceLog']['items'] = array_map(
                 static fn (string $type): array => [
@@ -632,7 +638,7 @@ class FlightReleasePageViewModelTest extends TestCase
                 $expectedBadgeClasses,
                 $viewModel->taskCounterColorClasses(FlightPlanTask::ReviewMelCdl),
             );
-            $this->assertSame($expectedMetricClasses, $viewModel->overviewMelCdlItemCountColorClasses());
+            $this->assertSame($expectedCardClasses, $viewModel->overviewMelCdlCardClasses());
             $this->assertStringContainsString(
                 $expectedBadgeClasses,
                 $this->renderWorkspace($viewModel, FlightPlanTask::Overview),
@@ -640,7 +646,11 @@ class FlightReleasePageViewModelTest extends TestCase
 
             if ($viewModel->hasOverviewMelCdlItems()) {
                 $this->assertStringContainsString(
-                    'font-mono text-5xl font-black leading-none '.$expectedMetricClasses,
+                    $expectedCardClasses,
+                    $this->renderWorkspace($viewModel, FlightPlanTask::Overview),
+                );
+                $this->assertStringContainsString(
+                    'font-mono text-5xl font-black leading-none text-[#0B0E14] dark:text-slate-100',
                     $this->renderWorkspace($viewModel, FlightPlanTask::Overview),
                 );
             }

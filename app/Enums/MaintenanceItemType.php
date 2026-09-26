@@ -45,13 +45,13 @@ enum MaintenanceItemType: string
         };
     }
 
-    public function metricTextColor(): string
+    public function overviewCardClasses(): string
     {
         return match ($this) {
-            self::Mel => 'text-red-700 dark:text-red-300',
-            self::Cdl => 'text-orange-700 dark:text-orange-300',
-            self::Nef => 'text-gray-700 dark:text-gray-300',
-            self::Dmi => 'text-yellow-700 dark:text-yellow-300',
+            self::Mel => 'border-red-500/30 border-l-4 border-l-red-500 bg-red-500/5 backdrop-blur dark:border-red-400/30 dark:border-l-red-400 dark:bg-red-400/10',
+            self::Cdl => 'border-orange-500/30 border-l-4 border-l-orange-500 bg-orange-500/5 backdrop-blur dark:border-orange-400/30 dark:border-l-orange-400 dark:bg-orange-400/10',
+            self::Nef => 'border-gray-500/30 border-l-4 border-l-gray-500 bg-gray-500/5 backdrop-blur dark:border-gray-400/30 dark:border-l-gray-400 dark:bg-gray-400/10',
+            self::Dmi => 'border-yellow-500/30 border-l-4 border-l-yellow-500 bg-yellow-500/5 backdrop-blur dark:border-yellow-400/30 dark:border-l-yellow-400 dark:bg-yellow-400/10',
         };
     }
 }
