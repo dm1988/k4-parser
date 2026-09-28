@@ -595,6 +595,25 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
+    public function it_renders_overview_cards_in_a_responsive_auto_fit_grid_with_increased_spacing(): void
+    {
+        $model = $this->viewModel($this->resultPayload());
+        $html = Blade::render('<x-flight-release.overview :model="$model" />', ['model' => $model]);
+
+        $this->assertStringContainsString('flex min-w-0 flex-col gap-6 p-4 sm:p-6', $html);
+        $this->assertStringContainsString(
+            'grid min-w-0 grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 sm:gap-5',
+            $html,
+        );
+        $this->assertStringContainsString(
+            'relative flex min-w-0 flex-col gap-5 rounded-xl border p-5 text-left shadow-sm',
+            $html,
+        );
+        $this->assertStringNotContainsString('xl:grid-cols-6', $html);
+        $this->assertStringNotContainsString('xl:col-span-', $html);
+    }
+
+    #[Test]
     #[DataProvider('gendecStates')]
     public function it_renders_a_dedicated_gendec_card(?string $country, bool $present, string $message, bool $warning): void
     {

@@ -13,7 +13,7 @@
 <article
     wire:key="flight-plan-overview-card-{{ $task->value }}"
     {{ $attributes->class([
-        'relative flex min-w-0 flex-col gap-4 rounded-xl border p-4 text-left shadow-sm',
+        'relative flex min-w-0 flex-col gap-5 rounded-xl border p-5 text-left shadow-sm',
         'border-[#1B365D]/10 bg-white dark:border-slate-700 dark:bg-slate-900' => blank($surfaceClasses),
         $surfaceClasses => filled($surfaceClasses),
         'group transition hover:-translate-y-0.5 hover:shadow-md' => $showAction,

@@ -1,13 +1,12 @@
 @props(['model'])
 
-<div {{ $attributes->merge(['class' => 'flex min-w-0 flex-col gap-5 p-3 sm:p-5']) }}>
-    <div class="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
+<div {{ $attributes->merge(['class' => 'flex min-w-0 flex-col gap-6 p-4 sm:p-6']) }}>
+    <div class="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 sm:gap-5">
         <x-flight-release.overview-card
             :task="\App\Enums\FlightPlanTask::Fms"
             title="Route"
             icon="calculator"
             :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::Fms)"
-            class="xl:col-span-3"
         >
             <x-slot:badge>
                 <x-flight-release.b44-badge :label="$model->b44BadgeLabel()" />
@@ -29,7 +28,6 @@
             :show-status="false"
             :surface-classes="$model->overviewMelCdlCardClasses()"
             action-label="Review MEL / CDL Details"
-            class="xl:col-span-3"
         >
             @if ($model->hasOverviewMelCdlItems())
                 <div class="flex flex-col gap-3">
@@ -58,7 +56,6 @@
                 :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::WeightAndBalance)"
                 :show-status="false"
                 :surface-classes="$model->overviewWeightBalanceAlertCardClasses()"
-                class="xl:col-span-2"
             >
                 <x-flight-release.overview-stat
                     :value="$model->overviewWeightBalanceAlertCount()"
@@ -76,7 +73,6 @@
                 :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::SlotTimes)"
                 :show-status="false"
                 :surface-classes="$model->overviewSlotCardClasses()"
-                class="xl:col-span-2"
             >
                 <div class="flex flex-col gap-3">
                     <x-flight-release.overview-stat
@@ -99,7 +95,6 @@
             title="Fuel"
             icon="chart-bar-square"
             :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::FuelScore)"
-            class="xl:col-span-2"
         >
             <dl>
                 <x-flight-release.metric label="Ramp fuel" :value="$model->overviewRampFuel()" empty-text="Not present in this release" />
@@ -115,7 +110,6 @@
             :show-status="false"
             :surface-classes="$model->overviewGendecCardClasses()"
             id="overview-gendec-card"
-            class="xl:col-span-2"
         >
             <p @class([
                 'flex items-start gap-2 text-sm font-medium leading-5',
@@ -137,7 +131,6 @@
                 title="ETOPS evidence"
                 icon="globe-alt"
                 :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::Etops)"
-                class="xl:col-span-2"
             >
                 <dl class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <x-flight-release.metric label="ETP points" :value="$model->overviewEtpCount()" empty-text="Not present in this release" />

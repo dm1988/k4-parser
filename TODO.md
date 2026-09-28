@@ -31,49 +31,18 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 ## Bugs: offline fuel score
 Page wants to refresh causing Off time / starting FOB to clear out
 
+### Lat / Long cut off
+Only N50 rendered as waypoint not N50W120. 
 
-
-## [x] Completed: Bug: PDF flight release header/footer extracted into route
-With this `DCT ELLAM DCT TIEKL DCT OMSUN DCT 61N130W 60N120W 58N110W/N0491F330 DCT PETMA DCT YQD DCT GABOV DCT SUZLI DCT FGHRN MADII7 KALITTA BRIEF PAGE 2 OF 79 PAGE 2 OF 79` extracted.
-
-Outcome: Route normalization removes `KALITTA BRIEF PAGE n OF n` and standalone `PAGE n OF n` labels, including duplicates, wrapped labels, and page breaks. Both route extraction entry points preserve route tokens and reject routes left empty after cleanup. Cleanup is scoped to the route so the original PDF text remains available to other extractors.
-
-Validation: All 32 focused FlightRouteExtractor tests pass (121 assertions), including the reported route, page-spanning routes, mixed whitespace/case, similar route tokens, and empty-route rejection. Pint and Larastan (app and changed test file) pass.
-
-Commit message: `fix: remove PDF page labels from extracted flight routes`
-
-## [x] Completed: Feat: Domestic / international flight determine
-Domestic Flight: A flight that operates entirely within the sovereign territory and airspace of a single country, departing and landing at airports located in the same nation without crossing or clearing international customs boundaries (e.g., PANC to CONUS, or Hawaii to CONUS).
-
-International Flight: A flight where the departure airport and arrival airport (or intermediate technical/operational stops) are located in different sovereign countries or territories, requiring clearance through international customs, immigration, and agricultural control authorities (e.g., PANC to NRT, or CONUS to YVR).
-
-Will determine if a GENDEC is needed. GENDECs are not typically needed on domestic flights. For the flight plan purpose, PANC to Conus or Hawaii to conus are domestic flights.
-
-Logic:
-* **PANC to CONUS:** Domestic -> No GENDEC required
-* **PHNL / PHOG to CONUS:** Domestic -> No GENDEC required *(Note: State-specific agricultural declarations may apply, but not an international GENDEC)*
-* **PANC / CONUS to Foreign Destination (or vice-versa):** International -> GENDEC required
-
-Outcome: Added typed domestic/international/unknown classification using resolved airport countries, exposed through `FlightReleasePageViewModel::flightType()`. Country codes and English country names normalize consistently, including US aliases; missing or unrecognized countries remain unknown. Alaska/Hawaii-to-CONUS flights classify as domestic. Alternates and overflight waypoints do not affect classification. Explicit landing stops can be supplied to the classifier; a known foreign stop makes the trip international, and an unresolved stop prevents a domestic result. The current parser supplies a single leg's endpoints and does not yet extract intermediate landing stops. GENDEC card changes remain in their separate task.
-
-Validation: 28 focused tests pass (112 assertions), covering endpoint classification, country normalization, missing data, territory distinctions, explicit stops, and restored flight-plan/view-model integration. Pint and Larastan pass.
-
-Commit message: `feat: classify flight legs as domestic or international`
-
-## [x] Completed: Feat: GENDEC card
-After Domestic / Int flight task is complete and international flights can be determined:
-Move from GENDEC in operational status to it's own dedicated card. 
-If GENDEC not available and domestic flight, render `Domestic flight: GENDEC likely not required`. If intl and no GENDEC, render card in caution amber with message `GENDEC not found in flight plan. Verify against actual flight plan.`
-
-Outcome: Moved GENDEC out of operational support status into a dedicated overview card. Missing domestic declarations show the requested likely-not-required message. Missing international declarations show the requested verification message on the existing amber warning surface. Unknown flight types explicitly state that classification is undetermined and also request verification. Detected declarations show `GENDEC found in flight plan.` with a green check icon. The MEL/CDL no-restrictions state uses the same green check treatment. The card supports light/dark mode and has no unsupported detail action.
-
-Validation: 93 focused view-model and Livewire tests pass (1,415 assertions), including all six classification/presence combinations, green success checks, removal from operational support status, and overview rendering. Pint, Larastan, and the Vite build pass. Browser visual verification was not available in this session.
-
-Commit message: `feat: add dedicated GENDEC overview card`
-
-## feat: Overview cards Spatial Organization (Grid & Layout)
+## [x] Completed: feat: Overview cards Spatial Organization (Grid & Layout)
 Responsive Flow: Switch the grid from fixed columns to a repeat(auto-fit, minmax(280px, 1fr)) pattern. This ensures that cards resize intelligently based on screen width, preventing data from feeling cramped or overly stretched.
 Whitespace: Increased padding and gaps to create "breathable" space, which reduces cognitive load and allows the eye to focus on individual metrics.
+
+Outcome: Replaced the fixed one/two/six-column overview grid and per-card column spans with `repeat(auto-fit, minmax(280px, 1fr))`, allowing every visible card to flow according to available width. Increased overview section padding, inter-section spacing, card-grid gaps, and overview-card padding/internal gaps while preserving existing card content, actions, warning surfaces, and dark-mode styling.
+
+Validation: 10 focused view-model and Livewire overview tests pass (238 assertions), including a rendered-layout assertion for the auto-fit grid, increased spacing, and removal of fixed column/span classes. Pint, Larastan, and the Vite build pass. Browser visual verification was not available in this session.
+
+Commit message: `feat: improve overview card responsive layout`
 
 ## Refactor welcome page for use with new features
 
@@ -322,3 +291,41 @@ Slot comparisons use full UTC dates. Exact matches to the departure or arrival w
 Validation: Focused view-model and Livewire tests pass, covering departure/arrival comparisons, 10/11-minute thresholds, both window boundaries, times outside the window, midnight/year rollover, explicit zero tolerance, missing/invalid source values, singular/plural rendering, missing-card omission, and preserved task links. Pint, the production Vite build, and Larastan (including both changed test files) pass. Browser visual verification was unavailable in this environment.
 
 Commit message: `refactor: add shared overview stats and hide empty slot card`
+
+## [x] Completed: Bug: PDF flight release header/footer extracted into route
+With this `DCT ELLAM DCT TIEKL DCT OMSUN DCT 61N130W 60N120W 58N110W/N0491F330 DCT PETMA DCT YQD DCT GABOV DCT SUZLI DCT FGHRN MADII7 KALITTA BRIEF PAGE 2 OF 79 PAGE 2 OF 79` extracted.
+
+Outcome: Route normalization removes `KALITTA BRIEF PAGE n OF n` and standalone `PAGE n OF n` labels, including duplicates, wrapped labels, and page breaks. Both route extraction entry points preserve route tokens and reject routes left empty after cleanup. Cleanup is scoped to the route so the original PDF text remains available to other extractors.
+
+Validation: All 32 focused FlightRouteExtractor tests pass (121 assertions), including the reported route, page-spanning routes, mixed whitespace/case, similar route tokens, and empty-route rejection. Pint and Larastan (app and changed test file) pass.
+
+Commit message: `fix: remove PDF page labels from extracted flight routes`
+
+## [x] Completed: Feat: Domestic / international flight determine
+Domestic Flight: A flight that operates entirely within the sovereign territory and airspace of a single country, departing and landing at airports located in the same nation without crossing or clearing international customs boundaries (e.g., PANC to CONUS, or Hawaii to CONUS).
+
+International Flight: A flight where the departure airport and arrival airport (or intermediate technical/operational stops) are located in different sovereign countries or territories, requiring clearance through international customs, immigration, and agricultural control authorities (e.g., PANC to NRT, or CONUS to YVR).
+
+Will determine if a GENDEC is needed. GENDECs are not typically needed on domestic flights. For the flight plan purpose, PANC to Conus or Hawaii to conus are domestic flights.
+
+Logic:
+* **PANC to CONUS:** Domestic -> No GENDEC required
+* **PHNL / PHOG to CONUS:** Domestic -> No GENDEC required *(Note: State-specific agricultural declarations may apply, but not an international GENDEC)*
+* **PANC / CONUS to Foreign Destination (or vice-versa):** International -> GENDEC required
+
+Outcome: Added typed domestic/international/unknown classification using resolved airport countries, exposed through `FlightReleasePageViewModel::flightType()`. Country codes and English country names normalize consistently, including US aliases; missing or unrecognized countries remain unknown. Alaska/Hawaii-to-CONUS flights classify as domestic. Alternates and overflight waypoints do not affect classification. Explicit landing stops can be supplied to the classifier; a known foreign stop makes the trip international, and an unresolved stop prevents a domestic result. The current parser supplies a single leg's endpoints and does not yet extract intermediate landing stops. GENDEC card changes remain in their separate task.
+
+Validation: 28 focused tests pass (112 assertions), covering endpoint classification, country normalization, missing data, territory distinctions, explicit stops, and restored flight-plan/view-model integration. Pint and Larastan pass.
+
+Commit message: `feat: classify flight legs as domestic or international`
+
+## [x] Completed: Feat: GENDEC card
+After Domestic / Int flight task is complete and international flights can be determined:
+Move from GENDEC in operational status to it's own dedicated card. 
+If GENDEC not available and domestic flight, render `Domestic flight: GENDEC likely not required`. If intl and no GENDEC, render card in caution amber with message `GENDEC not found in flight plan. Verify against actual flight plan.`
+
+Outcome: Moved GENDEC out of operational support status into a dedicated overview card. Missing domestic declarations show the requested likely-not-required message. Missing international declarations show the requested verification message on the existing amber warning surface. Unknown flight types explicitly state that classification is undetermined and also request verification. Detected declarations show `GENDEC found in flight plan.` with a green check icon. The MEL/CDL no-restrictions state uses the same green check treatment. The card supports light/dark mode and has no unsupported detail action.
+
+Validation: 93 focused view-model and Livewire tests pass (1,415 assertions), including all six classification/presence combinations, green success checks, removal from operational support status, and overview rendering. Pint, Larastan, and the Vite build pass. Browser visual verification was not available in this session.
+
+Commit message: `feat: add dedicated GENDEC overview card`
