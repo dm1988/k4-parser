@@ -3,6 +3,7 @@
 namespace App\Services\FlightPlan\Extractor;
 
 use App\Exceptions\FlightRouteNotFoundException;
+use Closure;
 use Fruitcake\LaravelDebugbar\LaravelDebugbar;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Log;
@@ -18,19 +19,31 @@ class FlightPlanTextExtractor
         private readonly PdfImagePageTextExtractor $imagePageTextExtractor,
     ) {}
 
-    public function extract(string $filePath): string
+    /** @param  (Closure(string): void)|null  $onProgress */
+    public function extract(string $filePath, ?Closure $onProgress = null): string
     {
         $cacheKey = $this->cacheKey($filePath);
 
         if ($cacheKey === null) {
-            return $this->read($filePath);
+            return $this->read($filePath, $onProgress);
         }
 
-        return $this->cache->remember(
+        $readFromPdf = false;
+        $text = $this->cache->remember(
             $cacheKey,
             now()->addDays(7),
-            fn (): string => $this->read($filePath),
+            function () use ($filePath, $onProgress, &$readFromPdf): string {
+                $readFromPdf = true;
+
+                return $this->read($filePath, $onProgress);
+            },
         );
+
+        if (! $readFromPdf) {
+            $onProgress?->__invoke('Previously extracted text loaded.');
+        }
+
+        return $text;
     }
 
     private function cacheKey(string $filePath): ?string
@@ -44,9 +57,11 @@ class FlightPlanTextExtractor
         return $fileHash === false ? null : 'flight-plan-extractor:v3:pdf-text:'.$fileHash;
     }
 
-    private function read(string $filePath): string
+    /** @param  (Closure(string): void)|null  $onProgress */
+    private function read(string $filePath, ?Closure $onProgress): string
     {
         try {
+            $onProgress?->__invoke('Reading PDF…');
             $parseStartedAt = microtime(true);
 
             try {
@@ -60,16 +75,24 @@ class FlightPlanTextExtractor
             $pages = $document->getPages();
 
             if ($pages === []) {
+                $onProgress?->__invoke('Extracting text…');
+
                 return str_replace("\x00", '', $document->getText());
             }
 
             $pageTexts = [];
             $ocrTexts = [];
+            $pageCount = count($pages);
+            $previousPageUsedOcr = false;
 
             foreach ($pages as $pageIndex => $page) {
                 $pageNumber = $pageIndex + 1;
                 $pageTextStartedAt = microtime(true);
                 $ocrRequired = null;
+
+                if ($pageNumber === 1 || $pageNumber % 10 === 0 || $pageNumber === $pageCount || $previousPageUsedOcr) {
+                    $onProgress?->__invoke("Extracting text — page {$pageNumber} of {$pageCount}…");
+                }
 
                 try {
                     $pageText = str_replace("\x00", '', $page->getText());
@@ -83,6 +106,8 @@ class FlightPlanTextExtractor
                     ]);
                 }
 
+                $previousPageUsedOcr = $ocrRequired;
+
                 if (! $ocrRequired) {
                     $pageTexts[] = trim($pageText);
 
@@ -90,6 +115,7 @@ class FlightPlanTextExtractor
                 }
 
                 $ocrStartedAt = microtime(true);
+                $onProgress?->__invoke("Extracting text from images — page {$pageNumber} of {$pageCount}…");
 
                 try {
                     $ocrText = $this->imagePageTextExtractor->extract($filePath, $pageIndex);

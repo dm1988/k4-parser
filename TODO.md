@@ -28,70 +28,17 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## [x] Completed: Overview: whole card color change
-Instead of 5-xl metric color change, change the whole card color. For the 5xl stat,
+## Current focus: Flight plan: Overview: Slot times overview card refactor
+Goal: create reusable stat widget for weight & balance, MEL / CDL and slot times
 
-Overview cards affected:
-- W&B
-- MEL
-- Slot (metric not yet implemented)
-- GENDEC (not yet implemented)
-
-
-**Context**
-Styling adjustment for status cards within a flight plan task panel. The goal was to shift the visual emphasis from the individual metric (`.text-5xl`) to the entire card container (`article`) using subtle, "glassmorphism" design techniques.
-
-**Diagnostics**
-The target elements were identified within a grid container (`.grid.xl\:grid-cols-6`).
-
-| Element Type | Primary Selector | Status Logic |
-| :--- | :--- | :--- |
-| **Alert Card** | `article` containing `.text-red-700` | Red status (e.g., MEL/CDL) |
-| **Info Card** | `article` containing `.text-[#1B365D]` | Blue status (e.g., Weight & Balance) |
-
-**Actionable Findings**
-* **Container Styling:** To avoid overwhelming the UI, solid backgrounds were replaced with low-opacity tints (5-10%) and a `backdrop-filter: blur(8px)` to create a glass effect.
-* **Accent Indicators:** A 4px left-border was identified as a more effective status indicator than full-card saturation.
-
-**Code Fixes**
-The following CSS strategy was identified to achieve the glassmorphism effect and specific link overrides. These styles should be adapted into the project's Tailwind configuration or CSS modules.
-
-
-`````css
-/* Example styling for Alert/Red cards */
-.card-alert {
-  background-color: rgba(239, 68, 68, 0.05);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-left: 4px solid #ef4444;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-/* Example styling for Info/Blue cards */
-.card-info {
-  background-color: rgba(14, 165, 233, 0.05);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(14, 165, 233, 0.3);
-  border-left: 4px solid #0ea5e9;
-}
-`````
-
-**Outcome**
-
-- Moved MEL/CDL and Weight & Balance status emphasis from the 5xl metric to the full Overview card surface.
-- Added subtle 5–10% status tints, an 8px backdrop blur, a 4px left accent, light/dark borders, and neutral high-contrast metric text.
-- Preserved maintenance priority and Weight & Balance severity palettes while adding a reusable custom-surface option for future Slot and GENDEC cards.
-- Added focused enum, view-model, and Livewire rendering coverage. Focused tests, Pint, the production Vite build, and Larastan pass.
-
-Commit message: `refactor: move overview status color to cards`
-
-## Flight plan: Overview: Slot times overview card refactor
-Large 5-xl metric for slot time count
-
-Buffer time from planned departure to earliest slot window time.
-
+### Context aware slot times
 Context aware `Do not depart early` messaging if planned etd is equal to departure min slot window or if planned eta is equal to planned arrival min slot window. Render card in caution amber.
+Determine buffer time from planned departure to earliest slot window time. Render these 2 new values in the slot times task.
+
+### Slot time widget
+Large 5-xl metric for slot time count. Remove ETD and ETA fields. Keep card links. Should render `1` in 5-xl then `approved slot time` in normal text-sm. Alert flags for close UTC slot windows.
+
+
 
 ## Feat: Domestic / international flight determine
 Domestic Flight: A flight that operates entirely within the sovereign territory and airspace of a single country, departing and landing at airports located in the same nation without crossing or clearing international customs boundaries (e.g., PANC to CONUS, or Hawaii to CONUS).
@@ -467,3 +414,87 @@ Outcome: The confirmed-ETOPS overview card now shows source-backed ETP count and
 Follow-up outcome: The overview time and ETOPS badge now share one confirmed-rating lookup while retaining their separate `180 min` and `ETOPS 180` formats. Focused view-model tests cover confirmed ratings, absent ratings, non-ETOPS flights, and missing ETOPS data.
 
 Commit message: `feat: show ETP count and ETOPS time on overview card`
+
+## [x] Completed: Overview: whole card color change
+Instead of 5-xl metric color change, change the whole card color. For the 5xl stat,
+
+Overview cards affected:
+- W&B
+- MEL
+- Slot (metric not yet implemented)
+- GENDEC (not yet implemented)
+
+
+**Context**
+Styling adjustment for status cards within a flight plan task panel. The goal was to shift the visual emphasis from the individual metric (`.text-5xl`) to the entire card container (`article`) using subtle, "glassmorphism" design techniques.
+
+**Diagnostics**
+The target elements were identified within a grid container (`.grid.xl\:grid-cols-6`).
+
+| Element Type | Primary Selector | Status Logic |
+| :--- | :--- | :--- |
+| **Alert Card** | `article` containing `.text-red-700` | Red status (e.g., MEL/CDL) |
+| **Info Card** | `article` containing `.text-[#1B365D]` | Blue status (e.g., Weight & Balance) |
+
+**Actionable Findings**
+* **Container Styling:** To avoid overwhelming the UI, solid backgrounds were replaced with low-opacity tints (5-10%) and a `backdrop-filter: blur(8px)` to create a glass effect.
+* **Accent Indicators:** A 4px left-border was identified as a more effective status indicator than full-card saturation.
+
+**Code Fixes**
+The following CSS strategy was identified to achieve the glassmorphism effect and specific link overrides. These styles should be adapted into the project's Tailwind configuration or CSS modules.
+
+
+`````css
+/* Example styling for Alert/Red cards */
+.card-alert {
+  background-color: rgba(239, 68, 68, 0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-left: 4px solid #ef4444;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Example styling for Info/Blue cards */
+.card-info {
+  background-color: rgba(14, 165, 233, 0.05);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  border-left: 4px solid #0ea5e9;
+}
+`````
+
+**Outcome**
+
+- Moved MEL/CDL and Weight & Balance status emphasis from the 5xl metric to the full Overview card surface.
+- Added subtle 5–10% status tints, an 8px backdrop blur, a 4px left accent, light/dark borders, and neutral high-contrast metric text.
+- Preserved maintenance priority and Weight & Balance severity palettes while adding a reusable custom-surface option for future Slot and GENDEC cards.
+- Added focused enum, view-model, and Livewire rendering coverage. Focused tests, Pint, the production Vite build, and Larastan pass.
+
+Commit message: `refactor: move overview status color to cards`
+
+## [x] Completed: Fix flight plan uploads that leave the spinner running
+
+Outcome: The supplied 219-page PDF exceeded the 12 MB temporary-upload limit. Debugbar showed upload validation returning HTTP 302 because the exception handler forced HTML responses outside API routes, even when Livewire requested JSON. Parsing never started for those failed uploads. Restored JSON error negotiation and raised both the temporary-upload ceiling and flight-plan validation to 25 MB using a shared limit. The upload prompt now displays the limit.
+
+Validation: All 42 focused upload, Flight Plan Brief, and controller tests pass (813 assertions), including the supplied private PDF completing extraction, rendering results, and cleaning up its stored upload. Airport lookups are mocked in that regression test. Size-boundary, oversized-upload, invalid-signature, and visible-error cases are covered. Pint and the final Larastan pass succeed. Existing unrelated TODO edits are preserved.
+
+Deployment: Production has not been inspected or changed. Deploy the fix and refresh cached configuration; PHP and reverse-proxy request limits must accommodate a 25 MB file plus multipart overhead. This fixes the reproduced dev failure; other production failures still require their response status or logs.
+
+Commit message: `fix: accept larger flight plans and return upload errors as JSON`
+
+## [x] Completed: Show flight plan upload and extraction progress
+
+Outcome: The upload area shows the browser's actual transfer percentage and a progress bar, followed by server-confirmed upload success and streamed processing messages. Stages cover reading the PDF, extracting text with page counts, extracting text from image-only pages when needed, loading cached text, extracting flight details, building the brief, and saving it. A successful result displays a completion message. Failed extraction does not display success; starting another upload resets the status. Processing updates contain stage names and page counts without document contents.
+
+Validation: 46 focused extraction and Livewire tests pass, with one unavailable private fixture skipped. The supplied 219-page PDF test verifies actual streamed status messages through completion; four affected tests also pass after the final copy and failure-state assertions. Cache and OCR progress, upload markup, completion, and reset states are covered. Pint, the production Vite build, and final Larastan pass. Browser visual verification was unavailable in this environment.
+
+Commit message: `feat: show live flight plan upload and extraction progress`
+
+## [x] Completed: Fix Livewire test response type inference
+
+Outcome: Kept the Weight & Balance test's Livewire component assignment separate from its assertions. Forwarded response assertions no longer cause Larastan to infer the saved component as `TestResponse` before `get('flightPlanKey')`.
+
+Validation: The affected test passes with 58 assertions. Pint and Larastan pass, explicitly analyzing both `app` and `tests/Feature/Livewire/FlightPlanBriefTest.php`; the default configuration only includes `app`.
+
+Commit message: `fix: preserve Livewire component type in flight plan test`

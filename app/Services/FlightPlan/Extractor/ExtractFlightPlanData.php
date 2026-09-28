@@ -7,6 +7,7 @@ use App\DTOs\Maintenance\MaintenanceInputData;
 use App\DTOs\ParsedFlightPlanData;
 use App\Services\FlightPlan\Extractor\Etops\EtopsQualificationExtractor;
 use App\Services\FlightPlan\Extractor\Etops\EtopsRouteExtractor;
+use Closure;
 
 class ExtractFlightPlanData
 {
@@ -29,9 +30,13 @@ class ExtractFlightPlanData
         private readonly ReleaseAuthorizationExtractor $releaseAuthorizationExtractor,
     ) {}
 
-    public function extractFile(string $filePath): ParsedFlightPlanData
+    /** @param  (Closure(string): void)|null  $onProgress */
+    public function extractFile(string $filePath, ?Closure $onProgress = null): ParsedFlightPlanData
     {
-        return $this->extract($this->textExtractor->extract($filePath));
+        $text = $this->textExtractor->extract($filePath, $onProgress);
+        $onProgress?->__invoke('Extracting flight details…');
+
+        return $this->extract($text);
     }
 
     public function extract(string $text): ParsedFlightPlanData

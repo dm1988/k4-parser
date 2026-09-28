@@ -35,6 +35,9 @@ class FlightPlanBrief extends Component
     #[Locked]
     public string $activeTask = FlightPlanTask::Overview->value;
 
+    #[Locked]
+    public bool $extractionJustCompleted = false;
+
     protected HandleFlightPlanExtraction $handleFlightPlanExtraction;
 
     protected ShouldPromptForCoffee $shouldPromptForCoffee;
@@ -81,9 +84,14 @@ class FlightPlanBrief extends Component
         }
 
         try {
-            $flightPlan = $this->handleFlightPlanExtraction->handle($user, $uploadedFile);
+            $this->extractionJustCompleted = false;
+            $this->stream(to: 'flight-plan-upload-status', content: 'Upload successful', replace: true);
+            $this->streamProgress('Preparing your flight plan…');
+            $flightPlan = $this->handleFlightPlanExtraction->handle($user, $uploadedFile, $this->streamProgress(...));
+            $this->streamProgress('Saving your brief…');
             $this->flightPlanKey = $this->flightPlanResultStore->save($user, $flightPlan);
             $this->activeTask = FlightPlanTask::Overview->value;
+            $this->extractionJustCompleted = true;
         } catch (FlightRouteNotFoundException $exception) {
             $this->resetFailedUpload();
             $this->addError('flightRelease', $exception->getMessage());
@@ -182,14 +190,19 @@ class FlightPlanBrief extends Component
             $this->flightPlanResultStore->delete($user, $this->flightPlanKey);
         }
 
-        $this->reset(['flightRelease', 'flightPlanKey', 'activeTask']);
+        $this->reset(['flightRelease', 'flightPlanKey', 'activeTask', 'extractionJustCompleted']);
         $this->resetValidation();
     }
 
     private function resetFailedUpload(): void
     {
-        $this->reset('flightRelease');
+        $this->reset(['flightRelease', 'extractionJustCompleted']);
         $this->resetValidation();
+    }
+
+    private function streamProgress(string $message): void
+    {
+        $this->stream(to: 'flight-plan-progress', content: e($message), replace: true);
     }
 
     private function authorizedUser(): User

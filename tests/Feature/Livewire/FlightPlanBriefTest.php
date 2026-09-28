@@ -76,20 +76,31 @@ class FlightPlanBriefTest extends TestCase
             ->test(FlightPlanBrief::class)
             ->assertSet('flightRelease', null)
             ->assertSet('flightPlanKey', null)
+            ->assertSet('extractionJustCompleted', false)
             ->assertSeeHtml('wire:key="flight-plan-brief-upload"')
             ->assertSeeHtml('wire:target="flightRelease"')
             ->assertDontSeeHtml('wire:submit="extractFlightPlan"')
             ->assertDontSeeHtml('wire:target="extractFlightPlan"')
             ->assertSeeText('Drop your flight plan here')
             ->assertSeeText('Upload one PDF flight plan. Click to browse your files.')
+            ->assertSeeText('Maximum size: 25 MB.')
             ->assertSeeHtml('class="absolute inset-0 h-full w-full cursor-pointer opacity-0"')
             ->assertSeeHtml('wire:loading.attr="disabled"')
             ->assertSeeHtml('wire:loading.remove.flex')
             ->assertSeeHtml('wire:loading.flex')
             ->assertSeeHtml('class="flex flex-col items-center gap-2"')
             ->assertSeeHtml('min-h-48')
-            ->assertSeeText('Processing flight plan…')
-            ->assertSeeText('Please wait while your PDF is uploaded and parsed.')
+            ->assertSeeText('Uploading flight plan…')
+            ->assertSeeHtml('x-on:livewire-upload-progress="uploadProgress = $event.detail.progress"')
+            ->assertSeeHtml('x-on:livewire-upload-error="uploadProgress = 0"')
+            ->assertSeeHtml('x-on:livewire-upload-cancel="uploadProgress = 0"')
+            ->assertSeeHtml('wire:stream.replace="flight-plan-upload-status"')
+            ->assertSeeHtml('wire:stream.replace="flight-plan-progress"')
+            ->assertSeeHtml('aria-label="Flight plan upload progress"')
+            ->assertSeeHtml('x-bind:value="uploadProgress"')
+            ->assertSeeText('Confirming upload…')
+            ->assertSeeText('Upload sent. Waiting for confirmation…')
+            ->assertSeeText('Large documents and scanned pages may take longer. Keep this page open.')
             ->assertDontSeeText('Extract route')
             ->assertDontSeeText('Extracted flight plan');
 
@@ -156,7 +167,7 @@ class FlightPlanBriefTest extends TestCase
     public function test_it_validates_pdf_uploads_and_clears_the_error_when_the_file_changes(): void
     {
         $this->assertSame(
-            ['required', 'file', 'max:12288'],
+            ['required', 'file', 'max:25600'],
             config('livewire.temporary_file_upload.rules'),
         );
 
@@ -203,6 +214,8 @@ class FlightPlanBriefTest extends TestCase
             ->assertNoRedirect()
             ->assertSet('flightRelease', null)
             ->assertDispatched('scroll-to-release-summary')
+            ->assertSet('extractionJustCompleted', true)
+            ->assertSeeText('Flight plan brief ready. Upload and extraction completed successfully.')
             ->assertSeeHtml('wire:key="flight-plan-brief-results"')
             ->assertSeeHtml('id="release-summary"')
             ->assertDontSeeText('Flight release PDF')
@@ -251,7 +264,7 @@ class FlightPlanBriefTest extends TestCase
         $this->assertArrayNotHasKey('flightPlan', $snapshotData);
         $this->assertArrayHasKey('flightPlanKey', $snapshotData);
         $this->assertIsString($flightPlanKey);
-        $this->assertEqualsCanonicalizing(['flightRelease', 'flightPlanKey', 'activeTask'], array_keys($snapshotData));
+        $this->assertEqualsCanonicalizing(['flightRelease', 'flightPlanKey', 'activeTask', 'extractionJustCompleted'], array_keys($snapshotData));
         $serializedSnapshot = json_encode($snapshotData, JSON_THROW_ON_ERROR);
         $this->assertStringNotContainsString('must-not-reach-livewire', $serializedSnapshot);
         $this->assertStringNotContainsString($privateEvidence, $serializedSnapshot);
@@ -283,6 +296,8 @@ class FlightPlanBriefTest extends TestCase
             ->call('extractAnotherFlightPlan')
             ->assertSet('flightRelease', null)
             ->assertSet('flightPlanKey', null)
+            ->assertSet('extractionJustCompleted', false)
+            ->assertDontSeeText('Flight plan brief ready.')
             ->assertSeeText('Drop your flight plan here')
             ->assertDontSeeText('Extracted flight plan');
 
@@ -1303,8 +1318,9 @@ class FlightPlanBriefTest extends TestCase
                 ],
             ));
         });
-        $component = Livewire::actingAs($user)
-            ->test(FlightPlanBrief::class)
+        $component = Livewire::actingAs($user)->test(FlightPlanBrief::class);
+
+        $component
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
             ->assertSeeHtml('wire:key="flight-plan-overview-card-weight_and_balance"')
             ->assertSeeHtml('aria-label="3 operational weight alerts"')
@@ -1890,6 +1906,8 @@ class FlightPlanBriefTest extends TestCase
             ->assertSet('flightRelease', null)
             ->assertSet('flightPlanKey', null)
             ->assertHasErrors(['flightRelease'])
+            ->assertSet('extractionJustCompleted', false)
+            ->assertDontSeeText('Flight plan brief ready.')
             ->assertSee('A flight plan block was found, but the route segment could not be identified');
 
         $extractRequest = ExtractRequest::query()->sole();
@@ -1919,6 +1937,8 @@ class FlightPlanBriefTest extends TestCase
             ->assertSet('flightPlanKey', null)
             ->assertHasErrors(['flightRelease'])
             ->assertSeeText('We could not process that flight release. Please try again.')
+            ->assertSet('extractionJustCompleted', false)
+            ->assertDontSeeText('Flight plan brief ready.')
             ->assertSeeHtml('wire:loading.remove.flex')
             ->assertSeeHtml('class="flex flex-col items-center gap-2"')
             ->assertDontSeeText($privateFailure);

@@ -37,8 +37,17 @@ class FlightPlanTextExtractorTest extends TestCase
             $first = new FlightPlanTextExtractor($parser, $cache, new PdfImagePageTextExtractor);
             $second = new FlightPlanTextExtractor($parser, $cache, new PdfImagePageTextExtractor);
 
-            $this->assertSame('FLIGHT PLAN', $first->extract($path));
-            $this->assertSame('FLIGHT PLAN', $second->extract($path));
+            $messages = [];
+            $progress = function (string $message) use (&$messages): void {
+                $messages[] = $message;
+            };
+
+            $this->assertSame('FLIGHT PLAN', $first->extract($path, $progress));
+            $this->assertSame(['Reading PDF…', 'Extracting text…'], $messages);
+
+            $messages = [];
+            $this->assertSame('FLIGHT PLAN', $second->extract($path, $progress));
+            $this->assertSame(['Previously extracted text loaded.'], $messages);
         } finally {
             unlink($path);
         }
@@ -102,10 +111,19 @@ class FlightPlanTextExtractorTest extends TestCase
                 $imagePageTextExtractor,
             );
 
+            $messages = [];
             $this->assertSame(
                 "FLIGHT PLAN\nGeneral Declaration (Outward/Inward)",
-                $extractor->extract($path),
+                $extractor->extract($path, function (string $message) use (&$messages): void {
+                    $messages[] = $message;
+                }),
             );
+            $this->assertSame([
+                'Reading PDF…',
+                'Extracting text — page 1 of 2…',
+                'Extracting text — page 2 of 2…',
+                'Extracting text from images — page 2 of 2…',
+            ], $messages);
         } finally {
             unlink($path);
         }

@@ -9,6 +9,7 @@ use App\Services\FlightPlan\AircraftWeightLimitResolver;
 use App\Services\FlightPlan\Extractor\ExtractFlightPlanData;
 use App\Services\FlightPlan\FlightPlanResultSerializer;
 use App\Services\Infrastructure\ExtractRequestLogger;
+use Closure;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -25,8 +26,11 @@ class HandleFlightPlanExtraction
         private readonly ExtractRequestLogger $extractRequestLogger,
     ) {}
 
-    /** @return array<string, mixed> */
-    public function handle(User $user, UploadedFile $uploadedFile): array
+    /**
+     * @param  (Closure(string): void)|null  $onProgress
+     * @return array<string, mixed>
+     */
+    public function handle(User $user, UploadedFile $uploadedFile, ?Closure $onProgress = null): array
     {
         $disk = Storage::disk('user_flight_releases');
         $path = $uploadedFile->store('', 'user_flight_releases');
@@ -46,7 +50,8 @@ class HandleFlightPlanExtraction
                 'flight_plan',
                 $uploadedFile,
             );
-            $parsedFlightPlan = $this->extractor->extractFile($disk->path($path));
+            $parsedFlightPlan = $this->extractor->extractFile($disk->path($path), $onProgress);
+            $onProgress?->__invoke('Building your flight plan brief…');
             $tailNumber = $parsedFlightPlan->identity['tail_number'] ?? null;
             $aircraftWeightLimits = $this->aircraftWeightLimitResolver->resolve(
                 is_string($tailNumber) ? $tailNumber : null,

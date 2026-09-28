@@ -1,6 +1,14 @@
 <div class="p-4 sm:p-6">
     @if (! $isResultsView)
-        <div wire:key="flight-plan-brief-upload" class="mx-auto flex max-w-2xl flex-col gap-4">
+        <div
+            wire:key="flight-plan-brief-upload"
+            x-data="{ uploadProgress: 0 }"
+            x-on:livewire-upload-start="uploadProgress = 0; $refs.uploadStatus.textContent = 'Confirming upload…'; $refs.processingStatus.textContent = 'Upload sent. Waiting for confirmation…'"
+            x-on:livewire-upload-progress="uploadProgress = $event.detail.progress"
+            x-on:livewire-upload-error="uploadProgress = 0"
+            x-on:livewire-upload-cancel="uploadProgress = 0"
+            class="mx-auto flex max-w-2xl flex-col gap-4"
+        >
             <div>
                 <label
                     for="flight-release"
@@ -30,17 +38,24 @@
                         </span>
 
                         <span class="block max-w-md text-sm leading-6 text-[#4A5568] dark:text-slate-400">
-                            Upload one PDF flight plan. Click to browse your files.
+                            Upload one PDF flight plan. Click to browse your files. Maximum size: 25 MB.
                         </span>
                     </div>
 
-                    <span wire:loading.flex wire:target="flightRelease" class="hidden flex-col items-center gap-4" role="status">
+                    <span wire:loading.flex wire:target="flightRelease" class="hidden w-full max-w-md flex-col items-center gap-4" role="status" aria-live="polite" aria-atomic="true">
                         <svg class="h-10 w-10 animate-spin text-[#C5A059]" viewBox="0 0 24 24" aria-hidden="true">
                             <circle class="opacity-25" cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="4" />
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647Z" />
                         </svg>
-                        <span class="text-xl font-bold text-[#1B365D] dark:text-slate-100">Processing flight plan…</span>
-                        <span class="text-sm text-[#4A5568] dark:text-slate-400">Please wait while your PDF is uploaded and parsed.</span>
+                        <span x-show="uploadProgress < 100" class="flex w-full flex-col items-center gap-3">
+                            <span class="text-xl font-bold text-[#1B365D] dark:text-slate-100" x-text="`Uploading flight plan… ${uploadProgress}%`">Uploading flight plan…</span>
+                            <progress class="h-2 w-full accent-[#C5A059]" max="100" x-bind:value="uploadProgress" aria-label="Flight plan upload progress"></progress>
+                        </span>
+                        <span x-show="uploadProgress >= 100" x-cloak class="flex flex-col items-center gap-2">
+                            <span x-ref="uploadStatus" wire:stream.replace="flight-plan-upload-status" class="text-sm font-semibold text-[#1B365D] dark:text-slate-100">Confirming upload…</span>
+                            <span x-ref="processingStatus" wire:stream.replace="flight-plan-progress" class="text-sm text-[#4A5568] dark:text-slate-400">Upload sent. Waiting for confirmation…</span>
+                            <span class="text-xs text-[#4A5568] dark:text-slate-400">Large documents and scanned pages may take longer. Keep this page open.</span>
+                        </span>
                     </span>
                 </label>
 
@@ -54,6 +69,9 @@
         </div>
     @else
         <section wire:key="flight-plan-brief-results" class="flex flex-col gap-6">
+            @if ($extractionJustCompleted)
+                <p class="text-sm font-medium text-[#1B365D] dark:text-slate-100" role="status">Flight plan brief ready. Upload and extraction completed successfully.</p>
+            @endif
             <div class="flex justify-end">
                 <button
                     type="button"
