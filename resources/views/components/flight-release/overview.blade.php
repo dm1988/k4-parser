@@ -68,17 +68,16 @@
             </x-flight-release.overview-card>
         @endif
 
-        <x-flight-release.overview-card
-            :task="\App\Enums\FlightPlanTask::SlotTimes"
-            title="Slot times"
-            icon="clock"
-            :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::SlotTimes)"
-            :show-action="$model->hasSlotTimes()"
-            :show-status="false"
-            :surface-classes="$model->overviewSlotCardClasses()"
-            class="xl:col-span-2"
-        >
-            @if ($model->hasSlotTimes())
+        @if ($model->hasSlotTimes())
+            <x-flight-release.overview-card
+                :task="\App\Enums\FlightPlanTask::SlotTimes"
+                title="Slot times"
+                icon="clock"
+                :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::SlotTimes)"
+                :show-status="false"
+                :surface-classes="$model->overviewSlotCardClasses()"
+                class="xl:col-span-2"
+            >
                 <div class="flex flex-col gap-3">
                     <x-flight-release.overview-stat
                         :value="$model->overviewSlotCount()"
@@ -92,10 +91,8 @@
                         </p>
                     @endforeach
                 </div>
-            @else
-                <p class="text-sm text-[#4A5568] dark:text-slate-400">Not present in this release</p>
-            @endif
-        </x-flight-release.overview-card>
+            </x-flight-release.overview-card>
+        @endif
 
         <x-flight-release.overview-card
             :task="\App\Enums\FlightPlanTask::FuelScore"

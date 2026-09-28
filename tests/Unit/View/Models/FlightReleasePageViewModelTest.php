@@ -567,7 +567,7 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
-    public function it_does_not_render_a_zero_slot_stat_for_missing_data(): void
+    public function it_does_not_render_the_slot_times_overview_card_for_missing_data(): void
     {
         $model = $this->viewModel($this->resultPayload());
         $overview = Blade::render('<x-flight-release.overview :model="$model" />', ['model' => $model]);
@@ -576,8 +576,9 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame([], $model->overviewSlotAlerts());
         $this->assertNull($model->overviewSlotCardClasses());
         $this->assertStringNotContainsString('0 approved slot', $overview);
+        $this->assertStringNotContainsString('flight-plan-overview-card-slot_times', $overview);
+        $this->assertStringNotContainsString('Slot times', $overview);
         $this->assertStringNotContainsString('selectTask(\'slot_times\')', $overview);
-        $this->assertStringContainsString('Not present in this release', $overview);
     }
 
     #[Test]
