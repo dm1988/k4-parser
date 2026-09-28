@@ -346,18 +346,42 @@ readonly class FlightReleasePageViewModel
         return $costIndex === null ? null : (string) $costIndex;
     }
 
+    public function hasGeneralDeclaration(): bool
+    {
+        return $this->pageData?->flightPlan->generalDeclaration->sectionPresent === true;
+    }
+
+    public function overviewGendecMessage(): string
+    {
+        if ($this->hasGeneralDeclaration()) {
+            return 'GENDEC found in flight plan.';
+        }
+
+        return match ($this->flightType()) {
+            FlightType::Domestic => 'Domestic flight: GENDEC likely not required',
+            FlightType::International => 'GENDEC not found in flight plan. Verify against actual flight plan.',
+            FlightType::Unknown => 'Flight type undetermined. GENDEC not found in flight plan. Verify against actual flight plan.',
+        };
+    }
+
+    public function overviewGendecNeedsReview(): bool
+    {
+        return ! $this->hasGeneralDeclaration() && $this->flightType() !== FlightType::Domestic;
+    }
+
+    public function overviewGendecCardClasses(): ?string
+    {
+        return $this->overviewGendecNeedsReview()
+            ? 'border-amber-500/30 border-l-4 border-l-amber-500 bg-amber-500/5 backdrop-blur dark:border-amber-400/30 dark:border-l-amber-400 dark:bg-amber-400/10'
+            : null;
+    }
+
     /**
      * @return list<array{label: string, availability: FlightPlanTaskAvailability, statusLabel?: string, absenceIsGood?: bool, tone?: TaskTone}>
      */
     public function overviewUnsupportedIndicators(): array
     {
         $indicators = [
-            [
-                'label' => 'GENDEC',
-                'availability' => $this->pageData?->flightPlan->generalDeclaration->sectionPresent === true
-                    ? FlightPlanTaskAvailability::Available
-                    : FlightPlanTaskAvailability::NotPresent,
-            ],
             ['label' => 'Weather / RAIM', 'availability' => $this->availabilityFor(FlightPlanTask::Weather)],
         ];
 

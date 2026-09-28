@@ -415,7 +415,6 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame(1, $viewModel->overviewEtpCount());
         $this->assertSame('180 min', $viewModel->overviewEtopsTime());
         $this->assertSame([
-            ['label' => 'GENDEC', 'availability' => FlightPlanTaskAvailability::NotPresent],
             ['label' => 'Weather / RAIM', 'availability' => FlightPlanTaskAvailability::NotPresent],
         ], $viewModel->overviewUnsupportedIndicators());
     }
@@ -589,10 +588,46 @@ class FlightReleasePageViewModelTest extends TestCase
 
         $viewModel = $this->viewModel($payload);
 
-        $this->assertSame([
-            'label' => 'GENDEC',
-            'availability' => FlightPlanTaskAvailability::Available,
-        ], $viewModel->overviewUnsupportedIndicators()[0]);
+        $this->assertTrue($viewModel->hasGeneralDeclaration());
+        $this->assertSame('GENDEC found in flight plan.', $viewModel->overviewGendecMessage());
+        $this->assertNull($viewModel->overviewGendecCardClasses());
+        $this->assertNotContains('GENDEC', array_column($viewModel->overviewUnsupportedIndicators(), 'label'));
+    }
+
+    #[Test]
+    #[DataProvider('gendecStates')]
+    public function it_renders_a_dedicated_gendec_card(?string $country, bool $present, string $message, bool $warning): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['route']['departureAirport'] = ['icao' => 'PANC', 'country' => 'US'];
+        $payload['flight_plan_data']['route']['destinationAirport'] = $country === null
+            ? null
+            : ['icao' => 'KMIA', 'country' => $country];
+        $payload['flight_plan_data']['generalDeclaration'] = ['sectionPresent' => $present];
+        $model = $this->viewModel($payload);
+        $html = Blade::render('<x-flight-release.overview :model="$model" />', ['model' => $model]);
+
+        $this->assertSame($message, $model->overviewGendecMessage());
+        $this->assertSame($warning, $model->overviewGendecNeedsReview());
+        $this->assertSame(1, preg_match('/<article[^>]*id="overview-gendec-card"[^>]*>.*?<\/article>/s', $html, $matches));
+        $card = $matches[0];
+        $this->assertStringContainsString($message, $card);
+        $this->assertStringNotContainsString('selectTask', $card);
+        $this->assertSame($warning, str_contains($card, 'border-l-amber-500'));
+        $this->assertSame($warning, str_contains($card, 'dark:border-l-amber-400'));
+        $this->assertSame($present, str_contains($card, 'text-emerald-600 dark:text-emerald-400'));
+        $this->assertSame(1, preg_match('/<section aria-labelledby="overview-support-status-heading".*?<\/section>/s', $html, $support));
+        $this->assertStringNotContainsString('GENDEC', $support[0]);
+    }
+
+    public static function gendecStates(): iterable
+    {
+        yield 'domestic absent' => ['US', false, 'Domestic flight: GENDEC likely not required', false];
+        yield 'international absent' => ['JP', false, 'GENDEC not found in flight plan. Verify against actual flight plan.', true];
+        yield 'unknown absent' => [null, false, 'Flight type undetermined. GENDEC not found in flight plan. Verify against actual flight plan.', true];
+        yield 'domestic present' => ['US', true, 'GENDEC found in flight plan.', false];
+        yield 'international present' => ['JP', true, 'GENDEC found in flight plan.', false];
+        yield 'unknown present' => [null, true, 'GENDEC found in flight plan.', false];
     }
 
     #[Test]

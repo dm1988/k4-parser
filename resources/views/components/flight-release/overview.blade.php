@@ -44,7 +44,7 @@
                 </div>
             @else
                 <div class="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2.5 text-sm font-medium text-[#4A5568] dark:bg-slate-800 dark:text-slate-300">
-                    <x-heroicon-o-check-circle class="h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
+                    <x-heroicon-o-check-circle class="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
                     <span>No active MEL/CDL restrictions</span>
                 </div>
             @endif
@@ -104,6 +104,31 @@
             <dl>
                 <x-flight-release.metric label="Ramp fuel" :value="$model->overviewRampFuel()" empty-text="Not present in this release" />
             </dl>
+        </x-flight-release.overview-card>
+
+        <x-flight-release.overview-card
+            :task="\App\Enums\FlightPlanTask::Overview"
+            title="GENDEC"
+            icon="document-text"
+            :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::Overview)"
+            :show-action="false"
+            :show-status="false"
+            :surface-classes="$model->overviewGendecCardClasses()"
+            id="overview-gendec-card"
+            class="xl:col-span-2"
+        >
+            <p @class([
+                'flex items-start gap-2 text-sm font-medium leading-5',
+                'text-amber-900 dark:text-amber-200' => $model->overviewGendecNeedsReview(),
+                'text-[#4A5568] dark:text-slate-300' => ! $model->overviewGendecNeedsReview(),
+            ])>
+                @if ($model->overviewGendecNeedsReview())
+                    <x-heroicon-o-exclamation-triangle class="h-4 w-4 shrink-0" aria-hidden="true" />
+                @elseif ($model->hasGeneralDeclaration())
+                    <x-heroicon-o-check-circle class="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                @endif
+                <span>{{ $model->overviewGendecMessage() }}</span>
+            </p>
         </x-flight-release.overview-card>
 
         @if ($model->shouldShowEtopsOverviewCard())

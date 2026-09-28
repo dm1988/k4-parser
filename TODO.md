@@ -28,6 +28,11 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## Bugs: offline fuel score
+Page wants to refresh causing Off time / starting FOB to clear out
+
+
+
 ## [x] Completed: Bug: PDF flight release header/footer extracted into route
 With this `DCT ELLAM DCT TIEKL DCT OMSUN DCT 61N130W 60N120W 58N110W/N0491F330 DCT PETMA DCT YQD DCT GABOV DCT SUZLI DCT FGHRN MADII7 KALITTA BRIEF PAGE 2 OF 79 PAGE 2 OF 79` extracted.
 
@@ -55,10 +60,16 @@ Validation: 28 focused tests pass (112 assertions), covering endpoint classifica
 
 Commit message: `feat: classify flight legs as domestic or international`
 
-## Feat: GENDEC card
+## [x] Completed: Feat: GENDEC card
 After Domestic / Int flight task is complete and international flights can be determined:
 Move from GENDEC in operational status to it's own dedicated card. 
 If GENDEC not available and domestic flight, render `Domestic flight: GENDEC likely not required`. If intl and no GENDEC, render card in caution amber with message `GENDEC not found in flight plan. Verify against actual flight plan.`
+
+Outcome: Moved GENDEC out of operational support status into a dedicated overview card. Missing domestic declarations show the requested likely-not-required message. Missing international declarations show the requested verification message on the existing amber warning surface. Unknown flight types explicitly state that classification is undetermined and also request verification. Detected declarations show `GENDEC found in flight plan.` with a green check icon. The MEL/CDL no-restrictions state uses the same green check treatment. The card supports light/dark mode and has no unsupported detail action.
+
+Validation: 93 focused view-model and Livewire tests pass (1,415 assertions), including all six classification/presence combinations, green success checks, removal from operational support status, and overview rendering. Pint, Larastan, and the Vite build pass. Browser visual verification was not available in this session.
+
+Commit message: `feat: add dedicated GENDEC overview card`
 
 ## feat: Overview cards Spatial Organization (Grid & Layout)
 Responsive Flow: Switch the grid from fixed columns to a repeat(auto-fit, minmax(280px, 1fr)) pattern. This ensures that cards resize intelligently based on screen width, preventing data from feeling cramped or overly stretched.
@@ -289,226 +300,18 @@ This view repeats the confirmed source result. It does not calculate an envelope
 ## [x] Completed: Flight plan: W&B Card order
 ## [x] Completed: Flight plan: Overview: Full card link
 ## [x] Completed: feat: flight plan: Offline fuel score
-
-### Goal
-
-Add a link from the Flight Plan Brief fuel task to a separate, focused fuel-score calculator that opens in a new browser tab. After the page loads, the calculator must work entirely in the browser and calculate an estimated UTC arrival time and fuel on board (FOB) for each supported waypoint.
-
-### Calculation contract
-
-* Inputs are Off time in four-digit UTC (`HHMM`) and starting FOB in the release's confirmed fuel unit.
-* Waypoint ETA equals Off time plus the waypoint's confirmed cumulative duration, with 24-hour rollover. Label every result as UTC.
-* Planned burn to a waypoint equals release takeoff fuel minus that waypoint's confirmed planned remaining fuel.
-* Calculated waypoint FOB equals the user-entered starting FOB minus the planned burn to that waypoint.
-* Preserve the confirmed release unit throughout a calculation; never convert or mix pounds and kilograms implicitly.
-* Do not calculate a waypoint ETA when cumulative duration is unavailable.
-* Do not calculate a waypoint FOB when starting FOB, release takeoff fuel, waypoint remaining fuel, or a consistent unit is unavailable or invalid.
-* Reject non-numeric or negative fuel inputs and do not present negative calculated FOB as a valid result.
-* Calculated values are planning aids only. Do not infer a fuel score, compliance status, dispatchability, or safety determination.
-
-### Implementation plan
-
-1. Add an authenticated, verified, flight-release-authorized GET route for a standalone fuel-score page, keyed by the current `flightPlanKey`.
-2. Resolve the result through `FlightPlanResultStore` for the authenticated owner. Return a not-found response for a malformed, expired, missing, or other-user key rather than exposing whether a result exists.
-3. Reuse `BuildFlightPlanPageData` and a dedicated presenter/view-data method to provide only the identity, fuel unit, takeoff fuel, and waypoint fields required by the calculator. Do not parse, normalize, query, or authorize in Blade.
-4. Add a clearly labeled `Open offline fuel calculator` link to the existing Fuel Score task. Open it with `target="_blank"` and `rel="noopener noreferrer"`, retain visible keyboard focus, and only render it when a current result key is available.
-5. Simplify the existing Livewire Fuel Score task to source review only: remove the Off time input, planned ETA column, ETA calculation state, and all calculator bindings from `fuel-score.blade.php`.
-6. Remove the waypoint `More…` details/summary accordion and render the full waypoint source list directly on the Livewire page. Use server-rendered Blade rows so the list does not depend on calculator JavaScript.
-7. Build a compact standalone Blade page using the existing Crew Compass palette and light/dark theme behavior. Include flight identity, UTC/unit labels, Off time and starting FOB inputs, a reset action, calculation guidance, and a responsive waypoint results table.
-8. Move/refactor the ETA logic from `waypoint-fuel-monitor.js` into pure ETA and FOB calculation functions plus Alpine state loaded only by the standalone page. Remove the calculator module from the main application entry point when the Livewire view no longer consumes it.
-9. Calculate results locally after the initial page render. Do not make Livewire, fetch, analytics, or other network requests while values are entered or recalculated.
-10. Define "offline" as no server dependency after the authorized page and its compiled assets have loaded. Do not add service-worker/PWA caching or promise that a fresh page can be opened or refreshed without a network connection in this task.
-11. Keep entered Off time and FOB ephemeral to the tab. Do not write operational values to the database, URL, `localStorage`, or `sessionStorage`.
-12. Render unavailable source inputs as `Not present in this release` and calculated values as `Unable to calculate`, with a concise reason. Preserve explicit zero values.
-13. Update focused Livewire/PHPUnit coverage to confirm the waypoint list is always visible, the `More…` accordion and embedded ETA controls are absent, and the standalone link has the required attributes. Also cover route authentication, verification, feature authorization, result ownership/not-found behavior, required page data, units, and missing-source states.
-14. Add focused JavaScript tests for the standalone calculator's UTC validation, midnight rollover, planned-burn and FOB calculations, zero values, decimal handling, invalid/negative inputs, unit mismatch, unavailable waypoint fields, and prevention of negative output.
-15. Run the focused PHPUnit and JavaScript tests, Pint for changed PHP files, a production Vite build, and Larastan at the final integration checkpoint.
-
-### Acceptance criteria
-
-* The Flight Plan Brief Fuel Score task contains an accessible link that opens the standalone calculator in a new browser tab without giving the new page access to `window.opener`.
-* The Livewire Fuel Score task shows the complete waypoint source list without a `More…` accordion or another disclosure action.
-* The Livewire page no longer displays an Off time input or calculated waypoint ETA and does not initialize calculator JavaScript.
-* ETA and FOB calculation functions and interactive state are dedicated to the standalone page.
-* Only an authenticated, verified, authorized owner can open a calculator for a stored flight-plan result.
-* The page makes no network request to calculate or recalculate values after its initial load.
-* A valid Off time calculates UTC ETA for every waypoint with a confirmed cumulative duration, including correct midnight rollover.
-* A valid starting FOB calculates waypoint FOB from confirmed release takeoff fuel and planned remaining fuel in one explicitly displayed unit.
-* Missing, inconsistent, malformed, or unsafe inputs do not produce a plausible-looking value; the affected row explains why it cannot be calculated.
-* Explicit zero values remain distinguishable from missing values.
-* User-entered values are not persisted or included in URLs.
-* The standalone layout remains usable by keyboard and at narrow/mobile widths, with visible focus and accessible labels.
-* The page states that results are browser-calculated planning aids and do not determine compliance, dispatchability, or safety.
-* Focused PHPUnit and JavaScript tests pass, Pint reports clean formatting for changed PHP, the Vite production build succeeds, and final Larastan passes.
-
-### References
-
-* `app/Livewire/FlightPlanBrief.php`
-* `app/Services/Infrastructure/FlightPlanResultStore.php`
-* `app/View/Presenters/FlightRelease/FuelPresenter.php`
-* `resources/views/components/flight-release/fuel-score.blade.php`
-* `resources/js/waypoint-fuel-monitor.js`
-* `tests/Feature/Livewire/FlightPlanBriefTest.php`
-* `tests/JavaScript/waypoint-fuel-monitor.test.js`
-
-### Outcome
-
-Implemented the owner-scoped standalone calculator and new-tab link. The Livewire Fuel Score task now shows server-rendered waypoint source rows directly, without the `More…` accordion or ETA controls. ETA and FOB calculations run only in the standalone tab, with explicit UTC and fuel units and unavailable-value reasons.
-
-Focused route and Livewire tests, JavaScript calculator tests, Pint, the production Vite build, and final Larastan passed.
-
-### Commit message
-
-`feat: add standalone offline waypoint fuel calculator`
-
-### [x] Follow up
-
-Follow-up outcome: ETA now depends only on Off time and confirmed cumulative duration. The standalone table uses the requested column order, normal-weight waypoint labels, source TBO above ATA, source FRMG above AFOB, actual burn (ABO) above its signed comparison, and a rightmost destination estimate. Burn comparison uses the previous actual fuel reading (or starting FOB for the first leg). Destination fuel projects the entered AFOB using the release's confirmed estimated landing fuel; unavailable or inconsistent source values remain uncalculated. Focused extraction, page-data, route-rendering, and JavaScript tests pass.
-
-### [x] Follow up 2
-
-Follow-up 2 outcome: Every waypoint defaults to collapsed and expands independently with a keyboard-accessible `+` control. Collapsed rows show waypoint, ETA, cumulative duration, planned FOB, and destination estimate; TBO, ATA, AFOB, and fuel/burn comparisons are shown on expansion. Empty inputs display quiet placeholders instead of unavailable-calculation prompts, while entered invalid data still receives a reason. The fuel column is labeled `Fuel on board` with `Planned FOB · AFOB` beneath it.
-
 ## [x] Completed: Follow up 3
-
-Outcome: Each expanded waypoint displays a signed UTC minute difference below ATA once a valid ATA is entered. Positive means ahead, negative means behind, and zero means on time. The calculation handles midnight rollover by using the shorter clock difference; an exact 12-hour separation is left unclassified because the waypoint date is unavailable. Focused JavaScript and page-rendering tests cover the result and empty or invalid inputs.
-
-Commit message: `feat: compare waypoint ETA and ATA in offline fuel score`
-
 ## [x] Completed: Follow up 4
-
-Outcome: Each waypoint's cumulative ABO is the entered actual Starting FOB at takeoff minus that waypoint's AFOB; earlier waypoint AFOB entries are no longer required. The cumulative planned burn comes from the waypoint's TBO, interpreted in the release fuel unit at the same ×100 scale as FRMG. The signed comparison is TBO minus ABO, so positive means below planned burn. The page labels cumulative values and explains missing starting FOB, TBO, or fuel units. Focused JavaScript and page tests, Pint, and the production build pass.
-
-Commit message: `feat: compare cumulative waypoint burn with TBO`
-
 ## [x] Completed: Follow up 5: Table Refactor: Waypoint Estimates
-
-Outcome: The standalone waypoint table now uses compact, single-line collapsed rows with `ETA`, `T/TME`, and `Fuel on board` headers. ATA, TBO, AFOB, comparisons, and calculation guidance live in a separate expandable detail row, so they do not increase the collapsed row height. Summary cells use `py-1` and middle alignment; the detail row is cloaked until Alpine initializes. Existing UTC and fuel-unit guidance remains visible above the table. Focused page and JavaScript tests, Pint, and the production build pass.
-
-Commit message: `refactor: compact offline waypoint estimates table`
-
 ### [x] Follow up 6: Fuel score table refinements
-
-Outcome: Replaced the high-contrast expand glyph with a muted, thin-stroke chevron that rotates when a waypoint opens. ETA, T/TME, planned FOB, and destination fuel are right-aligned; `min` and fuel units render in smaller secondary text while preserving explicit zero and unavailable states. Softer row borders, a subtle hover state, and a muted destination dash improve scanability. Focused JavaScript and page tests, Pint, and the production build pass.
-
-Commit message: `refactor: refine offline fuel score waypoint table`
-
 ## [x] Completed: Line Break Fix: Flexbox Label Content
-
-Outcome: Wrapped the takeoff Starting FOB caption, including its dynamic fuel unit, in one non-wrapping span. The column flex label now has one caption item above its input instead of separate text fragments. A focused page test checks the rendered markup; Pint and the production build pass.
-
-Commit message: `fix: keep takeoff FOB label on one line`
-
 ## [x] Completed: feat: Flight plan: overview: ETOPS card
-- Rendered only if ETOPS flight
-- Count of ETP points
-- ETOPS time (e.g. 180, 210, 240)
-
-Goal: Show a compact, source-backed ETOPS overview card only when the flight is confirmed ETOPS. Present the number of equal-time points and the confirmed ETOPS rating in minutes.
-
-Current implementation: The overview already conditionally renders an ETOPS evidence card, but it shows a generic summary of critical points and boundary-point labels. Typed ETOPS data already contains applicability, rating minutes, and equal-time points.
-
-Problem: The card does not directly answer how many ETPs were extracted or what ETOPS time applies. An empty ETP list or missing rating must not appear as a confirmed zero or invented rating.
-
-Implementation plan: Add nullable ETP-count and rating display methods to the existing ETOPS presenter and page view model; replace the generic overview metric with two labeled metrics; keep the existing confirmed-ETOPS visibility rule and detail navigation; cover confirmed, non-ETOPS, and missing-source states with focused tests.
-
-Outcome: The confirmed-ETOPS overview card now shows source-backed ETP count and ETOPS time in minutes. Entry and exit boundary points are excluded from the count. When either value is unavailable, its metric says `Not present in this release` instead of showing zero or an inferred rating. Non-ETOPS flights still have no ETOPS card, and the detailed ETOPS view remains unchanged. Focused view-model and Livewire tests, Pint, the Vite build, and Larastan pass.
-
-Follow-up outcome: The overview time and ETOPS badge now share one confirmed-rating lookup while retaining their separate `180 min` and `ETOPS 180` formats. Focused view-model tests cover confirmed ratings, absent ratings, non-ETOPS flights, and missing ETOPS data.
-
-Commit message: `feat: show ETP count and ETOPS time on overview card`
-
 ## [x] Completed: Overview: whole card color change
-Instead of 5-xl metric color change, change the whole card color. For the 5xl stat,
-
-Overview cards affected:
-- W&B
-- MEL
-- Slot (metric not yet implemented)
-- GENDEC (not yet implemented)
-
-
-**Context**
-Styling adjustment for status cards within a flight plan task panel. The goal was to shift the visual emphasis from the individual metric (`.text-5xl`) to the entire card container (`article`) using subtle, "glassmorphism" design techniques.
-
-**Diagnostics**
-The target elements were identified within a grid container (`.grid.xl\:grid-cols-6`).
-
-| Element Type | Primary Selector | Status Logic |
-| :--- | :--- | :--- |
-| **Alert Card** | `article` containing `.text-red-700` | Red status (e.g., MEL/CDL) |
-| **Info Card** | `article` containing `.text-[#1B365D]` | Blue status (e.g., Weight & Balance) |
-
-**Actionable Findings**
-* **Container Styling:** To avoid overwhelming the UI, solid backgrounds were replaced with low-opacity tints (5-10%) and a `backdrop-filter: blur(8px)` to create a glass effect.
-* **Accent Indicators:** A 4px left-border was identified as a more effective status indicator than full-card saturation.
-
-**Code Fixes**
-The following CSS strategy was identified to achieve the glassmorphism effect and specific link overrides. These styles should be adapted into the project's Tailwind configuration or CSS modules.
-
-
-`````css
-/* Example styling for Alert/Red cards */
-.card-alert {
-  background-color: rgba(239, 68, 68, 0.05);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-left: 4px solid #ef4444;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-/* Example styling for Info/Blue cards */
-.card-info {
-  background-color: rgba(14, 165, 233, 0.05);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(14, 165, 233, 0.3);
-  border-left: 4px solid #0ea5e9;
-}
-`````
-
-**Outcome**
-
-- Moved MEL/CDL and Weight & Balance status emphasis from the 5xl metric to the full Overview card surface.
-- Added subtle 5–10% status tints, an 8px backdrop blur, a 4px left accent, light/dark borders, and neutral high-contrast metric text.
-- Preserved maintenance priority and Weight & Balance severity palettes while adding a reusable custom-surface option for future Slot and GENDEC cards.
-- Added focused enum, view-model, and Livewire rendering coverage. Focused tests, Pint, the production Vite build, and Larastan pass.
-
-Commit message: `refactor: move overview status color to cards`
-
 ## [x] Completed: Fix flight plan uploads that leave the spinner running
-
-Outcome: The supplied 219-page PDF exceeded the 12 MB temporary-upload limit. Debugbar showed upload validation returning HTTP 302 because the exception handler forced HTML responses outside API routes, even when Livewire requested JSON. Parsing never started for those failed uploads. Restored JSON error negotiation and raised both the temporary-upload ceiling and flight-plan validation to 25 MB using a shared limit. The upload prompt now displays the limit.
-
-Validation: All 42 focused upload, Flight Plan Brief, and controller tests pass (813 assertions), including the supplied private PDF completing extraction, rendering results, and cleaning up its stored upload. Airport lookups are mocked in that regression test. Size-boundary, oversized-upload, invalid-signature, and visible-error cases are covered. Pint and the final Larastan pass succeed. Existing unrelated TODO edits are preserved.
-
-Deployment: Production has not been inspected or changed. Deploy the fix and refresh cached configuration; PHP and reverse-proxy request limits must accommodate a 25 MB file plus multipart overhead. This fixes the reproduced dev failure; other production failures still require their response status or logs.
-
-Commit message: `fix: accept larger flight plans and return upload errors as JSON`
-
 ## [x] Completed: Show flight plan upload and extraction progress
-
-Outcome: The upload area shows the browser's actual transfer percentage and a progress bar, followed by server-confirmed upload success and streamed processing messages. Stages cover reading the PDF, extracting text with page counts, extracting text from image-only pages when needed, loading cached text, extracting flight details, building the brief, and saving it. A successful result displays a completion message. Failed extraction does not display success; starting another upload resets the status. Processing updates contain stage names and page counts without document contents.
-
-Validation: 46 focused extraction and Livewire tests pass, with one unavailable private fixture skipped. The supplied 219-page PDF test verifies actual streamed status messages through completion; four affected tests also pass after the final copy and failure-state assertions. Cache and OCR progress, upload markup, completion, and reset states are covered. Pint, the production Vite build, and final Larastan pass. Browser visual verification was unavailable in this environment.
-
-Commit message: `feat: show live flight plan upload and extraction progress`
-
 ## [x] Completed: Fix Livewire test response type inference
-
-Outcome: Kept the Weight & Balance test's Livewire component assignment separate from its assertions. Forwarded response assertions no longer cause Larastan to infer the saved component as `TestResponse` before `get('flightPlanKey')`.
-
-Validation: The affected test passes with 58 assertions. Pint and Larastan pass, explicitly analyzing both `app` and `tests/Feature/Livewire/FlightPlanBriefTest.php`; the default configuration only includes `app`.
-
-Commit message: `fix: preserve Livewire component type in flight plan test`
-
 ## [x] Completed: Flight plan: Overview: Slot times overview card refactor
-Goal: create reusable stat widget for weight & balance, MEL / CDL and slot times
-
 ### Context aware slot times
-Context aware `Do not depart early` messaging if planned etd is equal to departure min slot window or if planned eta is equal to planned arrival min slot window. Render card in caution amber.
-Determine buffer time from planned departure to earliest slot window time. Render these 2 new values in the slot times task.
-
 ### Slot time widget
 Large 5-xl metric for slot time count. Remove ETD and ETA fields. Keep card links. Should render `1` in 5-xl then `approved slot time` in normal text-sm. Alert flags for close UTC slot windows.
 
