@@ -4,11 +4,10 @@ use App\Http\Controllers\ExtractController;
 use App\Http\Controllers\FlightReleaseController;
 use App\Http\Controllers\OfflineFuelScoreController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\WelcomeController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', WelcomeController::class)->name('welcome');
 
 Route::get('/privacy-policy', function () {
     return view('privacy-policy');

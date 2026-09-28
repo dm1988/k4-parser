@@ -42,4 +42,16 @@ class DemoBadgeComponentTest extends TestCase
         $this->assertStringContainsString('bg-amber-100', $html);
         $this->assertStringNotContainsString('unknown', $html);
     }
+
+    public function test_prominent_variant_identifies_previews_without_the_muted_badge_styles(): void
+    {
+        $html = Blade::render('<x-demo-badge variant="prominent">Demo · Preview</x-demo-badge>');
+
+        $this->assertStringContainsString('Demo · Preview', $html);
+        $this->assertStringContainsString('text-sm font-bold', $html);
+        $this->assertStringContainsString('bg-[#C5A059]', $html);
+        $this->assertStringContainsString('dark:bg-[#E8D2A5]', $html);
+        $this->assertStringNotContainsString('cc-badge', $html);
+        $this->assertStringNotContainsString('text-xs', $html);
+    }
 }

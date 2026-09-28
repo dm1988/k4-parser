@@ -9,6 +9,10 @@
 }
 
 @layer components {
+	.cc-welcome :is(a, select):focus-visible {
+		@apply outline outline-2 outline-offset-4 outline-[#1B365D] dark:outline-[#C5A059];
+	}
+
 	.cc-card {
 		@apply rounded-lg border border-[#1B365D]/15 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900;
 	}
@@ -23,6 +27,14 @@
 
 	.cc-btn-cta {
 		@apply rounded-md bg-[#1B365D] px-5 py-2.5 font-semibold text-[#F8F9FA] transition hover:bg-[#142a49] dark:bg-[#C5A059] dark:text-[#0B0E14] dark:hover:bg-[#d3b271];
+	}
+
+	.cc-btn-secondary {
+		@apply inline-flex items-center justify-center rounded-md border border-[#1B365D] bg-transparent px-4 py-2 text-sm font-semibold text-[#1B365D] transition hover:bg-[#1B365D]/5 dark:border-[#E8D2A5] dark:text-[#E8D2A5] dark:hover:bg-[#C5A059]/10;
+	}
+
+	.cc-welcome-nav-link {
+		@apply rounded-md px-3 py-2 text-[#1B365D] transition hover:bg-[#1B365D]/5 hover:underline dark:text-white dark:hover:bg-slate-800;
 	}
 
 	.cc-badge {

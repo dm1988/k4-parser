@@ -34,6 +34,9 @@ Page wants to refresh causing Off time / starting FOB to clear out
 ### Lat / Long cut off
 Only N50 rendered as waypoint not N50W120. 
 
+## Flight release: 24 hour time limit
+Clear flight release from cache and db if more than 24 hours since extraction.
+
 ## [x] Completed: feat: Overview cards Spatial Organization (Grid & Layout)
 Responsive Flow: Switch the grid from fixed columns to a repeat(auto-fit, minmax(280px, 1fr)) pattern. This ensures that cards resize intelligently based on screen width, preventing data from feeling cramped or overly stretched.
 Whitespace: Increased padding and gaps to create "breathable" space, which reduces cognitive load and allows the eye to focus on individual metrics.
@@ -44,7 +47,7 @@ Validation: 10 focused view-model and Livewire overview tests pass (238 assertio
 
 Commit message: `feat: improve overview card responsive layout`
 
-## Refactor welcome page for use with new features
+## [x] Completed: Refactor welcome page for use with new features
 
 ### Goal
 
@@ -73,7 +76,7 @@ The application now contains multiple extraction products, but the public entry 
 
    * Schedule Extractor.
    * Flight Plan Extractor.
-5. Give both tools equal hierarchy and keep the existing Flight Plan `Demo` state visible while applicable.
+5. Keep both tools visible, emphasize Schedule Extractor as the primary CTA, and clearly identify Flight Plan as a Demo / Preview.
 6. Move the current schedule screenshot into Schedule-specific supporting content rather than using it as the product-wide hero.
 7. Make CTAs access-aware using the existing:
 
@@ -105,7 +108,7 @@ The application now contains multiple extraction products, but the public entry 
 ### Acceptance criteria
 
 * The welcome page clearly represents K4 Extractor as a multi-tool Crew Compass application.
-* Schedule and Flight Plan Brief are both visible with equivalent product hierarchy.
+* Schedule and Flight Plan Brief are both visible, with a primary Schedule CTA and a secondary Flight Plan CTA.
 * CTA behavior reflects existing user entitlements.
 * Authorization remains enforced by the existing backend mechanisms.
 * The page follows the documented Crew Compass palette and light/dark themes.
@@ -113,9 +116,11 @@ The application now contains multiple extraction products, but the public entry 
 * All controls have visible keyboard focus and accessible names.
 * Existing public navigation, privacy, feedback, login/registration, and independence messaging remains available.
 
-### Proposed commit message
+Outcome: Reframed the welcome page as the Crew Compass / K4 Extractor product entry point with the headline “Turn Crew Documents into Actionable Flight Data.” Reusable tool cards have calendar/flight icons, a filled primary Schedule CTA, an outlined Flight Plan CTA, and a prominent Demo / Preview badge. Each available card has one native link covering its full area with keyboard focus styling; unavailable cards remain noninteractive. WelcomeController resolves actions through existing entitlement methods, including login, email verification, account-restricted, and disabled-feature states. Existing backend authorization remains in place. Added explicit high-contrast navigation and moved Data Security & Privacy directly below the tools, covering private upload storage, account/sign-in protection, unique passwords, and the privacy policy without unsupported encryption or deletion guarantees. Preserved theme controls, schedule-specific screenshot content, registration, dashboard, feedback, and independence messaging.
 
-`refactor: make welcome page a branded product hub`
+Validation: The latest 27 focused welcome, badge, and theme tests pass (251 assertions), including native card links, noninteractive unavailable cards, CTA hierarchy, preview status, and security content. Existing route-authorization tests passed during the initial refactor. Pint, the production Vite build, and one final Larastan pass covering the application, routes, and changed tests pass. Browser visual verification was not performed.
+
+Commit message: `refactor: make welcome page a branded product hub`
 
 ---
 

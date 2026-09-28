@@ -3,152 +3,137 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <title>JCA Schedule Extractor</title>
-
+    <meta name="description" content="K4 Extractor by Crew Compass turns crew schedules and flight plan documents into organized, reviewable information. Explore Schedule Extractor and Flight Plan Extractor.">
+    <title>K4 Extractor | Crew Compass</title>
     <x-theme-initializer />
-
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="flex h-full flex-col justify-between bg-white font-sans text-slate-900 antialiased transition-colors dark:bg-slate-900 dark:text-slate-100">
+<body class="cc-welcome flex min-h-full flex-col bg-[#F8F9FA] font-sans text-[#0B0E14] antialiased dark:bg-slate-950 dark:text-slate-100">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-white focus:p-4 focus:text-[#1B365D]">Skip to content</a>
 
-    <header class="mx-auto flex w-full max-w-7xl flex-col gap-4 px-6 py-8 sm:flex-row sm:items-center sm:justify-between">
-        <div class="space-y-0.5">
-            <div class="text-xs font-bold uppercase tracking-widest text-indigo-400">
-                Jeppesen Crew Access
-            </div>
-            <h1 class="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
-                Schedule Extractor
-            </h1>
-        </div>
-        <div class="flex flex-wrap items-center justify-center gap-3 sm:justify-end">
-            <x-theme-selector id="welcome-theme-selector" />
-
-            @if (Route::has('login'))
-                <nav class="flex gap-4">
+    <header class="border-b border-[#1B365D]/15 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <div class="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-6 lg:flex-row lg:items-center lg:justify-between">
+            <a href="{{ route('welcome') }}" class="flex w-fit items-center gap-3 rounded-md" aria-label="Crew Compass — K4 Extractor home">
+                <img src="{{ asset('images/cc_logo_512px.png') }}" alt="" width="56" height="56" class="h-14 w-14 object-contain">
+                <span class="flex flex-col gap-1">
+                    <span class="text-sm font-bold uppercase tracking-widest text-[#1B365D] dark:text-[#E8D2A5]">Crew Compass</span>
+                    <span class="text-xl font-bold tracking-tight">K4 Extractor</span>
+                </span>
+            </a>
+            <div class="flex flex-wrap items-center gap-4">
+                <nav aria-label="Main navigation" class="flex flex-wrap items-center gap-4 text-sm font-semibold">
+                    <a href="#extractors" class="cc-welcome-nav-link">Explore tools</a>
                     @auth
-                        <a href="{{ url('/dashboard') }}" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">Dashboard</a>
+                        <a href="{{ route('dashboard') }}" class="cc-welcome-nav-link">Dashboard</a>
                     @else
-                        <a href="{{ route('login') }}" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">Log in</a>
-
+                        <a href="{{ route('login') }}" class="cc-welcome-nav-link">Log in</a>
                         @if (Route::has('register'))
-                            <a href="{{ route('register') }}" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500">Register</a>
+                            <a href="{{ route('register') }}" class="cc-btn-primary">Register</a>
                         @endif
                     @endauth
                 </nav>
-            @endif
+                <x-theme-selector id="welcome-theme-selector" />
+            </div>
         </div>
     </header>
 
-    <main class="grid grid-cols-1 lg:grid-cols-2 max-w-7xl w-full mx-auto px-6 gap-12 items-center my-auto py-12">
+    <main id="main-content" tabindex="-1" class="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-12 px-6 py-12 sm:gap-16 sm:py-16">
+        <section aria-labelledby="welcome-title" class="flex max-w-3xl flex-col items-start gap-6">
+            <span class="cc-badge">Your documents. A clearer view.</span>
+            <h1 id="welcome-title" class="text-4xl font-bold leading-tight tracking-tight text-[#1B365D] dark:text-slate-100 sm:text-5xl">Turn Crew Documents into Actionable Flight Data</h1>
+            <p class="max-w-2xl text-lg leading-relaxed text-[#4A5568] dark:text-slate-300">From your next roster to your next flight, Crew Compass brings the details together. Choose a tool to extract, organize, and review the information in your documents.</p>
+        </section>
 
-        <div class="space-y-8">
-            <div class="space-y-4">
-                <span class="text-xs font-bold tracking-widest text-indigo-400 uppercase bg-indigo-500/10 px-3 py-1 rounded-full">
-                    Schedule Management Simplified
-                </span>
-                <h1 class="text-4xl font-extrabold leading-tight tracking-tight text-slate-900 dark:text-white sm:text-5xl">
-                    Your schedule, <br><span class="text-indigo-400">on your terms.</span>
-                </h1>
-                <p class="max-w-xl text-lg text-slate-600 dark:text-slate-400">
-                    Drop the clunky enterprise portals. Extract your JCA schedule instantly and access it beautifully from anywhere.
-                </p>
+        <section id="extractors" aria-label="Extraction tools" class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <x-feature-card
+                id="schedule-extractor"
+                title="Schedule Extractor"
+                description="Turn your Jeppesen Crew Access schedule into a readable roster, with flights, duties, and layovers in one place."
+                :action="$scheduleAction"
+                :primary="true"
+            >
+                <x-slot:icon><x-heroicon-o-calendar-days class="h-6 w-6" /></x-slot:icon>
+                <ul class="flex flex-col gap-3" role="list">
+                    <li>Review your upcoming flights and time away.</li>
+                    <li>Find the details of each duty and layover.</li>
+                    <li>Export events to your personal calendar.</li>
+                </ul>
+            </x-feature-card>
+
+            <x-feature-card
+                id="flight-plan-extractor"
+                title="Flight Plan Extractor"
+                description="Turn a supported flight release into a Flight Plan Brief, with extracted planning details organized for review."
+                :action="$flightPlanAction"
+                :demo="true"
+            >
+                <x-slot:icon><x-heroicon-o-paper-airplane class="h-6 w-6" /></x-slot:icon>
+                <ul class="flex flex-col gap-3" role="list">
+                    <li>Review the flight route and operational overview.</li>
+                    <li>Explore available fuel, weather, and weight &amp; balance details.</li>
+                    <li>Check extracted information against the source release.</li>
+                </ul>
+            </x-feature-card>
+        </section>
+
+        <section id="security-notice" aria-labelledby="security-title" class="rounded-lg border border-[#1B365D]/20 bg-white p-6 dark:border-slate-700 dark:bg-slate-900 sm:p-8">
+            <div class="flex items-center gap-3">
+                <x-heroicon-o-shield-check class="h-7 w-7 shrink-0 text-[#1B365D] dark:text-[#E8D2A5]" aria-hidden="true" />
+                <h2 id="security-title" class="text-xl font-bold">Data Security &amp; Privacy</h2>
             </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
-                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700/50 dark:bg-slate-800/50">
-                    <x-heroicon-o-calendar-days class="h-6 w-6 text-indigo-400 mb-2" />
-                    <h3 class="mb-1 text-sm font-semibold text-slate-900 dark:text-white">Understand your schedule</h3>
-                    <p class="text-xs text-slate-600 dark:text-slate-400">Clear, readable, and beautifully formatted shifts.</p>
-                </div>
-                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700/50 dark:bg-slate-800/50">
-                    <x-heroicon-o-globe-alt class="h-6 w-6 text-emerald-400 mb-2" />
-                    <h3 class="mb-1 text-sm font-semibold text-slate-900 dark:text-white">No VPN required</h3>
-                    <p class="text-xs text-slate-600 dark:text-slate-400">Check your upcoming roster securely from your personal calendar app.</p>
-                </div>
-                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700/50 dark:bg-slate-800/50">
-                    <x-heroicon-o-device-tablet class="h-6 w-6 text-amber-400 mb-2" />
-                    <h3 class="mb-1 text-sm font-semibold text-slate-900 dark:text-white">Break free from work devices</h3>
-                    <p class="text-xs text-slate-600 dark:text-slate-400">Keep up with your life using your personal phone.</p>
-                </div>
-            </div>
-
-            <div class="flex flex-wrap gap-4 items-center pt-2">
-                @auth
-                <a href="{{ url('/dashboard') }}" class="rounded-xl bg-indigo-600 px-6 py-3 text-base font-semibold text-white shadow-md transition hover:bg-indigo-500">
-                    Go to Dashboard
-                </a>
-                @else
-                <a href="{{ route('register') }}" class="rounded-xl bg-indigo-600 px-6 py-3 text-base font-semibold text-white shadow-md transition hover:bg-indigo-500">
-                    Get Started
-                </a>
-                @endauth
-                <a href="#security-notice" class="text-sm text-slate-600 underline underline-offset-4 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-300">
-                    Why do I need an account?
-                </a>
-            </div>
-        </div>
-
-        <div class="flex justify-center lg:justify-end items-center">
-            <div class="relative mx-auto border-slate-800 bg-slate-800 border-[14px] rounded-[2.5rem] h-[600px] w-[300px] shadow-2xl shadow-indigo-500/10">
-                <div class="h-[32px] w-[3px] bg-slate-800 absolute -left-[17px] top-[72px] rounded-l-lg"></div>
-                <div class="h-[46px] w-[3px] bg-slate-800 absolute -left-[17px] top-[124px] rounded-l-lg"></div>
-                <div class="h-[46px] w-[3px] bg-slate-800 absolute -left-[17px] top-[178px] rounded-l-lg"></div>
-                <div class="h-[46px] w-[3px] bg-slate-800 absolute -right-[17px] top-[142px] rounded-r-lg"></div>
-                <div class="rounded-[2rem] overflow-hidden w-full h-full bg-slate-950 flex flex-col items-center justify-center p-4 text-center border border-slate-800">
-
-                    <div class="space-y-2 text-slate-600">
-                        <img src="{{ asset('images/iphone_screenshot.PNG') }}" alt="App Mockup" class="rounded-lg border border-slate-700/50">
+            <p class="mt-3 text-sm leading-relaxed text-[#4A5568] dark:text-slate-300">Your account helps protect document access; sign-in rate limits help prevent automated abuse.</p>
+            <div class="mt-6 grid gap-6 md:grid-cols-3">
+                <div class="flex items-start gap-3">
+                    <x-heroicon-o-lock-closed class="h-5 w-5 shrink-0 text-[#1B365D] dark:text-[#E8D2A5]" aria-hidden="true" />
+                    <div class="space-y-2">
+                        <h3 class="text-sm font-bold">Private upload storage</h3>
+                        <p class="text-sm leading-relaxed text-[#4A5568] dark:text-slate-300">Uploaded documents are stored privately, outside the public file directory.</p>
                     </div>
-
+                </div>
+                <div class="flex items-start gap-3">
+                    <x-heroicon-o-key class="h-5 w-5 shrink-0 text-[#1B365D] dark:text-[#E8D2A5]" aria-hidden="true" />
+                    <div class="space-y-2">
+                        <h3 class="text-sm font-bold">Use a unique password.</h3>
+                        <p class="text-sm leading-relaxed text-[#4A5568] dark:text-slate-300">Do not reuse the password associated with your official work or corporate accounts.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <x-heroicon-o-document-text class="h-5 w-5 shrink-0 text-[#1B365D] dark:text-[#E8D2A5]" aria-hidden="true" />
+                    <div class="space-y-2">
+                        <h3 class="text-sm font-bold">Know how your data is used</h3>
+                        <p class="text-sm leading-relaxed text-[#4A5568] dark:text-slate-300">Read about data collection, retention, and your choices in our <a href="{{ route('privacy.policy') }}" class="rounded-sm font-semibold underline underline-offset-4">Privacy Policy</a>.</p>
+                    </div>
                 </div>
             </div>
-        </div>
+            <p class="mt-6 text-xs text-[#4A5568] dark:text-slate-400">Tool availability depends on your account and which features are enabled.</p>
+        </section>
+
+        <section aria-labelledby="schedule-preview-title" class="cc-card grid items-center gap-8 p-6 sm:p-8 md:grid-cols-2">
+            <div class="flex flex-col gap-4">
+                <p class="text-xs font-bold uppercase tracking-widest text-[#1B365D] dark:text-[#E8D2A5]">Inside Schedule Extractor</p>
+                <h2 id="schedule-preview-title" class="text-2xl font-bold">Your roster, ready for everyday life.</h2>
+                <p class="leading-relaxed text-[#4A5568] dark:text-slate-300">Review the schedule you upload, then bring the events you need into your personal calendar. Keep your next flight and layover close at hand.</p>
+            </div>
+            <figure class="flex min-w-0 flex-col items-center gap-4">
+                <img src="{{ asset('images/iphone_screenshot.PNG') }}" alt="Schedule Extractor on mobile with an upload area for roster screenshots or a trip PDF" width="1290" height="2655" loading="lazy" class="h-auto w-full max-w-[240px] rounded-2xl border border-[#1B365D]/15 shadow-sm dark:border-slate-700">
+                <figcaption class="text-center text-xs text-[#4A5568] dark:text-slate-400">A closer look at Schedule Extractor on mobile.</figcaption>
+            </figure>
+        </section>
+
+
     </main>
 
-    <section id="security-notice" class="border-t border-slate-200 bg-slate-50 py-12 dark:border-slate-800/80 dark:bg-slate-950/50">
-        <div class="max-w-4xl mx-auto px-6">
-            <div class="flex flex-col items-start gap-6 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-8 md:flex-row">
-                <div class="p-3 bg-amber-500/10 text-amber-400 rounded-xl shrink-0">
-                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0-6v2m0-8H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-5z" />
-                    </svg>
-                </div>
-                <div class="space-y-3">
-                    <h2 class="text-lg font-bold text-slate-900 dark:text-white">Why is account registration required?</h2>
-                    <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                        To securely extract and process your schedules, you must upload document files. Registration acts as a critical security measure to prevent unauthorized automated abuse of our file processing servers, keeping the ecosystem safe and efficient for everyone.
-                    </p>
-                    <div class="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/80 dark:text-slate-400">
-                        <span class="font-bold text-amber-500 uppercase tracking-wide text-[10px] bg-amber-500/10 px-1.5 py-0.5 rounded">Security Recommendation</span>
-                        <span>Please choose a <strong>unique password</strong> for this application. Do not reuse the password associated with your official work or corporate accounts.</span>
-                    </div>
-                </div>
-            </div>
+    <footer class="border-t border-[#1B365D]/15 bg-white px-6 py-8 dark:border-slate-800 dark:bg-slate-900">
+        <div class="mx-auto flex max-w-7xl flex-col gap-3 text-sm text-[#4A5568] dark:text-slate-300">
+            <p>&copy; {{ date('Y') }} Crew Compass. All rights reserved.</p>
+            <p>This independent tool is not affiliated with or endorsed by Jeppesen, Boeing, or other corporate entity.</p>
+            <nav aria-label="Footer navigation" class="flex flex-wrap gap-6">
+                <a href="mailto:crewcompasscc@gmail.com" class="rounded-sm underline underline-offset-4">Feedback &amp; Bugs</a>
+                <a href="{{ route('privacy.policy') }}" class="rounded-sm underline underline-offset-4">Privacy Policy</a>
+            </nav>
         </div>
-    </section>
-
-<footer class="space-y-1 border-t border-slate-200 py-6 text-center text-xs text-slate-500 dark:border-slate-800/40 dark:text-slate-600">
-    <p>&copy; {{ date('Y') }} Crew Compass. All rights reserved.</p>
-    <p>This independent tool is not affiliated with or endorsed by Jeppesen, Boeing, or other corporate entity.</p>
-    <p>
-        <a
-            href="mailto:crewcompasscc@gmail.com"
-            class="underline hover:text-slate-900 dark:hover:text-slate-300"
-        >
-            Feedback &amp; Bugs
-        </a>
-        <span aria-hidden="true">|</span>
-        <a
-            href="{{ route('privacy.policy') }}"
-            class="underline hover:text-slate-900 dark:hover:text-slate-300"
-        >
-            Privacy Policy
-        </a>
-    </p>
-</footer>
-
+    </footer>
 </body>
 </html>

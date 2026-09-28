@@ -15,13 +15,15 @@ class ExampleTest extends TestCase
         $response = $this->get('/');
 
         $response->assertOk();
-        $response->assertSeeText('Jeppesen Crew Access');
+        $response->assertSeeText('Crew Compass');
+        $response->assertSeeText('K4 Extractor');
         $response->assertSeeText('Schedule Extractor');
         $response->assertSeeInOrder([
-            'Jeppesen Crew Access',
+            'K4 Extractor',
             'Schedule Extractor',
+            'Flight Plan Extractor',
         ]);
-        $response->assertSeeText('Extract your JCA schedule instantly');
+        $response->assertSeeText('Flight Plan Brief');
         $response->assertSeeText('This independent tool is not affiliated with or endorsed by Jeppesen, Boeing, or other corporate entity.');
         $response->assertDontSeeText('JCA SCHEDULE PARSER');
     }
