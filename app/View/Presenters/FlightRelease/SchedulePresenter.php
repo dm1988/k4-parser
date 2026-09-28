@@ -6,10 +6,13 @@ use App\DTOs\SlotTimeData;
 use App\Enums\SlotDirection;
 use App\View\Models\FlightPlanPageData;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Number;
 use Throwable;
 
 final readonly class SchedulePresenter
 {
+    private const int CLOSE_WINDOW_MINUTES = 10;
+
     public function __construct(private ?FlightPlanPageData $pageData) {}
 
     public function etdUtc(): ?string
@@ -54,14 +57,39 @@ final readonly class SchedulePresenter
 
     public function overviewSlotSummary(): ?string
     {
-        $slotCount = count($this->pageData?->flightPlan->schedule->slots ?? []);
+        $slotCount = $this->overviewSlotCount();
 
-        return $slotCount === 0
+        return $slotCount === null
             ? null
-            : $slotCount.' approved UTC '.($slotCount === 1 ? 'slot' : 'slots');
+            : $slotCount.' '.$this->overviewSlotLabel();
     }
 
-    /** @return list<array{direction: string, airport: string, date: string, time: string, sourceTime: string, timeBasis: string, tolerance: ?string, window: ?string, comparisonHeading: ?string, plannedTime: ?string, comparison: ?string, plannedPosition: ?float}> */
+    public function overviewSlotCount(): ?int
+    {
+        $count = count($this->pageData?->flightPlan->schedule->slots ?? []);
+
+        return $count === 0 ? null : $count;
+    }
+
+    public function overviewSlotLabel(): string
+    {
+        return $this->overviewSlotCount() === 1 ? 'approved slot time' : 'approved slot times';
+    }
+
+    /** @return list<string> */
+    public function overviewSlotAlerts(): array
+    {
+        return array_values(array_unique(array_filter(array_column($this->slotTimes(), 'alert'))));
+    }
+
+    public function overviewSlotCardClasses(): ?string
+    {
+        return $this->overviewSlotAlerts() === []
+            ? null
+            : 'border-amber-500/30 border-l-4 border-l-amber-500 bg-amber-500/5 backdrop-blur dark:border-amber-400/30 dark:border-l-amber-400 dark:bg-amber-400/10';
+    }
+
+    /** @return list<array{direction: string, airport: string, date: string, time: string, sourceTime: string, timeBasis: string, tolerance: ?string, window: ?string, comparisonHeading: ?string, plannedTime: ?string, comparison: ?string, plannedPosition: ?float, buffer: ?string, bufferBasis: string, alert: ?string, alertDetail: ?string}> */
     public function slotTimes(): array
     {
         return array_map(
@@ -75,7 +103,7 @@ final readonly class SchedulePresenter
         return $this->pageData?->flightPlan->schedule->slotSourceText;
     }
 
-    /** @return array{direction: string, airport: string, date: string, time: string, sourceTime: string, timeBasis: string, tolerance: ?string, window: ?string, comparisonHeading: ?string, plannedTime: ?string, comparison: ?string, plannedPosition: ?float} */
+    /** @return array{direction: string, airport: string, date: string, time: string, sourceTime: string, timeBasis: string, tolerance: ?string, window: ?string, comparisonHeading: ?string, plannedTime: ?string, comparison: ?string, plannedPosition: ?float, buffer: ?string, bufferBasis: string, alert: ?string, alertDetail: ?string} */
     private function slotTime(SlotTimeData $slot): array
     {
         $tolerance = $slot->toleranceMinutes;
@@ -89,16 +117,40 @@ final readonly class SchedulePresenter
         $plannedTime = null;
         $comparison = null;
         $plannedPosition = null;
+        $buffer = null;
+        $alert = null;
+        $alertDetail = null;
+        $bufferBasis = $plannedTimeLabel === null
+            ? 'A confirmed slot direction is required to calculate the buffer.'
+            : 'Planned '.$plannedTimeLabel.' minus the earliest '.$slot->direction->value.' window time (UTC). Negative values are before the window.';
 
-        if ($plannedValue !== null && $plannedTimeLabel !== null && $tolerance !== null && $tolerance > 0) {
+        if ($this->formatUtcPart($plannedValue, 'c') !== null && $plannedTimeLabel !== null && $tolerance !== null && $tolerance >= 0) {
             try {
                 $plannedInstant = CarbonImmutable::parse($plannedValue)->utc();
                 $offsetMinutes = $slot->instantUtc->diffInMinutes($plannedInstant, false);
+                $windowStart = $slot->instantUtc->subMinutes($tolerance);
+                $windowEnd = $slot->instantUtc->addMinutes($tolerance);
+                $minutesFromStart = $windowStart->diffInMinutes($plannedInstant, false);
+                $minutesUntilEnd = $plannedInstant->diffInMinutes($windowEnd, false);
+                $buffer = Number::format($minutesFromStart, maxPrecision: 2, locale: 'en').' min';
                 $plannedTime = $plannedInstant->format('M j, Hi\Z').' UTC';
                 $comparison = abs($offsetMinutes) <= $tolerance
                     ? 'Planned '.$plannedTimeLabel.' is within the confirmed window'
                     : 'Planned '.$plannedTimeLabel.' is outside the confirmed window';
-                $plannedPosition = max(0, min(100, 50 + (($offsetMinutes / ($tolerance * 4)) * 100)));
+                $plannedPosition = $tolerance === 0
+                    ? ($offsetMinutes === 0.0 ? 50.0 : ($offsetMinutes < 0 ? 0.0 : 100.0))
+                    : max(0, min(100, 50 + (($offsetMinutes / ($tolerance * 4)) * 100)));
+
+                if ($plannedInstant->equalTo($windowStart)) {
+                    $alert = 'Do not depart early';
+                    $alertDetail = 'Planned '.$plannedTimeLabel.' equals the earliest approved '.$slot->direction->value.' time (UTC).';
+                } elseif ($minutesFromStart < 0 || $minutesUntilEnd < 0) {
+                    $alert = 'Planned time outside slot window';
+                    $alertDetail = 'Planned '.$plannedTimeLabel.' is outside the confirmed UTC window. Review the approved slot.';
+                } elseif (min($minutesFromStart, $minutesUntilEnd) <= self::CLOSE_WINDOW_MINUTES) {
+                    $alert = 'Close UTC slot window';
+                    $alertDetail = 'Planned '.$plannedTimeLabel.' is within '.self::CLOSE_WINDOW_MINUTES.' min of a confirmed window boundary.';
+                }
             } catch (Throwable) {
             }
         }
@@ -120,6 +172,10 @@ final readonly class SchedulePresenter
             'plannedTime' => $plannedTime,
             'comparison' => $comparison,
             'plannedPosition' => $plannedPosition,
+            'buffer' => $buffer,
+            'bufferBasis' => $bufferBasis,
+            'alert' => $alert,
+            'alertDetail' => $alertDetail,
         ];
     }
 

@@ -39,6 +39,14 @@
                                 </dd>
                             </div>
                         @endif
+                        <div class="col-span-2 flex flex-col gap-1 border-t border-[#1B365D]/10 pt-3 dark:border-slate-700">
+                            <dt class="text-[10px] font-bold uppercase tracking-[0.14em] text-[#4A5568] dark:text-slate-400">Buffer from earliest slot time</dt>
+                            <dd class="font-mono text-sm font-semibold tabular-nums text-[#0B0E14] dark:text-slate-100">{{ $slot['buffer'] ?? 'Unable to calculate' }}</dd>
+                            <dd class="text-xs text-[#4A5568] dark:text-slate-400">{{ $slot['bufferBasis'] }}</dd>
+                            @if ($slot['buffer'] === null)
+                                <dd class="text-xs text-[#4A5568] dark:text-slate-400">A planned UTC time and confirmed slot window are required.</dd>
+                            @endif
+                        </div>
                         @if ($slot['comparison'] !== null)
                             <x-flight-release.slot-time-comparison
                                 :heading="$slot['comparisonHeading']"
@@ -48,6 +56,15 @@
                             />
                         @endif
                     </dl>
+                    @if ($slot['alert'] !== null)
+                        <div class="mx-4 mb-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200">
+                            <x-heroicon-o-exclamation-triangle class="h-4 w-4 shrink-0" aria-hidden="true" />
+                            <div class="flex flex-col gap-1">
+                                <p class="text-sm font-semibold">{{ $slot['alert'] }}</p>
+                                <p class="text-xs">{{ $slot['alertDetail'] }}</p>
+                            </div>
+                        </div>
+                    @endif
                 </li>
             @endforeach
         </ol>

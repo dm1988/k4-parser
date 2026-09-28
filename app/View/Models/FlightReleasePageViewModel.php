@@ -243,7 +243,28 @@ readonly class FlightReleasePageViewModel
         return $this->schedulePresenter->overviewSlotSummary();
     }
 
-    /** @return list<array{direction: string, airport: string, date: string, time: string, sourceTime: string, timeBasis: string, tolerance: ?string, window: ?string, comparisonHeading: ?string, plannedTime: ?string, comparison: ?string, plannedPosition: ?float}> */
+    public function overviewSlotCount(): ?int
+    {
+        return $this->schedulePresenter->overviewSlotCount();
+    }
+
+    public function overviewSlotLabel(): string
+    {
+        return $this->schedulePresenter->overviewSlotLabel();
+    }
+
+    /** @return list<string> */
+    public function overviewSlotAlerts(): array
+    {
+        return $this->schedulePresenter->overviewSlotAlerts();
+    }
+
+    public function overviewSlotCardClasses(): ?string
+    {
+        return $this->schedulePresenter->overviewSlotCardClasses();
+    }
+
+    /** @return list<array{direction: string, airport: string, date: string, time: string, sourceTime: string, timeBasis: string, tolerance: ?string, window: ?string, comparisonHeading: ?string, plannedTime: ?string, comparison: ?string, plannedPosition: ?float, buffer: ?string, bufferBasis: string, alert: ?string, alertDetail: ?string}> */
     public function slotTimes(): array
     {
         return $this->schedulePresenter->slotTimes();

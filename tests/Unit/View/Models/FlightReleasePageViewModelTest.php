@@ -12,6 +12,7 @@ use App\View\Models\FlightRelease\WeightBalanceFieldViewModel;
 use App\View\Models\FlightReleasePageViewModel;
 use App\View\Models\FlightReleasePageViewModelFactory;
 use Illuminate\Support\Facades\Blade;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -382,7 +383,10 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('FL330', $viewModel->overviewInitialAltitude());
         $this->assertSame('4,000 NM', $viewModel->overviewRouteDistance());
         $this->assertSame('120,000 LB', $viewModel->overviewRampFuel());
-        $this->assertSame('2 approved UTC slots', $viewModel->overviewSlotSummary());
+        $this->assertSame('2 approved slot times', $viewModel->overviewSlotSummary());
+        $this->assertSame(2, $viewModel->overviewSlotCount());
+        $this->assertSame([], $viewModel->overviewSlotAlerts());
+        $this->assertNull($viewModel->overviewSlotCardClasses());
         $this->assertTrue($viewModel->hasSlotTimes());
         $this->assertSame(2, $viewModel->taskCounter(FlightPlanTask::SlotTimes));
         $this->assertSame([
@@ -398,6 +402,10 @@ class FlightReleasePageViewModelTest extends TestCase
             'plannedTime' => 'May 25, 1830Z UTC',
             'comparison' => 'Planned ETD is within the confirmed window',
             'plannedPosition' => 37.5,
+            'buffer' => '15 min',
+            'bufferBasis' => 'Planned ETD minus the earliest departure window time (UTC). Negative values are before the window.',
+            'alert' => null,
+            'alertDetail' => null,
         ], $viewModel->slotTimes()[0]);
         $this->assertSame('Planned arrival comparison', $viewModel->slotTimes()[1]['comparisonHeading']);
         $this->assertSame('May 26, 0215Z UTC', $viewModel->slotTimes()[1]['plannedTime']);
@@ -446,6 +454,130 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('Sep 17, 0431Z UTC', $slotTimes[1]['plannedTime']);
         $this->assertSame('Planned ETA is within the confirmed window', $slotTimes[1]['comparison']);
         $this->assertEqualsWithDelta(38.333333333333, $slotTimes[1]['plannedPosition'], 0.000001);
+    }
+
+    #[Test]
+    #[DataProvider('slotWindowCases')]
+    public function it_calculates_slot_buffers_and_contextual_alerts(
+        string $direction,
+        string $slotTime,
+        ?string $plannedTime,
+        ?int $tolerance,
+        ?string $expectedBuffer,
+        ?string $expectedAlert,
+    ): void {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['schedule'] = [
+            'etdUtc' => $direction === 'departure' ? $plannedTime : '2026-09-16T12:00:00Z',
+            'etaUtc' => $direction === 'arrival' ? $plannedTime : '2026-09-18T12:00:00Z',
+            'slots' => [[
+                'direction' => $direction,
+                'airport' => $direction === 'arrival' ? 'KMIA' : 'PANC',
+                'instantUtc' => $slotTime,
+                'sourceTime' => '0030Z',
+                'toleranceMinutes' => $tolerance,
+            ]],
+        ];
+
+        $viewModel = $this->viewModel($payload);
+        $slot = $viewModel->slotTimes()[0];
+
+        $this->assertSame($expectedBuffer, $slot['buffer']);
+        $this->assertSame($expectedAlert, $slot['alert']);
+        $this->assertSame($expectedAlert === null ? [] : [$expectedAlert], $viewModel->overviewSlotAlerts());
+        $this->assertSame(1, $viewModel->overviewSlotCount());
+        $this->assertSame('1 approved slot time', $viewModel->overviewSlotSummary());
+
+        if ($expectedAlert === null) {
+            $this->assertNull($viewModel->overviewSlotCardClasses());
+        } else {
+            $this->assertStringContainsString('border-l-amber-500', $viewModel->overviewSlotCardClasses());
+            $this->assertNotNull($slot['alertDetail']);
+        }
+
+        if ($expectedBuffer === null) {
+            $this->assertNull($slot['plannedPosition']);
+            $this->assertNull($slot['comparison']);
+            $detail = $this->renderWorkspace($viewModel, FlightPlanTask::SlotTimes);
+            $this->assertStringContainsString('Unable to calculate', $detail);
+            $this->assertStringNotContainsString('Do not depart early', $detail);
+        }
+
+        if ($tolerance === 0 && $expectedBuffer === '0 min') {
+            $this->assertSame(50.0, $slot['plannedPosition']);
+        }
+    }
+
+    /** @return iterable<string, array{string, string, ?string, ?int, ?string, ?string}> */
+    public static function slotWindowCases(): iterable
+    {
+        $slot = '2026-09-17T00:30:00Z';
+
+        yield 'departure at earliest time' => ['departure', $slot, '2026-09-17T00:00:00Z', 30, '0 min', 'Do not depart early'];
+        yield 'arrival at earliest time' => ['arrival', $slot, '2026-09-17T00:00:00Z', 30, '0 min', 'Do not depart early'];
+        yield '10 minutes after opening' => ['departure', $slot, '2026-09-17T00:10:00Z', 30, '10 min', 'Close UTC slot window'];
+        yield '11 minutes after opening' => ['departure', $slot, '2026-09-17T00:11:00Z', 30, '11 min', null];
+        yield '10 minutes before closing' => ['arrival', $slot, '2026-09-17T00:50:00Z', 30, '50 min', 'Close UTC slot window'];
+        yield '11 minutes before closing' => ['arrival', $slot, '2026-09-17T00:49:00Z', 30, '49 min', null];
+        yield 'at latest time' => ['departure', $slot, '2026-09-17T01:00:00Z', 30, '60 min', 'Close UTC slot window'];
+        yield 'before opening' => ['departure', $slot, '2026-09-16T23:59:00Z', 30, '-1 min', 'Planned time outside slot window'];
+        yield 'after closing' => ['arrival', $slot, '2026-09-17T01:01:00Z', 30, '61 min', 'Planned time outside slot window'];
+        yield 'window crossing midnight' => ['departure', '2026-09-17T00:00:00Z', '2026-09-16T23:55:00Z', 30, '25 min', null];
+        yield 'window crossing year boundary' => ['arrival', '2027-01-01T00:00:00Z', '2026-12-31T23:30:00Z', 30, '0 min', 'Do not depart early'];
+        yield 'zero tolerance is explicit' => ['departure', $slot, $slot, 0, '0 min', 'Do not depart early'];
+        yield 'missing tolerance' => ['departure', $slot, $slot, null, null, null];
+        yield 'missing planned time' => ['arrival', $slot, null, 30, null, null];
+        yield 'invalid planned time' => ['departure', $slot, 'not-a-dateZ', 30, null, null];
+        yield 'local planned time' => ['departure', $slot, '2026-09-17T00:00:00', 30, null, null];
+        yield 'unknown direction' => ['unspecified', $slot, $slot, 30, null, null];
+        yield 'same clock on wrong date' => ['departure', $slot, '2026-09-18T00:00:00Z', 30, '1,440 min', 'Planned time outside slot window'];
+    }
+
+    #[Test]
+    public function it_renders_the_slot_stat_and_boundary_caution_with_detail_buffers(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['schedule'] = [
+            'etdUtc' => '2026-09-17T00:00:00Z',
+            'slots' => [[
+                'direction' => 'departure',
+                'airport' => 'PANC',
+                'instantUtc' => '2026-09-17T00:30:00Z',
+                'sourceTime' => '0030Z',
+                'toleranceMinutes' => 30,
+            ]],
+        ];
+        $model = $this->viewModel($payload);
+        $overview = Blade::render('<x-flight-release.overview :model="$model" />', ['model' => $model]);
+
+        $this->assertStringContainsString('aria-label="1 approved slot time"', $overview);
+        $this->assertStringContainsString('font-mono text-5xl', $overview);
+        $this->assertStringContainsString('text-sm font-normal', $overview);
+        $this->assertStringContainsString('Do not depart early', $overview);
+        $this->assertStringContainsString('border-l-amber-500', $overview);
+        $this->assertStringContainsString('selectTask(\'slot_times\')', $overview);
+        $this->assertStringNotContainsString('ETD (UTC)', $overview);
+        $this->assertStringNotContainsString('ETA (UTC)', $overview);
+
+        $detail = $this->renderWorkspace($model, FlightPlanTask::SlotTimes);
+        $this->assertStringContainsString('Buffer from earliest slot time', $detail);
+        $this->assertStringContainsString('0 min', $detail);
+        $this->assertStringContainsString('Do not depart early', $detail);
+        $this->assertStringContainsString('Planned ETD equals the earliest approved departure time (UTC).', $detail);
+    }
+
+    #[Test]
+    public function it_does_not_render_a_zero_slot_stat_for_missing_data(): void
+    {
+        $model = $this->viewModel($this->resultPayload());
+        $overview = Blade::render('<x-flight-release.overview :model="$model" />', ['model' => $model]);
+
+        $this->assertNull($model->overviewSlotCount());
+        $this->assertSame([], $model->overviewSlotAlerts());
+        $this->assertNull($model->overviewSlotCardClasses());
+        $this->assertStringNotContainsString('0 approved slot', $overview);
+        $this->assertStringNotContainsString('selectTask(\'slot_times\')', $overview);
+        $this->assertStringContainsString('Not present in this release', $overview);
     }
 
     #[Test]

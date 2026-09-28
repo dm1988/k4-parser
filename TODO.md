@@ -28,7 +28,12 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Current focus: Flight plan: Overview: Slot times overview card refactor
+## Bug: PDF flight release header/footer extracted into route
+With this `DCT ELLAM DCT TIEKL DCT OMSUN DCT 61N130W 60N120W 58N110W/N0491F330 DCT PETMA DCT YQD DCT GABOV DCT SUZLI DCT FGHRN MADII7 KALITTA BRIEF PAGE 2 OF 79 PAGE 2 OF 79` extracted.
+
+Possible solution: Strip `KALITTA BRIEF PAGE 2 OF 79 PAGE 2 OF 79` type text and similar from extracted PDF text.
+
+## [x] Completed: Flight plan: Overview: Slot times overview card refactor
 Goal: create reusable stat widget for weight & balance, MEL / CDL and slot times
 
 ### Context aware slot times
@@ -38,7 +43,13 @@ Determine buffer time from planned departure to earliest slot window time. Rende
 ### Slot time widget
 Large 5-xl metric for slot time count. Remove ETD and ETA fields. Keep card links. Should render `1` in 5-xl then `approved slot time` in normal text-sm. Alert flags for close UTC slot windows.
 
+Outcome: Weight & Balance, MEL/CDL, and Slot Times now share the reusable overview-stat component. The slot card shows a large monospaced count with singular/plural `approved slot time` copy, retains its detail action, and omits ETD/ETA fields. Missing slots remain explicitly unavailable rather than displaying zero.
 
+Slot comparisons use full UTC dates. Exact matches to the departure or arrival window start show `Do not depart early`; times within the user-selected 10 minutes of either boundary and times outside the window receive caution alerts and an amber overview card. The Slot Times task displays the signed buffer from the earliest window time (ETD for departure, ETA for arrival), the calculation basis, and contextual alert details. Missing planned time, tolerance, or direction leaves the buffer unavailable.
+
+Validation: Focused view-model and Livewire tests pass, covering departure/arrival comparisons, 10/11-minute thresholds, both window boundaries, times outside the window, midnight/year rollover, explicit zero tolerance, missing/invalid source values, singular/plural rendering, missing-data display, and preserved task links. Pint, the production Vite build, and Larastan (including both changed test files) pass. Browser visual verification was unavailable in this environment.
+
+Commit message: `refactor: add shared overview stats and contextual slot window alerts`
 
 ## Feat: Domestic / international flight determine
 Domestic Flight: A flight that operates entirely within the sovereign territory and airspace of a single country, departing and landing at airports located in the same nation without crossing or clearing international customs boundaries (e.g., PANC to CONUS, or Hawaii to CONUS).

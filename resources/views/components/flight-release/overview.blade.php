@@ -33,17 +33,11 @@
         >
             @if ($model->hasOverviewMelCdlItems())
                 <div class="flex flex-col gap-3">
-                    <div class="flex items-end gap-3">
-                        <span
-                            aria-label="{{ $model->overviewMelCdlItemCountLabel() }}"
-                            class="font-mono text-5xl font-black leading-none text-[#0B0E14] dark:text-slate-100"
-                        >
-                            {{ $model->overviewMelCdlItemCount() }}
-                        </span>
-                        <p class="pb-1 text-sm font-semibold leading-5 text-[#4A5568] dark:text-slate-300">
-                            Active MEL/CDL restrictions
-                        </p>
-                    </div>
+                    <x-flight-release.overview-stat
+                        :value="$model->overviewMelCdlItemCount()"
+                        label="Active MEL/CDL restrictions"
+                        :accessible-label="$model->overviewMelCdlItemCountLabel()"
+                    />
                     <p class="text-sm font-medium leading-5 text-[#4A5568] dark:text-slate-300">
                         Review the source-listed MEL/CDL items and associated limitations.
                     </p>
@@ -66,36 +60,41 @@
                 :surface-classes="$model->overviewWeightBalanceAlertCardClasses()"
                 class="xl:col-span-2"
             >
-                <div class="flex items-end gap-3">
-                    <span
-                        aria-label="{{ $model->overviewWeightBalanceAlertCountLabel() }}"
-                        class="font-mono text-5xl font-black leading-none text-[#0B0E14] dark:text-slate-100"
-                    >
-                        {{ $model->overviewWeightBalanceAlertCount() }}
-                    </span>
-                    <p class="pb-1 text-sm font-semibold leading-5 text-[#4A5568] dark:text-slate-300">
-                        {{ $model->overviewWeightBalanceAlertSummary() }}
-                    </p>
-                </div>
+                <x-flight-release.overview-stat
+                    :value="$model->overviewWeightBalanceAlertCount()"
+                    :label="$model->overviewWeightBalanceAlertSummary()"
+                    :accessible-label="$model->overviewWeightBalanceAlertCountLabel()"
+                />
             </x-flight-release.overview-card>
         @endif
 
         <x-flight-release.overview-card
             :task="\App\Enums\FlightPlanTask::SlotTimes"
-            title="Schedule and slots"
+            title="Slot times"
             icon="clock"
             :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::SlotTimes)"
             :show-action="$model->hasSlotTimes()"
-            :show-status="$model->hasSlotTimes()"
+            :show-status="false"
+            :surface-classes="$model->overviewSlotCardClasses()"
             class="xl:col-span-2"
         >
-            <dl class="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-1">
-                <x-flight-release.metric label="ETD (UTC)" :value="$model->overviewEtdUtc()" empty-text="Not present in this release" />
-                <x-flight-release.metric label="ETA (UTC)" :value="$model->overviewEtaUtc()" empty-text="Not present in this release" />
-                @if ($model->hasSlotTimes())
-                    <x-flight-release.metric label="Approved slots" :value="$model->overviewSlotSummary()" empty-text="Not present in this release" />
-                @endif
-            </dl>
+            @if ($model->hasSlotTimes())
+                <div class="flex flex-col gap-3">
+                    <x-flight-release.overview-stat
+                        :value="$model->overviewSlotCount()"
+                        :label="$model->overviewSlotLabel()"
+                        :accessible-label="$model->overviewSlotSummary()"
+                    />
+                    @foreach ($model->overviewSlotAlerts() as $alert)
+                        <p class="flex items-start gap-2 text-sm font-medium text-amber-800 dark:text-amber-200">
+                            <x-heroicon-o-exclamation-triangle class="h-4 w-4 shrink-0" aria-hidden="true" />
+                            <span>{{ $alert }}</span>
+                        </p>
+                    @endforeach
+                </div>
+            @else
+                <p class="text-sm text-[#4A5568] dark:text-slate-400">Not present in this release</p>
+            @endif
         </x-flight-release.overview-card>
 
         <x-flight-release.overview-card
