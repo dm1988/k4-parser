@@ -229,6 +229,12 @@ class FlightRouteExtractor
      */
     private function normalizeExtractedRoute(string $routeText): string
     {
+        $routeText = preg_replace(
+            '/\b(?:KALITTA\s+BRIEF\s+)?PAGE\s+\d+\s+OF\s+\d+\b/i',
+            ' ',
+            $routeText,
+        ) ?? $routeText;
+
         $lines = preg_split('/\R/', trim($routeText));
 
         if ($lines === false) {

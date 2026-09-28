@@ -15,6 +15,7 @@ use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Smalot\PdfParser\Document;
 use Smalot\PdfParser\Parser;
 use Tests\TestCase;
@@ -52,6 +53,50 @@ TEXT;
         $route = $extractor->extractRouteFromText($text);
 
         $this->assertSame('OSUDO4A ASETA UZ152 UKLEN UL310 ARULA UM400 CBA UZ105 UMKAL UMKAL6A', $route);
+    }
+
+    #[DataProvider('routePageLabels')]
+    public function test_route_extraction_removes_pdf_page_labels(string $routeText, string $expectedRoute): void
+    {
+        $extractor = $this->makeExtractor();
+        $text = '(FPL-CKS241-IS-B77L/H-SDE2E3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1'
+            .'-PANC1040-N0489F330 '.$routeText.'-KMIA0712 KRSW-PBN/A1L1B1C1D1O1S2)';
+
+        $this->assertSame($expectedRoute, $extractor->extractRouteFromText($text));
+
+        $flightPlan = $extractor->extractFlightPlanDataFromText($text);
+
+        $this->assertSame($expectedRoute, $flightPlan['route']);
+        $this->assertSame('PANC', $flightPlan['departure']);
+        $this->assertSame('KMIA', $flightPlan['destination']);
+        $this->assertSame('KRSW', $flightPlan['alternate']);
+    }
+
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function routePageLabels(): array
+    {
+        $reportedRoute = 'DCT ELLAM DCT TIEKL DCT OMSUN DCT 61N130W 60N120W 58N110W/N0491F330 DCT PETMA DCT YQD DCT GABOV DCT SUZLI DCT FGHRN MADII7';
+
+        return [
+            'reported duplicate footer' => [$reportedRoute.' KALITTA BRIEF PAGE 2 OF 79 PAGE 2 OF 79', $reportedRoute],
+            'standalone page label' => ['DCT ELLAM PAGE 12 OF 100 DCT PETMA', 'DCT ELLAM DCT PETMA'],
+            'page break inside route' => ["DCT ELLAM\nKALITTA BRIEF PAGE 2 OF 79\nPAGE 2 OF 79\fDCT PETMA", "DCT ELLAM\nDCT PETMA"],
+            'wrapped mixed case label' => ["DCT ELLAM Kalitta\tBrief\nPage 2\nOf 79 DCT PETMA", 'DCT ELLAM DCT PETMA'],
+            'header before route' => ['KALITTA BRIEF PAGE 3 OF 79 DCT PETMA', 'DCT PETMA'],
+            'similar route tokens preserved' => ['DCT PAGE DCT BRIEF DCT PAGE2 DCT MADII7', 'DCT PAGE DCT BRIEF DCT PAGE2 DCT MADII7'],
+        ];
+    }
+
+    public function test_route_containing_only_pdf_page_labels_is_rejected(): void
+    {
+        $this->expectException(FlightRouteNotFoundException::class);
+        $this->expectExceptionMessage('empty');
+
+        $this->makeExtractor()->extractRouteFromText(
+            '(FPL-CKS241-IS-B77L/H-SDE2-PANC1040-N0489F330 KALITTA BRIEF PAGE 2 OF 79 PAGE 2 OF 79-KMIA0712)'
+        );
     }
 
     public function test_extract_flight_plan_data_from_text_returns_route_and_enriched_airports(): void
