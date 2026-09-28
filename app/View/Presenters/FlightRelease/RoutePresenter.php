@@ -4,7 +4,9 @@ namespace App\View\Presenters\FlightRelease;
 
 use App\DTOs\AirportData;
 use App\Enums\AltitudeUnit;
+use App\Enums\FlightType;
 use App\Enums\RouteTokenType;
+use App\Services\FlightPlan\FlightTypeClassifier;
 use App\ValueObjects\InitialAltitude;
 use App\View\Models\FlightPlanPageData;
 use Illuminate\Support\Number;
@@ -13,6 +15,13 @@ use Locale;
 final readonly class RoutePresenter
 {
     public function __construct(private ?FlightPlanPageData $pageData) {}
+
+    public function flightType(): FlightType
+    {
+        return $this->pageData === null
+            ? FlightType::Unknown
+            : (new FlightTypeClassifier)->classify($this->pageData->flightPlan->route);
+    }
 
     public function departure(): string
     {

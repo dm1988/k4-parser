@@ -5,11 +5,38 @@ namespace Tests\Unit\Actions\FlightPlan;
 use App\Actions\FlightPlan\BuildFlightPlanPageData;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
+use App\Enums\FlightType;
 use App\Enums\OperationsSpecification;
+use App\View\Models\FlightReleasePageViewModelFactory;
 use PHPUnit\Framework\TestCase;
 
 class BuildFlightPlanPageDataTest extends TestCase
 {
+    public function test_restored_airport_countries_determine_the_presented_flight_type(): void
+    {
+        $payload = $this->resultPayload();
+        $factory = new FlightReleasePageViewModelFactory;
+
+        $this->assertSame(FlightType::Unknown, $factory->make(null)->flightType());
+
+        foreach (['US' => FlightType::Domestic, 'JP' => FlightType::International, '' => FlightType::Unknown] as $country => $expected) {
+            $payload['flight_plan_data']['route']['destinationAirport'] = [
+                'icao' => 'KMIA',
+                'country' => $country,
+            ];
+            $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
+
+            $this->assertNotNull($pageData);
+            $this->assertSame($expected, $factory->make($pageData)->flightType());
+
+            $restored = app(BuildFlightPlanPageData::class)->handle([
+                'flight_plan_data' => $pageData->flightPlan->toArray(),
+            ]);
+
+            $this->assertSame($expected, $factory->make($restored)->flightType());
+        }
+    }
+
     public function test_it_builds_typed_page_data_from_the_normalized_contract(): void
     {
         $pageData = app(BuildFlightPlanPageData::class)->handle($this->resultPayload());

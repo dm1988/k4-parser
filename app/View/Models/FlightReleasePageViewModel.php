@@ -5,6 +5,7 @@ namespace App\View\Models;
 use App\Enums\EtopsApplicability;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
+use App\Enums\FlightType;
 use App\Enums\OperationsSpecification;
 use App\Enums\RouteTokenType;
 use App\Enums\TaskTone;
@@ -39,6 +40,11 @@ readonly class FlightReleasePageViewModel
     public function hasFlightPlan(): bool
     {
         return $this->pageData !== null;
+    }
+
+    public function flightType(): FlightType
+    {
+        return $this->routePresenter->flightType();
     }
 
     /** @return list<FlightPlanTask> */

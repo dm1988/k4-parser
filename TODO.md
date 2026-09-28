@@ -37,7 +37,7 @@ Validation: All 32 focused FlightRouteExtractor tests pass (121 assertions), inc
 
 Commit message: `fix: remove PDF page labels from extracted flight routes`
 
-## Feat: Domestic / international flight determine
+## [x] Completed: Feat: Domestic / international flight determine
 Domestic Flight: A flight that operates entirely within the sovereign territory and airspace of a single country, departing and landing at airports located in the same nation without crossing or clearing international customs boundaries (e.g., PANC to CONUS, or Hawaii to CONUS).
 
 International Flight: A flight where the departure airport and arrival airport (or intermediate technical/operational stops) are located in different sovereign countries or territories, requiring clearance through international customs, immigration, and agricultural control authorities (e.g., PANC to NRT, or CONUS to YVR).
@@ -48,6 +48,12 @@ Logic:
 * **PANC to CONUS:** Domestic -> No GENDEC required
 * **PHNL / PHOG to CONUS:** Domestic -> No GENDEC required *(Note: State-specific agricultural declarations may apply, but not an international GENDEC)*
 * **PANC / CONUS to Foreign Destination (or vice-versa):** International -> GENDEC required
+
+Outcome: Added typed domestic/international/unknown classification using resolved airport countries, exposed through `FlightReleasePageViewModel::flightType()`. Country codes and English country names normalize consistently, including US aliases; missing or unrecognized countries remain unknown. Alaska/Hawaii-to-CONUS flights classify as domestic. Alternates and overflight waypoints do not affect classification. Explicit landing stops can be supplied to the classifier; a known foreign stop makes the trip international, and an unresolved stop prevents a domestic result. The current parser supplies a single leg's endpoints and does not yet extract intermediate landing stops. GENDEC card changes remain in their separate task.
+
+Validation: 28 focused tests pass (112 assertions), covering endpoint classification, country normalization, missing data, territory distinctions, explicit stops, and restored flight-plan/view-model integration. Pint and Larastan pass.
+
+Commit message: `feat: classify flight legs as domestic or international`
 
 ## Feat: GENDEC card
 After Domestic / Int flight task is complete and international flights can be determined:
@@ -506,10 +512,10 @@ Determine buffer time from planned departure to earliest slot window time. Rende
 ### Slot time widget
 Large 5-xl metric for slot time count. Remove ETD and ETA fields. Keep card links. Should render `1` in 5-xl then `approved slot time` in normal text-sm. Alert flags for close UTC slot windows.
 
-Outcome: Weight & Balance, MEL/CDL, and Slot Times now share the reusable overview-stat component. The slot card shows a large monospaced count with singular/plural `approved slot time` copy, retains its detail action, and omits ETD/ETA fields. Missing slots remain explicitly unavailable rather than displaying zero.
+Outcome: Weight & Balance, MEL/CDL, and Slot Times now share the reusable overview-stat component. When slots are present, the slot card shows a large monospaced count with singular/plural `approved slot time` copy, retains its detail action, and omits ETD/ETA fields. When no slot times are present, the overview omits the Slot Times card.
 
 Slot comparisons use full UTC dates. Exact matches to the departure or arrival window start show `Do not depart early`; times within the user-selected 10 minutes of either boundary and times outside the window receive caution alerts and an amber overview card. The Slot Times task displays the signed buffer from the earliest window time (ETD for departure, ETA for arrival), the calculation basis, and contextual alert details. Missing planned time, tolerance, or direction leaves the buffer unavailable.
 
-Validation: Focused view-model and Livewire tests pass, covering departure/arrival comparisons, 10/11-minute thresholds, both window boundaries, times outside the window, midnight/year rollover, explicit zero tolerance, missing/invalid source values, singular/plural rendering, missing-data display, and preserved task links. Pint, the production Vite build, and Larastan (including both changed test files) pass. Browser visual verification was unavailable in this environment.
+Validation: Focused view-model and Livewire tests pass, covering departure/arrival comparisons, 10/11-minute thresholds, both window boundaries, times outside the window, midnight/year rollover, explicit zero tolerance, missing/invalid source values, singular/plural rendering, missing-card omission, and preserved task links. Pint, the production Vite build, and Larastan (including both changed test files) pass. Browser visual verification was unavailable in this environment.
 
-Commit message: `refactor: add shared overview stats and contextual slot window alerts`
+Commit message: `refactor: add shared overview stats and hide empty slot card`
