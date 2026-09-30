@@ -12,9 +12,8 @@ $variants = [
 @endphp
 
 <span {{ $attributes->class([
-    'inline-flex shrink-0 items-center rounded',
-    'px-3 py-1 text-sm font-bold uppercase tracking-wide' => $variant === 'prominent',
-    'cc-badge rounded px-2 py-0.5 text-xs font-medium' => $variant !== 'prominent',
+    'inline-flex shrink-0 items-center rounded px-3 py-1 text-sm font-bold uppercase tracking-wide' => $variant === 'prominent',
+    'cc-badge inline-flex shrink-0 items-center rounded px-2 py-0.5 text-xs font-medium' => $variant !== 'prominent',
     $variants[$variant] ?? $variants['default'],
 ]) }}>
     {{ $slot->isEmpty() ? __('Demo') : $slot }}

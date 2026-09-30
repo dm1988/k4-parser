@@ -406,6 +406,8 @@ Outcome: Reframed the welcome page as the Crew Compass / K4 Extractor product en
 
 Validation: The latest 27 focused welcome, badge, and theme tests pass (251 assertions), including native card links, noninteractive unavailable cards, CTA hierarchy, preview status, and security content. Existing route-authorization tests passed during the initial refactor. Pint, the production Vite build, and one final Larastan pass covering the application, routes, and changed tests pass. Browser visual verification was not performed.
 
+Follow-up outcome (2026-09-30): Fixed the shared Demo badge class order so desktop and mobile Flight Plan Brief navigation satisfy the existing rendering assertion, and removed the duplicate `rounded` class. AdminNavigationTest passed (8 tests, 34 assertions); DemoBadgeComponentTest passed (4 tests, 19 assertions). Commit message: `fix: restore demo badge navigation classes`.
+
 Commit message: `refactor: make welcome page a branded product hub`
 
 ---
