@@ -12,16 +12,16 @@ class WaypointExtractorTest extends TestCase
         $result = (new WaypointExtractor)->extract($this->fixture('computed-flight-plan.txt'));
 
         $this->assertSame([
-            ['coordinate' => 'N51 25.9 E012 16.1', 'identifier' => '51259N', 'time' => '001', 'total_time' => '00.01', 'remaining_fuel' => '1853', 'tbo' => '0007'],
-            ['coordinate' => 'N51 36.5 E012 11.5', 'identifier' => 'DP550', 'time' => '002', 'total_time' => '00.03', 'remaining_fuel' => '1825', 'tbo' => '0035'],
-            ['coordinate' => 'N51 42.5 E012 05.3', 'identifier' => 'PENEM', 'time' => '002', 'total_time' => '00.05', 'remaining_fuel' => '1813', 'tbo' => '0047'],
-            ['coordinate' => 'N51 51.0 E011 50.3', 'identifier' => 'ODLUN', 'time' => '002', 'total_time' => '00.07', 'remaining_fuel' => '1797', 'tbo' => '0064'],
-            ['coordinate' => 'N51 52.9 E011 45.9', 'identifier' => '-EDWW', 'time' => null, 'total_time' => '00.07', 'remaining_fuel' => '1793', 'tbo' => null],
-            ['coordinate' => 'N52 03.5 E011 21.0', 'identifier' => 'EMBOX', 'time' => '003', 'total_time' => '00.10', 'remaining_fuel' => '1774', 'tbo' => '0086'],
-            ['coordinate' => 'N52 05.9 E011 03.5', 'identifier' => '-EDVV', 'time' => null, 'total_time' => '00.12', 'remaining_fuel' => '1765', 'tbo' => null],
-            ['coordinate' => 'N52 07.7 E010 49.7', 'identifier' => 'POVEL', 'time' => '003', 'total_time' => '00.13', 'remaining_fuel' => '1757', 'tbo' => '0104'],
-            ['coordinate' => 'N51 51.4 E007 42.5', 'identifier' => 'HMM', 'time' => '013', 'total_time' => '00.28', 'remaining_fuel' => '1702', 'tbo' => '0158'],
-            ['coordinate' => 'N51 50.4 E006 25.9', 'identifier' => '-EHAA', 'time' => null, 'total_time' => '00.34', 'remaining_fuel' => '1683', 'tbo' => null],
+            ['coordinate' => 'N51 25.9 E012 16.1', 'identifier' => '51259N', 'display_label' => '51259N', 'kind' => 'fix', 'time' => '001', 'total_time' => '00.01', 'remaining_fuel' => '1853', 'tbo' => '0007'],
+            ['coordinate' => 'N51 36.5 E012 11.5', 'identifier' => 'DP550', 'display_label' => 'DP550', 'kind' => 'fix', 'time' => '002', 'total_time' => '00.03', 'remaining_fuel' => '1825', 'tbo' => '0035'],
+            ['coordinate' => 'N51 42.5 E012 05.3', 'identifier' => 'PENEM', 'display_label' => 'PENEM', 'kind' => 'fix', 'time' => '002', 'total_time' => '00.05', 'remaining_fuel' => '1813', 'tbo' => '0047'],
+            ['coordinate' => 'N51 51.0 E011 50.3', 'identifier' => 'ODLUN', 'display_label' => 'ODLUN', 'kind' => 'fix', 'time' => '002', 'total_time' => '00.07', 'remaining_fuel' => '1797', 'tbo' => '0064'],
+            ['coordinate' => 'N51 52.9 E011 45.9', 'identifier' => '-EDWW', 'display_label' => 'EDWW (FIR)', 'kind' => 'fir', 'time' => null, 'total_time' => '00.07', 'remaining_fuel' => '1793', 'tbo' => null],
+            ['coordinate' => 'N52 03.5 E011 21.0', 'identifier' => 'EMBOX', 'display_label' => 'EMBOX', 'kind' => 'fix', 'time' => '003', 'total_time' => '00.10', 'remaining_fuel' => '1774', 'tbo' => '0086'],
+            ['coordinate' => 'N52 05.9 E011 03.5', 'identifier' => '-EDVV', 'display_label' => 'EDVV (FIR)', 'kind' => 'fir', 'time' => null, 'total_time' => '00.12', 'remaining_fuel' => '1765', 'tbo' => null],
+            ['coordinate' => 'N52 07.7 E010 49.7', 'identifier' => 'POVEL', 'display_label' => 'POVEL', 'kind' => 'fix', 'time' => '003', 'total_time' => '00.13', 'remaining_fuel' => '1757', 'tbo' => '0104'],
+            ['coordinate' => 'N51 51.4 E007 42.5', 'identifier' => 'HMM', 'display_label' => 'HMM', 'kind' => 'fix', 'time' => '013', 'total_time' => '00.28', 'remaining_fuel' => '1702', 'tbo' => '0158'],
+            ['coordinate' => 'N51 50.4 E006 25.9', 'identifier' => '-EHAA', 'display_label' => 'EHAA (FIR)', 'kind' => 'fir', 'time' => null, 'total_time' => '00.34', 'remaining_fuel' => '1683', 'tbo' => null],
         ], $result['data']);
 
         $this->assertArrayHasKey('computed_flight_plan_waypoints', $result['source_fragments']);
@@ -133,9 +133,74 @@ TEXT;
         $waypoints = (new WaypointExtractor)->extract($text)['data'];
 
         $this->assertSame([
-            ['coordinate' => 'N60 28.9 W146 36.0', 'identifier' => 'JOH', 'time' => '017', 'total_time' => '00.17', 'remaining_fuel' => '1480', 'tbo' => '0128'],
-            ['coordinate' => 'N59 55.5 W144 11.1', 'identifier' => 'FIX01', 'time' => '004', 'total_time' => '00.21', 'remaining_fuel' => '0300', 'tbo' => '1308'],
+            ['coordinate' => 'N60 28.9 W146 36.0', 'identifier' => 'JOH', 'display_label' => 'JOH', 'kind' => 'fix', 'time' => '017', 'total_time' => '00.17', 'remaining_fuel' => '1480', 'tbo' => '0128'],
+            ['coordinate' => 'N59 55.5 W144 11.1', 'identifier' => 'FIX01', 'display_label' => 'FIX01', 'kind' => 'fix', 'time' => '004', 'total_time' => '00.21', 'remaining_fuel' => '0300', 'tbo' => '1308'],
         ], $waypoints);
+    }
+
+    public function test_it_restores_source_identifiers_from_flattened_coordinate_boundaries(): void
+    {
+        $waypoints = (new WaypointExtractor)->extract($this->fixture('flattened-boundaries.txt'))['data'];
+
+        $this->assertSame(
+            ['39028N', '50N095', '-CZEG', '61N130', '-PAZA', 'GAHAM', 'NODLE', '-ETP1'],
+            array_column($waypoints, 'identifier'),
+        );
+        $this->assertSame(
+            ['N39 02.8 W084 41.7', 'N50 00.0 W095 00.0', 'N56 54.1 W105 00.3',
+                'N61 00.0 W130 00.0', 'N62 15.0 W141 00.0', 'N62 15.0 W141 00.0',
+                'N61 17.0 W152 00.0', 'N60 00.0 W160 00.0'],
+            array_column($waypoints, 'coordinate'),
+        );
+        $this->assertSame(
+            ['39028N', 'N50W095', 'CZEG (FIR)', 'N61W130', 'PAZA (FIR)', 'GAHAM', 'NODLE', '-ETP1'],
+            array_column($waypoints, 'display_label'),
+        );
+        $this->assertSame(['fix', 'fix', 'fir', 'fix', 'fir', 'fix', 'fix', 'fix'], array_column($waypoints, 'kind'));
+        $this->assertSame('028', $waypoints[1]['time']);
+        $this->assertSame('2271', $waypoints[1]['remaining_fuel']);
+        $this->assertSame('0452', $waypoints[1]['tbo']);
+        $this->assertSame('06.00', $waypoints[6]['total_time']);
+    }
+
+    public function test_it_keeps_the_same_waypoints_when_coordinate_and_identifier_are_separated(): void
+    {
+        $waypoints = (new WaypointExtractor)->extract($this->fixture('separated-boundaries.txt'))['data'];
+
+        $this->assertSame(
+            ['39028N', '50N095', '-CZEG', '61N130', '-PAZA', 'GAHAM', 'NODLE', '-ETP1'],
+            array_column($waypoints, 'identifier'),
+        );
+        $this->assertSame(['N50W095', 'CZEG (FIR)', 'N61W130', 'PAZA (FIR)'], [
+            $waypoints[1]['display_label'],
+            $waypoints[2]['display_label'],
+            $waypoints[3]['display_label'],
+            $waypoints[4]['display_label'],
+        ]);
+    }
+
+    public function test_it_does_not_invent_a_whole_degree_label_or_split_high_precision_minutes(): void
+    {
+        $text = <<<'TEXT'
+IDENT DIST MC FL WIND CMP TAS/MAC TIME ETA ATA TBO FRMG EFB
+FRQ DTGO MH W/S OAT G/S T/TME REV REM ABO AFOB DSTN
+N50 00.1 W095 00.0
+50N095 0001 001 100 01/001 P001 001 001 001 ... ... 0001 0001 ....
+0001 001 100 001 00.01 ... ... .... .... 0001
+N50 00.0 W095 00.050
+NODLE 0001 001 100 01/001 P001 001 001 001 ... ... 0001 0001 ....
+0001 001 100 001 00.02 ... ... .... .... 0001
+S50 00.0 E095 00.0
+50S095 0001 001 100 01/001 P001 001 001 001 ... ... 0001 0001 ....
+0001 001 100 001 00.03 ... ... .... .... 0001
+TEXT;
+
+        $waypoints = (new WaypointExtractor)->extract($text)['data'];
+
+        $this->assertSame('50N095', $waypoints[0]['display_label']);
+        $this->assertSame('N50 00.0 W095 00.050', $waypoints[1]['coordinate']);
+        $this->assertSame('NODLE', $waypoints[1]['display_label']);
+        $this->assertSame('S50E095', $waypoints[2]['display_label']);
     }
 
     private function fixture(string $name): string

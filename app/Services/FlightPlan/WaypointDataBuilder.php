@@ -3,6 +3,7 @@
 namespace App\Services\FlightPlan;
 
 use App\DTOs\WaypointData;
+use App\Enums\WaypointKind;
 use App\ValueObjects\FuelQuantity;
 use InvalidArgumentException;
 
@@ -33,6 +34,8 @@ class WaypointDataBuilder
                 cumulativeDurationMinutes: $this->cumulativeDurationMinutes($waypoint['total_time'] ?? null),
                 remainingFuel: $this->extractedFuel($waypoint['remaining_fuel'] ?? null, $fuelUnit),
                 tbo: $this->tbo($waypoint['tbo'] ?? null),
+                displayLabel: $this->nullableString($waypoint['display_label'] ?? null),
+                kind: WaypointKind::tryFrom(is_string($waypoint['kind'] ?? null) ? $waypoint['kind'] : '') ?? WaypointKind::Fix,
             );
         }
 
@@ -67,6 +70,8 @@ class WaypointDataBuilder
                 cumulativeDurationMinutes: $this->nonNegativeInteger($waypoint['cumulativeDurationMinutes'] ?? null),
                 remainingFuel: $this->serializedFuel($waypoint['remainingFuel'] ?? null),
                 tbo: $this->tbo($waypoint['tbo'] ?? null),
+                displayLabel: $this->nullableString($waypoint['displayLabel'] ?? null),
+                kind: WaypointKind::tryFrom(is_string($waypoint['kind'] ?? null) ? $waypoint['kind'] : '') ?? WaypointKind::Fix,
             );
         }
 

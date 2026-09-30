@@ -142,6 +142,7 @@ class BuildFlightPlanDataTest extends TestCase
             waypoints: [
                 ['identifier' => 'FIX01', 'coordinate' => 'N01 02.3 E004 05.6', 'time' => '005', 'total_time' => '00.11', 'remaining_fuel' => '0000', 'tbo' => '0011'],
                 ['identifier' => 'FIX01', 'coordinate' => 'N02 03.4 E005 06.7', 'time' => null, 'total_time' => null, 'remaining_fuel' => null],
+                ['identifier' => '-CZEG', 'coordinate' => 'N56 54.1 W105 00.3', 'display_label' => 'CZEG (FIR)', 'kind' => 'fir', 'time' => null, 'total_time' => '02.53', 'remaining_fuel' => null],
             ],
         );
 
@@ -178,7 +179,9 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertSame(1015, $flightPlan->takeoffLandingReport->qnhHectopascals);
         $this->assertFalse($flightPlan->takeoffLandingReport->antiIce);
         $this->assertSame(['Source warning'], $flightPlan->takeoffLandingReport?->sourceWarnings);
-        $this->assertSame(['FIX01', 'FIX01'], array_column($flightPlan->waypoints, 'identifier'));
+        $this->assertSame(['FIX01', 'FIX01', '-CZEG'], array_column($flightPlan->waypoints, 'identifier'));
+        $this->assertSame('CZEG (FIR)', $flightPlan->waypoints[2]->label());
+        $this->assertSame('fir', $flightPlan->waypoints[2]->kind->value);
         $this->assertSame(11, $flightPlan->waypoints[0]->cumulativeDurationMinutes);
         $this->assertSame(0.0, $flightPlan->waypoints[0]->remainingFuel?->amount);
         $this->assertSame('0011', $flightPlan->waypoints[0]->tbo);

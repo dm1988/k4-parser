@@ -2,6 +2,7 @@
 
 namespace App\Services\FlightPlan\Extractor;
 
+use App\Enums\WaypointKind;
 use Illuminate\Support\Str;
 
 class WaypointExtractor
@@ -18,7 +19,7 @@ class WaypointExtractor
 
     /**
      * @return array{
-     *     data: list<array{coordinate: string, identifier: string, time: ?string, total_time: ?string, remaining_fuel: ?string, tbo: ?string}>,
+     *     data: list<array{coordinate: string, identifier: string, display_label: string, kind: string, time: ?string, total_time: ?string, remaining_fuel: ?string, tbo: ?string}>,
      *     source_fragments: array<string, string>
      * }
      */
@@ -43,10 +44,13 @@ class WaypointExtractor
             }
 
             $totalTime = $this->totalTime($record['content']);
+            $kind = $this->kind($record['content'], $detail['identifier']);
 
             $waypoints[] = [
                 'coordinate' => $record['coordinate'],
                 'identifier' => $detail['identifier'],
+                'display_label' => $this->displayLabel($record['coordinate'], $detail['identifier'], $kind),
+                'kind' => $kind->value,
                 'time' => $detail['time'],
                 'total_time' => $totalTime,
                 'remaining_fuel' => $detail['remaining_fuel'],
@@ -60,6 +64,7 @@ class WaypointExtractor
                 $totalTime,
                 $detail['remaining_fuel'],
                 $detail['tbo'],
+                $kind === WaypointKind::Fir ? 'FIR-> '.substr($detail['identifier'], 1).' <-' : null,
             ], static fn (?string $value): bool => $value !== null));
         }
 
@@ -114,19 +119,103 @@ class WaypointExtractor
         foreach ($coordinates as $index => [$rawCoordinate, $offset]) {
             $contentStart = $offset + strlen($rawCoordinate);
             $contentEnd = $coordinates[$index + 1][1] ?? strlen($section);
+            $latitude = $matches['latitude'][$index][0];
+            $longitude = $matches['longitude'][$index][0];
+            $content = substr($section, $contentStart, $contentEnd - $contentStart);
+            [$longitude, $content] = $this->restoreFlattenedIdentifier($latitude, $longitude, $content);
+
             $records[] = [
-                'coordinate' => Str::upper(Str::squish($matches['latitude'][$index][0].' '.$matches['longitude'][$index][0])),
-                'content' => Str::squish(substr($section, $contentStart, $contentEnd - $contentStart)),
+                'coordinate' => Str::upper(Str::squish($latitude.' '.$longitude)),
+                'content' => Str::squish($content),
             ];
         }
 
         return $records;
     }
 
+    /**
+     * PDF text chunks can join the longitude decimal directly to a numeric IDENT.
+     *
+     * @return array{string, string}
+     */
+    private function restoreFlattenedIdentifier(string $latitude, string $longitude, string $content): array
+    {
+        if (preg_match('/^(?<prefix>[EW]\d{3}\h+[0-5]\d\.)(?<fraction>\d{2,})$/i', $longitude, $longitudeParts) !== 1
+            || preg_match('/^(?<tail>[A-Z0-9-]+)\h+(?:\d{4}|----)\h+/i', $content, $contentParts) !== 1) {
+            return [$longitude, $content];
+        }
+
+        $fraction = $longitudeParts['fraction'];
+
+        for ($cut = 1; $cut < strlen($fraction); $cut++) {
+            $coordinate = Str::upper(Str::squish($latitude.' '.$longitudeParts['prefix'].substr($fraction, 0, $cut)));
+            $identifier = Str::upper(substr($fraction, $cut).$contentParts['tail']);
+
+            if ($this->matchesCoordinateIdentifier($coordinate, $identifier)) {
+                return [$longitudeParts['prefix'].substr($fraction, 0, $cut), substr($fraction, $cut).$content];
+            }
+        }
+
+        return [$longitude, $content];
+    }
+
+    private function matchesCoordinateIdentifier(string $coordinate, string $identifier): bool
+    {
+        if (preg_match('/^(?<latHem>[NS])(?<latDeg>\d{2}) (?<latMin>\d{2}\.\d+) (?<lonHem>[EW])(?<lonDeg>\d{3}) (?<lonMin>\d{2}\.\d+)$/', $coordinate, $parts) !== 1) {
+            return false;
+        }
+
+        if (preg_match('/^(?<latDeg>\d{2})(?<latHem>[NS])(?<lonDeg>\d{3})$/', $identifier, $wholeDegree) === 1) {
+            return $parts['latDeg'] === $wholeDegree['latDeg']
+                && $parts['latHem'] === $wholeDegree['latHem']
+                && $parts['lonDeg'] === $wholeDegree['lonDeg']
+                && (float) $parts['latMin'] === 0.0
+                && (float) $parts['lonMin'] === 0.0;
+        }
+
+        if (preg_match('/^(?<latDeg>\d{2})(?<latMin>\d{3})(?<latHem>[NS])$/', $identifier, $latitudeFix) === 1) {
+            return $parts['latDeg'] === $latitudeFix['latDeg']
+                && $parts['latHem'] === $latitudeFix['latHem']
+                && str_replace('.', '', $parts['latMin']) === $latitudeFix['latMin'];
+        }
+
+        return false;
+    }
+
+    private function kind(string $content, string $identifier): WaypointKind
+    {
+        if (! str_starts_with($identifier, '-')) {
+            return WaypointKind::Fix;
+        }
+
+        $name = preg_quote(substr($identifier, 1), '/');
+
+        return preg_match('/\bFIR\h*(?:FIR)?\h*->\h*'.$name.'\h*<-/i', $content) === 1
+            ? WaypointKind::Fir
+            : WaypointKind::Fix;
+    }
+
+    private function displayLabel(string $coordinate, string $identifier, WaypointKind $kind): string
+    {
+        if ($kind === WaypointKind::Fir) {
+            return substr($identifier, 1).' (FIR)';
+        }
+
+        if (preg_match('/^(?<latitude>[NS])(?<latDeg>\d{2}) 00\.0+ (?<longitude>[EW])(?<lonDeg>\d{3}) 00\.0+$/', $coordinate, $parts) === 1
+            && preg_match('/^\d{2}[NS]\d{3}$/', $identifier) === 1
+            && $this->matchesCoordinateIdentifier($coordinate, $identifier)) {
+            return $parts['latitude'].$parts['latDeg'].$parts['longitude'].$parts['lonDeg'];
+        }
+
+        return $identifier;
+    }
+
     /** @return array{identifier: string, time: ?string, remaining_fuel: ?string, tbo: ?string}|null */
     private function detail(string $line): ?array
     {
         $matches = [];
+
+        $line = preg_replace('/^(?:\h*(?:KALITTA BRIEF PAGE|PAGE)\h+\d+\h+OF\h+\d+)+\h*/i', '', $line) ?? $line;
 
         if (preg_match('/^\h*(?<identifier>-?[A-Z0-9]{2,7})\h+(?:\d{4}|----)\h+(?<details>.+)$/i', $line, $matches) !== 1) {
             return null;

@@ -71,6 +71,35 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame(OperationsSpecification::B44, $pageData->flightPlan->releaseAuthorization->operationsSpecification);
     }
 
+    public function test_it_restores_waypoint_labels_and_legacy_waypoints_conservatively(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['waypoints'][0]['identifier'] = '50N095';
+        $payload['flight_plan_data']['waypoints'][0]['coordinate'] = 'N50 00.0 W095 00.0';
+        $payload['flight_plan_data']['waypoints'][1]['identifier'] = '-CZEG';
+        $payload['flight_plan_data']['waypoints'][1]['coordinate'] = 'N56 54.1 W105 00.3';
+        $payload['flight_plan_data']['waypoints'][0]['displayLabel'] = 'N50W095';
+        $payload['flight_plan_data']['waypoints'][0]['kind'] = 'fix';
+        $payload['flight_plan_data']['waypoints'][1]['displayLabel'] = 'CZEG (FIR)';
+        $payload['flight_plan_data']['waypoints'][1]['kind'] = 'fir';
+
+        $pageData = app(BuildFlightPlanPageData::class)->handle($payload);
+
+        $this->assertSame('N50W095', $pageData->flightPlan->waypoints[0]->label());
+        $this->assertSame('CZEG (FIR)', $pageData->flightPlan->waypoints[1]->label());
+        $this->assertSame('fir', $pageData->flightPlan->waypoints[1]->kind->value);
+
+        $legacy = app(BuildFlightPlanPageData::class)->handle($this->resultPayload());
+
+        $this->assertSame('FIX01', $legacy->flightPlan->waypoints[0]->label());
+        $this->assertSame('fix', $legacy->flightPlan->waypoints[0]->kind->value);
+
+        $payload['flight_plan_data']['waypoints'][1]['kind'] = 'unsupported';
+        $unsupported = app(BuildFlightPlanPageData::class)->handle($payload);
+
+        $this->assertSame('fix', $unsupported->flightPlan->waypoints[1]->kind->value);
+    }
+
     public function test_it_ignores_conflicting_root_compatibility_values(): void
     {
         $payload = $this->resultPayload();

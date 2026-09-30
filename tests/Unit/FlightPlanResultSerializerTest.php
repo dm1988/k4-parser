@@ -21,6 +21,7 @@ use App\DTOs\WaypointData;
 use App\Enums\EtopsApplicability;
 use App\Enums\MaintenanceItemType;
 use App\Enums\OperationsSpecification;
+use App\Enums\WaypointKind;
 use App\Services\FlightPlan\FlightPlanResultSerializer;
 use App\ValueObjects\AirportCode;
 use App\ValueObjects\FuelQuantity;
@@ -74,7 +75,7 @@ class FlightPlanResultSerializerTest extends TestCase
                 ),
             ),
             crewMembers: [new CrewMemberData('Alex Morgan', 'CP', 'YIP', '4827', true)],
-            waypoints: [new WaypointData('FIX01', 'N01 02.3 E004 05.6', 5, 11, FuelQuantity::pounds(0))],
+            waypoints: [new WaypointData('-CZEG', 'N56 54.1 W105 00.3', 5, 11, FuelQuantity::pounds(0), displayLabel: 'CZEG (FIR)', kind: WaypointKind::Fir)],
             generalDeclaration: new GeneralDeclarationData(true),
             releaseAuthorization: new ReleaseAuthorizationData(OperationsSpecification::B44),
         );
@@ -97,7 +98,9 @@ class FlightPlanResultSerializerTest extends TestCase
         );
         $this->assertSame('N40 31.1', $result['flight_plan_data']['etops']['entryPoint']['coordinate']['latitude']);
         $this->assertSame(180, $result['flight_plan_data']['etops']['ratingMinutes']);
-        $this->assertSame('FIX01', $result['flight_plan_data']['waypoints'][0]['identifier']);
+        $this->assertSame('-CZEG', $result['flight_plan_data']['waypoints'][0]['identifier']);
+        $this->assertSame('CZEG (FIR)', $result['flight_plan_data']['waypoints'][0]['displayLabel']);
+        $this->assertSame('fir', $result['flight_plan_data']['waypoints'][0]['kind']);
         $this->assertSame(0.0, $result['flight_plan_data']['waypoints'][0]['remainingFuel']['amount']);
         $this->assertTrue($result['flight_plan_data']['generalDeclaration']['sectionPresent']);
         $this->assertSame('b44', $result['flight_plan_data']['releaseAuthorization']['operationsSpecification']);

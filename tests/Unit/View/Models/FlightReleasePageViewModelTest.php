@@ -269,17 +269,51 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame([
             [
                 'identifier' => 'FIX01',
+                'displayLabel' => 'FIX01',
+                'kind' => 'fix',
                 'legDurationMinutes' => 5,
                 'cumulativeDurationMinutes' => 11,
                 'remainingFuel' => '147.7 k lbs',
             ],
             [
                 'identifier' => 'FIX01',
+                'displayLabel' => 'FIX01',
+                'kind' => 'fix',
                 'legDurationMinutes' => null,
                 'cumulativeDurationMinutes' => null,
                 'remainingFuel' => null,
             ],
         ], $this->viewModel($payload)->fuelScoreWaypoints());
+    }
+
+    #[Test]
+    public function it_renders_source_backed_waypoint_labels_in_the_regular_fuel_score(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['waypoints'] = [[
+            'identifier' => '50N095',
+            'coordinate' => 'N50 00.0 W095 00.0',
+            'displayLabel' => 'N50W095',
+            'kind' => 'fix',
+            'legDurationMinutes' => 28,
+            'cumulativeDurationMinutes' => 103,
+            'remainingFuel' => ['amount' => 227100.0, 'unit' => 'lb'],
+        ], [
+            'identifier' => '-CZEG',
+            'coordinate' => 'N56 54.1 W105 00.3',
+            'displayLabel' => 'CZEG (FIR)',
+            'kind' => 'fir',
+            'legDurationMinutes' => null,
+            'cumulativeDurationMinutes' => 173,
+            'remainingFuel' => null,
+        ]];
+        $model = $this->viewModel($payload);
+        $html = Blade::render('<x-flight-release.fuel-score :model="$model" />', ['model' => $model]);
+
+        $this->assertSame(['50N095', '-CZEG'], array_column($model->fuelScoreWaypoints(), 'identifier'));
+        $this->assertStringContainsString('>N50W095</th>', $html);
+        $this->assertStringContainsString('>CZEG (FIR)</th>', $html);
+        $this->assertStringNotContainsString('>-CZEG</th>', $html);
     }
 
     #[Test]
