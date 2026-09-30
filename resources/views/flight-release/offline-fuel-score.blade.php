@@ -8,12 +8,12 @@
         @vite(['resources/css/app.css', 'resources/js/offline-fuel-score.js'])
     </head>
     <body class="min-h-screen bg-[#F8F9FA] font-sans text-[#0B0E14] dark:bg-gray-950 dark:text-slate-100">
-        <main class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10" x-data="offlineFuelScore(@js($calculator))">
+        <main class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10" x-data="offlineFuelScore(@js($calculator), @js($draftScope))">
             <header class="rounded-2xl bg-[#1B365D] px-5 py-6 text-white sm:px-8">
                 <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#C5A059]">Flight Plan Brief</p>
                 <h1 class="mt-2 text-2xl font-bold sm:text-3xl">Offline fuel calculator</h1>
                 <p class="mt-2 font-mono text-sm text-slate-200">{{ $flightNumber ?? 'Flight number not present' }} · {{ $flightDate ?? 'Flight date not present' }}</p>
-                <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-200">Enter Off time for waypoint ETAs. Add actual fuel readings to compare fuel and burn against the release and estimate fuel at destination. Calculations run in this tab after the page loads; reopening or refreshing requires a connection.</p>
+                <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-200">Enter Off time for waypoint ETAs. Add actual fuel readings to compare fuel and burn against the release and estimate fuel at destination. Calculations run in this tab after the page loads. Inputs are saved in this tab and restored after a refresh while this release remains available; refreshing or reopening requires a connection.</p>
             </header>
 
             <section aria-labelledby="calculator-inputs-heading" class="rounded-xl border border-[#1B365D]/10 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-6">
@@ -33,6 +33,7 @@
                     </label>
                     <button type="button" x-on:click="reset()" class="rounded-lg border border-[#1B365D]/20 px-4 py-2 text-sm font-semibold text-[#1B365D] transition hover:bg-[#F8F9FA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059] dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800">Reset inputs</button>
                 </div>
+                <p x-show="draftUnavailable" x-cloak role="status" class="mt-3 text-sm text-amber-800 dark:text-amber-300">Browser storage is unavailable. Saved inputs may not match this page after a reload.</p>
                 <p class="mt-3 text-xs text-[#4A5568] dark:text-slate-400">Starting FOB is the actual fuel at takeoff and is used for cumulative burn at every waypoint. ETA needs only Off time and a confirmed cumulative duration. TBO is the release's cumulative planned burn. Source quantities must use the same unit. Displayed fuel values are rounded to two decimal places; calculations use full precision.</p>
             </section>
 
@@ -58,13 +59,13 @@
                                     <th scope="row" class="whitespace-nowrap px-3 py-1 text-left align-middle font-normal">
                                         <div class="flex items-center gap-2">
                                             <button type="button" x-on:click="toggleWaypoint(waypoint)" :aria-expanded="waypoint.expanded.toString()" :aria-controls="`waypoint-details-${index}`"
-                                                :aria-label="`${waypoint.expanded ? 'Collapse' : 'Expand'} details for ${waypoint.identifier}`"
+                                                :aria-label="`${waypoint.expanded ? 'Collapse' : 'Expand'} details for ${waypoint.displayLabel}`"
                                                 class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[#4A5568] transition hover:bg-[#1B365D]/5 hover:text-[#1B365D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059] dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200">
                                                 <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 transition-transform" :class="waypoint.expanded ? 'rotate-90' : ''">
                                                     <path d="m9 5 7 7-7 7" />
                                                 </svg>
                                             </button>
-                                            <span x-text="waypoint.identifier"></span>
+                                            <span x-text="waypoint.displayLabel"></span>
                                         </div>
                                     </th>
                                     <td class="whitespace-nowrap px-3 py-1 text-right align-middle" x-text="plannedEta(waypoint)"></td>
@@ -94,7 +95,7 @@
                                                 <span class="font-semibold text-[#1B365D] dark:text-slate-200">Time (UTC)</span>
                                                 <span class="text-[#4A5568] dark:text-slate-400" x-show="etaReason(waypoint)" x-text="etaReason(waypoint)"></span>
                                                 <label class="flex flex-col gap-1 font-semibold text-[#1B365D] dark:text-slate-200">
-                                                    <span>ATA (UTC, HHMM) at <span x-text="waypoint.identifier"></span></span>
+                                                    <span>ATA (UTC, HHMM) at <span x-text="waypoint.displayLabel"></span></span>
                                                     <input type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="HHMM" x-model="waypoint.ata"
                                                         class="w-28 rounded-md border-[#1B365D]/20 bg-white font-mono text-sm text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                                                 </label>
@@ -109,7 +110,7 @@
                                                 <span class="text-[#4A5568] dark:text-slate-400">Planned FOB (FRMG): <span class="font-mono" x-text="sourceFuelLabel(waypoint.remainingFuel)"></span></span>
                                                 <span class="text-[#4A5568] dark:text-slate-400">TBO (source, cumulative): <span class="font-mono" x-text="plannedBurnLabel(waypoint)"></span></span>
                                                 <label class="flex flex-col gap-1 font-semibold text-[#1B365D] dark:text-slate-200">
-                                                    <span>AFOB (<span x-text="fuelUnit?.toUpperCase() ?? 'unit unavailable'"></span>) at <span x-text="waypoint.identifier"></span></span>
+                                                    <span>AFOB (<span x-text="fuelUnit?.toUpperCase() ?? 'unit unavailable'"></span>) at <span x-text="waypoint.displayLabel"></span></span>
                                                     <input type="text" inputmode="decimal" autocomplete="off" placeholder="Actual fuel" x-model="waypoint.actualFob" :disabled="fuelUnit === null"
                                                         class="w-36 rounded-md border-[#1B365D]/20 bg-white font-mono text-sm text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                                                 </label>

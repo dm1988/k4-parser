@@ -28,101 +28,150 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Bugs: offline fuel score
-Page wants to refresh causing Off time / starting FOB to clear out
-
-### Lat / Long cut off
-Only N50 rendered as waypoint not N50W120. 
-
-## Flight release: 24 hour time limit
-Clear flight release from cache and db if more than 24 hours since extraction.
-
-## [x] Completed: feat: Overview cards Spatial Organization (Grid & Layout)
-Responsive Flow: Switch the grid from fixed columns to a repeat(auto-fit, minmax(280px, 1fr)) pattern. This ensures that cards resize intelligently based on screen width, preventing data from feeling cramped or overly stretched.
-Whitespace: Increased padding and gaps to create "breathable" space, which reduces cognitive load and allows the eye to focus on individual metrics.
-
-Outcome: Replaced the fixed one/two/six-column overview grid and per-card column spans with `repeat(auto-fit, minmax(280px, 1fr))`, allowing every visible card to flow according to available width. Increased overview section padding, inter-section spacing, card-grid gaps, and overview-card padding/internal gaps while preserving existing card content, actions, warning surfaces, and dark-mode styling.
-
-Validation: 10 focused view-model and Livewire overview tests pass (238 assertions), including a rendered-layout assertion for the auto-fit grid, increased spacing, and removal of fixed column/span classes. Pint, Larastan, and the Vite build pass. Browser visual verification was not available in this session.
-
-Commit message: `feat: improve overview card responsive layout`
-
-## [x] Completed: Refactor welcome page for use with new features
+## Current focus: Bugs: offline fuel score
 
 ### Goal
 
-Turn the welcome page from a Schedule Extractor landing page into the branded Crew Compass / K4 Extractor product entry point for both Schedule Extractor and Flight Plan Extractor.
+Keep entered Off time, starting FOB, and waypoint ATA/AFOB through a same-tab reload, including the reported iPad Chrome background/foreground case while the iPad is offline.
+
+### Findings
+
+The standalone Alpine calculator initialized all inputs to blank and kept them only in memory. The reviewed calculator code has no reload timer or explicit page refresh. The reported device is an iPad using Chrome; the user reports returning to the same tab after using another app while the iPad is offline. Browser tab suspension or reload is plausible in this scenario, but it has not been reproduced or confirmed as the trigger. `vite.config.js` enables development refresh, and recent Debugbar requests and browser logs did not identify an offline-calculator refresh. Standard `sessionStorage` is designed to survive reloads and tab restores, but its behavior after an iPad browser process is discarded must be checked on the affected device. More decisively, the current page cannot load at all after an offline navigation/reload because the app has no service worker or offline page shell; saved inputs alone cannot solve that case.
+
+### Outcome
+
+- Added a versioned `sessionStorage` draft scoped by the authenticated owner and `flightPlanKey`. The controller supplies that scope after its existing ownership check.
+- The draft saves only entered strings for Off time, starting FOB, ATA, and AFOB. It restores them before Alpine watchers are attached, then recalculates from the current release. Partial values and explicit zeroes survive a reload.
+- The source signature includes the fuel unit, confirmed fuel quantities, and ordered waypoint identifiers, coordinates, times, TBO, and remaining fuel. Each reading is also tied to its waypoint position and source identity. Malformed or incompatible drafts are discarded, and drafts do not cross owners or release keys.
+- Reset clears live inputs and the draft; queued Alpine watchers cannot resurrect prior values. If storage blocks removal but permits writing, Reset replaces the old draft with an empty one. Storage failures leave calculations usable and show a short accessible notice when recovery cannot be trusted.
+- Page copy now explains same-tab recovery and that loading or refreshing the page still requires a connection. No service worker or offline page-load cache was introduced.
+
+### Validation
+
+The focused JavaScript calculator and draft tests pass: 20 tests in the affected files, including reload recovery, initialization order, repeated identifiers, scope/source isolation, Reset, malformed drafts, and read/write/remove failures. `OfflineFuelScoreTest` passes (4 tests, 53 assertions). Pint, the production Vite build, and one final Larastan pass on changed PHP and the focused test pass. Browser lifecycle verification was unavailable in this environment.
+
+### Remaining investigation
+
+The affected iPad is offline when Chrome returns. On that device, enter Off time, starting FOB, ATA, and AFOB; switch to another app and return to the same tab. Record whether the page stays mounted or reloads, any prompt, and whether the four values return. Repeat after a longer background period. The implemented `sessionStorage` draft recovers a same-tab reload only when the page can load; it cannot restore the calculator after an offline navigation/reload. If the browser discards the tab session itself, even tab-scoped storage may be unavailable. Compare development and production builds before attributing the refresh to Vite.
+
+### Proposed offline reload extension — authorization required
+
+A calculator-only service worker could serve a static offline shell for the exact fuel-score route when a network request fails and cache the versioned CSS/JavaScript assets. To make the release and its entered values available in that shell, it would also need a local copy of the source-backed calculator data. The safer proposed design encrypts the minimum required source payload in browser Cache Storage with a per-tab key in `sessionStorage`, scopes it to the authenticated owner and release, gives it a short expiry, and clears it when possible. The service worker must use the server response whenever online and never turn a server 403/404 into cached content. The offline shell would show an explicit unavailable state if the key, assets, or cache are missing. An offline reload could not re-check server authorization; anyone who can use the still-open tab and its key could view that cached release until the session ends. Browser eviction or loss of the tab session can still prevent restoration.
+
+This extension needs focused tests for route scope, network-first behavior, encryption/decryption, expiration, missing keys/assets, source mismatch, and unauthorized online responses, followed by an actual Chrome-on-iPad offline background/reload check. It also needs a visible readiness state so the user knows when the offline copy has been prepared. The attempted service-worker/cache implementation was rejected by automatic approval review because persisting authenticated release content on the device is a security/privacy side effect not specifically authorized for this task. No service-worker or release cache code was added. Continue this part only after explicit approval for that on-device storage behavior.
+
+References: [page-session behavior](https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage), [WebKit background tab suspension](https://webkit.org/blog/8970/how-web-content-can-affect-power-usage/), and [service-worker navigation interception](https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/fetch_event).
+
+Commit message: `fix: preserve offline fuel score inputs across reloads`
+
+## Sloppy static findings
+./vendor/bin/sloppy
+
+
+## [x] Complete: Lat / Long cut off, some waypoints prefixed with `-`
+
+#### Goal
+
+Show complete, source-backed latitude/longitude waypoint labels in both Fuel Score views, and distinguish FIR boundary rows from ordinary waypoints without displaying an unexplained leading hyphen. Preserve the original identifiers and coordinates as source evidence.
+
+#### Current implementation
+
+- `FlightPlanTextExtractor` uses Smalot page `getText()` output, removes null bytes, and joins pages. In the supplied PDF, adjacent text chunks within a page are concatenated without a separating space or newline.
+- `WaypointExtractor::coordinateDelimitedRecords()` finds coordinate matches, then treats everything up to the next coordinate as that record's content. `COORDINATE_PATTERN` permits an unlimited number of decimal digits in longitude minutes (`\.\d+`).
+- `WaypointExtractor::detail()` accepts identifiers matching `-?[A-Z0-9]{2,7}` and preserves a leading hyphen. `WaypointDataBuilder`, `WaypointData`, and `FuelPresenter` pass that identifier through. The regular Fuel Score Blade table and offline Alpine table render it directly; no identifier shortening was found in this path.
+- The existing fixture and ordered-extraction test explicitly expect FIR-style identifiers such as `-EDWW`, `-EDVV`, and `-EHAA`. There is no row-kind or separate display-label field in `WaypointData`.
+
+#### Investigation findings
+
+Source: `storage/app/private/flight_releases/CKS020221KCVG.pdf`, especially PDF page 11. Read-only reproduction used the installed Smalot parser and current `WaypointExtractor` through Sail. Individual `getTextArray()` chunks establish where the coordinate ends and the identifier begins.
+
+| Source coordinate and following IDENT | Current extracted result | Finding |
+| --- | --- | --- |
+| `N50 00.0 W095 00.0` then `50N095` | Coordinate `N50 00.0 W095 00.050`; identifier `N095` | The longitude decimal consumes the identifier's leading `50`. |
+| `N61 00.0 W130 00.0` then `61N130` | Coordinate `N61 00.0 W130 00.061`; identifier `N130` | The longitude decimal consumes the identifier's leading `61`. |
+| `-CZEG`, followed by `FIR -> CZEG <-` | Identifier `-CZEG` | The hyphen is present in the source; this is an explicitly annotated FIR row. |
+| `-PAZA`, followed by `FIR -> PAZA <-` | Identifier `-PAZA` | The hyphen is present in the source; this is an explicitly annotated FIR row. |
+
+The flattened source strings include `W095 00.050N095 0222` and `W130 00.061N130 0409`. This reproduces a parsing boundary defect, not CSS clipping. The PDF's route on pages 3 and 8 and coordinate listing on page 15 independently contain `50N095W` and `61N130W` with matching coordinates.
+
+The earlier report mentioned `N50` instead of `N50W120`. That exact pair was not reproduced in this supplied release; the confirmed cases are `50N095`/`N095` and `61N130`/`N130`. Do not substitute W120 or infer missing longitude from a damaged identifier.
+
+Related boundary observations: the digit-leading departure identifier `39028N` on page 10 is absent from current parser output, and NODLE's coordinate at the end of page 11 is separated from its identifier on page 12 by footer text. Include these as boundary regression cases when changing record segmentation. Missing FRMG on some rows is a separate field-extraction concern and is outside this task.
+
+#### Implementation plan
+
+1. Add small source-derived text fixtures under `tests/Fixtures/FlightPlan/waypoints/` for the confirmed coordinate/IDENT boundaries, both separated and flattened, plus the two FIR rows and their annotations. Keep the private PDF out of committed fixtures; include only the minimal relevant rows.
+2. Correct coordinate/record segmentation in `WaypointExtractor` so a numeric identifier cannot extend longitude minutes. Recognize the coordinate together with the following valid IDENT/DIST row structure. Use the source text-chunk boundaries as the reference; if flattened text is ambiguous, preserve the necessary boundaries upstream instead of guessing. Do not globally truncate coordinate precision or merely make the decimal matcher lazy, which could accept another incorrect split. Keep source text available to other extractors unchanged wherever possible.
+3. Handle known page labels between a coordinate and its detail row within the computed-flight-plan section. Preserve record order and repeated identifiers/coordinates, retain the alternate-section stop, and do not attach coordinate-less TOC/TOD markers to the preceding waypoint.
+4. Preserve the complete source identifier separately from any display normalization. For positively identified whole-degree coordinate fixes, derive an explicit hemisphere label from the verified, uncorrupted coordinate: the supplied examples should display `N50W095` and `N61W130`, while retaining `50N095` and `61N130` as source identifiers. Named fixes such as `NODLE` and `NIPPI`, and other source identifiers such as `51259N`, must not be rewritten just because they contain N/S/E/W or digits. Do not round a non-whole-degree coordinate into a whole-degree label.
+5. Classify FIR rows only when the source row has matching explicit FIR evidence. Carry that classification through the typed waypoint data, serialization/restoration, and presenter, following existing enum/DTO conventions. Recommended display: `CZEG (FIR)` and `PAZA (FIR)`, retaining their rows, order, coordinates, and available values. Keep `-CZEG` and `-PAZA` as source identifiers. Do not indiscriminately strip hyphens, discard boundary rows, or turn FIR identifiers into airport lookups; `-ETP1` is a different source marker.
+6. Have `FuelPresenter::waypoints()` and `calculatorData()` supply the same display label to the regular and offline views, including accessible waypoint control names. Keep parsing and classification out of Blade and JavaScript. Preserve existing fuel/time calculations, missing-value behavior, and waypoint input associations.
+7. Keep older serialized payloads readable with conservative defaults for new metadata. A parser change does not repair already stored `FlightPlanResult` payloads: re-extract the supplied release for validation, without mass rewriting or deleting saved results. If upstream PDF text extraction changes, version its text-cache key so the seven-day cached text cannot conceal the fix; an extractor-only change does not require clearing the raw-text cache.
+
+#### Acceptance criteria
+
+- The supplied release extracts source identifiers `50N095` and `61N130` with coordinates exactly `N50 00.0 W095 00.0` and `N61 00.0 W130 00.0`; neither identifier digits nor DIST digits leak into a coordinate.
+- Both Fuel Score views display the complete, hemisphere-explicit labels `N50W095` and `N61W130`, while source evidence retains the original IDENT values. Unknown or ambiguous coordinate labels are not invented.
+- Verified FIR rows display `CZEG (FIR)` and `PAZA (FIR)` consistently, retain source identifiers, and remain distinct from neighboring fixes, including PAZA/GAHAM at the same coordinate.
+- Numeric-leading identifiers, named fixes, repeated fixes, CRLF/extra whitespace, flattened text, and coordinate/detail page breaks preserve their correct boundaries and order. Alternate rows and coordinate-less markers remain excluded as before.
+- Normalized/serialized data round trips without losing original labels or classification. Older payloads remain readable, and calculations retain their original time/fuel inputs and missing-value semantics.
+
+#### Validation and outcome
+
+Investigation baseline: Sail is available. All 7 existing `WaypointExtractorTest` tests pass (22 assertions), despite the reproduced truncation. No recent matching flight-release Debugbar request was available; the findings come from direct PDF/parser reproduction. PDF text chunks and route entries were inspected; the attempted image render was not legible enough for visual confirmation.
+
+For implementation, extend `tests/Unit/WaypointExtractorTest.php` with the source-derived regressions and supported coordinate precision/hemisphere cases, then add focused assertions in `BuildFlightPlanDataTest`, `FlightPlanResultSerializerTest`, `FlightReleasePageViewModelTest`, and `OfflineFuelScoreTest` for metadata propagation and consistent labels. Include a legacy-payload case in the existing restoration tests. If upstream text handling changes, extend `FlightPlanTextExtractorTest` and run the affected extraction tests as well. Run only affected files/filters through Sail; run Pint after PHP changes, Larastan once at the final integration checkpoint, and a Vite build if frontend assets change. Verify both rendered Fuel Score views after re-extracting the supplied PDF.
+
+Outcome: Confirmed the coordinate/identifier boundary defect and the source origin of the FIR prefixes; documented the proposed display behavior, data flow, compatibility constraints, and regression coverage. Application code and tests are unchanged; implementation remains open.
+
+Proposed implementation commit message: `fix: preserve coordinate waypoint labels and identify FIR rows`
+
+Documentation commit message: `docs: investigate truncated waypoint labels and FIR prefixes`
+
+## Ramp fuel stat card
+
+### Goal
+
+Make ramp fuel the prominent value in the overview Fuel card. For a source value of 125,400 lb, show a large monospaced `125.4` beside a smaller, deemphasized `k lbs`, with Ramp fuel as the supporting label.
 
 ### Current implementation
 
-The current page is centered almost entirely on the Jeppesen Crew Access Schedule Extractor. The title, hero, screenshot, benefits, CTA, and security messaging all reinforce that single feature.
-
-Reusable Crew Compass branding, `cc-*` styles, theme controls, and existing entitlement methods are already available.
+- `resources/views/components/flight-release/overview.blade.php` renders ramp fuel inside the generic `metric` component within the Fuel overview card. The value is a single small string.
+- `FuelPresenter::overviewRampFuel()` returns `FuelQuantity::format()`, such as `125,400 LB`; `FlightReleasePageViewModel` passes that string to the view. Missing ramp fuel returns `null`.
+- `overview-stat.blade.php` already gives MEL/CDL, Weight & Balance, and slot counts a prominent monospaced value, but it has no separate unit presentation. The Fuel card uses `overview-card` for its heading, status, and Fuel Score action.
+- Existing view-model tests cover pound, zero-kilogram, and missing ramp values. They expect the current unscaled overview string.
 
 ### Problem
 
-The application now contains multiple extraction products, but the public entry page still presents K4 as a single-purpose schedule tool. Its visual hierarchy, branding, accessibility, and authenticated CTAs also need to be brought in line with the current product/UI rules.
+The ramp fuel figure is visually buried in a nested metric cell. Its number and unit cannot have separate emphasis because they arrive as one formatted string. A stat treatment must still identify the fuel unit and keep a real zero distinct from missing source data.
 
 ### Implementation plan
 
-1. Reframe page metadata, navigation, and hero around:
-
-   * Crew Compass as the parent brand.
-   * K4 Extractor as the application.
-   * A single descriptive page `h1`.
-2. Replace Schedule-only hero messaging with product-level copy describing document-to-reviewable-information extraction.
-3. Keep Jeppesen Crew Access references within Schedule Extractor-specific content rather than as the overall product identity.
-4. Add a reusable feature-card Blade component and present:
-
-   * Schedule Extractor.
-   * Flight Plan Extractor.
-5. Keep both tools visible, emphasize Schedule Extractor as the primary CTA, and clearly identify Flight Plan as a Demo / Preview.
-6. Move the current schedule screenshot into Schedule-specific supporting content rather than using it as the product-wide hero.
-7. Make CTAs access-aware using the existing:
-
-   * `User::canUseScheduleExtractor()`
-   * `User::canUseFlightRelease()`
-8. Do not introduce authorization logic into Blade or rely on hidden navigation as authorization.
-9. Restyle the page using existing Crew Compass utilities and the documented Aviation Blue / Compass Gold visual system.
-10. Improve:
-
-    * semantic landmarks,
-    * heading hierarchy,
-    * image alt text,
-    * keyboard focus,
-    * light/dark states,
-    * responsive behavior.
-11. Update focused feature tests covering:
-
-    * Crew Compass / K4 branding,
-    * both extractor summaries,
-    * guest CTAs,
-    * authenticated CTAs,
-    * disabled-feature states,
-    * Flight Plan demo badge,
-    * theme controls,
-    * disclaimer/footer content,
-    * removal of Schedule-only assumptions.
-12. Validate with focused PHPUnit tests, Pint, production Vite build, and a final Larastan pass.
+1. Expose overview ramp fuel as presentation data from `FuelPresenter` through `FlightReleasePageViewModel`: numeric display text, unit display text, and a complete accessible description. Keep formatting and unit decisions out of Blade.
+2. For pounds, divide the source amount by 1,000 and format one decimal place: 125,400 lb becomes `125.4` plus `k lbs`. For kilograms, retain the source unit and show the amount as `kg` without converting it to pounds. Preserve zero as a value; return a missing state only when the ramp quantity is absent.
+3. Reuse or narrowly extend `overview-stat` to render the number large and monospaced, the unit smaller and lower contrast, and Ramp fuel as a supporting label. Give assistive technology one complete reading of value and unit. Keep existing count-stat callers working.
+4. Replace only the Fuel card's nested `metric` with the stat presentation. For missing ramp fuel, show `Not present in this release` without a numeric zero or orphaned unit. Preserve the card's Fuel Score action, availability status, responsive grid behavior, and light/dark palette.
 
 ### Acceptance criteria
 
-* The welcome page clearly represents K4 Extractor as a multi-tool Crew Compass application.
-* Schedule and Flight Plan Brief are both visible, with a primary Schedule CTA and a secondary Flight Plan CTA.
-* CTA behavior reflects existing user entitlements.
-* Authorization remains enforced by the existing backend mechanisms.
-* The page follows the documented Crew Compass palette and light/dark themes.
-* There is only one page-level `h1`.
-* All controls have visible keyboard focus and accessible names.
-* Existing public navigation, privacy, feedback, login/registration, and independence messaging remains available.
+- The Fuel overview card displays 125,400 lb as prominent `125.4` with subdued `k lbs` and a visible Ramp fuel label; the complete value is accessible as one description.
+- A kilogram source displays its own correctly labelled value, and a legitimate zero remains visible. Missing ramp fuel shows only the explicit missing-data message.
+- The stat remains legible in the narrow overview grid and in dark mode. Other overview stats, Fuel Score details, and the card action retain their behavior.
 
-Outcome: Reframed the welcome page as the Crew Compass / K4 Extractor product entry point with the headline “Turn Crew Documents into Actionable Flight Data.” Reusable tool cards have calendar/flight icons, a filled primary Schedule CTA, an outlined Flight Plan CTA, and a prominent Demo / Preview badge. Each available card has one native link covering its full area with keyboard focus styling; unavailable cards remain noninteractive. WelcomeController resolves actions through existing entitlement methods, including login, email verification, account-restricted, and disabled-feature states. Existing backend authorization remains in place. Added explicit high-contrast navigation and moved Data Security & Privacy directly below the tools, covering private upload storage, account/sign-in protection, unique passwords, and the privacy policy without unsupported encryption or deletion guarantees. Preserved theme controls, schedule-specific screenshot content, registration, dashboard, feedback, and independence messaging.
+### Validation for implementation
 
-Validation: The latest 27 focused welcome, badge, and theme tests pass (251 assertions), including native card links, noninteractive unavailable cards, CTA hierarchy, preview status, and security content. Existing route-authorization tests passed during the initial refactor. Pint, the production Vite build, and one final Larastan pass covering the application, routes, and changed tests pass. Browser visual verification was not performed.
+- Update focused `FlightReleasePageViewModelTest` cases for pound scaling/rounding, kilograms, zero, and missing ramp fuel.
+- Update focused `FlightPlanBriefTest` rendering assertions for the large number, subdued unit, accessible description, missing state, and unchanged Fuel Score action. Retain assertions for the other overview stat callers.
+- Run only affected tests through Sail, build frontend assets if Blade classes change, then run Pint if PHP changes and Larastan once at the final implementation checkpoint. Check the card visually at narrow and wide widths in light and dark mode; record results here.
 
-Commit message: `refactor: make welcome page a branded product hub`
+Planning outcome: Identified the existing small metric rendering, reusable overview stat component, and source-unit edge cases. Documented the presenter, component, accessibility, and validation work. Application code is unchanged; implementation remains open.
 
----
+Proposed implementation commit message: `feat: display overview ramp fuel as a prominent stat`
+
+Documentation commit message: `docs: plan ramp fuel overview stat`
+
+## Flight release: 24 hour time limit or past ETA
+Clear flight release from cache and db if more than 24 hours since extraction or current UTC time is greater than ETA.
 
 ## Implement Crew Compass tie-ins, branding, and marketing
 
@@ -265,72 +314,98 @@ This view repeats the confirmed source result. It does not calculate an envelope
 
 -------------------------------------------------------
 
-### [x] Completed: Flight plan: Weight & Balance: Operational badging
-### [x] Completed: Flight plan: Overview: Remove Redundant Data (De-cluttering)
-### [x] Completed: Flight plan: Overview: Integrate MEL / CDL Summary Block
-## [x] Completed: Flight plan: Overview: Weight and Balance
-## [x] Completed: Feat: Establish MEL badge color heiracrchy
-## [x] Completed: Refactor: MEL Dashboard Metric Card
-## [x] Completed: Flight plan: W&B Card order
-## [x] Completed: Flight plan: Overview: Full card link
-## [x] Completed: feat: flight plan: Offline fuel score
-## [x] Completed: Follow up 3
-## [x] Completed: Follow up 4
-## [x] Completed: Follow up 5: Table Refactor: Waypoint Estimates
-### [x] Follow up 6: Fuel score table refinements
-## [x] Completed: Line Break Fix: Flexbox Label Content
-## [x] Completed: feat: Flight plan: overview: ETOPS card
-## [x] Completed: Overview: whole card color change
 ## [x] Completed: Fix flight plan uploads that leave the spinner running
 ## [x] Completed: Show flight plan upload and extraction progress
 ## [x] Completed: Fix Livewire test response type inference
 ## [x] Completed: Flight plan: Overview: Slot times overview card refactor
 ### Context aware slot times
 ### Slot time widget
-Large 5-xl metric for slot time count. Remove ETD and ETA fields. Keep card links. Should render `1` in 5-xl then `approved slot time` in normal text-sm. Alert flags for close UTC slot windows.
-
-Outcome: Weight & Balance, MEL/CDL, and Slot Times now share the reusable overview-stat component. When slots are present, the slot card shows a large monospaced count with singular/plural `approved slot time` copy, retains its detail action, and omits ETD/ETA fields. When no slot times are present, the overview omits the Slot Times card.
-
-Slot comparisons use full UTC dates. Exact matches to the departure or arrival window start show `Do not depart early`; times within the user-selected 10 minutes of either boundary and times outside the window receive caution alerts and an amber overview card. The Slot Times task displays the signed buffer from the earliest window time (ETD for departure, ETA for arrival), the calculation basis, and contextual alert details. Missing planned time, tolerance, or direction leaves the buffer unavailable.
-
-Validation: Focused view-model and Livewire tests pass, covering departure/arrival comparisons, 10/11-minute thresholds, both window boundaries, times outside the window, midnight/year rollover, explicit zero tolerance, missing/invalid source values, singular/plural rendering, missing-card omission, and preserved task links. Pint, the production Vite build, and Larastan (including both changed test files) pass. Browser visual verification was unavailable in this environment.
-
-Commit message: `refactor: add shared overview stats and hide empty slot card`
-
 ## [x] Completed: Bug: PDF flight release header/footer extracted into route
-With this `DCT ELLAM DCT TIEKL DCT OMSUN DCT 61N130W 60N120W 58N110W/N0491F330 DCT PETMA DCT YQD DCT GABOV DCT SUZLI DCT FGHRN MADII7 KALITTA BRIEF PAGE 2 OF 79 PAGE 2 OF 79` extracted.
-
-Outcome: Route normalization removes `KALITTA BRIEF PAGE n OF n` and standalone `PAGE n OF n` labels, including duplicates, wrapped labels, and page breaks. Both route extraction entry points preserve route tokens and reject routes left empty after cleanup. Cleanup is scoped to the route so the original PDF text remains available to other extractors.
-
-Validation: All 32 focused FlightRouteExtractor tests pass (121 assertions), including the reported route, page-spanning routes, mixed whitespace/case, similar route tokens, and empty-route rejection. Pint and Larastan (app and changed test file) pass.
-
-Commit message: `fix: remove PDF page labels from extracted flight routes`
-
 ## [x] Completed: Feat: Domestic / international flight determine
-Domestic Flight: A flight that operates entirely within the sovereign territory and airspace of a single country, departing and landing at airports located in the same nation without crossing or clearing international customs boundaries (e.g., PANC to CONUS, or Hawaii to CONUS).
-
-International Flight: A flight where the departure airport and arrival airport (or intermediate technical/operational stops) are located in different sovereign countries or territories, requiring clearance through international customs, immigration, and agricultural control authorities (e.g., PANC to NRT, or CONUS to YVR).
-
-Will determine if a GENDEC is needed. GENDECs are not typically needed on domestic flights. For the flight plan purpose, PANC to Conus or Hawaii to conus are domestic flights.
-
-Logic:
-* **PANC to CONUS:** Domestic -> No GENDEC required
-* **PHNL / PHOG to CONUS:** Domestic -> No GENDEC required *(Note: State-specific agricultural declarations may apply, but not an international GENDEC)*
-* **PANC / CONUS to Foreign Destination (or vice-versa):** International -> GENDEC required
-
-Outcome: Added typed domestic/international/unknown classification using resolved airport countries, exposed through `FlightReleasePageViewModel::flightType()`. Country codes and English country names normalize consistently, including US aliases; missing or unrecognized countries remain unknown. Alaska/Hawaii-to-CONUS flights classify as domestic. Alternates and overflight waypoints do not affect classification. Explicit landing stops can be supplied to the classifier; a known foreign stop makes the trip international, and an unresolved stop prevents a domestic result. The current parser supplies a single leg's endpoints and does not yet extract intermediate landing stops. GENDEC card changes remain in their separate task.
-
-Validation: 28 focused tests pass (112 assertions), covering endpoint classification, country normalization, missing data, territory distinctions, explicit stops, and restored flight-plan/view-model integration. Pint and Larastan pass.
-
-Commit message: `feat: classify flight legs as domestic or international`
-
 ## [x] Completed: Feat: GENDEC card
-After Domestic / Int flight task is complete and international flights can be determined:
-Move from GENDEC in operational status to it's own dedicated card. 
-If GENDEC not available and domestic flight, render `Domestic flight: GENDEC likely not required`. If intl and no GENDEC, render card in caution amber with message `GENDEC not found in flight plan. Verify against actual flight plan.`
+## [x] Completed: feat: Overview cards Spatial Organization (Grid & Layout)
+Responsive Flow: Switch the grid from fixed columns to a repeat(auto-fit, minmax(280px, 1fr)) pattern. This ensures that cards resize intelligently based on screen width, preventing data from feeling cramped or overly stretched.
+Whitespace: Increased padding and gaps to create "breathable" space, which reduces cognitive load and allows the eye to focus on individual metrics.
 
-Outcome: Moved GENDEC out of operational support status into a dedicated overview card. Missing domestic declarations show the requested likely-not-required message. Missing international declarations show the requested verification message on the existing amber warning surface. Unknown flight types explicitly state that classification is undetermined and also request verification. Detected declarations show `GENDEC found in flight plan.` with a green check icon. The MEL/CDL no-restrictions state uses the same green check treatment. The card supports light/dark mode and has no unsupported detail action.
+Outcome: Replaced the fixed one/two/six-column overview grid and per-card column spans with `repeat(auto-fit, minmax(280px, 1fr))`, allowing every visible card to flow according to available width. Increased overview section padding, inter-section spacing, card-grid gaps, and overview-card padding/internal gaps while preserving existing card content, actions, warning surfaces, and dark-mode styling.
 
-Validation: 93 focused view-model and Livewire tests pass (1,415 assertions), including all six classification/presence combinations, green success checks, removal from operational support status, and overview rendering. Pint, Larastan, and the Vite build pass. Browser visual verification was not available in this session.
+Validation: 10 focused view-model and Livewire overview tests pass (238 assertions), including a rendered-layout assertion for the auto-fit grid, increased spacing, and removal of fixed column/span classes. Pint, Larastan, and the Vite build pass. Browser visual verification was not available in this session.
 
-Commit message: `feat: add dedicated GENDEC overview card`
+Commit message: `feat: improve overview card responsive layout`
+
+## [x] Completed: Refactor welcome page for use with new features
+
+### Goal
+
+Turn the welcome page from a Schedule Extractor landing page into the branded Crew Compass / K4 Extractor product entry point for both Schedule Extractor and Flight Plan Extractor.
+
+### Current implementation
+
+The current page is centered almost entirely on the Jeppesen Crew Access Schedule Extractor. The title, hero, screenshot, benefits, CTA, and security messaging all reinforce that single feature.
+
+Reusable Crew Compass branding, `cc-*` styles, theme controls, and existing entitlement methods are already available.
+
+### Problem
+
+The application now contains multiple extraction products, but the public entry page still presents K4 as a single-purpose schedule tool. Its visual hierarchy, branding, accessibility, and authenticated CTAs also need to be brought in line with the current product/UI rules.
+
+### Implementation plan
+
+1. Reframe page metadata, navigation, and hero around:
+
+   * Crew Compass as the parent brand.
+   * K4 Extractor as the application.
+   * A single descriptive page `h1`.
+2. Replace Schedule-only hero messaging with product-level copy describing document-to-reviewable-information extraction.
+3. Keep Jeppesen Crew Access references within Schedule Extractor-specific content rather than as the overall product identity.
+4. Add a reusable feature-card Blade component and present:
+
+   * Schedule Extractor.
+   * Flight Plan Extractor.
+5. Keep both tools visible, emphasize Schedule Extractor as the primary CTA, and clearly identify Flight Plan as a Demo / Preview.
+6. Move the current schedule screenshot into Schedule-specific supporting content rather than using it as the product-wide hero.
+7. Make CTAs access-aware using the existing:
+
+   * `User::canUseScheduleExtractor()`
+   * `User::canUseFlightRelease()`
+8. Do not introduce authorization logic into Blade or rely on hidden navigation as authorization.
+9. Restyle the page using existing Crew Compass utilities and the documented Aviation Blue / Compass Gold visual system.
+10. Improve:
+
+    * semantic landmarks,
+    * heading hierarchy,
+    * image alt text,
+    * keyboard focus,
+    * light/dark states,
+    * responsive behavior.
+11. Update focused feature tests covering:
+
+    * Crew Compass / K4 branding,
+    * both extractor summaries,
+    * guest CTAs,
+    * authenticated CTAs,
+    * disabled-feature states,
+    * Flight Plan demo badge,
+    * theme controls,
+    * disclaimer/footer content,
+    * removal of Schedule-only assumptions.
+12. Validate with focused PHPUnit tests, Pint, production Vite build, and a final Larastan pass.
+
+### Acceptance criteria
+
+* The welcome page clearly represents K4 Extractor as a multi-tool Crew Compass application.
+* Schedule and Flight Plan Brief are both visible, with a primary Schedule CTA and a secondary Flight Plan CTA.
+* CTA behavior reflects existing user entitlements.
+* Authorization remains enforced by the existing backend mechanisms.
+* The page follows the documented Crew Compass palette and light/dark themes.
+* There is only one page-level `h1`.
+* All controls have visible keyboard focus and accessible names.
+* Existing public navigation, privacy, feedback, login/registration, and independence messaging remains available.
+
+Outcome: Reframed the welcome page as the Crew Compass / K4 Extractor product entry point with the headline “Turn Crew Documents into Actionable Flight Data.” Reusable tool cards have calendar/flight icons, a filled primary Schedule CTA, an outlined Flight Plan CTA, and a prominent Demo / Preview badge. Each available card has one native link covering its full area with keyboard focus styling; unavailable cards remain noninteractive. WelcomeController resolves actions through existing entitlement methods, including login, email verification, account-restricted, and disabled-feature states. Existing backend authorization remains in place. Added explicit high-contrast navigation and moved Data Security & Privacy directly below the tools, covering private upload storage, account/sign-in protection, unique passwords, and the privacy policy without unsupported encryption or deletion guarantees. Preserved theme controls, schedule-specific screenshot content, registration, dashboard, feedback, and independence messaging.
+
+Validation: The latest 27 focused welcome, badge, and theme tests pass (251 assertions), including native card links, noninteractive unavailable cards, CTA hierarchy, preview status, and security content. Existing route-authorization tests passed during the initial refactor. Pint, the production Vite build, and one final Larastan pass covering the application, routes, and changed tests pass. Browser visual verification was not performed.
+
+Commit message: `refactor: make welcome page a branded product hub`
+
+---

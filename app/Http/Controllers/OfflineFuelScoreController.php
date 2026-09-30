@@ -30,6 +30,10 @@ class OfflineFuelScoreController extends Controller
             'flightNumber' => $pageData->flightPlan->identity->flightNumber,
             'flightDate' => $pageData->flightPlan->identity->flightDate?->format('M j, Y'),
             'calculator' => (new FuelPresenter($pageData))->calculatorData(),
+            'draftScope' => [
+                'ownerId' => (string) $user->getKey(),
+                'flightPlanKey' => $flightPlanKey,
+            ],
         ]);
     }
 }

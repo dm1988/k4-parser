@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "055ed9d9300fc92b8a411a27f7a002e7",
+    "content-hash": "1a3a68daba137c9a2ce422c0687254a3",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -9605,6 +9605,102 @@
                 "source": "https://github.com/hamcrest/hamcrest-php/tree/v3.0.0"
             },
             "time": "2026-03-17T11:56:53+00:00"
+        },
+        {
+            "name": "heyosseus/sloppy",
+            "version": "v1.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Heyosseus/sloppy.git",
+                "reference": "3b7a8aaf5b72900fc9e319e18bb30e91298f87d2"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Heyosseus/sloppy/zipball/3b7a8aaf5b72900fc9e319e18bb30e91298f87d2",
+                "reference": "3b7a8aaf5b72900fc9e319e18bb30e91298f87d2",
+                "shasum": ""
+            },
+            "require": {
+                "nikic/php-parser": "^5.3",
+                "php": "^8.3",
+                "symfony/console": "^7.0 || ^8.0",
+                "symfony/finder": "^7.0 || ^8.0",
+                "symfony/process": "^7.0 || ^8.0"
+            },
+            "require-dev": {
+                "illuminate/console": "^12.0 || ^13.0",
+                "illuminate/contracts": "^12.0 || ^13.0",
+                "illuminate/support": "^12.0 || ^13.0",
+                "larastan/larastan": "^3.0",
+                "laravel/pint": "^1.18",
+                "orchestra/testbench": "^10.0 || ^11.0",
+                "pestphp/pest": "^3.7 || ^4.0",
+                "pestphp/pest-plugin-laravel": "^3.1 || ^4.0",
+                "pestphp/pest-plugin-type-coverage": "^3.2 || ^4.0",
+                "rector/rector": "^2.0"
+            },
+            "suggest": {
+                "ext-xml": "Used to read clover and cobertura coverage reports, which raise untested changed files in the review order. Without it coverage is skipped and nothing else changes.",
+                "filament/filament": "Required for the Filament panel plugin and health widget.",
+                "illuminate/console": "Required for the php artisan sloppy commands. Not needed for the standalone bin/sloppy binary.",
+                "laravel/pint": "Used by sloppy fix to format the files Rector rewrote.",
+                "pestphp/pest": "Required for the expectCleanSloppyDiff() test expectation.",
+                "rector/rector": "Required by sloppy fix, which hands the fixable findings to Rector."
+            },
+            "bin": [
+                "bin/sloppy",
+                "bin/sloppy-mcp"
+            ],
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Heyosseus\\Sloppy\\SloppyServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "files": [
+                    "pest/Expectations.php"
+                ],
+                "psr-4": {
+                    "Heyosseus\\Sloppy\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "heyosseus",
+                    "email": "ratiruxadzee@gmail.com"
+                }
+            ],
+            "description": "Static analysis for the debt AI coding agents leave behind, on any PHP project: 25 rules, git-diff review, coverage-aware reading order, PHPStan baseline-growth detection, a Rector and Pint fix pass, Pest expectations, CI annotations, agent rulesets, Claude Code hooks and an MCP server. Extra rules and dashboards for Laravel. Deterministic, local, no LLM.",
+            "homepage": "https://github.com/heyosseus/sloppy",
+            "keywords": [
+                "Pint",
+                "ai",
+                "ai-agents",
+                "ci",
+                "code-quality",
+                "code-review",
+                "filament",
+                "laravel",
+                "mcp",
+                "pest",
+                "php",
+                "rector",
+                "slop",
+                "static-analysis",
+                "technical-debt"
+            ],
+            "support": {
+                "issues": "https://github.com/heyosseus/sloppy/issues",
+                "source": "https://github.com/heyosseus/sloppy"
+            },
+            "time": "2026-09-28T15:40:36+00:00"
         },
         {
             "name": "iamcal/sql-parser",

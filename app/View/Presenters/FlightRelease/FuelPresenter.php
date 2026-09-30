@@ -38,12 +38,14 @@ final readonly class FuelPresenter
         ];
     }
 
-    /** @return list<array{identifier: string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: ?string}> */
+    /** @return list<array{identifier: string, displayLabel: string, kind: string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: ?string}> */
     public function waypoints(): array
     {
         return array_map(
             fn (WaypointData $waypoint): array => [
                 'identifier' => $waypoint->identifier,
+                'displayLabel' => $waypoint->label(),
+                'kind' => $waypoint->kind->value,
                 'legDurationMinutes' => $waypoint->legDurationMinutes,
                 'cumulativeDurationMinutes' => $waypoint->cumulativeDurationMinutes,
                 'remainingFuel' => $this->formatWaypointFuel($waypoint->remainingFuel),
@@ -53,7 +55,7 @@ final readonly class FuelPresenter
     }
 
     /**
-     * @return array{fuelUnit: ?string, takeoffFuel: array{amount: float, unit: 'kg'|'lb'}|null, estimatedLandingFuel: array{amount: float, unit: 'kg'|'lb'}|null, waypoints: list<array{identifier: string, tbo: ?string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: array{amount: float, unit: 'kg'|'lb'}|null}>}
+     * @return array{fuelUnit: ?string, takeoffFuel: array{amount: float, unit: 'kg'|'lb'}|null, estimatedLandingFuel: array{amount: float, unit: 'kg'|'lb'}|null, waypoints: list<array{identifier: string, displayLabel: string, kind: string, coordinate: string, tbo: ?string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: array{amount: float, unit: 'kg'|'lb'}|null}>}
      */
     public function calculatorData(): array
     {
@@ -77,6 +79,9 @@ final readonly class FuelPresenter
             'waypoints' => array_map(
                 fn (WaypointData $waypoint): array => [
                     'identifier' => $waypoint->identifier,
+                    'displayLabel' => $waypoint->label(),
+                    'kind' => $waypoint->kind->value,
+                    'coordinate' => $waypoint->coordinate,
                     'tbo' => $waypoint->tbo,
                     'legDurationMinutes' => $waypoint->legDurationMinutes,
                     'cumulativeDurationMinutes' => $waypoint->cumulativeDurationMinutes,

@@ -54,7 +54,7 @@
                     <tbody class="divide-y divide-[#1B365D]/10 font-mono text-[#0B0E14] dark:divide-slate-800 dark:text-slate-100">
                         @foreach ($model->fuelScoreWaypoints() as $waypoint)
                             <tr>
-                                <th class="whitespace-nowrap px-3 py-2 text-left font-bold" scope="row">{{ $waypoint['identifier'] }}</th>
+                                <th class="whitespace-nowrap px-3 py-2 text-left font-bold" scope="row">{{ $waypoint['displayLabel'] }}</th>
                                 <td class="whitespace-nowrap px-3 py-2">{{ $waypoint['legDurationMinutes'] === null ? 'Not present in this release' : $waypoint['legDurationMinutes'].' min' }}</td>
                                 <td class="whitespace-nowrap px-3 py-2">{{ $waypoint['cumulativeDurationMinutes'] === null ? 'Not present in this release' : $waypoint['cumulativeDurationMinutes'].' min' }}</td>
                                 <td class="whitespace-nowrap px-3 py-2">{{ $waypoint['remainingFuel'] ?? 'Not present in this release' }}</td>

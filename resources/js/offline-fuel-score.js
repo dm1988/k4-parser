@@ -1,7 +1,7 @@
 import Alpine from 'alpinejs';
-import { waypointFuelMonitor } from './waypoint-fuel-monitor';
+import { offlineFuelScoreState } from './offline-fuel-score-state';
 
-window.offlineFuelScore = waypointFuelMonitor;
+window.offlineFuelScore = offlineFuelScoreState;
 window.Alpine = Alpine;
 
 Alpine.start();

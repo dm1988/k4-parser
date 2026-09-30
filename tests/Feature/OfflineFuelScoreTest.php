@@ -22,6 +22,13 @@ class OfflineFuelScoreTest extends TestCase
             ->assertOk()
             ->assertSeeText('Offline fuel calculator')
             ->assertSeeText('CKS241')
+            ->assertSeeText('Inputs are saved in this tab and restored after a refresh')
+            ->assertSeeText('Browser storage is unavailable.')
+            ->assertSeeHtml('x-show="draftUnavailable"')
+            ->assertViewHas('draftScope', [
+                'ownerId' => (string) $owner->getKey(),
+                'flightPlanKey' => $key,
+            ])
             ->assertSeeText('Off time (UTC, HHMM)')
             ->assertSeeHtml('<span class="whitespace-nowrap">Starting FOB at takeoff (<span x-text="fuelUnit?.toUpperCase() ?? \'unit unavailable\'"></span>)</span>')
             ->assertSeeText('ATA (UTC, HHMM)')
@@ -67,8 +74,32 @@ class OfflineFuelScoreTest extends TestCase
                 return $calculator['fuelUnit'] === 'lb'
                     && $calculator['takeoffFuel'] === ['amount' => 150000.0, 'unit' => 'lb']
                     && $calculator['estimatedLandingFuel'] === ['amount' => 30000.0, 'unit' => 'lb']
+                    && $calculator['waypoints'][0]['coordinate'] === 'N01 02.3 E004 05.6'
                     && $calculator['waypoints'][0]['tbo'] === '0011'
                     && $calculator['waypoints'][0]['remainingFuel'] === ['amount' => 120000.0, 'unit' => 'lb'];
+            });
+    }
+
+    public function test_calculator_uses_display_labels_without_changing_source_waypoint_identity(): void
+    {
+        $owner = User::factory()->admin()->create();
+        $result = $this->flightPlanResult();
+        $result['flight_plan_data']['waypoints'][0]['identifier'] = '50N095';
+        $result['flight_plan_data']['waypoints'][0]['coordinate'] = 'N50 00.0 W095 00.0';
+        $result['flight_plan_data']['waypoints'][0]['displayLabel'] = 'N50W095';
+        $result['flight_plan_data']['waypoints'][0]['kind'] = 'fix';
+        $key = app(FlightPlanResultStore::class)->save($owner, $result);
+
+        $this->actingAs($owner)
+            ->get(route('flight-release.fuel-score', ['flightPlanKey' => $key]))
+            ->assertOk()
+            ->assertSeeHtml('x-text="waypoint.displayLabel"')
+            ->assertSeeHtml('for ${waypoint.displayLabel}')
+            ->assertViewHas('calculator', function (array $calculator): bool {
+                return $calculator['waypoints'][0]['identifier'] === '50N095'
+                    && $calculator['waypoints'][0]['displayLabel'] === 'N50W095'
+                    && $calculator['waypoints'][0]['coordinate'] === 'N50 00.0 W095 00.0'
+                    && $calculator['waypoints'][0]['kind'] === 'fix';
             });
     }
 
