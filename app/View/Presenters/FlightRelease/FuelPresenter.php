@@ -12,9 +12,28 @@ final readonly class FuelPresenter
 {
     public function __construct(private ?FlightPlanPageData $pageData) {}
 
-    public function overviewRampFuel(): ?string
+    /** @return array{value: string, unit: string, accessibleLabel: string, taxiLabel: ?string}|null */
+    public function overviewRampFuel(): ?array
     {
-        return $this->pageData?->flightPlan->fuelPlan?->ramp?->format();
+        $fuelPlan = $this->pageData?->flightPlan->fuelPlan;
+
+        if ($fuelPlan?->ramp === null) {
+            return null;
+        }
+
+        $rampFuel = $fuelPlan->ramp;
+        $taxiFuel = $fuelPlan->taxi;
+
+        return [
+            'value' => $rampFuel->unit === 'lb'
+                ? Number::format($rampFuel->amount / 1000, precision: 1)
+                : Number::format($rampFuel->amount),
+            'unit' => $rampFuel->unit === 'lb' ? 'k lbs' : 'kg',
+            'accessibleLabel' => 'Ramp fuel: '.Number::format($rampFuel->amount).' '.($rampFuel->unit === 'lb' ? 'pounds' : 'kilograms'),
+            'taxiLabel' => $taxiFuel === null ? null : ($taxiFuel->unit === 'lb'
+                ? Number::format($taxiFuel->amount / 1000, precision: 1).'k lbs taxi fuel'
+                : Number::format($taxiFuel->amount).' kg taxi fuel'),
+        ];
     }
 
     public function alternateReserve(): ?string

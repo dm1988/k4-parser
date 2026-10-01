@@ -67,68 +67,13 @@ Commit message: `fix: preserve offline fuel score inputs across reloads`
 ## Sloppy static findings
 ./vendor/bin/sloppy
 
+## Current focus: ETOPS metric card
+Show etops time (180, 120, 204 etc) in a large, 4-xl/sm 5-xl, metric style font reusing the existing metric style overview card. List number of ETP points in the "<p class="text-sm font-normal leading-5 text-[#4A5568] dark:text-slate-300">1 ETP point</p>" label. Have point / points contextually pluralized. The Str::plural is available if the implementation works. 
+Illuminate\Support\Str facade
+Str::plural
 
-## [x] Complete: Lat / Long cut off, some waypoints prefixed with `-`
 
-#### Goal
-
-Show complete, source-backed latitude/longitude waypoint labels in both Fuel Score views, and distinguish FIR boundary rows from ordinary waypoints without displaying an unexplained leading hyphen. Preserve the original identifiers and coordinates as source evidence.
-
-#### Current implementation
-
-- `FlightPlanTextExtractor` uses Smalot page `getText()` output, removes null bytes, and joins pages. In the supplied PDF, adjacent text chunks within a page are concatenated without a separating space or newline.
-- `WaypointExtractor::coordinateDelimitedRecords()` finds coordinate matches, then treats everything up to the next coordinate as that record's content. `COORDINATE_PATTERN` permits an unlimited number of decimal digits in longitude minutes (`\.\d+`).
-- `WaypointExtractor::detail()` accepts identifiers matching `-?[A-Z0-9]{2,7}` and preserves a leading hyphen. `WaypointDataBuilder`, `WaypointData`, and `FuelPresenter` pass that identifier through. The regular Fuel Score Blade table and offline Alpine table render it directly; no identifier shortening was found in this path.
-- The existing fixture and ordered-extraction test explicitly expect FIR-style identifiers such as `-EDWW`, `-EDVV`, and `-EHAA`. There is no row-kind or separate display-label field in `WaypointData`.
-
-#### Investigation findings
-
-Source: `storage/app/private/flight_releases/CKS020221KCVG.pdf`, especially PDF page 11. Read-only reproduction used the installed Smalot parser and current `WaypointExtractor` through Sail. Individual `getTextArray()` chunks establish where the coordinate ends and the identifier begins.
-
-| Source coordinate and following IDENT | Current extracted result | Finding |
-| --- | --- | --- |
-| `N50 00.0 W095 00.0` then `50N095` | Coordinate `N50 00.0 W095 00.050`; identifier `N095` | The longitude decimal consumes the identifier's leading `50`. |
-| `N61 00.0 W130 00.0` then `61N130` | Coordinate `N61 00.0 W130 00.061`; identifier `N130` | The longitude decimal consumes the identifier's leading `61`. |
-| `-CZEG`, followed by `FIR -> CZEG <-` | Identifier `-CZEG` | The hyphen is present in the source; this is an explicitly annotated FIR row. |
-| `-PAZA`, followed by `FIR -> PAZA <-` | Identifier `-PAZA` | The hyphen is present in the source; this is an explicitly annotated FIR row. |
-
-The flattened source strings include `W095 00.050N095 0222` and `W130 00.061N130 0409`. This reproduces a parsing boundary defect, not CSS clipping. The PDF's route on pages 3 and 8 and coordinate listing on page 15 independently contain `50N095W` and `61N130W` with matching coordinates.
-
-The earlier report mentioned `N50` instead of `N50W120`. That exact pair was not reproduced in this supplied release; the confirmed cases are `50N095`/`N095` and `61N130`/`N130`. Do not substitute W120 or infer missing longitude from a damaged identifier.
-
-Related boundary observations: the digit-leading departure identifier `39028N` on page 10 is absent from current parser output, and NODLE's coordinate at the end of page 11 is separated from its identifier on page 12 by footer text. Include these as boundary regression cases when changing record segmentation. Missing FRMG on some rows is a separate field-extraction concern and is outside this task.
-
-#### Implementation plan
-
-1. Add small source-derived text fixtures under `tests/Fixtures/FlightPlan/waypoints/` for the confirmed coordinate/IDENT boundaries, both separated and flattened, plus the two FIR rows and their annotations. Keep the private PDF out of committed fixtures; include only the minimal relevant rows.
-2. Correct coordinate/record segmentation in `WaypointExtractor` so a numeric identifier cannot extend longitude minutes. Recognize the coordinate together with the following valid IDENT/DIST row structure. Use the source text-chunk boundaries as the reference; if flattened text is ambiguous, preserve the necessary boundaries upstream instead of guessing. Do not globally truncate coordinate precision or merely make the decimal matcher lazy, which could accept another incorrect split. Keep source text available to other extractors unchanged wherever possible.
-3. Handle known page labels between a coordinate and its detail row within the computed-flight-plan section. Preserve record order and repeated identifiers/coordinates, retain the alternate-section stop, and do not attach coordinate-less TOC/TOD markers to the preceding waypoint.
-4. Preserve the complete source identifier separately from any display normalization. For positively identified whole-degree coordinate fixes, derive an explicit hemisphere label from the verified, uncorrupted coordinate: the supplied examples should display `N50W095` and `N61W130`, while retaining `50N095` and `61N130` as source identifiers. Named fixes such as `NODLE` and `NIPPI`, and other source identifiers such as `51259N`, must not be rewritten just because they contain N/S/E/W or digits. Do not round a non-whole-degree coordinate into a whole-degree label.
-5. Classify FIR rows only when the source row has matching explicit FIR evidence. Carry that classification through the typed waypoint data, serialization/restoration, and presenter, following existing enum/DTO conventions. Recommended display: `CZEG (FIR)` and `PAZA (FIR)`, retaining their rows, order, coordinates, and available values. Keep `-CZEG` and `-PAZA` as source identifiers. Do not indiscriminately strip hyphens, discard boundary rows, or turn FIR identifiers into airport lookups; `-ETP1` is a different source marker.
-6. Have `FuelPresenter::waypoints()` and `calculatorData()` supply the same display label to the regular and offline views, including accessible waypoint control names. Keep parsing and classification out of Blade and JavaScript. Preserve existing fuel/time calculations, missing-value behavior, and waypoint input associations.
-7. Keep older serialized payloads readable with conservative defaults for new metadata. A parser change does not repair already stored `FlightPlanResult` payloads: re-extract the supplied release for validation, without mass rewriting or deleting saved results. If upstream PDF text extraction changes, version its text-cache key so the seven-day cached text cannot conceal the fix; an extractor-only change does not require clearing the raw-text cache.
-
-#### Acceptance criteria
-
-- The supplied release extracts source identifiers `50N095` and `61N130` with coordinates exactly `N50 00.0 W095 00.0` and `N61 00.0 W130 00.0`; neither identifier digits nor DIST digits leak into a coordinate.
-- Both Fuel Score views display the complete, hemisphere-explicit labels `N50W095` and `N61W130`, while source evidence retains the original IDENT values. Unknown or ambiguous coordinate labels are not invented.
-- Verified FIR rows display `CZEG (FIR)` and `PAZA (FIR)` consistently, retain source identifiers, and remain distinct from neighboring fixes, including PAZA/GAHAM at the same coordinate.
-- Numeric-leading identifiers, named fixes, repeated fixes, CRLF/extra whitespace, flattened text, and coordinate/detail page breaks preserve their correct boundaries and order. Alternate rows and coordinate-less markers remain excluded as before.
-- Normalized/serialized data round trips without losing original labels or classification. Older payloads remain readable, and calculations retain their original time/fuel inputs and missing-value semantics.
-
-#### Validation and outcome
-
-Investigation baseline: Sail is available. All 7 existing `WaypointExtractorTest` tests pass (22 assertions), despite the reproduced truncation. No recent matching flight-release Debugbar request was available; the findings come from direct PDF/parser reproduction. PDF text chunks and route entries were inspected; the attempted image render was not legible enough for visual confirmation.
-
-Implementation validation: Added source-derived separated and flattened fixtures and focused regression coverage for coordinate/IDENT boundaries, FIR evidence, repeated coordinates, page labels, precision, hemisphere labels, serialization, legacy payloads, and both Fuel Score views. All 104 focused tests passed (929 assertions). Pint passed; Larastan passed with zero errors. A read-only re-extraction of the supplied PDF produced 55 waypoint rows; `39028N`, `50N095`, `61N130`, `-CZEG`, `-PAZA`, GAHAM, and NODLE retained their expected source coordinates and ordering. The typed round trip and both Fuel Score presenter payloads produced `N50W095`, `N61W130`, `CZEG (FIR)`, and `PAZA (FIR)`. No upstream PDF text extraction or frontend asset changed, so the raw-text cache key and Vite bundle did not need updating. Browser visual verification was unavailable.
-
-Outcome: Repaired the numeric IDENT/longitude boundary only when the candidate identifier matches the source coordinate, and handled the known PDF page labels before detail rows. Added typed waypoint kind and a separate display label while retaining source identifiers, coordinates, timing, and fuel. The regular and offline Fuel Score views now use the same label, including offline control names; older saved payloads fall back to their original identifier. The supplied release must be re-extracted in the application to replace any previously saved result.
-
-Commit message: `fix: preserve coordinate waypoint labels and identify FIR rows`
-
-Documentation commit message: `docs: investigate truncated waypoint labels and FIR prefixes`
-
-## Ramp fuel stat card
+## [x] Complete: Ramp fuel stat card
 
 ### Goal
 
@@ -164,14 +109,62 @@ The ramp fuel figure is visually buried in a nested metric cell. Its number and 
 - Update focused `FlightPlanBriefTest` rendering assertions for the large number, subdued unit, accessible description, missing state, and unchanged Fuel Score action. Retain assertions for the other overview stat callers.
 - Run only affected tests through Sail, build frontend assets if Blade classes change, then run Pint if PHP changes and Larastan once at the final implementation checkpoint. Check the card visually at narrow and wide widths in light and dark mode; record results here.
 
-Planning outcome: Identified the existing small metric rendering, reusable overview stat component, and source-unit edge cases. Documented the presenter, component, accessibility, and validation work. Application code is unchanged; implementation remains open.
+Outcome: The Fuel overview card now shows a large monospaced ramp-fuel number with a smaller source-unit label and a complete accessible description. Pounds display in thousands with one decimal; kilograms retain their source unit. Zero stays visible, while absent ramp data shows the explicit missing-data message. The Fuel Score action and other count stats remain unchanged.
 
-Proposed implementation commit message: `feat: display overview ramp fuel as a prominent stat`
+Validation: Focused view-model and Livewire overview tests passed, including scaling, rounding, kilograms, zero, missing data, and the card action. Vite build, Pint, and Larastan passed. Automated rendering assertions cover responsive and dark-mode classes; a browser visual check at narrow and wide widths was unavailable in this environment.
+
+Implementation commit message: `feat: display overview ramp fuel as a prominent stat`
 
 Documentation commit message: `docs: plan ramp fuel overview stat`
 
+## [x] Completed: Move B44 badge to Ramp Fuel card
+
+Outcome: Moved the existing OpSpec B44 badge from the Route overview card to the Ramp Fuel overview card. Its label and conditional visibility remain unchanged.
+
+Validation: The focused Livewire overview test passed (1 test, 126 assertions) and confirms B44 appears in the Ramp Fuel card and is absent from the Route card. Pint and the single Larastan pass also passed.
+
+Commit message: `fix: show B44 badge on ramp fuel overview card`
+
 ## Flight release: 24 hour time limit or past ETA
-Clear flight release from cache and db if more than 24 hours since extraction or current UTC time is greater than ETA.
+
+### Goal
+
+Expire a saved flight release at the earlier of 24 hours after extraction and its planned ETA. Remove the expired release from the database and any release-specific cache, and stop serving it through the brief or Fuel Score URL.
+
+### Current implementation
+
+- `FlightPlanResultStore` keeps one encrypted `flight_plan_results` row per user. `save()` replaces that row; `get()` checks owner and key, and `latest()` checks owner, but neither checks age or ETA. The row has timestamps, but no explicit extraction or expiry timestamp.
+- `FlightPlanBrief` loads the latest row on mount and retrieves it on render. `OfflineFuelScoreController` retrieves the same row by key. Both rely on the store, so expiry enforcement belongs there.
+- `FlightPlanTextExtractor` caches PDF text for seven days under a file-hash key. This cache is independent of the saved result and can be shared by identical uploads; it has no owner or result-key mapping. The uploaded PDF is deleted after extraction.
+- `schedule.etaUtc` in the serialized `flight_plan_data` is a dated UTC instant when extraction can establish one; it may be absent. Existing scheduling in `routes/console.php` can run database cleanup.
+
+### Problem
+
+An old result remains readable until the user replaces or manually clears it. The PDF-text cache may retain release content longer than the proposed limit. `updated_at` is not a reliable extraction clock if a row is later touched, and deleting a shared file-hash cache entry for one owner could affect another owner's extraction.
+
+### Implementation plan
+
+1. Add an immutable extraction timestamp and an indexed expiry timestamp to `flight_plan_results`. Set both when a successful extraction is saved, including when the user's existing row is replaced. Compute expiry as the earlier of extraction time plus 24 hours and a valid, dated `schedule.etaUtc`; if ETA is missing or unusable, use the 24-hour deadline. Treat an ETA already in the past at save time as immediately expired. Compare instants in UTC and define expiry at the deadline (`now >= expires_at`).
+2. Make `FlightPlanResultStore::get()` and `latest()` exclude expired rows and delete a matching expired row when encountered. Keep owner and result-key checks in place. The brief should return to its upload state after expiry; the Fuel Score URL should return 404. Clear any stale Livewire result key or selected task when a rendered result expires so the UI does not retain a link to it.
+3. Add a scheduled cleanup command that deletes expired rows even if their owners never return. Use the same expiry rule for read checks and cleanup; make cleanup safe to repeat and scope deletion to rows whose stored deadline has passed. Define how existing rows receive an expiry during migration so deployment cannot make old releases persist indefinitely or expose them past the new limit.
+4. Inventory release-specific cache entries and invalidate them with the result. The current PDF-text cache is shared by file hash, so replace it with an owner/release-scoped entry that can be invalidated, or remove that cache if scoping has no useful benefit. Ensure existing seven-day hash entries age out without being read after the change. Do not flush unrelated airport or schedule caches.
+5. Document the expiry behavior in the upload/result UI with a concise UTC-aware message, including that re-upload is needed after expiry. Avoid presenting the planned ETA as a confirmed arrival time.
+
+### Acceptance criteria
+
+- A release is accessible before both deadlines and unavailable at the earlier deadline, including exact-boundary, midnight rollover, and already-past ETA cases.
+- Missing or invalid ETA never extends the 24-hour limit; a valid ETA earlier than 24 hours wins. Replacing a release starts a new extraction clock and invalidates the old key.
+- Expired data is removed from the database by scheduled cleanup even without another request. Brief and Fuel Score reads deny an expired result immediately, regardless of whether cleanup has run.
+- No release-specific cached content remains available after expiry. Shared, unrelated caches are unaffected; pre-change PDF-text entries cannot be reused and expire naturally.
+- Ownership checks, encrypted storage, and the normal upload/error flows continue to work.
+
+### Validation for implementation
+
+- Add focused store tests using a frozen clock for both deadlines, exact equality, missing/malformed ETA, replacement, ownership, and deletion on read.
+- Add focused Livewire and Fuel Score tests for expiry transitions and a cleanup-command test for unattended expiration and repeat runs.
+- Run only affected tests through Sail, Pint after PHP changes, and Larastan once at the final integration checkpoint. Record the outcomes here.
+
+Commit message: `feat: expire flight releases after 24 hours or planned ETA`
 
 ## Implement Crew Compass tie-ins, branding, and marketing
 
@@ -265,6 +258,8 @@ References:
 - `tests/Unit/Enums/CrewPositionTest.php`
 - `tests/Feature/EmployeeCardComponentTest.php`
 
+## Unified upload
+Currently: 2 tabs have 2 different upload points, user has to choose 
 ## Flight plan: Add task: Takeoff and Landing Report
 Feat: TLR Validity check
 
@@ -411,3 +406,64 @@ Follow-up outcome (2026-09-30): Fixed the shared Demo badge class order so deskt
 Commit message: `refactor: make welcome page a branded product hub`
 
 ---
+
+
+## [x] Complete: Lat / Long cut off, some waypoints prefixed with `-`
+
+#### Goal
+
+Show complete, source-backed latitude/longitude waypoint labels in both Fuel Score views, and distinguish FIR boundary rows from ordinary waypoints without displaying an unexplained leading hyphen. Preserve the original identifiers and coordinates as source evidence.
+
+#### Current implementation
+
+- `FlightPlanTextExtractor` uses Smalot page `getText()` output, removes null bytes, and joins pages. In the supplied PDF, adjacent text chunks within a page are concatenated without a separating space or newline.
+- `WaypointExtractor::coordinateDelimitedRecords()` finds coordinate matches, then treats everything up to the next coordinate as that record's content. `COORDINATE_PATTERN` permits an unlimited number of decimal digits in longitude minutes (`\.\d+`).
+- `WaypointExtractor::detail()` accepts identifiers matching `-?[A-Z0-9]{2,7}` and preserves a leading hyphen. `WaypointDataBuilder`, `WaypointData`, and `FuelPresenter` pass that identifier through. The regular Fuel Score Blade table and offline Alpine table render it directly; no identifier shortening was found in this path.
+- The existing fixture and ordered-extraction test explicitly expect FIR-style identifiers such as `-EDWW`, `-EDVV`, and `-EHAA`. There is no row-kind or separate display-label field in `WaypointData`.
+
+#### Investigation findings
+
+Source: `storage/app/private/flight_releases/CKS020221KCVG.pdf`, especially PDF page 11. Read-only reproduction used the installed Smalot parser and current `WaypointExtractor` through Sail. Individual `getTextArray()` chunks establish where the coordinate ends and the identifier begins.
+
+| Source coordinate and following IDENT | Current extracted result                             | Finding                                                                       |
+| ------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `N50 00.0 W095 00.0` then `50N095`    | Coordinate `N50 00.0 W095 00.050`; identifier `N095` | The longitude decimal consumes the identifier's leading `50`.                 |
+| `N61 00.0 W130 00.0` then `61N130`    | Coordinate `N61 00.0 W130 00.061`; identifier `N130` | The longitude decimal consumes the identifier's leading `61`.                 |
+| `-CZEG`, followed by `FIR -> CZEG <-` | Identifier `-CZEG`                                   | The hyphen is present in the source; this is an explicitly annotated FIR row. |
+| `-PAZA`, followed by `FIR -> PAZA <-` | Identifier `-PAZA`                                   | The hyphen is present in the source; this is an explicitly annotated FIR row. |
+
+The flattened source strings include `W095 00.050N095 0222` and `W130 00.061N130 0409`. This reproduces a parsing boundary defect, not CSS clipping. The PDF's route on pages 3 and 8 and coordinate listing on page 15 independently contain `50N095W` and `61N130W` with matching coordinates.
+
+The earlier report mentioned `N50` instead of `N50W120`. That exact pair was not reproduced in this supplied release; the confirmed cases are `50N095`/`N095` and `61N130`/`N130`. Do not substitute W120 or infer missing longitude from a damaged identifier.
+
+Related boundary observations: the digit-leading departure identifier `39028N` on page 10 is absent from current parser output, and NODLE's coordinate at the end of page 11 is separated from its identifier on page 12 by footer text. Include these as boundary regression cases when changing record segmentation. Missing FRMG on some rows is a separate field-extraction concern and is outside this task.
+
+#### Implementation plan
+
+1. Add small source-derived text fixtures under `tests/Fixtures/FlightPlan/waypoints/` for the confirmed coordinate/IDENT boundaries, both separated and flattened, plus the two FIR rows and their annotations. Keep the private PDF out of committed fixtures; include only the minimal relevant rows.
+2. Correct coordinate/record segmentation in `WaypointExtractor` so a numeric identifier cannot extend longitude minutes. Recognize the coordinate together with the following valid IDENT/DIST row structure. Use the source text-chunk boundaries as the reference; if flattened text is ambiguous, preserve the necessary boundaries upstream instead of guessing. Do not globally truncate coordinate precision or merely make the decimal matcher lazy, which could accept another incorrect split. Keep source text available to other extractors unchanged wherever possible.
+3. Handle known page labels between a coordinate and its detail row within the computed-flight-plan section. Preserve record order and repeated identifiers/coordinates, retain the alternate-section stop, and do not attach coordinate-less TOC/TOD markers to the preceding waypoint.
+4. Preserve the complete source identifier separately from any display normalization. For positively identified whole-degree coordinate fixes, derive an explicit hemisphere label from the verified, uncorrupted coordinate: the supplied examples should display `N50W095` and `N61W130`, while retaining `50N095` and `61N130` as source identifiers. Named fixes such as `NODLE` and `NIPPI`, and other source identifiers such as `51259N`, must not be rewritten just because they contain N/S/E/W or digits. Do not round a non-whole-degree coordinate into a whole-degree label.
+5. Classify FIR rows only when the source row has matching explicit FIR evidence. Carry that classification through the typed waypoint data, serialization/restoration, and presenter, following existing enum/DTO conventions. Recommended display: `CZEG (FIR)` and `PAZA (FIR)`, retaining their rows, order, coordinates, and available values. Keep `-CZEG` and `-PAZA` as source identifiers. Do not indiscriminately strip hyphens, discard boundary rows, or turn FIR identifiers into airport lookups; `-ETP1` is a different source marker.
+6. Have `FuelPresenter::waypoints()` and `calculatorData()` supply the same display label to the regular and offline views, including accessible waypoint control names. Keep parsing and classification out of Blade and JavaScript. Preserve existing fuel/time calculations, missing-value behavior, and waypoint input associations.
+7. Keep older serialized payloads readable with conservative defaults for new metadata. A parser change does not repair already stored `FlightPlanResult` payloads: re-extract the supplied release for validation, without mass rewriting or deleting saved results. If upstream PDF text extraction changes, version its text-cache key so the seven-day cached text cannot conceal the fix; an extractor-only change does not require clearing the raw-text cache.
+
+#### Acceptance criteria
+
+- The supplied release extracts source identifiers `50N095` and `61N130` with coordinates exactly `N50 00.0 W095 00.0` and `N61 00.0 W130 00.0`; neither identifier digits nor DIST digits leak into a coordinate.
+- Both Fuel Score views display the complete, hemisphere-explicit labels `N50W095` and `N61W130`, while source evidence retains the original IDENT values. Unknown or ambiguous coordinate labels are not invented.
+- Verified FIR rows display `CZEG (FIR)` and `PAZA (FIR)` consistently, retain source identifiers, and remain distinct from neighboring fixes, including PAZA/GAHAM at the same coordinate.
+- Numeric-leading identifiers, named fixes, repeated fixes, CRLF/extra whitespace, flattened text, and coordinate/detail page breaks preserve their correct boundaries and order. Alternate rows and coordinate-less markers remain excluded as before.
+- Normalized/serialized data round trips without losing original labels or classification. Older payloads remain readable, and calculations retain their original time/fuel inputs and missing-value semantics.
+
+#### Validation and outcome
+
+Investigation baseline: Sail is available. All 7 existing `WaypointExtractorTest` tests pass (22 assertions), despite the reproduced truncation. No recent matching flight-release Debugbar request was available; the findings come from direct PDF/parser reproduction. PDF text chunks and route entries were inspected; the attempted image render was not legible enough for visual confirmation.
+
+Implementation validation: Added source-derived separated and flattened fixtures and focused regression coverage for coordinate/IDENT boundaries, FIR evidence, repeated coordinates, page labels, precision, hemisphere labels, serialization, legacy payloads, and both Fuel Score views. All 104 focused tests passed (929 assertions). Pint passed; Larastan passed with zero errors. A read-only re-extraction of the supplied PDF produced 55 waypoint rows; `39028N`, `50N095`, `61N130`, `-CZEG`, `-PAZA`, GAHAM, and NODLE retained their expected source coordinates and ordering. The typed round trip and both Fuel Score presenter payloads produced `N50W095`, `N61W130`, `CZEG (FIR)`, and `PAZA (FIR)`. No upstream PDF text extraction or frontend asset changed, so the raw-text cache key and Vite bundle did not need updating. Browser visual verification was unavailable.
+
+Outcome: Repaired the numeric IDENT/longitude boundary only when the candidate identifier matches the source coordinate, and handled the known PDF page labels before detail rows. Added typed waypoint kind and a separate display label while retaining source identifiers, coordinates, timing, and fuel. The regular and offline Fuel Score views now use the same label, including offline control names; older saved payloads fall back to their original identifier. The supplied release must be re-extracted in the application to replace any previously saved result.
+
+Commit message: `fix: preserve coordinate waypoint labels and identify FIR rows`
+
+Documentation commit message: `docs: investigate truncated waypoint labels and FIR prefixes`

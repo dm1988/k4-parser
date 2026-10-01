@@ -227,6 +227,38 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
+    public function it_scales_and_rounds_overview_ramp_fuel_in_pounds(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['fuelPlan']['ramp'] = ['amount' => 125400.0, 'unit' => 'lb'];
+
+        $this->assertSame([
+            'value' => '125.4',
+            'unit' => 'k lbs',
+            'accessibleLabel' => 'Ramp fuel: 125,400 pounds',
+            'taxiLabel' => null,
+        ], $this->viewModel($payload)->overviewRampFuel());
+
+        $payload['flight_plan_data']['fuelPlan']['ramp']['amount'] = 125460.0;
+
+        $this->assertSame('125.5', $this->viewModel($payload)->overviewRampFuel()['value']);
+    }
+
+    #[Test]
+    public function it_uses_known_taxi_fuel_as_the_overview_supporting_line(): void
+    {
+        $payload = $this->resultPayload();
+        $payload['flight_plan_data']['fuelPlan']['ramp'] = ['amount' => 125400.0, 'unit' => 'lb'];
+        $payload['flight_plan_data']['fuelPlan']['taxi'] = ['amount' => 2000.0, 'unit' => 'lb'];
+
+        $this->assertSame('2.0k lbs taxi fuel', $this->viewModel($payload)->overviewRampFuel()['taxiLabel']);
+
+        $payload['flight_plan_data']['fuelPlan']['taxi'] = ['amount' => 0.0, 'unit' => 'kg'];
+
+        $this->assertSame('0 kg taxi fuel', $this->viewModel($payload)->overviewRampFuel()['taxiLabel']);
+    }
+
+    #[Test]
     public function it_keeps_kilogram_fuel_quantities_in_their_source_unit(): void
     {
         $payload = $this->resultPayload();
@@ -243,6 +275,12 @@ class FlightReleasePageViewModelTest extends TestCase
 
         $fields = $this->viewModel($payload)->fuelScoreFields();
 
+        $this->assertSame([
+            'value' => '98,300',
+            'unit' => 'kg',
+            'accessibleLabel' => 'Ramp fuel: 98,300 kilograms',
+            'taxiLabel' => null,
+        ], $this->viewModel($payload)->overviewRampFuel());
         $this->assertSame('98,300', $fields[0]['value']);
         $this->assertSame('KG', $fields[0]['unit']);
         $this->assertNull($fields[1]['value']);
@@ -416,7 +454,12 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame('0215', $viewModel->releaseHeaderArrivalTime());
         $this->assertSame('FL330', $viewModel->overviewInitialAltitude());
         $this->assertSame('4,000 NM', $viewModel->overviewRouteDistance());
-        $this->assertSame('120,000 LB', $viewModel->overviewRampFuel());
+        $this->assertSame([
+            'value' => '120.0',
+            'unit' => 'k lbs',
+            'accessibleLabel' => 'Ramp fuel: 120,000 pounds',
+            'taxiLabel' => null,
+        ], $viewModel->overviewRampFuel());
         $this->assertSame('2 approved slot times', $viewModel->overviewSlotSummary());
         $this->assertSame(2, $viewModel->overviewSlotCount());
         $this->assertSame([], $viewModel->overviewSlotAlerts());
@@ -1196,7 +1239,12 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertNull($viewModel->overviewEtaUtc());
         $this->assertNull($viewModel->overviewInitialAltitude());
         $this->assertNull($viewModel->overviewRouteDistance());
-        $this->assertSame('0 KG', $viewModel->overviewRampFuel());
+        $this->assertSame([
+            'value' => '0',
+            'unit' => 'kg',
+            'accessibleLabel' => 'Ramp fuel: 0 kilograms',
+            'taxiLabel' => null,
+        ], $viewModel->overviewRampFuel());
         $this->assertSame('0.0', $viewModel->maintenanceRampFuel());
         $this->assertSame('Estimated ramp fuel (1,000 KG)', $viewModel->maintenanceRampFuelLabel());
         $this->assertNull($viewModel->overviewSlotSummary());

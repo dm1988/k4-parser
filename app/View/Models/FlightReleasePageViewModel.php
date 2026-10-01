@@ -214,7 +214,8 @@ readonly class FlightReleasePageViewModel
         return $this->routePresenter->overviewDistance();
     }
 
-    public function overviewRampFuel(): ?string
+    /** @return array{value: string, unit: string, accessibleLabel: string, taxiLabel: ?string}|null */
+    public function overviewRampFuel(): ?array
     {
         return $this->fuelPresenter->overviewRampFuel();
     }

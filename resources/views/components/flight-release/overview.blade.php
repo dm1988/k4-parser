@@ -8,10 +8,6 @@
             icon="calculator"
             :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::Fms)"
         >
-            <x-slot:badge>
-                <x-flight-release.b44-badge :label="$model->b44BadgeLabel()" />
-            </x-slot:badge>
-
             <dl class="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <x-flight-release.metric label="Alternate" :value="$model->alternate()" empty-text="Not present in this release" />
                 <x-flight-release.metric label="Initial altitude" :value="$model->overviewInitialAltitude()" empty-text="Not present in this release" />
@@ -92,13 +88,24 @@
 
         <x-flight-release.overview-card
             :task="\App\Enums\FlightPlanTask::FuelScore"
-            title="Fuel"
+            title="Ramp Fuel"
             icon="chart-bar-square"
             :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::FuelScore)"
         >
-            <dl>
-                <x-flight-release.metric label="Ramp fuel" :value="$model->overviewRampFuel()" empty-text="Not present in this release" />
-            </dl>
+            <x-slot:badge>
+                <x-flight-release.b44-badge :label="$model->b44BadgeLabel()" />
+            </x-slot:badge>
+
+            @if ($rampFuel = $model->overviewRampFuel())
+                <x-flight-release.overview-stat
+                    :value="$rampFuel['value']"
+                    :unit="$rampFuel['unit']"
+                    :label="$rampFuel['taxiLabel']"
+                    :accessible-label="$rampFuel['accessibleLabel']"
+                />
+            @else
+                <p class="text-sm text-[#4A5568] dark:text-slate-300">Not present in this release</p>
+            @endif
         </x-flight-release.overview-card>
 
         <x-flight-release.overview-card

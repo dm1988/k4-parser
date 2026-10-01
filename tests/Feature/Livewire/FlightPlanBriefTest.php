@@ -1549,7 +1549,7 @@ class FlightPlanBriefTest extends TestCase
                     route: ['distance_nautical_miles' => 4000],
                     fuel: [
                         'ramp' => ['amount' => 120000.0, 'unit' => 'lb'],
-                        'taxi' => null,
+                        'taxi' => ['amount' => 2000.0, 'unit' => 'lb'],
                         'takeoff' => null,
                         'trip' => null,
                         'contingency' => null,
@@ -1599,7 +1599,13 @@ class FlightPlanBriefTest extends TestCase
             ->assertSeeText('Initial altitude')
             ->assertSeeText('FL330')
             ->assertSeeText('4,000 NM')
-            ->assertSeeText('120,000 LB')
+            ->assertSeeText('120.0')
+            ->assertSeeText('k lbs')
+            ->assertSeeText('Ramp Fuel')
+            ->assertSeeText('2.0k lbs taxi fuel')
+            ->assertSeeHtml('aria-label="Ramp fuel: 120,000 pounds"')
+            ->assertSeeHtml('font-mono text-4xl font-black')
+            ->assertSeeHtml('text-[#4A5568] dark:text-slate-300')
             ->assertSeeText('approved slot times')
             ->assertSeeHtml('aria-label="2 approved slot times"')
             ->assertSeeHtml('aria-label="Slot Times: 2 approved slots"')
@@ -1633,6 +1639,14 @@ class FlightPlanBriefTest extends TestCase
             ),
         );
         $this->assertStringNotContainsString('Departure', $routeOverviewCard[0]);
+        $this->assertSame(1, preg_match('/<article[^>]*wire:key="flight-plan-overview-card-fuel_score"[^>]*>.*?<\/article>/s', $component->html(), $fuelOverviewCard));
+        $this->assertStringContainsString('aria-label="Score Fuel"', $fuelOverviewCard[0]);
+        $this->assertStringContainsString('Ramp Fuel', $fuelOverviewCard[0]);
+        $this->assertStringContainsString('2.0k lbs taxi fuel', $fuelOverviewCard[0]);
+        $this->assertStringContainsString('aria-label="Ramp fuel: 120,000 pounds"', $fuelOverviewCard[0]);
+        $this->assertStringContainsString('title="OpSpec B44 Authorized"', $fuelOverviewCard[0]);
+        $this->assertStringContainsString('B44', $fuelOverviewCard[0]);
+        $this->assertStringNotContainsString('title="OpSpec B44 Authorized"', $routeOverviewCard[0]);
         $this->assertStringNotContainsString('Destination', $routeOverviewCard[0]);
         $this->assertStringContainsString('Alternate', $routeOverviewCard[0]);
         $this->assertStringContainsString('Initial altitude', $routeOverviewCard[0]);
@@ -1765,6 +1779,12 @@ class FlightPlanBriefTest extends TestCase
             ->assertDontSeeText('0 KG')
             ->assertDontSeeText('On plan')
             ->assertDontSeeText('Dispatchable');
+
+        $this->assertSame(1, preg_match('/<article[^>]*wire:key="flight-plan-overview-card-fuel_score"[^>]*>.*?<\/article>/s', $component->html(), $fuelOverviewCard));
+        $this->assertStringContainsString('Not present in this release', $fuelOverviewCard[0]);
+        $this->assertStringNotContainsString('aria-label="Ramp fuel:', $fuelOverviewCard[0]);
+        $this->assertStringNotContainsString('k lbs', $fuelOverviewCard[0]);
+        $this->assertStringNotContainsString('taxi fuel', $fuelOverviewCard[0]);
 
         $component
             ->call('selectTask', FlightPlanTask::Etops->value)
