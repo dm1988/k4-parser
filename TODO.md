@@ -28,7 +28,72 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Current focus: Bugs: offline fuel score
+## Extract dispatcher notes
+New task
+Gather example sample data
+
+## Mobile flight plan hamburger menu
+on mobile / small screens, show active task and a hamburber menu to the right of the active task to switch tasks.
+
+## Plan: Flight plan task routes
+
+### Goal
+
+Give each visible Flight Plan Brief task a stable, shareable URL whose path identifies the active task. Rename the page path to `/flight-plan-brief` and redirect existing `/flight-route-extractor` links.
+
+### Current implementation
+
+- `routes/web.php` serves the brief at `/flight-route-extractor` (`flight-release.index`) and the separate calculator at `/flight-route-extractor/fuel-score/{flightPlanKey}` (`flight-release.fuel-score`). Both use `auth`, `verified`, the flight-release feature gate, and `can:use-flight-release`.
+- `FlightReleaseController` renders `flight-release.index`, which mounts `FlightPlanBrief` without a route task. Livewire restores the signed-in user's latest saved result and defaults its locked `activeTask` to `overview`.
+- Task navigation and overview-card actions call `selectTask()` without changing the URL. The view model hides Slot Times when no slots exist and ETOPS when its data is not present. The enum has 12 tasks; the ten example URLs omit those two conditional tasks.
+
+### Problem
+
+Refreshing or sharing a task view opens Overview because selection lives only in Livewire state. The old page name remains in links, and slugs such as `efb` and `mels` do not match enum values, so URL mapping must be explicit.
+
+### Route contract
+
+Use `/flight-plan-brief` for the upload state and `/flight-plan-brief/{task}` for a saved release. Keep these human-readable slugs as canonical paths; do not expose enum values such as `jepp_pd_pro` in URLs. Generate links with named routes and `route()`, without hardcoding a host or port.
+
+| Canonical path suffix | `FlightPlanTask` case |
+| --- | --- |
+| `overview` | `Overview` |
+| `efb` | `JeppPdPro` |
+| `mels` | `ReviewMelCdl` |
+| `maintenance` | `MaintenanceLog` |
+| `envelope` | `Envelope` |
+| `flight-init` | `FlightInit` |
+| `fms` | `Fms` |
+| `slot-times` | `SlotTimes` |
+| `fuel` | `FuelScore` |
+| `etops` | `Etops` |
+| `weather` | `Weather` |
+| `weight-and-balance` | `WeightAndBalance` |
+
+Redirect `/flight-route-extractor` to `/flight-plan-brief` and each listed old task URL to its matching new task URL. Move the keyed calculator to `/flight-plan-brief/fuel-score/{flightPlanKey}` and redirect its old URL there. Keep `fuel` (brief task) distinct from `fuel-score/{flightPlanKey}` (calculator). Unknown slugs return 404. Redirects must retain the existing access and ownership checks.
+
+### Implementation plan
+
+1. Add an explicit slug-to-enum mapping and named canonical routes. Constrain the task route so it cannot swallow the keyed calculator. Update `flight-release.index` and `flight-release.fuel-score` link generation to the new paths; add legacy GET redirects for the base, task, and keyed calculator URLs.
+2. Pass the validated route task into `FlightPlanBrief` through its existing page wrapper. On mount, restore the latest result for the signed-in user, then select the route task only when visible for that result. A task URL with no saved result goes to the upload URL; a hidden task or invalid slug returns 404. The base URL with a saved result goes to `/overview`.
+3. Make task navigation and overview-card actions update the canonical URL when selecting a task. Direct loads and browser Back/Forward must restore the corresponding panel and `aria-current`. Keep the locked task property and derive changes from validated route state. After extraction, navigate to `/overview`; after clearing or losing a result, return to the upload URL.
+4. Preserve authorization and result-store boundaries on every entry path, including redirects. Keep the calculator's keyed ownership behavior, and update welcome, desktop/mobile navigation, and other named-route consumers to target the canonical page.
+
+### Acceptance criteria
+
+- Every visible task has the path above; direct load, refresh, selection, and Back/Forward show the task named by the URL. The active navigation state and panel heading agree with the URL.
+- The ten supplied old-path task links redirect to their new-path equivalents; `slot-times` and `etops` also have canonical URLs when visible. Legacy base and keyed calculator links redirect without dropping the key.
+- A user with no saved release sees the upload page. Unknown or hidden tasks return 404. A different user's result or calculator key remains inaccessible, and feature, verification, and authorization gates still apply.
+- `fuel` opens the brief's Fuel Score task; `fuel-score/{flightPlanKey}` opens the separate calculator without a route collision.
+
+### Validation for implementation
+
+- Add focused route and Livewire feature tests for the slug mapping, legacy redirects, direct entry, remount, task clicks, missing/hidden tasks, upload and reset transitions, and authorization/ownership. Check Back/Forward in a browser. Update assertions that currently expect `wire:click="selectTask(...)"` without URL changes.
+- Run only affected tests through Sail; run Pint after PHP changes and Larastan once at the final integration checkpoint. Record outcomes here.
+
+Documentation commit message: `docs: plan flight plan task routes`
+
+## Paused: Bugs: offline fuel score
 
 ### Goal
 
@@ -67,31 +132,7 @@ Commit message: `fix: preserve offline fuel score inputs across reloads`
 ## Sloppy static findings
 ./vendor/bin/sloppy
 
-## [x] Completed: ETOPS metric card
-
-### Goal
-
-Show the confirmed ETOPS rating as a large `text-4xl sm:text-5xl` overview stat with minutes as a smaller unit. Place the source-backed ETP count beneath it as `1 ETP point` or `2 ETP points`.
-
-### Current implementation
-
-The overview previously used two small generic metrics for ETP count and ETOPS time. `EtopsPresenter` already exposed a confirmed rating and count, and `overview-stat` already supported a large value, smaller unit, and supporting label.
-
-### Problem
-
-The rating was visually buried, and the point count had no singular or plural context. Missing rating or count data still needs an explicit unavailable state.
-
-### Outcome
-
-Reused `overview-stat` for the confirmed rating, with `min` as its unit and an accessible time label. The view model formats the ETP count with `Str::plural`. A missing rating or count displays an explicit source-unavailable message. ETOPS applicability, navigation, and detail data remain unchanged.
-
-### Validation
-
-Four focused PHPUnit tests passed for one and two ETP points, the large responsive classes, accessible rating, missing rating, and missing count. Pint, the production Vite build, and one Larastan pass passed. Browser visual verification was unavailable.
-
-Commit message: `feat: emphasize ETOPS time and ETP count in overview`
-
-## Flight release: 24 hour time limit or past ETA
+## Current focus: Flight release: 24 hour time limit or past ETA
 
 ### Goal
 
@@ -226,6 +267,11 @@ References:
 
 ## Unified upload
 Currently: 2 tabs have 2 different upload points, user has to choose 
+Goal: Have one unified upload path. Service will determine if a schedule or flight plan has been uploaded. 
+
+Cached results: Keep extract schedule and flight plan brief tabs for now.
+
+
 ## Flight plan: Add task: Takeoff and Landing Report
 Feat: TLR Validity check
 
@@ -486,3 +532,27 @@ Outcome: Moved the existing OpSpec B44 badge from the Route overview card to the
 Validation: The focused Livewire overview test passed (1 test, 126 assertions) and confirms B44 appears in the Ramp Fuel card and is absent from the Route card. Pint and the single Larastan pass also passed.
 
 Commit message: `fix: show B44 badge on ramp fuel overview card`
+
+## [x] Completed: ETOPS metric card
+
+### Goal
+
+Show the confirmed ETOPS rating as a large `text-4xl sm:text-5xl` overview stat with minutes as a smaller unit. Place the source-backed ETP count beneath it as `1 ETP point` or `2 ETP points`.
+
+### Current implementation
+
+The overview previously used two small generic metrics for ETP count and ETOPS time. `EtopsPresenter` already exposed a confirmed rating and count, and `overview-stat` already supported a large value, smaller unit, and supporting label.
+
+### Problem
+
+The rating was visually buried, and the point count had no singular or plural context. Missing rating or count data still needs an explicit unavailable state.
+
+### Outcome
+
+Reused `overview-stat` for the confirmed rating, with `min` as its unit and an accessible time label. The view model formats the ETP count with `Str::plural`. A missing rating or count displays an explicit source-unavailable message. ETOPS applicability, navigation, and detail data remain unchanged.
+
+### Validation
+
+Four focused PHPUnit tests passed for one and two ETP points, the large responsive classes, accessible rating, missing rating, and missing count. Pint, the production Vite build, and one Larastan pass passed. Browser visual verification was unavailable.
+
+Commit message: `feat: emphasize ETOPS time and ETP count in overview`
