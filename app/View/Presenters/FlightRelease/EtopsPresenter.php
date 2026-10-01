@@ -58,9 +58,14 @@ final readonly class EtopsPresenter
         return $count > 0 ? $count : null;
     }
 
+    public function overviewRatingMinutes(): ?int
+    {
+        return $this->confirmedRatingMinutes();
+    }
+
     public function overviewRating(): ?string
     {
-        $ratingMinutes = $this->confirmedRatingMinutes();
+        $ratingMinutes = $this->overviewRatingMinutes();
 
         return $ratingMinutes === null ? null : $ratingMinutes.' min';
     }

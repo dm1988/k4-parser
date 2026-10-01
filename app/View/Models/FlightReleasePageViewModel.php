@@ -20,6 +20,7 @@ use App\View\Presenters\FlightRelease\SchedulePresenter;
 use App\View\Presenters\FlightRelease\TakeoffLandingReportPresenter;
 use App\View\Presenters\FlightRelease\WeatherPresenter;
 use App\View\Presenters\FlightRelease\WeightBalancePresenter;
+use Illuminate\Support\Str;
 
 readonly class FlightReleasePageViewModel
 {
@@ -290,6 +291,18 @@ readonly class FlightReleasePageViewModel
     public function overviewEtpCount(): ?int
     {
         return $this->etopsPresenter->overviewEqualTimePointCount();
+    }
+
+    public function overviewEtpCountLabel(): ?string
+    {
+        $count = $this->overviewEtpCount();
+
+        return $count === null ? null : $count.' ETP '.Str::plural('point', $count);
+    }
+
+    public function overviewEtopsRatingMinutes(): ?int
+    {
+        return $this->etopsPresenter->overviewRatingMinutes();
     }
 
     public function overviewEtopsTime(): ?string

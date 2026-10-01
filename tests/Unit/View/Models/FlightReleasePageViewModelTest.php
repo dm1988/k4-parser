@@ -938,6 +938,8 @@ class FlightReleasePageViewModelTest extends TestCase
 
         $this->assertTrue($confirmedEtops->shouldShowEtopsOverviewCard());
         $this->assertSame(1, $confirmedEtops->overviewEtpCount());
+        $this->assertSame('1 ETP point', $confirmedEtops->overviewEtpCountLabel());
+        $this->assertSame(180, $confirmedEtops->overviewEtopsRatingMinutes());
         $this->assertSame('180 min', $confirmedEtops->overviewEtopsTime());
         $this->assertSame('ETOPS 180', $confirmedEtops->etopsBadgeLabel());
         $this->assertTrue($confirmedEtops->isTaskVisible(FlightPlanTask::Etops));
@@ -995,15 +997,31 @@ class FlightReleasePageViewModelTest extends TestCase
         $viewModel = $this->viewModel($payload);
 
         $this->assertSame(2, $viewModel->overviewEtpCount());
+        $this->assertSame('2 ETP points', $viewModel->overviewEtpCountLabel());
+        $this->assertSame(210, $viewModel->overviewEtopsRatingMinutes());
         $this->assertSame('210 min', $viewModel->overviewEtopsTime());
         $this->assertSame('ETOPS 210', $viewModel->etopsBadgeLabel());
+        $overview = $this->renderWorkspace($viewModel, FlightPlanTask::Overview);
+        $this->assertSame(1, preg_match('/<article[^>]*wire:key="flight-plan-overview-card-etops"[^>]*>.*?<\/article>/s', $overview, $card));
+        $this->assertStringContainsString('aria-label="ETOPS time: 210 min"', $card[0]);
+        $this->assertStringContainsString('font-mono text-4xl font-black', $card[0]);
+        $this->assertStringContainsString('sm:text-5xl', $card[0]);
+        $this->assertStringContainsString('2 ETP points', $card[0]);
 
         $payload['flight_plan_data']['etops']['equalTimePoints'] = [];
+        $missingCount = $this->viewModel($payload);
+        $overview = $this->renderWorkspace($missingCount, FlightPlanTask::Overview);
+        $this->assertSame(1, preg_match('/<article[^>]*wire:key="flight-plan-overview-card-etops"[^>]*>.*?<\/article>/s', $overview, $card));
+        $this->assertStringContainsString('aria-label="ETOPS time: 210 min"', $card[0]);
+        $this->assertStringContainsString('ETP points not present in this release', $card[0]);
+
         $payload['flight_plan_data']['etops']['ratingMinutes'] = null;
         $missingValues = $this->viewModel($payload);
 
         $this->assertTrue($missingValues->shouldShowEtopsOverviewCard());
         $this->assertNull($missingValues->overviewEtpCount());
+        $this->assertNull($missingValues->overviewEtpCountLabel());
+        $this->assertNull($missingValues->overviewEtopsRatingMinutes());
         $this->assertNull($missingValues->overviewEtopsTime());
         $this->assertNull($missingValues->etopsBadgeLabel());
         $overview = $this->renderWorkspace($missingValues, FlightPlanTask::Overview);

@@ -67,63 +67,29 @@ Commit message: `fix: preserve offline fuel score inputs across reloads`
 ## Sloppy static findings
 ./vendor/bin/sloppy
 
-## Current focus: ETOPS metric card
-Show etops time (180, 120, 204 etc) in a large, 4-xl/sm 5-xl, metric style font reusing the existing metric style overview card. List number of ETP points in the "<p class="text-sm font-normal leading-5 text-[#4A5568] dark:text-slate-300">1 ETP point</p>" label. Have point / points contextually pluralized. The Str::plural is available if the implementation works. 
-Illuminate\Support\Str facade
-Str::plural
-
-
-## [x] Complete: Ramp fuel stat card
+## [x] Completed: ETOPS metric card
 
 ### Goal
 
-Make ramp fuel the prominent value in the overview Fuel card. For a source value of 125,400 lb, show a large monospaced `125.4` beside a smaller, deemphasized `k lbs`, with Ramp fuel as the supporting label.
+Show the confirmed ETOPS rating as a large `text-4xl sm:text-5xl` overview stat with minutes as a smaller unit. Place the source-backed ETP count beneath it as `1 ETP point` or `2 ETP points`.
 
 ### Current implementation
 
-- `resources/views/components/flight-release/overview.blade.php` renders ramp fuel inside the generic `metric` component within the Fuel overview card. The value is a single small string.
-- `FuelPresenter::overviewRampFuel()` returns `FuelQuantity::format()`, such as `125,400 LB`; `FlightReleasePageViewModel` passes that string to the view. Missing ramp fuel returns `null`.
-- `overview-stat.blade.php` already gives MEL/CDL, Weight & Balance, and slot counts a prominent monospaced value, but it has no separate unit presentation. The Fuel card uses `overview-card` for its heading, status, and Fuel Score action.
-- Existing view-model tests cover pound, zero-kilogram, and missing ramp values. They expect the current unscaled overview string.
+The overview previously used two small generic metrics for ETP count and ETOPS time. `EtopsPresenter` already exposed a confirmed rating and count, and `overview-stat` already supported a large value, smaller unit, and supporting label.
 
 ### Problem
 
-The ramp fuel figure is visually buried in a nested metric cell. Its number and unit cannot have separate emphasis because they arrive as one formatted string. A stat treatment must still identify the fuel unit and keep a real zero distinct from missing source data.
+The rating was visually buried, and the point count had no singular or plural context. Missing rating or count data still needs an explicit unavailable state.
 
-### Implementation plan
+### Outcome
 
-1. Expose overview ramp fuel as presentation data from `FuelPresenter` through `FlightReleasePageViewModel`: numeric display text, unit display text, and a complete accessible description. Keep formatting and unit decisions out of Blade.
-2. For pounds, divide the source amount by 1,000 and format one decimal place: 125,400 lb becomes `125.4` plus `k lbs`. For kilograms, retain the source unit and show the amount as `kg` without converting it to pounds. Preserve zero as a value; return a missing state only when the ramp quantity is absent.
-3. Reuse or narrowly extend `overview-stat` to render the number large and monospaced, the unit smaller and lower contrast, and Ramp fuel as a supporting label. Give assistive technology one complete reading of value and unit. Keep existing count-stat callers working.
-4. Replace only the Fuel card's nested `metric` with the stat presentation. For missing ramp fuel, show `Not present in this release` without a numeric zero or orphaned unit. Preserve the card's Fuel Score action, availability status, responsive grid behavior, and light/dark palette.
+Reused `overview-stat` for the confirmed rating, with `min` as its unit and an accessible time label. The view model formats the ETP count with `Str::plural`. A missing rating or count displays an explicit source-unavailable message. ETOPS applicability, navigation, and detail data remain unchanged.
 
-### Acceptance criteria
+### Validation
 
-- The Fuel overview card displays 125,400 lb as prominent `125.4` with subdued `k lbs` and a visible Ramp fuel label; the complete value is accessible as one description.
-- A kilogram source displays its own correctly labelled value, and a legitimate zero remains visible. Missing ramp fuel shows only the explicit missing-data message.
-- The stat remains legible in the narrow overview grid and in dark mode. Other overview stats, Fuel Score details, and the card action retain their behavior.
+Four focused PHPUnit tests passed for one and two ETP points, the large responsive classes, accessible rating, missing rating, and missing count. Pint, the production Vite build, and one Larastan pass passed. Browser visual verification was unavailable.
 
-### Validation for implementation
-
-- Update focused `FlightReleasePageViewModelTest` cases for pound scaling/rounding, kilograms, zero, and missing ramp fuel.
-- Update focused `FlightPlanBriefTest` rendering assertions for the large number, subdued unit, accessible description, missing state, and unchanged Fuel Score action. Retain assertions for the other overview stat callers.
-- Run only affected tests through Sail, build frontend assets if Blade classes change, then run Pint if PHP changes and Larastan once at the final implementation checkpoint. Check the card visually at narrow and wide widths in light and dark mode; record results here.
-
-Outcome: The Fuel overview card now shows a large monospaced ramp-fuel number with a smaller source-unit label and a complete accessible description. Pounds display in thousands with one decimal; kilograms retain their source unit. Zero stays visible, while absent ramp data shows the explicit missing-data message. The Fuel Score action and other count stats remain unchanged.
-
-Validation: Focused view-model and Livewire overview tests passed, including scaling, rounding, kilograms, zero, missing data, and the card action. Vite build, Pint, and Larastan passed. Automated rendering assertions cover responsive and dark-mode classes; a browser visual check at narrow and wide widths was unavailable in this environment.
-
-Implementation commit message: `feat: display overview ramp fuel as a prominent stat`
-
-Documentation commit message: `docs: plan ramp fuel overview stat`
-
-## [x] Completed: Move B44 badge to Ramp Fuel card
-
-Outcome: Moved the existing OpSpec B44 badge from the Route overview card to the Ramp Fuel overview card. Its label and conditional visibility remain unchanged.
-
-Validation: The focused Livewire overview test passed (1 test, 126 assertions) and confirms B44 appears in the Ramp Fuel card and is absent from the Route card. Pint and the single Larastan pass also passed.
-
-Commit message: `fix: show B44 badge on ramp fuel overview card`
+Commit message: `feat: emphasize ETOPS time and ETP count in overview`
 
 ## Flight release: 24 hour time limit or past ETA
 
@@ -467,3 +433,56 @@ Outcome: Repaired the numeric IDENT/longitude boundary only when the candidate i
 Commit message: `fix: preserve coordinate waypoint labels and identify FIR rows`
 
 Documentation commit message: `docs: investigate truncated waypoint labels and FIR prefixes`
+
+
+## [x] Complete: Ramp fuel stat card
+
+### Goal
+
+Make ramp fuel the prominent value in the overview Fuel card. For a source value of 125,400 lb, show a large monospaced `125.4` beside a smaller, deemphasized `k lbs`, with Ramp fuel as the supporting label.
+
+### Current implementation
+
+- `resources/views/components/flight-release/overview.blade.php` renders ramp fuel inside the generic `metric` component within the Fuel overview card. The value is a single small string.
+- `FuelPresenter::overviewRampFuel()` returns `FuelQuantity::format()`, such as `125,400 LB`; `FlightReleasePageViewModel` passes that string to the view. Missing ramp fuel returns `null`.
+- `overview-stat.blade.php` already gives MEL/CDL, Weight & Balance, and slot counts a prominent monospaced value, but it has no separate unit presentation. The Fuel card uses `overview-card` for its heading, status, and Fuel Score action.
+- Existing view-model tests cover pound, zero-kilogram, and missing ramp values. They expect the current unscaled overview string.
+
+### Problem
+
+The ramp fuel figure is visually buried in a nested metric cell. Its number and unit cannot have separate emphasis because they arrive as one formatted string. A stat treatment must still identify the fuel unit and keep a real zero distinct from missing source data.
+
+### Implementation plan
+
+1. Expose overview ramp fuel as presentation data from `FuelPresenter` through `FlightReleasePageViewModel`: numeric display text, unit display text, and a complete accessible description. Keep formatting and unit decisions out of Blade.
+2. For pounds, divide the source amount by 1,000 and format one decimal place: 125,400 lb becomes `125.4` plus `k lbs`. For kilograms, retain the source unit and show the amount as `kg` without converting it to pounds. Preserve zero as a value; return a missing state only when the ramp quantity is absent.
+3. Reuse or narrowly extend `overview-stat` to render the number large and monospaced, the unit smaller and lower contrast, and Ramp fuel as a supporting label. Give assistive technology one complete reading of value and unit. Keep existing count-stat callers working.
+4. Replace only the Fuel card's nested `metric` with the stat presentation. For missing ramp fuel, show `Not present in this release` without a numeric zero or orphaned unit. Preserve the card's Fuel Score action, availability status, responsive grid behavior, and light/dark palette.
+
+### Acceptance criteria
+
+- The Fuel overview card displays 125,400 lb as prominent `125.4` with subdued `k lbs` and a visible Ramp fuel label; the complete value is accessible as one description.
+- A kilogram source displays its own correctly labelled value, and a legitimate zero remains visible. Missing ramp fuel shows only the explicit missing-data message.
+- The stat remains legible in the narrow overview grid and in dark mode. Other overview stats, Fuel Score details, and the card action retain their behavior.
+
+### Validation for implementation
+
+- Update focused `FlightReleasePageViewModelTest` cases for pound scaling/rounding, kilograms, zero, and missing ramp fuel.
+- Update focused `FlightPlanBriefTest` rendering assertions for the large number, subdued unit, accessible description, missing state, and unchanged Fuel Score action. Retain assertions for the other overview stat callers.
+- Run only affected tests through Sail, build frontend assets if Blade classes change, then run Pint if PHP changes and Larastan once at the final implementation checkpoint. Check the card visually at narrow and wide widths in light and dark mode; record results here.
+
+Outcome: The Fuel overview card now shows a large monospaced ramp-fuel number with a smaller source-unit label and a complete accessible description. Pounds display in thousands with one decimal; kilograms retain their source unit. Zero stays visible, while absent ramp data shows the explicit missing-data message. The Fuel Score action and other count stats remain unchanged.
+
+Validation: Focused view-model and Livewire overview tests passed, including scaling, rounding, kilograms, zero, missing data, and the card action. Vite build, Pint, and Larastan passed. Automated rendering assertions cover responsive and dark-mode classes; a browser visual check at narrow and wide widths was unavailable in this environment.
+
+Implementation commit message: `feat: display overview ramp fuel as a prominent stat`
+
+Documentation commit message: `docs: plan ramp fuel overview stat`
+
+## [x] Completed: Move B44 badge to Ramp Fuel card
+
+Outcome: Moved the existing OpSpec B44 badge from the Route overview card to the Ramp Fuel overview card. Its label and conditional visibility remain unchanged.
+
+Validation: The focused Livewire overview test passed (1 test, 126 assertions) and confirms B44 appears in the Ramp Fuel card and is absent from the Route card. Pint and the single Larastan pass also passed.
+
+Commit message: `fix: show B44 badge on ramp fuel overview card`

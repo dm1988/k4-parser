@@ -139,10 +139,19 @@
                 icon="globe-alt"
                 :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::Etops)"
             >
-                <dl class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <x-flight-release.metric label="ETP points" :value="$model->overviewEtpCount()" empty-text="Not present in this release" />
-                    <x-flight-release.metric label="ETOPS time" :value="$model->overviewEtopsTime()" empty-text="Not present in this release" />
-                </dl>
+                @if (($etopsRatingMinutes = $model->overviewEtopsRatingMinutes()) !== null)
+                    <x-flight-release.overview-stat
+                        :value="$etopsRatingMinutes"
+                        unit="min"
+                        :label="$model->overviewEtpCountLabel() ?? 'ETP points not present in this release'"
+                        :accessible-label="'ETOPS time: '.$model->overviewEtopsTime()"
+                    />
+                @else
+                    <div class="flex flex-col gap-1 text-sm font-normal leading-5 text-[#4A5568] dark:text-slate-300">
+                        <p>ETOPS time: Not present in this release</p>
+                        <p>{{ $model->overviewEtpCountLabel() ?? 'ETP points: Not present in this release' }}</p>
+                    </div>
+                @endif
             </x-flight-release.overview-card>
         @endif
     </div>
