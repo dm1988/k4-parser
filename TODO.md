@@ -28,72 +28,25 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Bug: Crew name extract boundary
+## [x] Completed: Bug: Crew name extract boundary
 Pilot name extracted as `SINHA A IRP MX LM ACM`, expected `SINHA A`
 
 Reference:
 storage/app/private/flight_releases/CKS021823RJAA.pdf
 
-## Completed: Mobile flight plan hamburger menu
-
-### Goal
-
-Replace the small-screen horizontal task scroller with a compact active-task header and an accessible full-screen task chooser. Keep the desktop task sidebar and the existing task-selection rules unchanged.
-
 ### Outcome
 
-- Replaced the below-`lg` horizontal task scroller with a non-sticky active-task header and a fixed, full-viewport task chooser. The existing 15-rem desktop sidebar remains the only navigator at `lg` and above.
-- Extracted one shared task-row component for both presentations. It preserves the Livewire `selectTask()` action, icons, B44/count badges, availability state, visible-task ordering, loading state, `aria-current`, and panel relationship. Trailing indicators use one right-aligned group.
-- Added the approved mobile active state: navy row, gold left edge, and a check icon with accessible current-task text. Long labels can wrap without displacing the badges.
-- Added a local Alpine controller for focus placement and containment, Escape/X dismissal, trigger-focus restoration, scroll locking, component teardown, and automatic cleanup when the viewport crosses into the desktop layout. Selecting a task closes the local chooser while retaining the existing Livewire selection path.
-- Added the slide-down/reverse transition with reduced-motion handling, light/dark styling, accessible open/close names, `aria-expanded`, `aria-controls`, and modal dialog semantics.
-- Kept the task-panel availability/status header on mobile while visually hiding its repeated title and icon. The heading remains available to assistive technology and returns to its existing presentation on desktop.
+Fixed manifest name cleanup to remove the full trailing sequence of role placeholders and annotations. Previously, a trailing `HIGH MINS` annotation was removed alone, leaving `IRP MX LM ACM` in the name. High mins flags, crew identifiers, multiword names, and source evidence remain intact.
+
+The referenced PDF currently contains a different roster and no `SINHA` entry. A regression input reproduces the exact reported name contamination with placeholders followed by `HIGH MINS`.
 
 ### Validation
 
-- The focused responsive Livewire workspace test passes: 1 test, 56 assertions.
-- Focused hidden-task and dispatcher-notes Livewire tests pass: 2 tests, 18 assertions.
-- The every-visible-task view-model rendering test passes: 1 test, 13 assertions.
-- The task-menu JavaScript test passes: 7 tests covering open/close, active-task focus, focus cycling/restoration, selection dismissal, scroll-lock ownership, teardown, and the desktop breakpoint.
-- Pint, the production Vite build, and the final Larastan run pass with zero errors.
-- Browser-only visual, keyboard, and screen-reader checks were not available in this environment. Back/Forward behavior remains validation scope for the separate flight-plan task-route task.
+Focused crew parser and flight crew extractor tests pass: 20 tests, 97 assertions. The new parser regression failed with the reported contaminated name before the fix. Pint passes; the single final Larastan run passes with zero errors.
 
-Commit message: `feat: add mobile flight plan task menu`
-
+Commit message: `fix: strip combined crew manifest annotations from names`
 
 ## Mobile sticky flight header
-
-## [x] Completed: Flight plan task routes
-
-### Goal
-
-Give each visible Flight Plan Brief task a stable, shareable URL whose path identifies the active task. Rename the page path to `/flight-plan-brief` and redirect existing `/flight-route-extractor` links.
-
-### Outcome
-
-- Added explicit canonical slugs for every `FlightPlanTask`, including the newer `notes` task that was missing from the original route table.
-- Moved the upload page to `/flight-plan-brief`, added `/flight-plan-brief/{task}` for task panels, and moved the keyed calculator to `/flight-plan-brief/fuel-score/{flightPlanKey}`. Route constraints keep `fuel` and `fuel-score/{flightPlanKey}` distinct and reject unknown slugs.
-- Added authenticated legacy redirects for the old base and task paths. The legacy keyed-calculator redirect verifies result ownership before returning its canonical location and preserves the result key.
-- The canonical base stays on the upload view when no saved release exists and redirects a saved release to `/overview`. Direct task requests restore the corresponding locked Livewire task, reject hidden Slot Times or ETOPS panels, and allow those routes when the saved release exposes them.
-- Existing task buttons and overview-card actions continue through `selectTask()`, which now uses Livewire navigation to update the canonical URL and browser history. Extraction navigates to `/overview`; reset or a missing saved result navigates to the upload URL.
-- Preserved the post-extraction success state, summary scroll event, and optional coffee prompt across the canonical navigation. Existing named-route consumers now resolve to `/flight-plan-brief` without duplicating paths in Blade or controllers.
-- Reapplied the stored light, dark, or system theme during Livewire's page swap and after navigation, preventing task-route navigation from reverting the document to light mode while keeping newly rendered theme selectors synchronized.
-- Converted the canonical index and task endpoints to full-page Livewire 4 routes. `FlightPlanBrief` now receives `{task}` directly, owns the existing page shell and saved-result redirects, and uses the configured application layout; `FlightReleaseController` remains only for legacy redirects.
-
-### Validation
-
-- 52 focused tests pass with 561 assertions across enum slug mapping, canonical and legacy routes, direct task restoration, conditional/hidden tasks, unknown slugs, calculator route separation and ownership, feature authorization, welcome/navigation links, and Livewire extraction, selection, reset, and missing-result transitions.
-- Pint passes after formatting changed PHP files.
-- The final Larastan pass completes with zero errors.
-- The focused theme JavaScript tests and production Vite build pass, including a Livewire page-swap regression test for dark-mode continuity.
-- The full-page Livewire architecture follow-up passes 50 focused PHP tests with 936 assertions (49 passed and 1 private-fixture test skipped), including direct route registration, page rendering, redirects, task restoration, upload behavior, and component workflows. Pint, the production Vite build, the 7-check theme suite, and the one final Larastan pass also pass.
-- Browser Back/Forward interaction was not available for manual verification in this environment; task changes use Livewire's documented navigate redirect so history entries remount from the canonical task route.
-
-Commit message: `feat: add canonical flight plan task routes`
-
-Follow-up commit message: `fix: preserve theme during flight plan navigation`
-
-Architecture follow-up commit message: `refactor: use full-page Livewire flight plan routes`
 
 ## Paused: Bugs: offline fuel score
 
@@ -333,232 +286,10 @@ This view repeats the confirmed source result. It does not calculate an envelope
 ## [x] Completed: Feat: Domestic / international flight determine
 ## [x] Completed: Feat: GENDEC card
 ## [x] Completed: feat: Overview cards Spatial Organization (Grid & Layout)
-Responsive Flow: Switch the grid from fixed columns to a repeat(auto-fit, minmax(280px, 1fr)) pattern. This ensures that cards resize intelligently based on screen width, preventing data from feeling cramped or overly stretched.
-Whitespace: Increased padding and gaps to create "breathable" space, which reduces cognitive load and allows the eye to focus on individual metrics.
-
-Outcome: Replaced the fixed one/two/six-column overview grid and per-card column spans with `repeat(auto-fit, minmax(280px, 1fr))`, allowing every visible card to flow according to available width. Increased overview section padding, inter-section spacing, card-grid gaps, and overview-card padding/internal gaps while preserving existing card content, actions, warning surfaces, and dark-mode styling.
-
-Validation: 10 focused view-model and Livewire overview tests pass (238 assertions), including a rendered-layout assertion for the auto-fit grid, increased spacing, and removal of fixed column/span classes. Pint, Larastan, and the Vite build pass. Browser visual verification was not available in this session.
-
-Commit message: `feat: improve overview card responsive layout`
-
 ## [x] Completed: Refactor welcome page for use with new features
-
-### Goal
-
-Turn the welcome page from a Schedule Extractor landing page into the branded Crew Compass / K4 Extractor product entry point for both Schedule Extractor and Flight Plan Extractor.
-
-### Current implementation
-
-The current page is centered almost entirely on the Jeppesen Crew Access Schedule Extractor. The title, hero, screenshot, benefits, CTA, and security messaging all reinforce that single feature.
-
-Reusable Crew Compass branding, `cc-*` styles, theme controls, and existing entitlement methods are already available.
-
-### Problem
-
-The application now contains multiple extraction products, but the public entry page still presents K4 as a single-purpose schedule tool. Its visual hierarchy, branding, accessibility, and authenticated CTAs also need to be brought in line with the current product/UI rules.
-
-### Implementation plan
-
-1. Reframe page metadata, navigation, and hero around:
-
-   * Crew Compass as the parent brand.
-   * K4 Extractor as the application.
-   * A single descriptive page `h1`.
-2. Replace Schedule-only hero messaging with product-level copy describing document-to-reviewable-information extraction.
-3. Keep Jeppesen Crew Access references within Schedule Extractor-specific content rather than as the overall product identity.
-4. Add a reusable feature-card Blade component and present:
-
-   * Schedule Extractor.
-   * Flight Plan Extractor.
-5. Keep both tools visible, emphasize Schedule Extractor as the primary CTA, and clearly identify Flight Plan as a Demo / Preview.
-6. Move the current schedule screenshot into Schedule-specific supporting content rather than using it as the product-wide hero.
-7. Make CTAs access-aware using the existing:
-
-   * `User::canUseScheduleExtractor()`
-   * `User::canUseFlightRelease()`
-8. Do not introduce authorization logic into Blade or rely on hidden navigation as authorization.
-9. Restyle the page using existing Crew Compass utilities and the documented Aviation Blue / Compass Gold visual system.
-10. Improve:
-
-    * semantic landmarks,
-    * heading hierarchy,
-    * image alt text,
-    * keyboard focus,
-    * light/dark states,
-    * responsive behavior.
-11. Update focused feature tests covering:
-
-    * Crew Compass / K4 branding,
-    * both extractor summaries,
-    * guest CTAs,
-    * authenticated CTAs,
-    * disabled-feature states,
-    * Flight Plan demo badge,
-    * theme controls,
-    * disclaimer/footer content,
-    * removal of Schedule-only assumptions.
-12. Validate with focused PHPUnit tests, Pint, production Vite build, and a final Larastan pass.
-
-### Acceptance criteria
-
-* The welcome page clearly represents K4 Extractor as a multi-tool Crew Compass application.
-* Schedule and Flight Plan Brief are both visible, with a primary Schedule CTA and a secondary Flight Plan CTA.
-* CTA behavior reflects existing user entitlements.
-* Authorization remains enforced by the existing backend mechanisms.
-* The page follows the documented Crew Compass palette and light/dark themes.
-* There is only one page-level `h1`.
-* All controls have visible keyboard focus and accessible names.
-* Existing public navigation, privacy, feedback, login/registration, and independence messaging remains available.
-
-Outcome: Reframed the welcome page as the Crew Compass / K4 Extractor product entry point with the headline “Turn Crew Documents into Actionable Flight Data.” Reusable tool cards have calendar/flight icons, a filled primary Schedule CTA, an outlined Flight Plan CTA, and a prominent Demo / Preview badge. Each available card has one native link covering its full area with keyboard focus styling; unavailable cards remain noninteractive. WelcomeController resolves actions through existing entitlement methods, including login, email verification, account-restricted, and disabled-feature states. Existing backend authorization remains in place. Added explicit high-contrast navigation and moved Data Security & Privacy directly below the tools, covering private upload storage, account/sign-in protection, unique passwords, and the privacy policy without unsupported encryption or deletion guarantees. Preserved theme controls, schedule-specific screenshot content, registration, dashboard, feedback, and independence messaging.
-
-Validation: The latest 27 focused welcome, badge, and theme tests pass (251 assertions), including native card links, noninteractive unavailable cards, CTA hierarchy, preview status, and security content. Existing route-authorization tests passed during the initial refactor. Pint, the production Vite build, and one final Larastan pass covering the application, routes, and changed tests pass. Browser visual verification was not performed.
-
-Follow-up outcome (2026-09-30): Fixed the shared Demo badge class order so desktop and mobile Flight Plan Brief navigation satisfy the existing rendering assertion, and removed the duplicate `rounded` class. AdminNavigationTest passed (8 tests, 34 assertions); DemoBadgeComponentTest passed (4 tests, 19 assertions). Commit message: `fix: restore demo badge navigation classes`.
-
-Commit message: `refactor: make welcome page a branded product hub`
-
----
-
-
 ## [x] Complete: Lat / Long cut off, some waypoints prefixed with `-`
-
-#### Goal
-
-Show complete, source-backed latitude/longitude waypoint labels in both Fuel Score views, and distinguish FIR boundary rows from ordinary waypoints without displaying an unexplained leading hyphen. Preserve the original identifiers and coordinates as source evidence.
-
-#### Current implementation
-
-- `FlightPlanTextExtractor` uses Smalot page `getText()` output, removes null bytes, and joins pages. In the supplied PDF, adjacent text chunks within a page are concatenated without a separating space or newline.
-- `WaypointExtractor::coordinateDelimitedRecords()` finds coordinate matches, then treats everything up to the next coordinate as that record's content. `COORDINATE_PATTERN` permits an unlimited number of decimal digits in longitude minutes (`\.\d+`).
-- `WaypointExtractor::detail()` accepts identifiers matching `-?[A-Z0-9]{2,7}` and preserves a leading hyphen. `WaypointDataBuilder`, `WaypointData`, and `FuelPresenter` pass that identifier through. The regular Fuel Score Blade table and offline Alpine table render it directly; no identifier shortening was found in this path.
-- The existing fixture and ordered-extraction test explicitly expect FIR-style identifiers such as `-EDWW`, `-EDVV`, and `-EHAA`. There is no row-kind or separate display-label field in `WaypointData`.
-
-#### Investigation findings
-
-Source: `storage/app/private/flight_releases/CKS020221KCVG.pdf`, especially PDF page 11. Read-only reproduction used the installed Smalot parser and current `WaypointExtractor` through Sail. Individual `getTextArray()` chunks establish where the coordinate ends and the identifier begins.
-
-| Source coordinate and following IDENT | Current extracted result                             | Finding                                                                       |
-| ------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `N50 00.0 W095 00.0` then `50N095`    | Coordinate `N50 00.0 W095 00.050`; identifier `N095` | The longitude decimal consumes the identifier's leading `50`.                 |
-| `N61 00.0 W130 00.0` then `61N130`    | Coordinate `N61 00.0 W130 00.061`; identifier `N130` | The longitude decimal consumes the identifier's leading `61`.                 |
-| `-CZEG`, followed by `FIR -> CZEG <-` | Identifier `-CZEG`                                   | The hyphen is present in the source; this is an explicitly annotated FIR row. |
-| `-PAZA`, followed by `FIR -> PAZA <-` | Identifier `-PAZA`                                   | The hyphen is present in the source; this is an explicitly annotated FIR row. |
-
-The flattened source strings include `W095 00.050N095 0222` and `W130 00.061N130 0409`. This reproduces a parsing boundary defect, not CSS clipping. The PDF's route on pages 3 and 8 and coordinate listing on page 15 independently contain `50N095W` and `61N130W` with matching coordinates.
-
-The earlier report mentioned `N50` instead of `N50W120`. That exact pair was not reproduced in this supplied release; the confirmed cases are `50N095`/`N095` and `61N130`/`N130`. Do not substitute W120 or infer missing longitude from a damaged identifier.
-
-Related boundary observations: the digit-leading departure identifier `39028N` on page 10 is absent from current parser output, and NODLE's coordinate at the end of page 11 is separated from its identifier on page 12 by footer text. Include these as boundary regression cases when changing record segmentation. Missing FRMG on some rows is a separate field-extraction concern and is outside this task.
-
-#### Implementation plan
-
-1. Add small source-derived text fixtures under `tests/Fixtures/FlightPlan/waypoints/` for the confirmed coordinate/IDENT boundaries, both separated and flattened, plus the two FIR rows and their annotations. Keep the private PDF out of committed fixtures; include only the minimal relevant rows.
-2. Correct coordinate/record segmentation in `WaypointExtractor` so a numeric identifier cannot extend longitude minutes. Recognize the coordinate together with the following valid IDENT/DIST row structure. Use the source text-chunk boundaries as the reference; if flattened text is ambiguous, preserve the necessary boundaries upstream instead of guessing. Do not globally truncate coordinate precision or merely make the decimal matcher lazy, which could accept another incorrect split. Keep source text available to other extractors unchanged wherever possible.
-3. Handle known page labels between a coordinate and its detail row within the computed-flight-plan section. Preserve record order and repeated identifiers/coordinates, retain the alternate-section stop, and do not attach coordinate-less TOC/TOD markers to the preceding waypoint.
-4. Preserve the complete source identifier separately from any display normalization. For positively identified whole-degree coordinate fixes, derive an explicit hemisphere label from the verified, uncorrupted coordinate: the supplied examples should display `N50W095` and `N61W130`, while retaining `50N095` and `61N130` as source identifiers. Named fixes such as `NODLE` and `NIPPI`, and other source identifiers such as `51259N`, must not be rewritten just because they contain N/S/E/W or digits. Do not round a non-whole-degree coordinate into a whole-degree label.
-5. Classify FIR rows only when the source row has matching explicit FIR evidence. Carry that classification through the typed waypoint data, serialization/restoration, and presenter, following existing enum/DTO conventions. Recommended display: `CZEG (FIR)` and `PAZA (FIR)`, retaining their rows, order, coordinates, and available values. Keep `-CZEG` and `-PAZA` as source identifiers. Do not indiscriminately strip hyphens, discard boundary rows, or turn FIR identifiers into airport lookups; `-ETP1` is a different source marker.
-6. Have `FuelPresenter::waypoints()` and `calculatorData()` supply the same display label to the regular and offline views, including accessible waypoint control names. Keep parsing and classification out of Blade and JavaScript. Preserve existing fuel/time calculations, missing-value behavior, and waypoint input associations.
-7. Keep older serialized payloads readable with conservative defaults for new metadata. A parser change does not repair already stored `FlightPlanResult` payloads: re-extract the supplied release for validation, without mass rewriting or deleting saved results. If upstream PDF text extraction changes, version its text-cache key so the seven-day cached text cannot conceal the fix; an extractor-only change does not require clearing the raw-text cache.
-
-#### Acceptance criteria
-
-- The supplied release extracts source identifiers `50N095` and `61N130` with coordinates exactly `N50 00.0 W095 00.0` and `N61 00.0 W130 00.0`; neither identifier digits nor DIST digits leak into a coordinate.
-- Both Fuel Score views display the complete, hemisphere-explicit labels `N50W095` and `N61W130`, while source evidence retains the original IDENT values. Unknown or ambiguous coordinate labels are not invented.
-- Verified FIR rows display `CZEG (FIR)` and `PAZA (FIR)` consistently, retain source identifiers, and remain distinct from neighboring fixes, including PAZA/GAHAM at the same coordinate.
-- Numeric-leading identifiers, named fixes, repeated fixes, CRLF/extra whitespace, flattened text, and coordinate/detail page breaks preserve their correct boundaries and order. Alternate rows and coordinate-less markers remain excluded as before.
-- Normalized/serialized data round trips without losing original labels or classification. Older payloads remain readable, and calculations retain their original time/fuel inputs and missing-value semantics.
-
-#### Validation and outcome
-
-Investigation baseline: Sail is available. All 7 existing `WaypointExtractorTest` tests pass (22 assertions), despite the reproduced truncation. No recent matching flight-release Debugbar request was available; the findings come from direct PDF/parser reproduction. PDF text chunks and route entries were inspected; the attempted image render was not legible enough for visual confirmation.
-
-Implementation validation: Added source-derived separated and flattened fixtures and focused regression coverage for coordinate/IDENT boundaries, FIR evidence, repeated coordinates, page labels, precision, hemisphere labels, serialization, legacy payloads, and both Fuel Score views. All 104 focused tests passed (929 assertions). Pint passed; Larastan passed with zero errors. A read-only re-extraction of the supplied PDF produced 55 waypoint rows; `39028N`, `50N095`, `61N130`, `-CZEG`, `-PAZA`, GAHAM, and NODLE retained their expected source coordinates and ordering. The typed round trip and both Fuel Score presenter payloads produced `N50W095`, `N61W130`, `CZEG (FIR)`, and `PAZA (FIR)`. No upstream PDF text extraction or frontend asset changed, so the raw-text cache key and Vite bundle did not need updating. Browser visual verification was unavailable.
-
-Outcome: Repaired the numeric IDENT/longitude boundary only when the candidate identifier matches the source coordinate, and handled the known PDF page labels before detail rows. Added typed waypoint kind and a separate display label while retaining source identifiers, coordinates, timing, and fuel. The regular and offline Fuel Score views now use the same label, including offline control names; older saved payloads fall back to their original identifier. The supplied release must be re-extracted in the application to replace any previously saved result.
-
-Commit message: `fix: preserve coordinate waypoint labels and identify FIR rows`
-
-Documentation commit message: `docs: investigate truncated waypoint labels and FIR prefixes`
-
-
 ## [x] Complete: Ramp fuel stat card
-
-### Goal
-
-Make ramp fuel the prominent value in the overview Fuel card. For a source value of 125,400 lb, show a large monospaced `125.4` beside a smaller, deemphasized `k lbs`, with Ramp fuel as the supporting label.
-
-### Current implementation
-
-- `resources/views/components/flight-release/overview.blade.php` renders ramp fuel inside the generic `metric` component within the Fuel overview card. The value is a single small string.
-- `FuelPresenter::overviewRampFuel()` returns `FuelQuantity::format()`, such as `125,400 LB`; `FlightReleasePageViewModel` passes that string to the view. Missing ramp fuel returns `null`.
-- `overview-stat.blade.php` already gives MEL/CDL, Weight & Balance, and slot counts a prominent monospaced value, but it has no separate unit presentation. The Fuel card uses `overview-card` for its heading, status, and Fuel Score action.
-- Existing view-model tests cover pound, zero-kilogram, and missing ramp values. They expect the current unscaled overview string.
-
-### Problem
-
-The ramp fuel figure is visually buried in a nested metric cell. Its number and unit cannot have separate emphasis because they arrive as one formatted string. A stat treatment must still identify the fuel unit and keep a real zero distinct from missing source data.
-
-### Implementation plan
-
-1. Expose overview ramp fuel as presentation data from `FuelPresenter` through `FlightReleasePageViewModel`: numeric display text, unit display text, and a complete accessible description. Keep formatting and unit decisions out of Blade.
-2. For pounds, divide the source amount by 1,000 and format one decimal place: 125,400 lb becomes `125.4` plus `k lbs`. For kilograms, retain the source unit and show the amount as `kg` without converting it to pounds. Preserve zero as a value; return a missing state only when the ramp quantity is absent.
-3. Reuse or narrowly extend `overview-stat` to render the number large and monospaced, the unit smaller and lower contrast, and Ramp fuel as a supporting label. Give assistive technology one complete reading of value and unit. Keep existing count-stat callers working.
-4. Replace only the Fuel card's nested `metric` with the stat presentation. For missing ramp fuel, show `Not present in this release` without a numeric zero or orphaned unit. Preserve the card's Fuel Score action, availability status, responsive grid behavior, and light/dark palette.
-
-### Acceptance criteria
-
-- The Fuel overview card displays 125,400 lb as prominent `125.4` with subdued `k lbs` and a visible Ramp fuel label; the complete value is accessible as one description.
-- A kilogram source displays its own correctly labelled value, and a legitimate zero remains visible. Missing ramp fuel shows only the explicit missing-data message.
-- The stat remains legible in the narrow overview grid and in dark mode. Other overview stats, Fuel Score details, and the card action retain their behavior.
-
-### Validation for implementation
-
-- Update focused `FlightReleasePageViewModelTest` cases for pound scaling/rounding, kilograms, zero, and missing ramp fuel.
-- Update focused `FlightPlanBriefTest` rendering assertions for the large number, subdued unit, accessible description, missing state, and unchanged Fuel Score action. Retain assertions for the other overview stat callers.
-- Run only affected tests through Sail, build frontend assets if Blade classes change, then run Pint if PHP changes and Larastan once at the final implementation checkpoint. Check the card visually at narrow and wide widths in light and dark mode; record results here.
-
-Outcome: The Fuel overview card now shows a large monospaced ramp-fuel number with a smaller source-unit label and a complete accessible description. Pounds display in thousands with one decimal; kilograms retain their source unit. Zero stays visible, while absent ramp data shows the explicit missing-data message. The Fuel Score action and other count stats remain unchanged.
-
-Validation: Focused view-model and Livewire overview tests passed, including scaling, rounding, kilograms, zero, missing data, and the card action. Vite build, Pint, and Larastan passed. Automated rendering assertions cover responsive and dark-mode classes; a browser visual check at narrow and wide widths was unavailable in this environment.
-
-Implementation commit message: `feat: display overview ramp fuel as a prominent stat`
-
-Documentation commit message: `docs: plan ramp fuel overview stat`
-
 ## [x] Completed: Move B44 badge to Ramp Fuel card
-
-Outcome: Moved the existing OpSpec B44 badge from the Route overview card to the Ramp Fuel overview card. Its label and conditional visibility remain unchanged.
-
-Validation: The focused Livewire overview test passed (1 test, 126 assertions) and confirms B44 appears in the Ramp Fuel card and is absent from the Route card. Pint and the single Larastan pass also passed.
-
-Commit message: `fix: show B44 badge on ramp fuel overview card`
-
-## [x] Completed: ETOPS metric card
-
-### Goal
-
-Show the confirmed ETOPS rating as a large `text-4xl sm:text-5xl` overview stat with minutes as a smaller unit. Place the source-backed ETP count beneath it as `1 ETP point` or `2 ETP points`.
-
-### Current implementation
-
-The overview previously used two small generic metrics for ETP count and ETOPS time. `EtopsPresenter` already exposed a confirmed rating and count, and `overview-stat` already supported a large value, smaller unit, and supporting label.
-
-### Problem
-
-The rating was visually buried, and the point count had no singular or plural context. Missing rating or count data still needs an explicit unavailable state.
-
-### Outcome
-
-Reused `overview-stat` for the confirmed rating, with `min` as its unit and an accessible time label. The view model formats the ETP count with `Str::plural`. A missing rating or count displays an explicit source-unavailable message. ETOPS applicability, navigation, and detail data remain unchanged.
-
-### Validation
-
-Four focused PHPUnit tests passed for one and two ETP points, the large responsive classes, accessible rating, missing rating, and missing count. Pint, the production Vite build, and one Larastan pass passed. Browser visual verification was unavailable.
-
-Commit message: `feat: emphasize ETOPS time and ETP count in overview`
-
 ## [x] Completed: Extract dispatcher notes
 
 ### Outcome
@@ -577,3 +308,61 @@ Commit message: `feat: emphasize ETOPS time and ETP count in overview`
 - Production Vite build passed.
 
 Commit message: `feat: extract dispatcher notes`
+
+## Completed: Mobile flight plan hamburger menu
+
+### Goal
+
+Replace the small-screen horizontal task scroller with a compact active-task header and an accessible full-screen task chooser. Keep the desktop task sidebar and the existing task-selection rules unchanged.
+
+### Outcome
+
+- Replaced the below-`lg` horizontal task scroller with a non-sticky active-task header and a fixed, full-viewport task chooser. The existing 15-rem desktop sidebar remains the only navigator at `lg` and above.
+- Extracted one shared task-row component for both presentations. It preserves the Livewire `selectTask()` action, icons, B44/count badges, availability state, visible-task ordering, loading state, `aria-current`, and panel relationship. Trailing indicators use one right-aligned group.
+- Added the approved mobile active state: navy row, gold left edge, and a check icon with accessible current-task text. Long labels can wrap without displacing the badges.
+- Added a local Alpine controller for focus placement and containment, Escape/X dismissal, trigger-focus restoration, scroll locking, component teardown, and automatic cleanup when the viewport crosses into the desktop layout. Selecting a task closes the local chooser while retaining the existing Livewire selection path.
+- Added the slide-down/reverse transition with reduced-motion handling, light/dark styling, accessible open/close names, `aria-expanded`, `aria-controls`, and modal dialog semantics.
+- Kept the task-panel availability/status header on mobile while visually hiding its repeated title and icon. The heading remains available to assistive technology and returns to its existing presentation on desktop.
+
+### Validation
+
+- The focused responsive Livewire workspace test passes: 1 test, 56 assertions.
+- Focused hidden-task and dispatcher-notes Livewire tests pass: 2 tests, 18 assertions.
+- The every-visible-task view-model rendering test passes: 1 test, 13 assertions.
+- The task-menu JavaScript test passes: 7 tests covering open/close, active-task focus, focus cycling/restoration, selection dismissal, scroll-lock ownership, teardown, and the desktop breakpoint.
+- Pint, the production Vite build, and the final Larastan run pass with zero errors.
+- Browser-only visual, keyboard, and screen-reader checks were not available in this environment. Back/Forward behavior remains validation scope for the separate flight-plan task-route task.
+
+Commit message: `feat: add mobile flight plan task menu`
+
+## [x] Completed: Flight plan task routes
+
+### Goal
+
+Give each visible Flight Plan Brief task a stable, shareable URL whose path identifies the active task. Rename the page path to `/flight-plan-brief` and redirect existing `/flight-route-extractor` links.
+
+### Outcome
+
+- Added explicit canonical slugs for every `FlightPlanTask`, including the newer `notes` task that was missing from the original route table.
+- Moved the upload page to `/flight-plan-brief`, added `/flight-plan-brief/{task}` for task panels, and moved the keyed calculator to `/flight-plan-brief/fuel-score/{flightPlanKey}`. Route constraints keep `fuel` and `fuel-score/{flightPlanKey}` distinct and reject unknown slugs.
+- Added authenticated legacy redirects for the old base and task paths. The legacy keyed-calculator redirect verifies result ownership before returning its canonical location and preserves the result key.
+- The canonical base stays on the upload view when no saved release exists and redirects a saved release to `/overview`. Direct task requests restore the corresponding locked Livewire task, reject hidden Slot Times or ETOPS panels, and allow those routes when the saved release exposes them.
+- Existing task buttons and overview-card actions continue through `selectTask()`, which now uses Livewire navigation to update the canonical URL and browser history. Extraction navigates to `/overview`; reset or a missing saved result navigates to the upload URL.
+- Preserved the post-extraction success state, summary scroll event, and optional coffee prompt across the canonical navigation. Existing named-route consumers now resolve to `/flight-plan-brief` without duplicating paths in Blade or controllers.
+- Reapplied the stored light, dark, or system theme during Livewire's page swap and after navigation, preventing task-route navigation from reverting the document to light mode while keeping newly rendered theme selectors synchronized.
+- Converted the canonical index and task endpoints to full-page Livewire 4 routes. `FlightPlanBrief` now receives `{task}` directly, owns the existing page shell and saved-result redirects, and uses the configured application layout; `FlightReleaseController` remains only for legacy redirects.
+
+### Validation
+
+- 52 focused tests pass with 561 assertions across enum slug mapping, canonical and legacy routes, direct task restoration, conditional/hidden tasks, unknown slugs, calculator route separation and ownership, feature authorization, welcome/navigation links, and Livewire extraction, selection, reset, and missing-result transitions.
+- Pint passes after formatting changed PHP files.
+- The final Larastan pass completes with zero errors.
+- The focused theme JavaScript tests and production Vite build pass, including a Livewire page-swap regression test for dark-mode continuity.
+- The full-page Livewire architecture follow-up passes 50 focused PHP tests with 936 assertions (49 passed and 1 private-fixture test skipped), including direct route registration, page rendering, redirects, task restoration, upload behavior, and component workflows. Pint, the production Vite build, the 7-check theme suite, and the one final Larastan pass also pass.
+- Browser Back/Forward interaction was not available for manual verification in this environment; task changes use Livewire's documented navigate redirect so history entries remount from the canonical task route.
+
+Commit message: `feat: add canonical flight plan task routes`
+
+Follow-up commit message: `fix: preserve theme during flight plan navigation`
+
+Architecture follow-up commit message: `refactor: use full-page Livewire flight plan routes`

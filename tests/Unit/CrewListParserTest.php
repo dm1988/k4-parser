@@ -218,4 +218,16 @@ class CrewListParserTest extends TestCase
         $this->assertSame('PAYNE R', $crew[0]['name']);
         $this->assertFalse($crew[0]['high_mins']);
     }
+
+    public function test_it_removes_combined_manifest_annotations_from_names(): void
+    {
+        $crew = app(CrewListParser::class)->parseReleaseManifestLine(
+            '73315 IRP SINHA A IRP MX LM ACM HIGH MINS 3893 ACM DE LA CRUZ J ADDNTL CAPT HIGH MINS',
+        );
+
+        $this->assertSame(['SINHA A', 'DE LA CRUZ J'], array_column($crew, 'name'));
+        $this->assertSame(['73315', '3893'], array_column($crew, 'employee_id'));
+        $this->assertSame(['IRP', 'ACM'], array_column($crew, 'role'));
+        $this->assertSame([true, true], array_column($crew, 'high_mins'));
+    }
 }

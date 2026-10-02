@@ -122,6 +122,22 @@ TEXT);
         $this->assertSame([false, false, true], array_column($result['data'], 'high_mins'));
     }
 
+    public function test_it_keeps_name_boundaries_when_empty_roles_precede_high_mins(): void
+    {
+        $result = $this->extractor()->extract(<<<'TEXT'
+121-91 FLIGHT RELEASE I.F.R
+70897 PIC BALSKE B
+73315 IRP SINHA A IRP MX LM ACM HIGH MINS
+FUEL SUMMARY
+TEXT);
+
+        $this->assertSame([
+            ['name' => 'BALSKE B', 'role' => 'PIC', 'base' => null, 'employee_number' => '70897', 'high_mins' => false],
+            ['name' => 'SINHA A', 'role' => 'IRP', 'base' => null, 'employee_number' => '73315', 'high_mins' => true],
+        ], $result['data']);
+        $this->assertStringContainsString('SINHA A IRP MX LM ACM HIGH MINS', $result['source_fragments']['flight_crew']);
+    }
+
     private function extractor(): FlightCrewExtractor
     {
         return new FlightCrewExtractor(new CrewListParser);
