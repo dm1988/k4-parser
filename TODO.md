@@ -195,7 +195,7 @@ K4 and Crew Compass currently behave more like separate products than parts of t
 
 `feat: integrate Crew Compass city content into schedules`
 
-## feat: Track schedule upload count
+## Plan: feat: Track schedule upload count
 - For multiple file uploads within each user request
 
 ## Flight plan: Crew list: WCAG 2.2 AA compliance
@@ -254,8 +254,18 @@ This view repeats the confirmed source result. It does not calculate an envelope
 - in ENV and config files
 - in coordination with enum
 
-## Flight plan: Refactor FlightPlanBriefTest
+## [x] Completed: Flight plan: Refactor FlightPlanBriefTest
 - Split tests and organize into folders grouped by test focus area
+
+### Outcome
+
+Moved the 34 existing tests into 14 focused PHPUnit classes under `tests/Feature/Livewire/FlightPlanBrief`, grouped into `Lifecycle`, `Security`, `Workspace`, and individual `Tasks` panels. The original test file was moved into an abstract `FlightPlanBriefTestCase` that shares the existing parsed-release fixtures, Mockery helpers, and `RefreshDatabase` behavior. Test method names and assertions are preserved; imports and namespaces follow each file's focus.
+
+### Validation
+
+The original file and the reorganized directory both pass with 34 tests and 850 assertions. Pint passes after formatting; the single final Larastan run on the reorganized directory passes with zero errors. Run the focused group with `vendor/bin/sail artisan test --compact tests/Feature/Livewire/FlightPlanBrief` or select any individual test file within it.
+
+Commit message: `refactor: organize flight plan brief tests by focus area`
 
 ## PEST architechure tests
 - Does pest need to be installed? 
