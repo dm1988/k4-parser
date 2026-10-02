@@ -3,6 +3,7 @@
 namespace Tests\Unit\DTOs;
 
 use App\DTOs\AirportData;
+use App\DTOs\DispatcherNoteData;
 use App\DTOs\Etops\EtopsData;
 use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightPlanData;
@@ -42,6 +43,7 @@ class FlightPlanDataTest extends TestCase
                 applicability: EtopsApplicability::ConfirmedEtops,
             ),
             releaseAuthorization: new ReleaseAuthorizationData(OperationsSpecification::B44),
+            dispatcherNotes: [new DispatcherNoteData('Review the dispatch note.')],
             waypoints: [new WaypointData('FIX01', 'N01 02.3 E004 05.6', 5, 11, FuelQuantity::pounds(0))],
         );
 
@@ -52,6 +54,7 @@ class FlightPlanDataTest extends TestCase
         $this->assertSame('John F. Kennedy International Airport', $flightPlan->toArray()['route']['departureAirport']['name']);
         $this->assertSame('confirmed_etops', $flightPlan->toArray()['etops']['applicability']);
         $this->assertSame('b44', $flightPlan->toArray()['releaseAuthorization']['operationsSpecification']);
+        $this->assertSame('Review the dispatch note.', $flightPlan->toArray()['dispatcherNotes'][0]['text']);
         $this->assertSame(0.0, $flightPlan->toArray()['waypoints'][0]['remainingFuel']['amount']);
         $this->assertTrue((new \ReflectionClass($flightPlan))->isReadOnly());
     }

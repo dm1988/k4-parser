@@ -13,6 +13,7 @@ final readonly class FlightPlanData implements JsonSerializable
     /**
      * @param  list<CrewMemberData>  $crewMembers
      * @param  list<WaypointData>  $waypoints
+     * @param  list<DispatcherNoteData>  $dispatcherNotes
      */
     public function __construct(
         public FlightIdentityData $identity,
@@ -27,6 +28,7 @@ final readonly class FlightPlanData implements JsonSerializable
         public ?WeightBalanceData $weightBalance = null,
         public GeneralDeclarationData $generalDeclaration = new GeneralDeclarationData(false),
         public ReleaseAuthorizationData $releaseAuthorization = new ReleaseAuthorizationData,
+        public array $dispatcherNotes = [],
         public array $crewMembers = [],
         public array $waypoints = [],
     ) {}
@@ -48,6 +50,10 @@ final readonly class FlightPlanData implements JsonSerializable
             'weightBalance' => $this->weightBalance?->toArray(),
             'generalDeclaration' => $this->generalDeclaration->toArray(),
             'releaseAuthorization' => $this->releaseAuthorization->toArray(),
+            'dispatcherNotes' => array_map(
+                static fn (DispatcherNoteData $note): array => $note->toArray(),
+                $this->dispatcherNotes,
+            ),
             'crewMembers' => array_map(
                 static fn (CrewMemberData $member): array => $member->toArray(),
                 $this->crewMembers,

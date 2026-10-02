@@ -28,6 +28,7 @@ class ExtractFlightPlanData
         private readonly EtopsRouteExtractor $etopsRouteExtractor,
         private readonly GeneralDeclarationExtractor $generalDeclarationExtractor,
         private readonly ReleaseAuthorizationExtractor $releaseAuthorizationExtractor,
+        private readonly DispatcherNotesExtractor $dispatcherNotesExtractor,
     ) {}
 
     /** @param  (Closure(string): void)|null  $onProgress */
@@ -61,6 +62,7 @@ class ExtractFlightPlanData
         $etopsRoute = $this->etopsRouteExtractor->extract($text);
         $generalDeclaration = $this->generalDeclarationExtractor->extract($text);
         $releaseAuthorization = $this->releaseAuthorizationExtractor->extract($text);
+        $dispatcherNotes = $this->dispatcherNotesExtractor->extract($text);
 
         return new ParsedFlightPlanData(
             identity: $identity['data'],
@@ -92,6 +94,7 @@ class ExtractFlightPlanData
             weightBalance: $weightBalance['data'],
             generalDeclaration: $generalDeclaration['data'],
             releaseAuthorization: $releaseAuthorization['data'],
+            dispatcherNotes: $dispatcherNotes['data'],
             waypoints: $waypoints['data'],
             sourceFragments: [
                 ...$identity['source_fragments'],
@@ -108,6 +111,7 @@ class ExtractFlightPlanData
                 ...$etopsRoute['source_fragments'],
                 ...$generalDeclaration['source_fragments'],
                 ...$releaseAuthorization['source_fragments'],
+                ...$dispatcherNotes['source_fragments'],
             ],
         );
     }

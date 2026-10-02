@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\DTOs\AirportData;
 use App\DTOs\ParsedFlightPlanData;
 use App\Services\Clients\AirportLookupClient;
+use App\Services\FlightPlan\Extractor\DispatcherNotesExtractor;
 use App\Services\FlightPlan\Extractor\Etops\EtopsQualificationExtractor;
 use App\Services\FlightPlan\Extractor\Etops\EtopsRouteExtractor;
 use App\Services\FlightPlan\Extractor\ExtractFlightPlanData;
@@ -146,6 +147,11 @@ class ExtractFlightPlanDataTest extends TestCase
             'data' => ['operations_specification' => 'b44'],
             'source_fragments' => ['release_authorization' => 'RELEASED IAW OPS SPEC B044'],
         ]);
+        $dispatcherNotesExtractor = $this->createMock(DispatcherNotesExtractor::class);
+        $dispatcherNotesExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
+            'data' => ['FUEL BURN INCLUDES 0.5% PENALTY FOR PERISHABLES'],
+            'source_fragments' => ['dispatcher_notes' => 'private dispatcher note evidence'],
+        ]);
 
         $parsed = (new ExtractFlightPlanData(
             $textExtractor,
@@ -164,6 +170,7 @@ class ExtractFlightPlanDataTest extends TestCase
             $etopsRouteExtractor,
             $generalDeclarationExtractor,
             $releaseAuthorizationExtractor,
+            $dispatcherNotesExtractor,
         ))->extractFile('/tmp/release.pdf');
 
         $this->assertInstanceOf(ParsedFlightPlanData::class, $parsed);
@@ -199,6 +206,8 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame('private GENDEC signature', $parsed->sourceFragments['general_declaration_signature']);
         $this->assertSame('b44', $parsed->releaseAuthorization['operations_specification']);
         $this->assertSame('RELEASED IAW OPS SPEC B044', $parsed->sourceFragments['release_authorization']);
+        $this->assertSame(['FUEL BURN INCLUDES 0.5% PENALTY FOR PERISHABLES'], $parsed->dispatcherNotes);
+        $this->assertSame('private dispatcher note evidence', $parsed->sourceFragments['dispatcher_notes']);
         $this->assertSame('12h10m', $parsed->schedule['block_duration']);
     }
 
@@ -234,6 +243,7 @@ class ExtractFlightPlanDataTest extends TestCase
             new EtopsRouteExtractor,
             new GeneralDeclarationExtractor,
             new ReleaseAuthorizationExtractor,
+            new DispatcherNotesExtractor,
         );
 
         $parsed = $extractor->extractFile($samplePath);

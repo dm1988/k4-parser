@@ -139,6 +139,10 @@ class BuildFlightPlanDataTest extends TestCase
             ],
             generalDeclaration: ['section_present' => true],
             releaseAuthorization: ['operations_specification' => 'b44'],
+            dispatcherNotes: [
+                'FUEL BURN INCLUDES 0.5% PENALTY FOR PERISHABLES',
+                "SLOT TIMES:\n- N/A",
+            ],
             waypoints: [
                 ['identifier' => 'FIX01', 'coordinate' => 'N01 02.3 E004 05.6', 'time' => '005', 'total_time' => '00.11', 'remaining_fuel' => '0000', 'tbo' => '0011'],
                 ['identifier' => 'FIX01', 'coordinate' => 'N02 03.4 E005 06.7', 'time' => null, 'total_time' => null, 'remaining_fuel' => null],
@@ -197,6 +201,10 @@ class BuildFlightPlanDataTest extends TestCase
         $this->assertTrue($flightPlan->weightBalance->plannedRampWeight->derived);
         $this->assertTrue($flightPlan->generalDeclaration->sectionPresent);
         $this->assertSame(OperationsSpecification::B44, $flightPlan->releaseAuthorization->operationsSpecification);
+        $this->assertSame([
+            'FUEL BURN INCLUDES 0.5% PENALTY FOR PERISHABLES',
+            "SLOT TIMES:\n- N/A",
+        ], array_column($flightPlan->dispatcherNotes, 'text'));
     }
 
     public function test_it_omits_the_fuel_plan_when_no_fuel_was_normalized(): void

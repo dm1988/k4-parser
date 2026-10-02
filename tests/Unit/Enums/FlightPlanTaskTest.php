@@ -39,6 +39,8 @@ class FlightPlanTaskTest extends TestCase
         $this->assertSame('Review Slot Times', FlightPlanTask::SlotTimes->actionLabel());
         $this->assertSame('Score Fuel', FlightPlanTask::FuelScore->actionLabel());
         $this->assertSame('Review ETOPS', FlightPlanTask::Etops->actionLabel());
+        $this->assertSame('Review notes', FlightPlanTask::Notes->actionLabel());
+        $this->assertSame('document-text', FlightPlanTask::Notes->icon());
     }
 
     #[Test]

@@ -2,6 +2,7 @@
 
 namespace App\View\Models;
 
+use App\DTOs\DispatcherNoteData;
 use App\Enums\EtopsApplicability;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
@@ -52,13 +53,15 @@ readonly class FlightReleasePageViewModel
     public function tasks(): array
     {
         $reviewTask = FlightPlanTask::ReviewMelCdl;
+        $notesTask = FlightPlanTask::Notes;
         $tasks = array_values(array_filter(
             FlightPlanTask::cases(),
-            fn (FlightPlanTask $task): bool => $task !== $reviewTask && $this->isTaskVisible($task),
+            fn (FlightPlanTask $task): bool => ! in_array($task, [$reviewTask, $notesTask], true)
+                && $this->isTaskVisible($task),
         ));
 
         if ($this->maintenanceItemCount() === 0) {
-            return [...$tasks, $reviewTask];
+            return [...$tasks, $reviewTask, $notesTask];
         }
 
         return [
@@ -68,6 +71,7 @@ readonly class FlightReleasePageViewModel
                 $tasks,
                 static fn (FlightPlanTask $task): bool => $task !== FlightPlanTask::Overview,
             )),
+            $notesTask,
         ];
     }
 
@@ -108,6 +112,7 @@ readonly class FlightReleasePageViewModel
             FlightPlanTask::SlotTimes => count($this->slotTimes()),
             FlightPlanTask::Etops => count($this->etps()),
             FlightPlanTask::WeightAndBalance => $this->weightBalancePresenter->operationalAlertCount() ?: null,
+            FlightPlanTask::Notes => count($this->dispatcherNotes()),
             default => null,
         };
     }
@@ -117,8 +122,18 @@ readonly class FlightReleasePageViewModel
         return match ($task) {
             FlightPlanTask::ReviewMelCdl => $this->maintenancePresenter->counterBadgeColor(),
             FlightPlanTask::WeightAndBalance => $this->weightBalancePresenter->operationalAlertTone()?->badgeClasses(),
+            FlightPlanTask::Notes => 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
             default => null,
         };
+    }
+
+    /** @return list<string> */
+    public function dispatcherNotes(): array
+    {
+        return array_map(
+            static fn (DispatcherNoteData $note): string => $note->text,
+            $this->pageData?->flightPlan->dispatcherNotes ?? [],
+        );
     }
 
     public function hasSlotTimes(): bool

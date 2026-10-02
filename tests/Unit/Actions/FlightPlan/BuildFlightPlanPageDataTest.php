@@ -69,6 +69,10 @@ class BuildFlightPlanPageDataTest extends TestCase
         $this->assertSame(0.0, $pageData->flightPlan->waypoints[0]->remainingFuel?->amount);
         $this->assertTrue($pageData->flightPlan->generalDeclaration->sectionPresent);
         $this->assertSame(OperationsSpecification::B44, $pageData->flightPlan->releaseAuthorization->operationsSpecification);
+        $this->assertSame([
+            'First dispatcher note.',
+            "Second dispatcher note.\nAdditional detail.",
+        ], array_column($pageData->flightPlan->dispatcherNotes, 'text'));
     }
 
     public function test_it_restores_waypoint_labels_and_legacy_waypoints_conservatively(): void
@@ -148,6 +152,7 @@ class BuildFlightPlanPageDataTest extends TestCase
             FlightPlanTask::Etops->value => FlightPlanTaskAvailability::Available,
             FlightPlanTask::Weather->value => FlightPlanTaskAvailability::NotPresent,
             FlightPlanTask::WeightAndBalance->value => FlightPlanTaskAvailability::NotPresent,
+            FlightPlanTask::Notes->value => FlightPlanTaskAvailability::Available,
         ], $pageData->taskAvailability());
     }
 
@@ -481,6 +486,12 @@ class BuildFlightPlanPageDataTest extends TestCase
                 ],
                 'generalDeclaration' => ['sectionPresent' => true],
                 'releaseAuthorization' => ['operationsSpecification' => 'b44'],
+                'dispatcherNotes' => [
+                    ['text' => 'First dispatcher note.'],
+                    ['text' => "Second dispatcher note.\nAdditional detail."],
+                    ['text' => ''],
+                    ['text' => 42],
+                ],
                 'crewMembers' => [[
                     'name' => 'Alex Morgan',
                     'role' => 'CP',

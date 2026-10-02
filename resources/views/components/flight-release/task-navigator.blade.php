@@ -58,6 +58,7 @@
                             \App\Enums\FlightPlanTask::SlotTimes => 'approved slot',
                             \App\Enums\FlightPlanTask::Etops => 'equal-time point',
                             \App\Enums\FlightPlanTask::WeightAndBalance => 'operational weight alert',
+                            \App\Enums\FlightPlanTask::Notes => 'note',
                             default => 'item',
                         }"
                         :tone="$task === \App\Enums\FlightPlanTask::ReviewMelCdl && $taskCounter === 0 ? 'success' : 'warning'"

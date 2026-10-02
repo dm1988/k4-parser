@@ -17,6 +17,7 @@ final readonly class ParsedFlightPlanData
      * @param  array{departure?: array{airport: string, metars: list<string>, tafs: list<string>}|null, destination?: array{airport: string, metars: list<string>, tafs: list<string>}|null, alternate?: array{airport: string, metars: list<string>, tafs: list<string>}|null, raim?: ?string}  $weather
      * @param  array{section_present?: bool}  $generalDeclaration
      * @param  array{operations_specification?: string}  $releaseAuthorization
+     * @param  list<string>  $dispatcherNotes
      * @param  array<string, array{amount?: ?int, unit?: string, status?: string}>  $weightBalance
      * @param  array<string, string|list<array{direction: string, airport: string, time: string}>>  $sourceFragments
      * @param  list<array{coordinate: string, identifier: string, time: ?string, total_time: ?string, remaining_fuel: ?string}>  $waypoints
@@ -35,6 +36,7 @@ final readonly class ParsedFlightPlanData
         public array $weightBalance = [],
         public array $generalDeclaration = [],
         public array $releaseAuthorization = [],
+        public array $dispatcherNotes = [],
         public array $sourceFragments = [],
         public array $waypoints = [],
     ) {}

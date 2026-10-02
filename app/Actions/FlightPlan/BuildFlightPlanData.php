@@ -3,6 +3,7 @@
 namespace App\Actions\FlightPlan;
 
 use App\DTOs\AirportData;
+use App\DTOs\DispatcherNoteData;
 use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightInitData;
 use App\DTOs\FlightPlanData;
@@ -109,8 +110,21 @@ class BuildFlightPlanData
                         : '',
                 ) ?? OperationsSpecification::Unknown,
             ),
+            dispatcherNotes: $this->dispatcherNotes($parsed->dispatcherNotes),
             crewMembers: $this->crewMemberDataBuilder->fromExtracted($parsed->crewMembers),
             waypoints: $this->waypointDataBuilder->fromExtracted($parsed->waypoints, $parsed->fuel),
+        );
+    }
+
+    /**
+     * @param  list<string>  $notes
+     * @return list<DispatcherNoteData>
+     */
+    private function dispatcherNotes(array $notes): array
+    {
+        return array_map(
+            static fn (string $note): DispatcherNoteData => new DispatcherNoteData($note),
+            $notes,
         );
     }
 

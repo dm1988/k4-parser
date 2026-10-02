@@ -52,6 +52,9 @@ final readonly class FlightPlanPageData
             FlightPlanTask::WeightAndBalance => $this->flightPlan->weightBalance?->hasSourceData() === true
                 ? FlightPlanTaskAvailability::Available
                 : FlightPlanTaskAvailability::NotPresent,
+            FlightPlanTask::Notes => $this->flightPlan->dispatcherNotes === []
+                ? FlightPlanTaskAvailability::NotPresent
+                : FlightPlanTaskAvailability::Available,
         };
     }
 

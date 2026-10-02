@@ -28,9 +28,25 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Extract dispatcher notes
-New task
-Gather example sample data
+## [x] Completed: Extract dispatcher notes
+
+### Outcome
+
+- Added ordered dispatcher-note extraction for the release header, including star-boxed and dash-delimited formats while excluding duplicate structured ETOPS, valid slot, and runway data.
+- Added typed dispatcher-note data through extraction, saved-result serialization, page-data restoration, and the view model.
+- Added the final `Notes` task with the `Review notes` action label, document/notepad icon, neutral gray count badge, and one unnumbered card per note in PDF order.
+- Confirmed the requested note lists against `CKS021617RJAA.pdf`, `CKS024125PANC.pdf`, and `CKS024726KCVG.pdf`.
+
+### Validation
+
+- Focused unit and rendering tests: 108 passed, 1 unrelated private-fixture test skipped, 1,020 assertions.
+- Focused Livewire Notes workflow: 1 passed, 8 assertions.
+- Pint passed after formatting changed PHP files.
+- Larastan passed with 0 errors.
+- Production Vite build passed.
+
+Commit message: `feat: extract dispatcher notes`
+
 
 ## Mobile flight plan hamburger menu
 on mobile / small screens, show active task and a hamburber menu to the right of the active task to switch tasks.

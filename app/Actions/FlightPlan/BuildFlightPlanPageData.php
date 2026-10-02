@@ -3,6 +3,7 @@
 namespace App\Actions\FlightPlan;
 
 use App\DTOs\AirportData;
+use App\DTOs\DispatcherNoteData;
 use App\DTOs\FlightIdentityData;
 use App\DTOs\FlightInitData;
 use App\DTOs\FlightPlanData;
@@ -111,9 +112,30 @@ class BuildFlightPlanPageData
             weightBalance: $this->weightBalanceDataBuilder->fromSerialized($data['weightBalance'] ?? null),
             generalDeclaration: $this->generalDeclaration($data['generalDeclaration'] ?? null),
             releaseAuthorization: $this->releaseAuthorization($data['releaseAuthorization'] ?? null),
+            dispatcherNotes: $this->dispatcherNotes($data['dispatcherNotes'] ?? null),
             crewMembers: $this->crewMemberDataBuilder->fromSerialized($data['crewMembers'] ?? null),
             waypoints: $this->waypointDataBuilder->fromSerialized($data['waypoints'] ?? null),
         );
+    }
+
+    /** @return list<DispatcherNoteData> */
+    private function dispatcherNotes(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        $notes = [];
+
+        foreach ($value as $note) {
+            $noteData = DispatcherNoteData::fromArray($note);
+
+            if ($noteData !== null) {
+                $notes[] = $noteData;
+            }
+        }
+
+        return $notes;
     }
 
     private function generalDeclaration(mixed $value): GeneralDeclarationData

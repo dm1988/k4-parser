@@ -854,7 +854,8 @@ class FlightReleasePageViewModelTest extends TestCase
         $payload['flight_plan_data']['maintenanceLog']['items'] = [];
         $emptyViewModel = $this->viewModel($payload);
 
-        $this->assertSame(FlightPlanTask::ReviewMelCdl, $emptyViewModel->tasks()[array_key_last($emptyViewModel->tasks())]);
+        $this->assertSame(FlightPlanTask::ReviewMelCdl, $emptyViewModel->tasks()[array_key_last($emptyViewModel->tasks()) - 1]);
+        $this->assertSame(FlightPlanTask::Notes, $emptyViewModel->tasks()[array_key_last($emptyViewModel->tasks())]);
         $this->assertSame(0, $emptyViewModel->taskCounter(FlightPlanTask::ReviewMelCdl));
         $this->assertSame(0, $emptyViewModel->overviewMelCdlItemCount());
         $this->assertFalse($emptyViewModel->hasOverviewMelCdlItems());
@@ -1340,6 +1341,33 @@ class FlightReleasePageViewModelTest extends TestCase
     }
 
     #[Test]
+    public function it_keeps_notes_last_and_renders_their_neutral_counter_and_cards_in_source_order(): void
+    {
+        $viewModel = $this->viewModel($this->resultPayload());
+
+        $this->assertSame(FlightPlanTask::Notes, $viewModel->tasks()[array_key_last($viewModel->tasks())]);
+        $this->assertSame(2, $viewModel->taskCounter(FlightPlanTask::Notes));
+        $this->assertSame(
+            'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
+            $viewModel->taskCounterColorClasses(FlightPlanTask::Notes),
+        );
+        $this->assertSame([
+            'First dispatcher note.',
+            "Second dispatcher note.\nAdditional detail.",
+        ], $viewModel->dispatcherNotes());
+
+        $html = $this->renderWorkspace($viewModel, FlightPlanTask::Notes);
+
+        $this->assertStringContainsString('Notes: 2 notes', $html);
+        $this->assertStringContainsString('whitespace-pre-wrap', $html);
+        $this->assertLessThan(
+            strpos($html, 'Second dispatcher note.'),
+            strpos($html, 'First dispatcher note.'),
+        );
+        $this->assertStringNotContainsString('Note 1', $html);
+    }
+
+    #[Test]
     public function it_reports_missing_alternate_airport_details_without_losing_the_normalized_code(): void
     {
         $payload = $this->resultPayload();
@@ -1516,6 +1544,10 @@ class FlightReleasePageViewModelTest extends TestCase
                         'criticalFuel' => null,
                         'remarks' => null,
                     ]],
+                ],
+                'dispatcherNotes' => [
+                    ['text' => 'First dispatcher note.'],
+                    ['text' => "Second dispatcher note.\nAdditional detail."],
                 ],
                 'crewMembers' => [[
                     'name' => 'Alex Morgan',

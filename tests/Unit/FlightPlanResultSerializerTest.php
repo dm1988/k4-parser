@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\DTOs\AirportData;
 use App\DTOs\CrewMemberData;
+use App\DTOs\DispatcherNoteData;
 use App\DTOs\Etops\EtopsCoordinateData;
 use App\DTOs\Etops\EtopsData;
 use App\DTOs\Etops\EtopsPointData;
@@ -78,6 +79,7 @@ class FlightPlanResultSerializerTest extends TestCase
             waypoints: [new WaypointData('-CZEG', 'N56 54.1 W105 00.3', 5, 11, FuelQuantity::pounds(0), displayLabel: 'CZEG (FIR)', kind: WaypointKind::Fir)],
             generalDeclaration: new GeneralDeclarationData(true),
             releaseAuthorization: new ReleaseAuthorizationData(OperationsSpecification::B44),
+            dispatcherNotes: [new DispatcherNoteData('Review the dispatch note.')],
         );
 
         $result = (new FlightPlanResultSerializer)->serialize($flightPlan);
@@ -104,6 +106,7 @@ class FlightPlanResultSerializerTest extends TestCase
         $this->assertSame(0.0, $result['flight_plan_data']['waypoints'][0]['remainingFuel']['amount']);
         $this->assertTrue($result['flight_plan_data']['generalDeclaration']['sectionPresent']);
         $this->assertSame('b44', $result['flight_plan_data']['releaseAuthorization']['operationsSpecification']);
+        $this->assertSame('Review the dispatch note.', $result['flight_plan_data']['dispatcherNotes'][0]['text']);
         $this->assertArrayNotHasKey('crewMembers', $result['flight_plan_data']['maintenanceLog']);
     }
 }
