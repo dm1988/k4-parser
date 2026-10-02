@@ -29,6 +29,7 @@
                 :icon="$activeTask->icon()"
                 :availability="$availability"
                 :absence-is-good="$activeTask->absenceIsGood()"
+                hide-title-on-mobile
             />
 
             @switch(true)

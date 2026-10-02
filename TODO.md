@@ -28,28 +28,40 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## [x] Completed: Extract dispatcher notes
+## Bug: Crew name extract boundary
+Pilot name extracted as `SINHA A IRP MX LM ACM`, expected `SINHA A`
+
+Reference:
+storage/app/private/flight_releases/CKS021823RJAA.pdf
+
+## Completed: Mobile flight plan hamburger menu
+
+### Goal
+
+Replace the small-screen horizontal task scroller with a compact active-task header and an accessible full-screen task chooser. Keep the desktop task sidebar and the existing task-selection rules unchanged.
 
 ### Outcome
 
-- Added ordered dispatcher-note extraction for the release header, including star-boxed and dash-delimited formats while excluding duplicate structured ETOPS, valid slot, and runway data.
-- Added typed dispatcher-note data through extraction, saved-result serialization, page-data restoration, and the view model.
-- Added the final `Notes` task with the `Review notes` action label, document/notepad icon, neutral gray count badge, and one unnumbered card per note in PDF order.
-- Confirmed the requested note lists against `CKS021617RJAA.pdf`, `CKS024125PANC.pdf`, and `CKS024726KCVG.pdf`.
+- Replaced the below-`lg` horizontal task scroller with a non-sticky active-task header and a fixed, full-viewport task chooser. The existing 15-rem desktop sidebar remains the only navigator at `lg` and above.
+- Extracted one shared task-row component for both presentations. It preserves the Livewire `selectTask()` action, icons, B44/count badges, availability state, visible-task ordering, loading state, `aria-current`, and panel relationship. Trailing indicators use one right-aligned group.
+- Added the approved mobile active state: navy row, gold left edge, and a check icon with accessible current-task text. Long labels can wrap without displacing the badges.
+- Added a local Alpine controller for focus placement and containment, Escape/X dismissal, trigger-focus restoration, scroll locking, component teardown, and automatic cleanup when the viewport crosses into the desktop layout. Selecting a task closes the local chooser while retaining the existing Livewire selection path.
+- Added the slide-down/reverse transition with reduced-motion handling, light/dark styling, accessible open/close names, `aria-expanded`, `aria-controls`, and modal dialog semantics.
+- Kept the task-panel availability/status header on mobile while visually hiding its repeated title and icon. The heading remains available to assistive technology and returns to its existing presentation on desktop.
 
 ### Validation
 
-- Focused unit and rendering tests: 108 passed, 1 unrelated private-fixture test skipped, 1,020 assertions.
-- Focused Livewire Notes workflow: 1 passed, 8 assertions.
-- Pint passed after formatting changed PHP files.
-- Larastan passed with 0 errors.
-- Production Vite build passed.
+- The focused responsive Livewire workspace test passes: 1 test, 56 assertions.
+- Focused hidden-task and dispatcher-notes Livewire tests pass: 2 tests, 18 assertions.
+- The every-visible-task view-model rendering test passes: 1 test, 13 assertions.
+- The task-menu JavaScript test passes: 7 tests covering open/close, active-task focus, focus cycling/restoration, selection dismissal, scroll-lock ownership, teardown, and the desktop breakpoint.
+- Pint, the production Vite build, and the final Larastan run pass with zero errors.
+- Browser-only visual, keyboard, and screen-reader checks were not available in this environment. Back/Forward behavior remains validation scope for the separate flight-plan task-route task.
 
-Commit message: `feat: extract dispatcher notes`
+Commit message: `feat: add mobile flight plan task menu`
 
 
-## Mobile flight plan hamburger menu
-on mobile / small screens, show active task and a hamburber menu to the right of the active task to switch tasks.
+## Mobile sticky flight header
 
 ## Plan: Flight plan task routes
 
@@ -148,7 +160,7 @@ Commit message: `fix: preserve offline fuel score inputs across reloads`
 ## Sloppy static findings
 ./vendor/bin/sloppy
 
-## Current focus: Flight release: 24 hour time limit or past ETA
+## Paused: Flight release: 24 hour time limit or past ETA
 
 ### Goal
 
@@ -572,3 +584,22 @@ Reused `overview-stat` for the confirmed rating, with `min` as its unit and an a
 Four focused PHPUnit tests passed for one and two ETP points, the large responsive classes, accessible rating, missing rating, and missing count. Pint, the production Vite build, and one Larastan pass passed. Browser visual verification was unavailable.
 
 Commit message: `feat: emphasize ETOPS time and ETP count in overview`
+
+## [x] Completed: Extract dispatcher notes
+
+### Outcome
+
+- Added ordered dispatcher-note extraction for the release header, including star-boxed and dash-delimited formats while excluding duplicate structured ETOPS, valid slot, and runway data.
+- Added typed dispatcher-note data through extraction, saved-result serialization, page-data restoration, and the view model.
+- Added the final `Notes` task with the `Review notes` action label, document/notepad icon, neutral gray count badge, and one unnumbered card per note in PDF order.
+- Confirmed the requested note lists against `CKS021617RJAA.pdf`, `CKS024125PANC.pdf`, and `CKS024726KCVG.pdf`.
+
+### Validation
+
+- Focused unit and rendering tests: 108 passed, 1 unrelated private-fixture test skipped, 1,020 assertions.
+- Focused Livewire Notes workflow: 1 passed, 8 assertions.
+- Pint passed after formatting changed PHP files.
+- Larastan passed with 0 errors.
+- Production Vite build passed.
+
+Commit message: `feat: extract dispatcher notes`
