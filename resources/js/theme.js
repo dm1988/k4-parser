@@ -30,8 +30,18 @@ function applyTheme(theme) {
     });
 }
 
-function initializeThemeSelectors() {
+function applyStoredTheme() {
     applyTheme(storedTheme());
+}
+
+function initializeTheme() {
+    applyStoredTheme();
+
+    document.addEventListener('livewire:navigating', (event) => {
+        event.detail.onSwap(applyStoredTheme);
+    });
+
+    document.addEventListener('livewire:navigated', applyStoredTheme);
 
     document.addEventListener('change', (event) => {
         if (! event.target.matches('[data-theme-selector]')) {
@@ -61,4 +71,4 @@ function initializeThemeSelectors() {
     }
 }
 
-initializeThemeSelectors();
+initializeTheme();

@@ -44,6 +44,35 @@ class FlightPlanTaskTest extends TestCase
     }
 
     #[Test]
+    public function it_maps_every_task_to_a_stable_route_slug(): void
+    {
+        $expectedTasksBySlug = [
+            'overview' => FlightPlanTask::Overview,
+            'efb' => FlightPlanTask::JeppPdPro,
+            'mels' => FlightPlanTask::ReviewMelCdl,
+            'maintenance' => FlightPlanTask::MaintenanceLog,
+            'envelope' => FlightPlanTask::Envelope,
+            'flight-init' => FlightPlanTask::FlightInit,
+            'fms' => FlightPlanTask::Fms,
+            'slot-times' => FlightPlanTask::SlotTimes,
+            'fuel' => FlightPlanTask::FuelScore,
+            'etops' => FlightPlanTask::Etops,
+            'weather' => FlightPlanTask::Weather,
+            'weight-and-balance' => FlightPlanTask::WeightAndBalance,
+            'notes' => FlightPlanTask::Notes,
+        ];
+
+        $this->assertEqualsCanonicalizing(array_keys($expectedTasksBySlug), FlightPlanTask::routeSlugs());
+
+        foreach ($expectedTasksBySlug as $slug => $task) {
+            $this->assertSame($slug, $task->routeSlug());
+            $this->assertSame($task, FlightPlanTask::fromRouteSlug($slug));
+        }
+
+        $this->assertNull(FlightPlanTask::fromRouteSlug('unknown'));
+    }
+
+    #[Test]
     public function it_identifies_tasks_that_require_airport_data(): void
     {
         $this->assertTrue(FlightPlanTask::JeppPdPro->requiresAirports());

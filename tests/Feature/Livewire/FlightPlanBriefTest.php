@@ -264,7 +264,7 @@ class FlightPlanBriefTest extends TestCase
         $this->assertArrayNotHasKey('flightPlan', $snapshotData);
         $this->assertArrayHasKey('flightPlanKey', $snapshotData);
         $this->assertIsString($flightPlanKey);
-        $this->assertEqualsCanonicalizing(['flightRelease', 'flightPlanKey', 'activeTask', 'extractionJustCompleted'], array_keys($snapshotData));
+        $this->assertEqualsCanonicalizing(['flightRelease', 'flightPlanKey', 'activeTask', 'extractionJustCompleted', 'usesTaskRoutes'], array_keys($snapshotData));
         $serializedSnapshot = json_encode($snapshotData, JSON_THROW_ON_ERROR);
         $this->assertStringNotContainsString('must-not-reach-livewire', $serializedSnapshot);
         $this->assertStringNotContainsString($privateEvidence, $serializedSnapshot);
@@ -308,6 +308,33 @@ class FlightPlanBriefTest extends TestCase
             ->test(FlightPlanBrief::class)
             ->assertSet('flightPlanKey', null)
             ->assertSeeText('Drop your flight plan here');
+    }
+
+    public function test_route_enabled_extraction_navigates_to_the_canonical_overview(): void
+    {
+        Storage::fake('user_flight_releases');
+        $user = User::factory()->admin()->create();
+
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')
+                ->andReturn($this->parsedFlightPlan());
+        });
+        $this->mock(ShouldPromptForCoffee::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'handle')->andReturn(false);
+        });
+
+        $component = Livewire::actingAs($user)
+            ->test(FlightPlanBrief::class, ['usesTaskRoutes' => true])
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->assertHasNoErrors()
+            ->assertSet('activeTask', FlightPlanTask::Overview->value)
+            ->assertRedirect(route('flight-release.task', ['task' => 'overview']));
+
+        $this->assertIsString($component->get('flightPlanKey'));
+
+        $this->get(route('flight-release.task', ['task' => 'overview']))
+            ->assertOk()
+            ->assertSeeText('Flight plan brief ready. Upload and extraction completed successfully.');
     }
 
     public function test_the_task_workspace_is_responsive_accessible_and_rehydrates_without_reparsing(): void

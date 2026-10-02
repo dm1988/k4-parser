@@ -2,12 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\View\View;
+use App\Enums\FlightPlanTask;
+use Illuminate\Http\RedirectResponse;
 
 class FlightReleaseController extends Controller
 {
-    public function index(): View
+    public function redirectLegacyIndex(): RedirectResponse
     {
-        return view('flight-release.index');
+        return redirect()->route('flight-release.index');
+    }
+
+    public function redirectLegacyTask(string $task): RedirectResponse
+    {
+        $selectedTask = FlightPlanTask::fromRouteSlug($task);
+        abort_if($selectedTask === null, 404);
+
+        return redirect()->route('flight-release.task', [
+            'task' => $selectedTask->routeSlug(),
+        ]);
     }
 }

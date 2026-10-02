@@ -27,6 +27,10 @@ class FlightPlanBrief extends Component
 {
     use WithFileUploads;
 
+    private const string EXTRACTION_COMPLETED_SESSION_KEY = 'flight-plan-brief.extraction-completed';
+
+    private const string COFFEE_PROMPT_SESSION_KEY = 'flight-plan-brief.coffee-prompt';
+
     public ?TemporaryUploadedFile $flightRelease = null;
 
     #[Locked]
@@ -37,6 +41,9 @@ class FlightPlanBrief extends Component
 
     #[Locked]
     public bool $extractionJustCompleted = false;
+
+    #[Locked]
+    public bool $usesTaskRoutes = false;
 
     protected HandleFlightPlanExtraction $handleFlightPlanExtraction;
 
@@ -62,8 +69,13 @@ class FlightPlanBrief extends Component
         $this->flightReleasePageViewModelFactory = $flightReleasePageViewModelFactory;
     }
 
-    public function mount(): void
+    public function mount(?string $task = null, bool $usesTaskRoutes = false): void
     {
+        $this->usesTaskRoutes = $usesTaskRoutes || request()->routeIs(
+            'flight-release.index',
+            'flight-release.task',
+        );
+
         $user = auth()->user();
 
         if (! $user instanceof User || ! $this->canAccessFlightRelease($user)) {
@@ -71,6 +83,48 @@ class FlightPlanBrief extends Component
         }
 
         $this->flightPlanKey = $this->flightPlanResultStore->latest($user)?->result_key;
+
+        if ($this->flightPlanKey === null) {
+            if ($this->usesTaskRoutes && $task !== null) {
+                $this->redirect(route('flight-release.index'), navigate: true);
+            }
+
+            return;
+        }
+
+        if ($task === null) {
+            if ($this->usesTaskRoutes) {
+                $this->navigateToTask(FlightPlanTask::Overview);
+            }
+
+            return;
+        }
+
+        $selectedTask = FlightPlanTask::fromRouteSlug($task);
+
+        abort_unless(
+            $selectedTask !== null && $this->currentViewModel()->isTaskVisible($selectedTask),
+            404,
+        );
+
+        $this->activeTask = $selectedTask->value;
+        $this->restorePostExtractionState();
+    }
+
+    public function hydrate(): void
+    {
+        if (! $this->usesTaskRoutes || $this->flightPlanKey === null) {
+            return;
+        }
+
+        $user = auth()->user();
+
+        if (! $user instanceof User || $this->flightPlanResultStore->get($user, $this->flightPlanKey) !== null) {
+            return;
+        }
+
+        $this->reset(['flightRelease', 'flightPlanKey', 'activeTask', 'extractionJustCompleted']);
+        $this->redirect(route('flight-release.index'), navigate: true);
     }
 
     public function extractFlightPlan(): void
@@ -108,9 +162,23 @@ class FlightPlanBrief extends Component
 
         $this->reset('flightRelease');
         $this->resetValidation();
+        $shouldPromptForCoffee = $this->shouldPromptForCoffee->handle($user);
+
+        if ($this->usesTaskRoutes) {
+            session()->flash(self::EXTRACTION_COMPLETED_SESSION_KEY, true);
+
+            if ($shouldPromptForCoffee) {
+                session()->flash(self::COFFEE_PROMPT_SESSION_KEY, true);
+            }
+
+            $this->navigateToTask(FlightPlanTask::Overview);
+
+            return;
+        }
+
         $this->dispatch('scroll-to-release-summary');
 
-        if ($this->shouldPromptForCoffee->handle($user)) {
+        if ($shouldPromptForCoffee) {
             $this->dispatch('open-modal', name: 'buy-me-a-coffee');
         }
     }
@@ -127,6 +195,10 @@ class FlightPlanBrief extends Component
     public function extractAnotherFlightPlan(): void
     {
         $this->resetToUpload($this->authorizedUser());
+
+        if ($this->usesTaskRoutes) {
+            $this->redirect(route('flight-release.index'), navigate: true);
+        }
     }
 
     public function selectTask(string $task): void
@@ -144,6 +216,7 @@ class FlightPlanBrief extends Component
         }
 
         $this->activeTask = $selectedTask->value;
+        $this->navigateToTask($selectedTask);
     }
 
     public function render(): View
@@ -198,6 +271,31 @@ class FlightPlanBrief extends Component
     {
         $this->reset(['flightRelease', 'extractionJustCompleted']);
         $this->resetValidation();
+    }
+
+    private function navigateToTask(FlightPlanTask $task): void
+    {
+        if (! $this->usesTaskRoutes) {
+            return;
+        }
+
+        $this->redirect(route('flight-release.task', [
+            'task' => $task->routeSlug(),
+        ]), navigate: true);
+    }
+
+    private function restorePostExtractionState(): void
+    {
+        if (! $this->usesTaskRoutes || ! session()->pull(self::EXTRACTION_COMPLETED_SESSION_KEY, false)) {
+            return;
+        }
+
+        $this->extractionJustCompleted = true;
+        $this->dispatch('scroll-to-release-summary');
+
+        if (session()->pull(self::COFFEE_PROMPT_SESSION_KEY, false)) {
+            $this->dispatch('open-modal', name: 'buy-me-a-coffee');
+        }
     }
 
     private function streamProgress(string $message): void

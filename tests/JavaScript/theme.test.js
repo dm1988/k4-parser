@@ -63,6 +63,34 @@ function createBrowserEnvironment({ storage = new Map(), systemPrefersDark }) {
                 },
             });
         },
+        navigate() {
+            let swapCallback;
+
+            documentListeners.get('livewire:navigating')({
+                detail: {
+                    onSwap(callback) {
+                        swapCallback = callback;
+                    },
+                },
+            });
+
+            classes.delete('dark');
+            document.documentElement.style.colorScheme = 'light';
+            selectors.forEach((selector) => {
+                selector.value = '';
+            });
+
+            swapCallback();
+
+            const themeAfterSwap = {
+                isDark: classes.has('dark'),
+                colorScheme: document.documentElement.style.colorScheme,
+            };
+
+            documentListeners.get('livewire:navigated')();
+
+            return themeAfterSwap;
+        },
     };
 }
 
@@ -119,4 +147,23 @@ test('it persists an explicit theme that overrides the operating system preferen
             );
         });
     }
+});
+
+test('it reapplies the stored theme while Livewire swaps pages', async () => {
+    const environment = createBrowserEnvironment({
+        storage: new Map([['theme', 'dark']]),
+        systemPrefersDark: false,
+    });
+
+    await loadThemeModule();
+
+    const themeAfterSwap = environment.navigate();
+
+    assert.deepEqual(themeAfterSwap, {
+        isDark: true,
+        colorScheme: 'dark',
+    });
+    assert.equal(environment.classes.has('dark'), true);
+    assert.equal(document.documentElement.style.colorScheme, 'dark');
+    assert.deepEqual(environment.selectors.map((selector) => selector.value), ['dark', 'dark']);
 });

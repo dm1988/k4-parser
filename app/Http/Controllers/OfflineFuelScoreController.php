@@ -6,6 +6,7 @@ use App\Actions\FlightPlan\BuildFlightPlanPageData;
 use App\Models\User;
 use App\Services\Infrastructure\FlightPlanResultStore;
 use App\View\Presenters\FlightRelease\FuelPresenter;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -17,11 +18,7 @@ class OfflineFuelScoreController extends Controller
         BuildFlightPlanPageData $buildFlightPlanPageData,
         string $flightPlanKey,
     ): View {
-        $user = $request->user();
-        abort_unless($user instanceof User, 403);
-
-        $result = $resultStore->get($user, $flightPlanKey);
-        abort_if($result === null, 404);
+        [$user, $result] = $this->authorizedResult($request, $resultStore, $flightPlanKey);
 
         $pageData = $buildFlightPlanPageData->handle($result);
         abort_if($pageData === null, 404);
@@ -35,5 +32,32 @@ class OfflineFuelScoreController extends Controller
                 'flightPlanKey' => $flightPlanKey,
             ],
         ]);
+    }
+
+    public function redirectLegacy(
+        Request $request,
+        FlightPlanResultStore $resultStore,
+        string $flightPlanKey,
+    ): RedirectResponse {
+        $this->authorizedResult($request, $resultStore, $flightPlanKey);
+
+        return redirect()->route('flight-release.fuel-score', [
+            'flightPlanKey' => $flightPlanKey,
+        ]);
+    }
+
+    /** @return array{User, array<string, mixed>} */
+    private function authorizedResult(
+        Request $request,
+        FlightPlanResultStore $resultStore,
+        string $flightPlanKey,
+    ): array {
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+
+        $result = $resultStore->get($user, $flightPlanKey);
+        abort_if($result === null, 404);
+
+        return [$user, $result];
     }
 }

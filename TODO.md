@@ -63,63 +63,37 @@ Commit message: `feat: add mobile flight plan task menu`
 
 ## Mobile sticky flight header
 
-## Plan: Flight plan task routes
+## [x] Completed: Flight plan task routes
 
 ### Goal
 
 Give each visible Flight Plan Brief task a stable, shareable URL whose path identifies the active task. Rename the page path to `/flight-plan-brief` and redirect existing `/flight-route-extractor` links.
 
-### Current implementation
+### Outcome
 
-- `routes/web.php` serves the brief at `/flight-route-extractor` (`flight-release.index`) and the separate calculator at `/flight-route-extractor/fuel-score/{flightPlanKey}` (`flight-release.fuel-score`). Both use `auth`, `verified`, the flight-release feature gate, and `can:use-flight-release`.
-- `FlightReleaseController` renders `flight-release.index`, which mounts `FlightPlanBrief` without a route task. Livewire restores the signed-in user's latest saved result and defaults its locked `activeTask` to `overview`.
-- Task navigation and overview-card actions call `selectTask()` without changing the URL. The view model hides Slot Times when no slots exist and ETOPS when its data is not present. The enum has 12 tasks; the ten example URLs omit those two conditional tasks.
+- Added explicit canonical slugs for every `FlightPlanTask`, including the newer `notes` task that was missing from the original route table.
+- Moved the upload page to `/flight-plan-brief`, added `/flight-plan-brief/{task}` for task panels, and moved the keyed calculator to `/flight-plan-brief/fuel-score/{flightPlanKey}`. Route constraints keep `fuel` and `fuel-score/{flightPlanKey}` distinct and reject unknown slugs.
+- Added authenticated legacy redirects for the old base and task paths. The legacy keyed-calculator redirect verifies result ownership before returning its canonical location and preserves the result key.
+- The canonical base stays on the upload view when no saved release exists and redirects a saved release to `/overview`. Direct task requests restore the corresponding locked Livewire task, reject hidden Slot Times or ETOPS panels, and allow those routes when the saved release exposes them.
+- Existing task buttons and overview-card actions continue through `selectTask()`, which now uses Livewire navigation to update the canonical URL and browser history. Extraction navigates to `/overview`; reset or a missing saved result navigates to the upload URL.
+- Preserved the post-extraction success state, summary scroll event, and optional coffee prompt across the canonical navigation. Existing named-route consumers now resolve to `/flight-plan-brief` without duplicating paths in Blade or controllers.
+- Reapplied the stored light, dark, or system theme during Livewire's page swap and after navigation, preventing task-route navigation from reverting the document to light mode while keeping newly rendered theme selectors synchronized.
+- Converted the canonical index and task endpoints to full-page Livewire 4 routes. `FlightPlanBrief` now receives `{task}` directly, owns the existing page shell and saved-result redirects, and uses the configured application layout; `FlightReleaseController` remains only for legacy redirects.
 
-### Problem
+### Validation
 
-Refreshing or sharing a task view opens Overview because selection lives only in Livewire state. The old page name remains in links, and slugs such as `efb` and `mels` do not match enum values, so URL mapping must be explicit.
+- 52 focused tests pass with 561 assertions across enum slug mapping, canonical and legacy routes, direct task restoration, conditional/hidden tasks, unknown slugs, calculator route separation and ownership, feature authorization, welcome/navigation links, and Livewire extraction, selection, reset, and missing-result transitions.
+- Pint passes after formatting changed PHP files.
+- The final Larastan pass completes with zero errors.
+- The focused theme JavaScript tests and production Vite build pass, including a Livewire page-swap regression test for dark-mode continuity.
+- The full-page Livewire architecture follow-up passes 50 focused PHP tests with 936 assertions (49 passed and 1 private-fixture test skipped), including direct route registration, page rendering, redirects, task restoration, upload behavior, and component workflows. Pint, the production Vite build, the 7-check theme suite, and the one final Larastan pass also pass.
+- Browser Back/Forward interaction was not available for manual verification in this environment; task changes use Livewire's documented navigate redirect so history entries remount from the canonical task route.
 
-### Route contract
+Commit message: `feat: add canonical flight plan task routes`
 
-Use `/flight-plan-brief` for the upload state and `/flight-plan-brief/{task}` for a saved release. Keep these human-readable slugs as canonical paths; do not expose enum values such as `jepp_pd_pro` in URLs. Generate links with named routes and `route()`, without hardcoding a host or port.
+Follow-up commit message: `fix: preserve theme during flight plan navigation`
 
-| Canonical path suffix | `FlightPlanTask` case |
-| --- | --- |
-| `overview` | `Overview` |
-| `efb` | `JeppPdPro` |
-| `mels` | `ReviewMelCdl` |
-| `maintenance` | `MaintenanceLog` |
-| `envelope` | `Envelope` |
-| `flight-init` | `FlightInit` |
-| `fms` | `Fms` |
-| `slot-times` | `SlotTimes` |
-| `fuel` | `FuelScore` |
-| `etops` | `Etops` |
-| `weather` | `Weather` |
-| `weight-and-balance` | `WeightAndBalance` |
-
-Redirect `/flight-route-extractor` to `/flight-plan-brief` and each listed old task URL to its matching new task URL. Move the keyed calculator to `/flight-plan-brief/fuel-score/{flightPlanKey}` and redirect its old URL there. Keep `fuel` (brief task) distinct from `fuel-score/{flightPlanKey}` (calculator). Unknown slugs return 404. Redirects must retain the existing access and ownership checks.
-
-### Implementation plan
-
-1. Add an explicit slug-to-enum mapping and named canonical routes. Constrain the task route so it cannot swallow the keyed calculator. Update `flight-release.index` and `flight-release.fuel-score` link generation to the new paths; add legacy GET redirects for the base, task, and keyed calculator URLs.
-2. Pass the validated route task into `FlightPlanBrief` through its existing page wrapper. On mount, restore the latest result for the signed-in user, then select the route task only when visible for that result. A task URL with no saved result goes to the upload URL; a hidden task or invalid slug returns 404. The base URL with a saved result goes to `/overview`.
-3. Make task navigation and overview-card actions update the canonical URL when selecting a task. Direct loads and browser Back/Forward must restore the corresponding panel and `aria-current`. Keep the locked task property and derive changes from validated route state. After extraction, navigate to `/overview`; after clearing or losing a result, return to the upload URL.
-4. Preserve authorization and result-store boundaries on every entry path, including redirects. Keep the calculator's keyed ownership behavior, and update welcome, desktop/mobile navigation, and other named-route consumers to target the canonical page.
-
-### Acceptance criteria
-
-- Every visible task has the path above; direct load, refresh, selection, and Back/Forward show the task named by the URL. The active navigation state and panel heading agree with the URL.
-- The ten supplied old-path task links redirect to their new-path equivalents; `slot-times` and `etops` also have canonical URLs when visible. Legacy base and keyed calculator links redirect without dropping the key.
-- A user with no saved release sees the upload page. Unknown or hidden tasks return 404. A different user's result or calculator key remains inaccessible, and feature, verification, and authorization gates still apply.
-- `fuel` opens the brief's Fuel Score task; `fuel-score/{flightPlanKey}` opens the separate calculator without a route collision.
-
-### Validation for implementation
-
-- Add focused route and Livewire feature tests for the slug mapping, legacy redirects, direct entry, remount, task clicks, missing/hidden tasks, upload and reset transitions, and authorization/ownership. Check Back/Forward in a browser. Update assertions that currently expect `wire:click="selectTask(...)"` without URL changes.
-- Run only affected tests through Sail; run Pint after PHP changes and Larastan once at the final integration checkpoint. Record outcomes here.
-
-Documentation commit message: `docs: plan flight plan task routes`
+Architecture follow-up commit message: `refactor: use full-page Livewire flight plan routes`
 
 ## Paused: Bugs: offline fuel score
 

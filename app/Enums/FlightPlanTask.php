@@ -82,6 +82,45 @@ enum FlightPlanTask: string
         return 'flight-release.'.Str::kebab(Str::replace('_', ' ', $this->value));
     }
 
+    public function routeSlug(): string
+    {
+        return match ($this) {
+            self::Overview => 'overview',
+            self::JeppPdPro => 'efb',
+            self::ReviewMelCdl => 'mels',
+            self::MaintenanceLog => 'maintenance',
+            self::Envelope => 'envelope',
+            self::FlightInit => 'flight-init',
+            self::Fms => 'fms',
+            self::SlotTimes => 'slot-times',
+            self::FuelScore => 'fuel',
+            self::Etops => 'etops',
+            self::Weather => 'weather',
+            self::WeightAndBalance => 'weight-and-balance',
+            self::Notes => 'notes',
+        };
+    }
+
+    public static function fromRouteSlug(string $slug): ?self
+    {
+        foreach (self::cases() as $task) {
+            if ($task->routeSlug() === $slug) {
+                return $task;
+            }
+        }
+
+        return null;
+    }
+
+    /** @return list<string> */
+    public static function routeSlugs(): array
+    {
+        return array_map(
+            static fn (self $task): string => $task->routeSlug(),
+            self::cases(),
+        );
+    }
+
     public function requiresAirports(): bool
     {
         return in_array($this, [self::JeppPdPro, self::Fms], true);
