@@ -28,36 +28,6 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## [x] Completed: Bug: Crew name extract boundary
-Pilot name extracted as `SINHA A IRP MX LM ACM`, expected `SINHA A`
-
-Follow-up: `SINHA A IRP MX LM ACM YATES R` must yield two members: IRP `SINHA A` and ACM `YATES R`.
-
-Reference:
-storage/app/private/flight_releases/CKS021823RJAA.pdf
-
-Confirmed follow-up reference: `storage/app/private/flight_releases/CKS021617RJAA.pdf`.
-
-### Outcome
-
-Fixed manifest name cleanup to remove the full trailing sequence of role placeholders and annotations. Previously, a trailing `HIGH MINS` annotation was removed alone, leaving `IRP MX LM ACM` in the name. High mins flags, crew identifiers, multiword names, and source evidence remain intact.
-
-The referenced PDF currently contains a different roster and no `SINHA` entry. A regression input reproduces the exact reported name contamination with placeholders followed by `HIGH MINS`.
-
-### Validation
-
-Focused crew parser and flight crew extractor tests pass: 20 tests, 97 assertions. The new parser regression failed with the reported contaminated name before the fix. Pint passes; the single final Larastan run passes with zero errors.
-
-Commit message: `fix: strip combined crew manifest annotations from names`
-
-### Follow-up outcome
-
-The confirmed source has `72480 IRP SINHA A` followed by empty role placeholders and `ACM YATES R` without an employee number. Manifest boundaries now recognize a role followed by a name even when the employee number is absent, while excluding empty role placeholders and form headings. Yates is retained as a separate ACM with a null employee number in the extracted release. Duplicate manifests remain deduplicated, and source evidence is preserved.
-
-The parser regression reproduced the exact combined name before the fix. Both focused crew test files pass with 22 tests and 103 assertions. Direct extraction of the confirmed PDF produces SURADKAR A (PIC, High mins), DATOO R (SIC/FO), SINHA A (IRP), and YATES R (ACM). Pint and the single final Larastan run pass with zero errors.
-
-Follow-up commit message: `fix: split crew manifest members without employee numbers`
-
 ## Mobile sticky flight header
 
 ## Paused: Bugs: offline fuel score
@@ -210,7 +180,7 @@ K4 and Crew Compass currently behave more like separate products than parts of t
 ## Plan: feat: Track schedule upload count
 - For multiple file uploads within each user request
 
-## Flight plan: Crew list: WCAG 2.2 AA compliance
+## [x] Completed: Flight plan: Crew list: WCAG 2.2 AA compliance
 
 Currently: Crew role avatars use 12px white text on role-specific solid backgrounds. The emerald-600 and amber-600 light-mode combinations measure approximately 3.77:1 and 3.19:1, below the 4.5:1 WCAG 2.2 AA minimum for normal text. Existing component and enum tests preserve these failing color combinations.
 
@@ -231,6 +201,18 @@ References:
 - `resources/views/components/flight-release/employee-card.blade.php`
 - `tests/Unit/Enums/CrewPositionTest.php`
 - `tests/Feature/EmployeeCardComponentTest.php`
+
+### Outcome
+
+Darkened light-mode captain and relief-pilot badges to emerald-700 and amber-700, and made the foreground explicit in every role palette. Preserved compact visible role labels and accurate accessible names, including unknown and missing roles. Crew names, employee numbers, and base details can now wrap anywhere; role avatars have a minimum height rather than a fixed height so long fallback labels remain visible. Removed the faded employee-number marker and hid the decorative High mins icon from assistive technology.
+
+### Validation
+
+The focused enum, employee-card, Maintenance Log, Envelope, and Flight Init tests pass: 13 tests, 551 assertions. Tests calculate WCAG contrast for every role and fallback in both themes, compositing translucent dark backgrounds over the card surface, and verify visible/accessibly named roles, missing employee numbers, and reading order. Pint, the production Vite build, and one focused Larastan run pass with zero errors.
+
+A headless Chrome check of the actual Blade component with production CSS passed 336 card checks covering all roles plus unknown/missing roles, both themes, widths of 320/640/768/1024 CSS pixels, and normal/200% CSS scaling. Computed text contrast was at least 4.7588:1, exceeding the [WCAG normal-text minimum](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html), with no card or text overflow. The check verified role names and native list markup; it used an isolated component fixture rather than an authenticated full-page screen-reader audit or native browser zoom.
+
+Commit message: `fix: improve crew card contrast and accessible reflow`
 
 ## Unified upload
 Currently: 2 tabs have 2 different upload points, user has to choose 
@@ -266,19 +248,6 @@ This view repeats the confirmed source result. It does not calculate an envelope
 - in ENV and config files
 - in coordination with enum
 
-## [x] Completed: Flight plan: Refactor FlightPlanBriefTest
-- Split tests and organize into folders grouped by test focus area
-
-### Outcome
-
-Moved the 34 existing tests into 14 focused PHPUnit classes under `tests/Feature/Livewire/FlightPlanBrief`, grouped into `Lifecycle`, `Security`, `Workspace`, and individual `Tasks` panels. The original test file was moved into an abstract `FlightPlanBriefTestCase` that shares the existing parsed-release fixtures, Mockery helpers, and `RefreshDatabase` behavior. Test method names and assertions are preserved; imports and namespaces follow each file's focus.
-
-### Validation
-
-The original file and the reorganized directory both pass with 34 tests and 850 assertions. Pint passes after formatting; the single final Larastan run on the reorganized directory passes with zero errors. Run the focused group with `vendor/bin/sail artisan test --compact tests/Feature/Livewire/FlightPlanBrief` or select any individual test file within it.
-
-Commit message: `refactor: organize flight plan brief tests by focus area`
-
 ## PEST architechure tests
 - Does pest need to be installed? 
 - Can I run along side existing test suite?
@@ -298,93 +267,53 @@ Commit message: `refactor: organize flight plan brief tests by focus area`
 
 -------------------------------------------------------
 
-## [x] Completed: Fix flight plan uploads that leave the spinner running
-## [x] Completed: Show flight plan upload and extraction progress
-## [x] Completed: Fix Livewire test response type inference
-## [x] Completed: Flight plan: Overview: Slot times overview card refactor
-### Context aware slot times
-### Slot time widget
-## [x] Completed: Bug: PDF flight release header/footer extracted into route
-## [x] Completed: Feat: Domestic / international flight determine
-## [x] Completed: Feat: GENDEC card
 ## [x] Completed: feat: Overview cards Spatial Organization (Grid & Layout)
 ## [x] Completed: Refactor welcome page for use with new features
 ## [x] Complete: Lat / Long cut off, some waypoints prefixed with `-`
 ## [x] Complete: Ramp fuel stat card
 ## [x] Completed: Move B44 badge to Ramp Fuel card
 ## [x] Completed: Extract dispatcher notes
-
-### Outcome
-
-- Added ordered dispatcher-note extraction for the release header, including star-boxed and dash-delimited formats while excluding duplicate structured ETOPS, valid slot, and runway data.
-- Added typed dispatcher-note data through extraction, saved-result serialization, page-data restoration, and the view model.
-- Added the final `Notes` task with the `Review notes` action label, document/notepad icon, neutral gray count badge, and one unnumbered card per note in PDF order.
-- Confirmed the requested note lists against `CKS021617RJAA.pdf`, `CKS024125PANC.pdf`, and `CKS024726KCVG.pdf`.
-
-### Validation
-
-- Focused unit and rendering tests: 108 passed, 1 unrelated private-fixture test skipped, 1,020 assertions.
-- Focused Livewire Notes workflow: 1 passed, 8 assertions.
-- Pint passed after formatting changed PHP files.
-- Larastan passed with 0 errors.
-- Production Vite build passed.
-
-Commit message: `feat: extract dispatcher notes`
-
 ## Completed: Mobile flight plan hamburger menu
-
-### Goal
-
-Replace the small-screen horizontal task scroller with a compact active-task header and an accessible full-screen task chooser. Keep the desktop task sidebar and the existing task-selection rules unchanged.
-
-### Outcome
-
-- Replaced the below-`lg` horizontal task scroller with a non-sticky active-task header and a fixed, full-viewport task chooser. The existing 15-rem desktop sidebar remains the only navigator at `lg` and above.
-- Extracted one shared task-row component for both presentations. It preserves the Livewire `selectTask()` action, icons, B44/count badges, availability state, visible-task ordering, loading state, `aria-current`, and panel relationship. Trailing indicators use one right-aligned group.
-- Added the approved mobile active state: navy row, gold left edge, and a check icon with accessible current-task text. Long labels can wrap without displacing the badges.
-- Added a local Alpine controller for focus placement and containment, Escape/X dismissal, trigger-focus restoration, scroll locking, component teardown, and automatic cleanup when the viewport crosses into the desktop layout. Selecting a task closes the local chooser while retaining the existing Livewire selection path.
-- Added the slide-down/reverse transition with reduced-motion handling, light/dark styling, accessible open/close names, `aria-expanded`, `aria-controls`, and modal dialog semantics.
-- Kept the task-panel availability/status header on mobile while visually hiding its repeated title and icon. The heading remains available to assistive technology and returns to its existing presentation on desktop.
-
-### Validation
-
-- The focused responsive Livewire workspace test passes: 1 test, 56 assertions.
-- Focused hidden-task and dispatcher-notes Livewire tests pass: 2 tests, 18 assertions.
-- The every-visible-task view-model rendering test passes: 1 test, 13 assertions.
-- The task-menu JavaScript test passes: 7 tests covering open/close, active-task focus, focus cycling/restoration, selection dismissal, scroll-lock ownership, teardown, and the desktop breakpoint.
-- Pint, the production Vite build, and the final Larastan run pass with zero errors.
-- Browser-only visual, keyboard, and screen-reader checks were not available in this environment. Back/Forward behavior remains validation scope for the separate flight-plan task-route task.
-
-Commit message: `feat: add mobile flight plan task menu`
-
 ## [x] Completed: Flight plan task routes
+## [x] Completed: Bug: Crew name extract boundary
+Pilot name extracted as `SINHA A IRP MX LM ACM`, expected `SINHA A`
 
-### Goal
+Follow-up: `SINHA A IRP MX LM ACM YATES R` must yield two members: IRP `SINHA A` and ACM `YATES R`.
 
-Give each visible Flight Plan Brief task a stable, shareable URL whose path identifies the active task. Rename the page path to `/flight-plan-brief` and redirect existing `/flight-route-extractor` links.
+Reference:
+storage/app/private/flight_releases/CKS021823RJAA.pdf
+
+Confirmed follow-up reference: `storage/app/private/flight_releases/CKS021617RJAA.pdf`.
 
 ### Outcome
 
-- Added explicit canonical slugs for every `FlightPlanTask`, including the newer `notes` task that was missing from the original route table.
-- Moved the upload page to `/flight-plan-brief`, added `/flight-plan-brief/{task}` for task panels, and moved the keyed calculator to `/flight-plan-brief/fuel-score/{flightPlanKey}`. Route constraints keep `fuel` and `fuel-score/{flightPlanKey}` distinct and reject unknown slugs.
-- Added authenticated legacy redirects for the old base and task paths. The legacy keyed-calculator redirect verifies result ownership before returning its canonical location and preserves the result key.
-- The canonical base stays on the upload view when no saved release exists and redirects a saved release to `/overview`. Direct task requests restore the corresponding locked Livewire task, reject hidden Slot Times or ETOPS panels, and allow those routes when the saved release exposes them.
-- Existing task buttons and overview-card actions continue through `selectTask()`, which now uses Livewire navigation to update the canonical URL and browser history. Extraction navigates to `/overview`; reset or a missing saved result navigates to the upload URL.
-- Preserved the post-extraction success state, summary scroll event, and optional coffee prompt across the canonical navigation. Existing named-route consumers now resolve to `/flight-plan-brief` without duplicating paths in Blade or controllers.
-- Reapplied the stored light, dark, or system theme during Livewire's page swap and after navigation, preventing task-route navigation from reverting the document to light mode while keeping newly rendered theme selectors synchronized.
-- Converted the canonical index and task endpoints to full-page Livewire 4 routes. `FlightPlanBrief` now receives `{task}` directly, owns the existing page shell and saved-result redirects, and uses the configured application layout; `FlightReleaseController` remains only for legacy redirects.
+Fixed manifest name cleanup to remove the full trailing sequence of role placeholders and annotations. Previously, a trailing `HIGH MINS` annotation was removed alone, leaving `IRP MX LM ACM` in the name. High mins flags, crew identifiers, multiword names, and source evidence remain intact.
+
+The referenced PDF currently contains a different roster and no `SINHA` entry. A regression input reproduces the exact reported name contamination with placeholders followed by `HIGH MINS`.
 
 ### Validation
 
-- 52 focused tests pass with 561 assertions across enum slug mapping, canonical and legacy routes, direct task restoration, conditional/hidden tasks, unknown slugs, calculator route separation and ownership, feature authorization, welcome/navigation links, and Livewire extraction, selection, reset, and missing-result transitions.
-- Pint passes after formatting changed PHP files.
-- The final Larastan pass completes with zero errors.
-- The focused theme JavaScript tests and production Vite build pass, including a Livewire page-swap regression test for dark-mode continuity.
-- The full-page Livewire architecture follow-up passes 50 focused PHP tests with 936 assertions (49 passed and 1 private-fixture test skipped), including direct route registration, page rendering, redirects, task restoration, upload behavior, and component workflows. Pint, the production Vite build, the 7-check theme suite, and the one final Larastan pass also pass.
-- Browser Back/Forward interaction was not available for manual verification in this environment; task changes use Livewire's documented navigate redirect so history entries remount from the canonical task route.
+Focused crew parser and flight crew extractor tests pass: 20 tests, 97 assertions. The new parser regression failed with the reported contaminated name before the fix. Pint passes; the single final Larastan run passes with zero errors.
 
-Commit message: `feat: add canonical flight plan task routes`
+Commit message: `fix: strip combined crew manifest annotations from names`
 
-Follow-up commit message: `fix: preserve theme during flight plan navigation`
+### Follow-up outcome
 
-Architecture follow-up commit message: `refactor: use full-page Livewire flight plan routes`
+The confirmed source has `72480 IRP SINHA A` followed by empty role placeholders and `ACM YATES R` without an employee number. Manifest boundaries now recognize a role followed by a name even when the employee number is absent, while excluding empty role placeholders and form headings. Yates is retained as a separate ACM with a null employee number in the extracted release. Duplicate manifests remain deduplicated, and source evidence is preserved.
+
+The parser regression reproduced the exact combined name before the fix. Both focused crew test files pass with 22 tests and 103 assertions. Direct extraction of the confirmed PDF produces SURADKAR A (PIC, High mins), DATOO R (SIC/FO), SINHA A (IRP), and YATES R (ACM). Pint and the single final Larastan run pass with zero errors.
+
+Follow-up commit message: `fix: split crew manifest members without employee numbers`
+
+## [x] Completed: Flight plan: Refactor FlightPlanBriefTest
+- Split tests and organize into folders grouped by test focus area
+
+### Outcome
+
+Moved the 34 existing tests into 14 focused PHPUnit classes under `tests/Feature/Livewire/FlightPlanBrief`, grouped into `Lifecycle`, `Security`, `Workspace`, and individual `Tasks` panels. The original test file was moved into an abstract `FlightPlanBriefTestCase` that shares the existing parsed-release fixtures, Mockery helpers, and `RefreshDatabase` behavior. Test method names and assertions are preserved; imports and namespaces follow each file's focus.
+
+### Validation
+
+The original file and the reorganized directory both pass with 34 tests and 850 assertions. Pint passes after formatting; the single final Larastan run on the reorganized directory passes with zero errors. Run the focused group with `vendor/bin/sail artisan test --compact tests/Feature/Livewire/FlightPlanBrief` or select any individual test file within it.
+
+Commit message: `refactor: organize flight plan brief tests by focus area`
