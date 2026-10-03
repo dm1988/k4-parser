@@ -28,44 +28,6 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Mobile sticky flight header
-
-## Paused: Bugs: offline fuel score
-
-### Goal
-
-Keep entered Off time, starting FOB, and waypoint ATA/AFOB through a same-tab reload, including the reported iPad Chrome background/foreground case while the iPad is offline.
-
-### Findings
-
-The standalone Alpine calculator initialized all inputs to blank and kept them only in memory. The reviewed calculator code has no reload timer or explicit page refresh. The reported device is an iPad using Chrome; the user reports returning to the same tab after using another app while the iPad is offline. Browser tab suspension or reload is plausible in this scenario, but it has not been reproduced or confirmed as the trigger. `vite.config.js` enables development refresh, and recent Debugbar requests and browser logs did not identify an offline-calculator refresh. Standard `sessionStorage` is designed to survive reloads and tab restores, but its behavior after an iPad browser process is discarded must be checked on the affected device. More decisively, the current page cannot load at all after an offline navigation/reload because the app has no service worker or offline page shell; saved inputs alone cannot solve that case.
-
-### Outcome
-
-- Added a versioned `sessionStorage` draft scoped by the authenticated owner and `flightPlanKey`. The controller supplies that scope after its existing ownership check.
-- The draft saves only entered strings for Off time, starting FOB, ATA, and AFOB. It restores them before Alpine watchers are attached, then recalculates from the current release. Partial values and explicit zeroes survive a reload.
-- The source signature includes the fuel unit, confirmed fuel quantities, and ordered waypoint identifiers, coordinates, times, TBO, and remaining fuel. Each reading is also tied to its waypoint position and source identity. Malformed or incompatible drafts are discarded, and drafts do not cross owners or release keys.
-- Reset clears live inputs and the draft; queued Alpine watchers cannot resurrect prior values. If storage blocks removal but permits writing, Reset replaces the old draft with an empty one. Storage failures leave calculations usable and show a short accessible notice when recovery cannot be trusted.
-- Page copy now explains same-tab recovery and that loading or refreshing the page still requires a connection. No service worker or offline page-load cache was introduced.
-
-### Validation
-
-The focused JavaScript calculator and draft tests pass: 20 tests in the affected files, including reload recovery, initialization order, repeated identifiers, scope/source isolation, Reset, malformed drafts, and read/write/remove failures. `OfflineFuelScoreTest` passes (4 tests, 53 assertions). Pint, the production Vite build, and one final Larastan pass on changed PHP and the focused test pass. Browser lifecycle verification was unavailable in this environment.
-
-### Remaining investigation
-
-The affected iPad is offline when Chrome returns. On that device, enter Off time, starting FOB, ATA, and AFOB; switch to another app and return to the same tab. Record whether the page stays mounted or reloads, any prompt, and whether the four values return. Repeat after a longer background period. The implemented `sessionStorage` draft recovers a same-tab reload only when the page can load; it cannot restore the calculator after an offline navigation/reload. If the browser discards the tab session itself, even tab-scoped storage may be unavailable. Compare development and production builds before attributing the refresh to Vite.
-
-### Proposed offline reload extension — authorization required
-
-A calculator-only service worker could serve a static offline shell for the exact fuel-score route when a network request fails and cache the versioned CSS/JavaScript assets. To make the release and its entered values available in that shell, it would also need a local copy of the source-backed calculator data. The safer proposed design encrypts the minimum required source payload in browser Cache Storage with a per-tab key in `sessionStorage`, scopes it to the authenticated owner and release, gives it a short expiry, and clears it when possible. The service worker must use the server response whenever online and never turn a server 403/404 into cached content. The offline shell would show an explicit unavailable state if the key, assets, or cache are missing. An offline reload could not re-check server authorization; anyone who can use the still-open tab and its key could view that cached release until the session ends. Browser eviction or loss of the tab session can still prevent restoration.
-
-This extension needs focused tests for route scope, network-first behavior, encryption/decryption, expiration, missing keys/assets, source mismatch, and unauthorized online responses, followed by an actual Chrome-on-iPad offline background/reload check. It also needs a visible readiness state so the user knows when the offline copy has been prepared. The attempted service-worker/cache implementation was rejected by automatic approval review because persisting authenticated release content on the device is a security/privacy side effect not specifically authorized for this task. No service-worker or release cache code was added. Continue this part only after explicit approval for that on-device storage behavior.
-
-References: [page-session behavior](https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage), [WebKit background tab suspension](https://webkit.org/blog/8970/how-web-content-can-affect-power-usage/), and [service-worker navigation interception](https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerGlobalScope/fetch_event).
-
-Commit message: `fix: preserve offline fuel score inputs across reloads`
-
 ## Sloppy static findings
 ./vendor/bin/sloppy
 
@@ -73,7 +35,7 @@ Commit message: `fix: preserve offline fuel score inputs across reloads`
 
 ### Goal
 
-Expire a saved flight release at the earlier of 24 hours after extraction and its planned ETA. Remove the expired release from the database and any release-specific cache, and stop serving it through the brief or Fuel Score URL.
+Expire a cached flight release at the earlier of 24 hours after extraction and its planned ETA. Remove the expired release from the database and any release-specific cache, and stop serving it through the brief or Fuel Score URL.
 
 ### Current implementation
 
@@ -110,76 +72,139 @@ An old result remains readable until the user replaces or manually clears it. Th
 
 Commit message: `feat: expire flight releases after 24 hours or planned ETA`
 
-## Implement Crew Compass tie-ins, branding, and marketing
-
-### Goal
-
-Integrate useful Crew Compass city and layover information into K4 schedule results so extracted trips naturally connect users back to Crew Compass destination content.
-
-### Current implementation
-
-Airport information is already enriched for flight origins and destinations.
-
-Crew Compass content is not currently surfaced directly within schedule cards, and layover events expose a station code without resolving that station to a canonical Crew Compass city.
-
-### Problem
-
-K4 and Crew Compass currently behave more like separate products than parts of the same ecosystem. Layovers are particularly valuable moments to surface Crew Compass information, but their station codes are not yet enriched with city/guide/place data.
-
-### Implementation plan
-
-1. Extend the Crew Compass airport/provider response with a typed city summary containing:
-
-   * canonical city identifier or slug,
-   * guide availability,
-   * guide URL,
-   * available places count,
-   * city URL.
-2. Resolve Crew Compass cities using airport/station codes rather than city-name matching.
-3. Extend schedule enrichment to collect unique layover station codes alongside flight origins and destinations.
-4. Reuse the existing cached airport-resolution/provider flow rather than introducing Blade-side requests.
-5. Attach the resulting Crew Compass city summary to layover metadata.
-6. Expose the same typed summary through the relevant event and flight-card view models.
-7. Build a reusable Blade city-summary component.
-8. Render the component:
-
-   * primarily below hotel details on layover cards,
-   * secondarily inside origin/destination airport popovers.
-9. Do not duplicate the summary inside the expanded airport-details accordion.
-10. For layovers, display:
-
-    * resolved city,
-    * whether a layover guide exists,
-    * number of available places,
-    * guide/city links when available.
-11. Handle provider failures and cities with no guide or places without breaking schedule rendering.
-12. Add focused tests for:
-
-    * available guide and places,
-    * no guide,
-    * zero places,
-    * duplicate city/station resolution,
-    * provider failure,
-    * layover enrichment,
-    * flight-card/popover rendering.
-
-### Acceptance criteria
-
-* Layover stations resolve to canonical Crew Compass city data when available.
-* Crew Compass summaries appear on layover cards below hotel information.
-* Compact summaries appear in origin and destination airport popovers.
-* Duplicate station/city lookups do not cause redundant provider calls.
-* Blade components perform no parsing, querying, normalization, or authorization.
-* Missing Crew Compass data is shown as unavailable rather than as empty or misleading values.
-* Provider failure does not prevent schedule results from rendering.
-
-### Proposed commit message
-
-`feat: integrate Crew Compass city content into schedules`
-
 ## Plan: feat: Track schedule upload count
 - For multiple file uploads within each user request
 
+## Unified upload
+Currently: 2 tabs have 2 different upload points, user has to choose 
+Goal: Have one unified upload path. Service will determine if a schedule or flight plan has been uploaded. 
+
+Cached results: Keep extract schedule and flight plan brief tabs for now. There's not really a better way to render cached results for now.
+
+## Flight plan: Create a way to turn tasks on or off
+- in ENV and config files
+- in coordination with enum
+
+## Plan: PEST architechure tests
+
+### Goal
+
+Add fast architecture tests for established naming conventions and dependency boundaries. Keep the existing PHPUnit unit and feature classes, and catch structural regressions without booting Laravel, accessing the database, or making network requests.
+
+### Current implementation
+
+- `composer.json` requires PHPUnit `^12.5.12`; the installed version is 12.5.34. Pest and its architecture plugin are not installed. The existing Composer allowance for `pestphp/pest-plugin` permits plugin execution but does not install Pest.
+- `phpunit.xml` discovers `tests/Unit` and `tests/Feature`. CI runs `php artisan test --compact --parallel`; the installed Collision test command switches to Pest when Pest is available. Sail already supports `vendor/bin/sail pest`.
+- The application has Actions, DTOs, Enums, Mappers, ValueObjects, domain services, infrastructure services, and View Models/Presenters. Existing model-convention and Eloquent-guardrail tests verify runtime behavior; they do not enforce namespace dependencies.
+- Naming has intentional variations: Actions expose `handle()`, DTOs include `Flight`, `DutyEvent`, `AirportResolution`, and the abstract `ExtractedEventDTO`; View Models include a factory and `FlightPlanPageData`. DTOs are not uniformly final/readonly, while current ValueObjects are final/readonly.
+
+### Problem
+
+Naming and layer boundaries can drift without a test failure. A blanket preset would impose conventions the project does not follow, and overly broad dependency bans would reject legitimate PDF/OCR, airport lookup, and presentation behavior.
+
+`AGENTS.md` currently says all tests must be PHPUnit classes and Pest tests must be converted. Its dependency rule also requires approval before adding packages. This planning task does not authorize installation or change those rules.
+
+### Planning outcome: installation and coexistence
+
+- **Does Pest need to be installed?** Yes, to use Pest's `arch()` API. For this PHPUnit 12 project, evaluate `pestphp/pest:^4`; its architecture plugin is included as a dependency, so a separate architecture-plugin requirement is unnecessary. Generic installation instructions now describe Pest 5; do not adopt that major without reviewing its PHPUnit and PHP requirements. [Pest installation](https://pestphp.com/docs/installation), [Pest 4 dependency metadata](https://github.com/pestphp/pest/blob/4.x/composer.json).
+- **Can it run alongside the existing suite?** Yes. Pest builds on PHPUnit and can run existing PHPUnit classes; conversion is unnecessary. Use Pest for architecture tests and retain current behavioral test classes. Verify discovery and the existing parallel runner after installation. Plain PHPUnit is not the runner for Pest `arch()` files. [PHPUnit migration guide](https://pestphp.com/docs/migrating-from-phpunit-guide).
+- **Version resolution needs review.** The inspected Pest 4 branch restricts its PHPUnit patch version to 12.5.33, below the installed 12.5.34. Released package constraints may differ. Inspect a Composer dry run and review any proposed downgrade or other package changes before installation; PHP/major-version compatibility alone is insufficient.
+- **Prerequisite for implementation:** explicitly authorize the development dependency and a narrow exception permitting Pest architecture tests, while retaining PHPUnit class tests elsewhere. If retaining the current rules is preferred, use PHPUnit classes for these rules instead; naming checks can use reflection, while dependency checks need reliable source analysis. Pest is optional for the architectural goal.
+
+### Proposed implementation
+
+1. Confirm Sail is available. After the prerequisite decisions, resolve a compatible Pest 4 release through Sail with a Composer dry run and review the dependency delta. Preserve the PHPUnit requirement where compatible. Initialize only the necessary Pest configuration; do not convert existing tests or install Drift, browser, or Livewire plugins for static architecture checks.
+2. Put `NamingTest.php` and `LayeringTest.php` under `tests/Unit/Architecture`, which the existing Unit suite already discovers. Keep architecture tests independent of `Tests\TestCase`, `RefreshDatabase`, and global Laravel hooks. Check any generated `tests/Pest.php` configuration so it does not rebind existing tests or boot Laravel for architecture files.
+3. Audit each proposed rule against the current source, then implement the naming and dependency rules below. Use recursive namespace discovery so new classes are covered automatically. Keep exceptions limited to exact classes with a stated reason; report unexpected violations before deciding on production refactors.
+4. Verify source analysis detects actual dependencies, including fully qualified references, type declarations, inheritance, and trait use; avoid import-only regex checks. Static class rules do not prove absence of dynamic container lookups, runtime I/O, or logic inside Blade. Keep behavioral tests and Larastan responsible for their existing concerns.
+5. Confirm architecture files are included by the normal runner and existing CI command. Use the focused architecture command locally; avoid a second CI invocation that runs the same architecture tests twice. Update this entry with implementation outcomes and validation counts.
+
+### Initial rules
+
+| Scope | Rule | Existing allowances |
+| --- | --- | --- |
+| Application declarations | Namespace and declaration names match PSR-4 paths and case. Enums are enums; Models extend Eloquent Model; Controllers extend the application Controller except the base Controller itself. | Reuse current Laravel/Filament structure. |
+| Names | Requests end in `Request`, Policies in `Policy`, Mappers in `Mapper`, and Flight Release Presenters in `Presenter`. Actions expose public `handle()`. ValueObjects remain final/readonly. | Policy concern traits are excluded from the class suffix rule. No universal DTO/View Model suffix, Action suffix, `__invoke()`, or application-wide final/readonly rule. |
+| DTOs, ValueObjects, Enums | No dependencies on Actions, application Models, Services, Http, Livewire, Filament, or View namespaces. | Allow other data types, enums, exceptions, PHP interfaces, Carbon, and Laravel support utilities already in use. |
+| Domain parsing/services, Mappers, Infrastructure | No dependency on Http Controllers/Requests, Livewire, Filament, or View classes. | Services may use Models, lookup clients, cache, logging, PDF/OCR, and framework contracts. Do not ban all framework dependencies. |
+| Flight Plan parsing | Preserve the direction toward data types and extraction helpers; prevent presentation dependencies. | `FlightCrewExtractor` legitimately uses `Schedule\Extractor\CrewListParser`. PDF/text and route extractors have legitimate I/O/cache/lookup dependencies. Do not assume every extractor is pure. |
+| View Models and Presenters | No dependency on Models, extraction Actions, Infrastructure, lookup clients, or document extractors. | Allow DTOs, ValueObjects, Enums, presentation helpers, and the existing `RoutePresenter` dependency on `FlightTypeClassifier`. Actions may build View Models, as `BuildFlightPlanPageData` already does. |
+
+Use targeted expectations rather than blanket presets, strict-types requirements, line-count limits, or an invented repository layer. [Architecture expectations](https://pestphp.com/docs/arch-testing).
+
+### Acceptance and validation for implementation
+
+- Naming and layering violations identify the offending class and rule. Newly added classes are discovered, and a rule fails if its intended scope unexpectedly matches no declarations.
+- Demonstrate failure for a deliberate naming violation and a forbidden dependency, then restore the valid source. Include a fully qualified dependency case to catch checks that only inspect imports. Keep any checker fixtures within the test suite and outside application discovery.
+- Run `vendor/bin/sail pest --compact tests/Unit/Architecture`, then focused existing PHPUnit files through `vendor/bin/sail artisan test --compact`, including a DTO test and an existing Livewire lifecycle test. Verify the normal runner discovers the architecture files and review the parallel runner without running the entire suite at this checkpoint.
+- Run Pint after PHP changes and Larastan once at final integration. Record results here. No packages, test files, configuration, or application code changed during planning; executable validation remains for implementation.
+
+Planning commit message: `docs: plan Pest architecture tests and adoption constraints`
+
+Implementation commit message: `test: enforce application naming and layer boundaries`
+
+## Plan: Flight plan: Reserve fuel
+
+### Goal
+
+Show alternate-airport burn and calculated FMS reserve fuel as distinct values. Resolve the reserve additive from the aircraft fleet record, with explicit support for 747-400F, 777-F, and 777-300ERSF. Keep source fuel quantities separate from the derived calculation and label every unit.
+
+### Current implementation
+
+- `FlightFuelExtractor` already extracts `ALTN` into `alternate` and `RESERVE` into `final_reserve`. `FuelPlanData` preserves these as separate `FuelQuantity` values; `BuildFlightPlanData` and `BuildFlightPlanPageData` retain them through serialization and saved-result loading.
+- `FuelPresenter::alternateReserve()` returns only `fuelPlan.alternate`. `FlightReleasePageViewModel::fmsFields()` labels that value `Alternate Airport Reserves`, so alternate burn is presented as reserve fuel without a calculation. Fuel Score already lists the source Alternate and Reserve separately.
+- The `aircraft` table stores tail number, type, model, and weight limits, but has no reserve additive. `AircraftWeightLimitResolver` provides an existing pattern for resolving aircraft data by normalized tail number during extraction.
+- `AircraftWeightSeeder` imports 74Y, 77V, and 77X aircraft as 747-400F, 777-300ERSF, and 777-F. The connected development database currently contains 22, 7, and 8 records respectively. The original task notes that the full fleet is implemented in production; production coverage was not independently verified. `AircraftSeeder` alone covers only the two 777 models.
+- `AircraftFactory` chooses type and model independently and only generates 777 aircraft. It needs consistent, explicit fleet states for this calculation's tests.
+
+### Problem
+
+The FMS label conflates alternate burn with reserve fuel. There is no stored aircraft additive or confirmed calculation contract, and current fixtures cannot reliably distinguish the three fleet models. A guessed formula, missing additive treated as zero, or mixed pounds/kilograms could produce a misleading operational value.
+
+### Calculation decisions needed before implementation
+
+- Confirm the exact FMS reserve formula: which of alternate burn, the release's `RESERVE` amount, and the aircraft additive participate. Do not assume `alternate + finalReserve + additive` or count the source reserve twice.
+- Supply approved additive values and units for each model; confirm whether the two 777 variants share a value and whether tail-specific overrides are needed.
+- Define the no-alternate case: whether the confirmed formula permits calculation without alternate burn. A missing value is not an explicit zero.
+- Confirm calculation/display rounding. Recommended storage is whole pounds per aircraft, conversion through `FuelQuantity` when the release uses kilograms, and rounding only for display; adjust storage precision if the supplied values require it.
+
+### Implementation plan
+
+1. Add a new reversible migration for a nullable `aircraft.reserve_fuel_additive_lb` column, subject to the confirmed units/precision. Use no zero default. Add the fillable attribute and integer cast to `Aircraft`; keep existing migrations unchanged. Expose an optional, non-negative integer field with an `lb` suffix in the existing Aircraft admin form and a clearly labeled table column.
+2. Populate approved fleet values through an idempotent, narrowly scoped seeder, separate from the schema migration. Match the established model names, leave unsupported models unavailable, and avoid overwriting configured tail-specific values on reruns. Verify production fleet coverage and populate additives before expecting complete reserve calculations. Keep 747 fleet import work outside this task unless records are actually missing.
+3. Add an aircraft reserve-additive resolver following the normalized-tail lookup pattern and a small calculation service that consumes typed source quantities plus the resolved additive. Resolve during `HandleFlightPlanExtraction`, pass the result into the builder, and keep database queries and arithmetic out of Blade and presenters. Convert all required inputs into one unit before applying the confirmed formula; preserve explicit zero and return unavailable when a required input or additive is missing or invalid.
+4. Extend normalized fuel data with separate additive and calculated FMS reserve fields, retaining `alternate` and `finalReserve` as source values. Serialize the additive used and the calculated result with the saved release so later fleet edits do not silently change an existing brief. Update DTO array shapes, builders, and saved-result tests. Older payloads without the new fields should still load, with calculated reserve unavailable until re-upload.
+5. Replace the ambiguous FMS field with distinct `Alternate airport burn` and `FMS reserve fuel` values. Keep source `RESERVE` labeled as `Release reserve` wherever needed to distinguish it from the derived value. Update the FMS section's source-only heading/evidence text to acknowledge the calculation, and distinguish missing release data from unavailable fleet configuration. Reuse the existing metric components and compact layout.
+6. Add deterministic factory states for all three models with matching type/model values. Cover resolution, the approved formula, normalized tails, missing/unknown aircraft, unconfigured additives, explicit zero, invalid values, unit conversion, and the approved no-alternate behavior. Verify that calculated values survive save/reload and that older saved releases retain honest unavailable states.
+
+### Validation for implementation
+
+Run only affected PHPUnit tests through Sail: the new resolver/calculator tests, affected DTO/builders/serializer tests, `AircraftResourceTest`, additive-seeder tests, FMS view-model tests, and `tests/Feature/Livewire/FlightPlanBrief/Tasks/FmsTest.php`. Run the extractor test if its source-field contract changes. After PHP edits, run `vendor/bin/sail bin pint --dirty --format agent`, then Larastan once at the final integration checkpoint. Check the FMS display in both themes and the production Vite build if frontend assets change. Record actual outcomes here when implemented.
+
+### Planning outcome
+
+Traced the source-to-FMS data flow, confirmed Sail is running and the connected development database contains all three fleet models, and identified the misleading FMS label and missing additive storage. This is a documentation-only plan; application code and production data were not changed. Formula, additive values, no-alternate behavior, and rounding remain open business inputs.
+
+Commit message for implementation: `feat: distinguish alternate burn from calculated FMS reserve fuel`
+
+Commit message for this plan: `docs: plan aircraft-specific flight plan reserve fuel`
+
+-------------------------------------------------------
+
+# Completed Tasks
+
+-------------------------------------------------------
+
+## [x] Completed: feat: Overview cards Spatial Organization (Grid & Layout)
+## [x] Completed: Refactor welcome page for use with new features
+## [x] Complete: Lat / Long cut off, some waypoints prefixed with `-`
+## [x] Complete: Ramp fuel stat card
+## [x] Completed: Move B44 badge to Ramp Fuel card
+## [x] Completed: Extract dispatcher notes
+## Completed: Mobile flight plan hamburger menu
+## [x] Completed: Flight plan task routes
+## [x] Completed: Bug: Crew name extract boundary
+## [x] Completed: Flight plan: Refactor FlightPlanBriefTest
 ## [x] Completed: Flight plan: Crew list: WCAG 2.2 AA compliance
 
 Currently: Crew role avatars use 12px white text on role-specific solid backgrounds. The emerald-600 and amber-600 light-mode combinations measure approximately 3.77:1 and 3.19:1, below the 4.5:1 WCAG 2.2 AA minimum for normal text. Existing component and enum tests preserve these failing color combinations.
@@ -214,106 +239,8 @@ A headless Chrome check of the actual Blade component with production CSS passed
 
 Commit message: `fix: improve crew card contrast and accessible reflow`
 
-## Unified upload
-Currently: 2 tabs have 2 different upload points, user has to choose 
-Goal: Have one unified upload path. Service will determine if a schedule or flight plan has been uploaded. 
-
-Cached results: Keep extract schedule and flight plan brief tabs for now.
-
-
-## Flight plan: Add task: Takeoff and Landing Report
-Feat: TLR Validity check
-
-Naming outcome: Renamed the view-model presentation API from the ambiguous `envelope*` prefix to `tlr*`. The normalized payload continues using its existing `envelope` storage key until the broader data contract is migrated.
-
-Commit message: `refactor: rename envelope view model methods to tlr`
-
-Source inputs:
-V1
-71 kt - Need to add 100 kts
-VR
-76 kt - Need to add 100 kts
-V2
-83 kt - Need to add 100 kts
-Source remarks
-
-**Warnings**
-No supported source warnings were listed with the selected result.
-
-No independent performance determination
-
-This view repeats the confirmed source result. It does not calculate an envelope or label the condition safe; review the controlling performance report.
-
-## Flight plan: Create a way to turn tasks on or off
-- in ENV and config files
-- in coordination with enum
-
-## PEST architechure tests
-- Does pest need to be installed? 
-- Can I run along side existing test suite?
-- Naming
-- Layering
-
-## 17. Flight plan: Reserve fuel
-- Create distinction between Alternate airport burn and Reserve fuel calculation. 
-- Differed due to needing aircraft type fixture and distintion between 747 and 777 aircraft type
-- Requires full fleet in production database. Implemented.
-- coincides with future 747 seeder into production
-- Add migration for reserve fuel additive
-
--------------------------------------------------------
-
-# Completed Tasks
-
--------------------------------------------------------
-
-## [x] Completed: feat: Overview cards Spatial Organization (Grid & Layout)
-## [x] Completed: Refactor welcome page for use with new features
-## [x] Complete: Lat / Long cut off, some waypoints prefixed with `-`
-## [x] Complete: Ramp fuel stat card
-## [x] Completed: Move B44 badge to Ramp Fuel card
-## [x] Completed: Extract dispatcher notes
-## Completed: Mobile flight plan hamburger menu
-## [x] Completed: Flight plan task routes
-## [x] Completed: Bug: Crew name extract boundary
-Pilot name extracted as `SINHA A IRP MX LM ACM`, expected `SINHA A`
-
-Follow-up: `SINHA A IRP MX LM ACM YATES R` must yield two members: IRP `SINHA A` and ACM `YATES R`.
-
-Reference:
-storage/app/private/flight_releases/CKS021823RJAA.pdf
-
-Confirmed follow-up reference: `storage/app/private/flight_releases/CKS021617RJAA.pdf`.
-
-### Outcome
-
-Fixed manifest name cleanup to remove the full trailing sequence of role placeholders and annotations. Previously, a trailing `HIGH MINS` annotation was removed alone, leaving `IRP MX LM ACM` in the name. High mins flags, crew identifiers, multiword names, and source evidence remain intact.
-
-The referenced PDF currently contains a different roster and no `SINHA` entry. A regression input reproduces the exact reported name contamination with placeholders followed by `HIGH MINS`.
-
-### Validation
-
-Focused crew parser and flight crew extractor tests pass: 20 tests, 97 assertions. The new parser regression failed with the reported contaminated name before the fix. Pint passes; the single final Larastan run passes with zero errors.
-
-Commit message: `fix: strip combined crew manifest annotations from names`
-
 ### Follow-up outcome
 
-The confirmed source has `72480 IRP SINHA A` followed by empty role placeholders and `ACM YATES R` without an employee number. Manifest boundaries now recognize a role followed by a name even when the employee number is absent, while excluding empty role placeholders and form headings. Yates is retained as a separate ACM with a null employee number in the extracted release. Duplicate manifests remain deduplicated, and source evidence is preserved.
+Updated the two stale captain badge assertions in `FlightReleasePageViewModelTest` from emerald-600 to emerald-700 for Maintenance Log and Flight Init. The focused test file passes through Sail: 66 tests, 661 assertions. Pint passes, and one focused Larastan run on the updated test passes with zero errors.
 
-The parser regression reproduced the exact combined name before the fix. Both focused crew test files pass with 22 tests and 103 assertions. Direct extraction of the confirmed PDF produces SURADKAR A (PIC, High mins), DATOO R (SIC/FO), SINHA A (IRP), and YATES R (ACM). Pint and the single final Larastan run pass with zero errors.
-
-Follow-up commit message: `fix: split crew manifest members without employee numbers`
-
-## [x] Completed: Flight plan: Refactor FlightPlanBriefTest
-- Split tests and organize into folders grouped by test focus area
-
-### Outcome
-
-Moved the 34 existing tests into 14 focused PHPUnit classes under `tests/Feature/Livewire/FlightPlanBrief`, grouped into `Lifecycle`, `Security`, `Workspace`, and individual `Tasks` panels. The original test file was moved into an abstract `FlightPlanBriefTestCase` that shares the existing parsed-release fixtures, Mockery helpers, and `RefreshDatabase` behavior. Test method names and assertions are preserved; imports and namespaces follow each file's focus.
-
-### Validation
-
-The original file and the reorganized directory both pass with 34 tests and 850 assertions. Pint passes after formatting; the single final Larastan run on the reorganized directory passes with zero errors. Run the focused group with `vendor/bin/sail artisan test --compact tests/Feature/Livewire/FlightPlanBrief` or select any individual test file within it.
-
-Commit message: `refactor: organize flight plan brief tests by focus area`
+Follow-up commit message: `fix: update crew member role badge color test`
