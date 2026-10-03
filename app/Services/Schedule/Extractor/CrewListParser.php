@@ -42,10 +42,11 @@ class CrewListParser
     {
         $line = (preg_split('/\R/', $line, 2) ?: [$line])[0];
         $rolePattern = CrewPosition::regexPattern();
-        $recordPattern = '/(?<!\d)(?<employee_id>\d{4,6})\h+'
+        $nameStart = '(?!(?:'.$rolePattern.'|ADDNTL|CAPT|HIGH|CIRCLE)\b)[A-Z][A-Z\'’\-]*';
+        $recordPattern = '/(?:(?<!\d)(?<employee_id>\d{4,6})\h+|(?<!\S))'
             .'(?<role>'.$rolePattern.')\h+'
-            .'(?<name>[A-Z][A-Z\'’\-]*(?:\h+[A-Z][A-Z\'’\-]*)+?)'
-            .'(?=\h+\d{4,6}\h+(?:'.$rolePattern.')\h+'
+            .'(?<name>'.$nameStart.'(?:\h+[A-Z][A-Z\'’\-]*)+?)'
+            .'(?=\h+(?:\d{4,6}\h+)?(?:'.$rolePattern.')\h+'.$nameStart.'\h+[A-Z]'
             .'|\h+(?:(?:IRP|MX|LM|ACM)\h+)+CIRCLE\h+THE\h+APPROPRIATE\h+STATUS\b'
             .'|\h*$)/u';
         $matches = [];
@@ -64,8 +65,8 @@ class CrewListParser
 
             return [
                 'name' => $name,
-                'employee_id' => $match['employee_id'],
-                'crew_id' => $match['employee_id'],
+                'employee_id' => $match['employee_id'] ?? '',
+                'crew_id' => $match['employee_id'] ?? '',
                 'base' => null,
                 'role' => $position->value,
                 'deadheading' => $position === CrewPosition::Deadhead,

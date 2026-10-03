@@ -230,4 +230,16 @@ class CrewListParserTest extends TestCase
         $this->assertSame(['IRP', 'ACM'], array_column($crew, 'role'));
         $this->assertSame([true, true], array_column($crew, 'high_mins'));
     }
+
+    public function test_it_splits_a_named_acm_without_an_employee_number_from_the_relief_pilot(): void
+    {
+        $crew = app(CrewListParser::class)->parseReleaseManifestLine(
+            '72480 IRP SINHA A IRP MX LM ACM YATES R ACM ACM CIRCLE THE APPROPRIATE STATUS',
+        );
+
+        $this->assertSame(['SINHA A', 'YATES R'], array_column($crew, 'name'));
+        $this->assertSame(['IRP', 'ACM'], array_column($crew, 'role'));
+        $this->assertSame(['72480', ''], array_column($crew, 'employee_id'));
+        $this->assertSame([false, false], array_column($crew, 'high_mins'));
+    }
 }

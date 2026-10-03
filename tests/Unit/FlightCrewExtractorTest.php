@@ -138,6 +138,18 @@ TEXT);
         $this->assertStringContainsString('SINHA A IRP MX LM ACM HIGH MINS', $result['source_fragments']['flight_crew']);
     }
 
+    public function test_it_extracts_a_named_acm_without_an_employee_number_and_deduplicates_the_manifest(): void
+    {
+        $manifest = '72480 IRP SINHA A IRP MX LM ACM YATES R ACM ACM CIRCLE THE APPROPRIATE STATUS';
+        $result = $this->extractor()->extract("121-91 FLIGHT RELEASE I.F.R\n{$manifest}\n{$manifest}\nFUEL SUMMARY");
+
+        $this->assertSame([
+            ['name' => 'SINHA A', 'role' => 'IRP', 'base' => null, 'employee_number' => '72480', 'high_mins' => false],
+            ['name' => 'YATES R', 'role' => 'ACM', 'base' => null, 'employee_number' => null, 'high_mins' => false],
+        ], $result['data']);
+        $this->assertStringContainsString('ACM YATES R', $result['source_fragments']['flight_crew']);
+    }
+
     private function extractor(): FlightCrewExtractor
     {
         return new FlightCrewExtractor(new CrewListParser);

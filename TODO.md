@@ -31,8 +31,12 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 ## [x] Completed: Bug: Crew name extract boundary
 Pilot name extracted as `SINHA A IRP MX LM ACM`, expected `SINHA A`
 
+Follow-up: `SINHA A IRP MX LM ACM YATES R` must yield two members: IRP `SINHA A` and ACM `YATES R`.
+
 Reference:
 storage/app/private/flight_releases/CKS021823RJAA.pdf
+
+Confirmed follow-up reference: `storage/app/private/flight_releases/CKS021617RJAA.pdf`.
 
 ### Outcome
 
@@ -45,6 +49,14 @@ The referenced PDF currently contains a different roster and no `SINHA` entry. A
 Focused crew parser and flight crew extractor tests pass: 20 tests, 97 assertions. The new parser regression failed with the reported contaminated name before the fix. Pint passes; the single final Larastan run passes with zero errors.
 
 Commit message: `fix: strip combined crew manifest annotations from names`
+
+### Follow-up outcome
+
+The confirmed source has `72480 IRP SINHA A` followed by empty role placeholders and `ACM YATES R` without an employee number. Manifest boundaries now recognize a role followed by a name even when the employee number is absent, while excluding empty role placeholders and form headings. Yates is retained as a separate ACM with a null employee number in the extracted release. Duplicate manifests remain deduplicated, and source evidence is preserved.
+
+The parser regression reproduced the exact combined name before the fix. Both focused crew test files pass with 22 tests and 103 assertions. Direct extraction of the confirmed PDF produces SURADKAR A (PIC, High mins), DATOO R (SIC/FO), SINHA A (IRP), and YATES R (ACM). Pint and the single final Larastan run pass with zero errors.
+
+Follow-up commit message: `fix: split crew manifest members without employee numbers`
 
 ## Mobile sticky flight header
 

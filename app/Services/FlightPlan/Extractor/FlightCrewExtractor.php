@@ -13,7 +13,7 @@ class FlightCrewExtractor
 
     /**
      * @return array{
-     *     data: list<array{name: string, role: ?string, base: ?string, employee_number: string, high_mins: bool}>,
+     *     data: list<array{name: string, role: ?string, base: ?string, employee_number: ?string, high_mins: bool}>,
      *     source_fragments: array<string, string>
      * }
      */
@@ -40,7 +40,7 @@ class FlightCrewExtractor
                     'name' => $member['name'],
                     'role' => $member['role'],
                     'base' => $member['base'],
-                    'employee_number' => $member['employee_id'],
+                    'employee_number' => $member['employee_id'] !== '' ? $member['employee_id'] : null,
                     'high_mins' => $member['high_mins'],
                 ];
                 $key = implode('|', [
