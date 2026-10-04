@@ -240,7 +240,9 @@ class ScheduleInputResolver
             $image->encode(new JpegEncoder(quality: 85))->save($optimizedPath);
 
             return $optimizedPath;
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            report($exception);
+
             return $sourcePath;
         }
     }

@@ -1,0 +1,289 @@
+{
+    "schema": 1,
+    "tool": "sloppy",
+    "generated_at": "2026-10-04T17:38:54+00:00",
+    "score": 95,
+    "total": 35,
+    "entries": [
+        {
+            "id": "70e0140be40c9297",
+            "rule": "SL102",
+            "file": "app/Actions/FlightPlan/BuildFlightPlanData.php",
+            "fingerprint": "BuildFlightPlanData",
+            "count": 1,
+            "message": "BuildFlightPlanData spans 193 lines with 11 methods (2 public), 30 statements, 9 injected dependencies and talks to 16 distinct collaborators."
+        },
+        {
+            "id": "9ef0c87636b1842f",
+            "rule": "SL102",
+            "file": "app/Actions/FlightPlan/BuildFlightPlanPageData.php",
+            "fingerprint": "BuildFlightPlanPageData",
+            "count": 1,
+            "message": "BuildFlightPlanPageData spans 248 lines with 16 methods (2 public), 59 statements, 9 injected dependencies and talks to 18 distinct collaborators."
+        },
+        {
+            "id": "4b3f0a5e37d535e5",
+            "rule": "SL102",
+            "file": "app/Services/FlightPlan/Extractor/ExtractFlightPlanData.php",
+            "fingerprint": "ExtractFlightPlanData",
+            "count": 1,
+            "message": "ExtractFlightPlanData spans 107 lines with 3 methods (3 public), 20 statements, 17 injected dependencies and talks to 19 distinct collaborators."
+        },
+        {
+            "id": "ae246d7e30a2577c",
+            "rule": "SL102",
+            "file": "app/View/Models/Extract/FlightCardViewModel.php",
+            "fingerprint": "FlightCardViewModel",
+            "count": 1,
+            "message": "FlightCardViewModel spans 499 lines with 62 methods (54 public), 108 statements, 1 injected dependencies and talks to 13 distinct collaborators."
+        },
+        {
+            "id": "3fa0597fced9243f",
+            "rule": "SL102",
+            "file": "app/View/Models/FlightReleasePageViewModel.php",
+            "fingerprint": "FlightReleasePageViewModel",
+            "count": 1,
+            "message": "FlightReleasePageViewModel spans 796 lines with 130 methods (129 public), 144 statements, 11 injected dependencies and talks to 13 distinct collaborators."
+        },
+        {
+            "id": "498fb1617fa6019e",
+            "rule": "SL107",
+            "file": "app/Actions/FlightPlan/BuildFlightPlanData.php",
+            "fingerprint": "BuildFlightPlanData::flightDate:InvalidFormatException",
+            "count": 1,
+            "message": "BuildFlightPlanData::flightDate() catches InvalidFormatException and returns without recording the failure."
+        },
+        {
+            "id": "16ccc089f53ce2b1",
+            "rule": "SL107",
+            "file": "app/Actions/FlightPlan/BuildFlightPlanPageData.php",
+            "fingerprint": "BuildFlightPlanPageData::flightDate:InvalidFormatException",
+            "count": 1,
+            "message": "BuildFlightPlanPageData::flightDate() catches InvalidFormatException and returns without recording the failure."
+        },
+        {
+            "id": "6fe8ec59a98011b5",
+            "rule": "SL107",
+            "file": "app/Actions/FlightPlan/BuildFlightPlanPageData.php",
+            "fingerprint": "BuildFlightPlanPageData::handle:InvalidArgumentException|ValueError",
+            "count": 1,
+            "message": "BuildFlightPlanPageData::handle() catches InvalidArgumentException|ValueError and returns without recording the failure."
+        },
+        {
+            "id": "22bd119b0adf85bd",
+            "rule": "SL107",
+            "file": "app/Actions/FlightPlan/BuildFlightPlanPageData.php",
+            "fingerprint": "BuildFlightPlanPageData::initialAltitude:InvalidArgumentException|ValueError",
+            "count": 1,
+            "message": "BuildFlightPlanPageData::initialAltitude() catches InvalidArgumentException|ValueError and returns without recording the failure."
+        },
+        {
+            "id": "c83a32c214bc56c0",
+            "rule": "SL107",
+            "file": "app/DTOs/DispatcherNoteData.php",
+            "fingerprint": "DispatcherNoteData::fromArray:InvalidArgumentException",
+            "count": 1,
+            "message": "DispatcherNoteData::fromArray() catches InvalidArgumentException and returns without recording the failure."
+        },
+        {
+            "id": "57d2b30c14c44433",
+            "rule": "SL107",
+            "file": "app/DTOs/SlotTimeData.php",
+            "fingerprint": "SlotTimeData::fromArray:InvalidArgumentException|InvalidFormatException",
+            "count": 1,
+            "message": "SlotTimeData::fromArray() catches InvalidArgumentException|InvalidFormatException and returns without recording the failure."
+        },
+        {
+            "id": "f1e1ddbd65ed52c3",
+            "rule": "SL107",
+            "file": "app/Services/Calendar/FlightDutyEvent.php",
+            "fingerprint": "FlightDutyEvent::parseUtc:InvalidFormatException",
+            "count": 1,
+            "message": "FlightDutyEvent::parseUtc() catches InvalidFormatException and returns without recording the failure."
+        },
+        {
+            "id": "b8dcbd41aac2f4de",
+            "rule": "SL107",
+            "file": "app/Services/FlightPlan/EtopsDataBuilder.php",
+            "fingerprint": "EtopsDataBuilder::airportCode:InvalidArgumentException",
+            "count": 1,
+            "message": "EtopsDataBuilder::airportCode() catches InvalidArgumentException and returns without recording the failure."
+        },
+        {
+            "id": "36f29cccde3183da",
+            "rule": "SL107",
+            "file": "app/Services/FlightPlan/EtopsDataBuilder.php",
+            "fingerprint": "EtopsDataBuilder::extractedCoordinate:InvalidArgumentException",
+            "count": 1,
+            "message": "EtopsDataBuilder::extractedCoordinate() catches InvalidArgumentException and returns without recording the failure."
+        },
+        {
+            "id": "c7fddef62870ffbd",
+            "rule": "SL107",
+            "file": "app/Services/FlightPlan/EtopsDataBuilder.php",
+            "fingerprint": "EtopsDataBuilder::fromExtracted:InvalidArgumentException",
+            "count": 1,
+            "message": "EtopsDataBuilder::fromExtracted() catches InvalidArgumentException and returns without recording the failure."
+        },
+        {
+            "id": "4ac8f9e48cfd6225",
+            "rule": "SL107",
+            "file": "app/Services/FlightPlan/EtopsDataBuilder.php",
+            "fingerprint": "EtopsDataBuilder::serializedCoordinate:InvalidArgumentException",
+            "count": 1,
+            "message": "EtopsDataBuilder::serializedCoordinate() catches InvalidArgumentException and returns without recording the failure."
+        },
+        {
+            "id": "ef98e80d8fa429b1",
+            "rule": "SL107",
+            "file": "app/Services/FlightPlan/EtopsDataBuilder.php",
+            "fingerprint": "EtopsDataBuilder::serializedDiversion:InvalidArgumentException",
+            "count": 1,
+            "message": "EtopsDataBuilder::serializedDiversion() catches InvalidArgumentException and returns without recording the failure."
+        },
+        {
+            "id": "a6e65e0e27f4379e",
+            "rule": "SL107",
+            "file": "app/Services/FlightPlan/EtopsDataBuilder.php",
+            "fingerprint": "EtopsDataBuilder::serializedEqualTimePoints:InvalidArgumentException",
+            "count": 1,
+            "message": "EtopsDataBuilder::serializedEqualTimePoints() catches InvalidArgumentException and returns without recording the failure."
+        },
+        {
+            "id": "bd8b749159b19715",
+            "rule": "SL107",
+            "file": "app/Services/FlightPlan/EtopsDataBuilder.php",
+            "fingerprint": "EtopsDataBuilder::serializedPoint:InvalidArgumentException",
+            "count": 1,
+            "message": "EtopsDataBuilder::serializedPoint() catches InvalidArgumentException and returns without recording the failure."
+        },
+        {
+            "id": "1fbb71ee5cc2b5ca",
+            "rule": "SL107",
+            "file": "app/Services/FlightPlan/EtopsDataBuilder.php",
+            "fingerprint": "EtopsDataBuilder::serializedScenarios:InvalidArgumentException",
+            "count": 1,
+            "message": "EtopsDataBuilder::serializedScenarios() catches InvalidArgumentException and returns without recording the failure."
+        },
+        {
+            "id": "fdaf69af0ff65715",
+            "rule": "SL107",
+            "file": "app/Services/FlightPlan/Extractor/FlightIdentityExtractor.php",
+            "fingerprint": "FlightIdentityExtractor::dateFromFormat:InvalidFormatException",
+            "count": 1,
+            "message": "FlightIdentityExtractor::dateFromFormat() catches InvalidFormatException and returns without recording the failure."
+        },
+        {
+            "id": "b2f73a54b3b9002b",
+            "rule": "SL107",
+            "file": "app/Services/FlightPlan/Extractor/FlightPlanTextExtractor.php",
+            "fingerprint": "FlightPlanTextExtractor::read:Throwable",
+            "count": 1,
+            "message": "FlightPlanTextExtractor::read() catches Throwable and does nothing at all."
+        },
+        {
+            "id": "14632a9b3e71b1f5",
+            "rule": "SL107",
+            "file": "app/Services/FlightPlan/Extractor/FlightPlanTextExtractor.php",
+            "fingerprint": "FlightPlanTextExtractor::recordTiming:Throwable",
+            "count": 1,
+            "message": "FlightPlanTextExtractor::recordTiming() catches Throwable and does nothing at all."
+        },
+        {
+            "id": "ded9cfd2fae6e116",
+            "rule": "SL107",
+            "file": "app/Services/FlightPlan/TakeoffLandingReportDataBuilder.php",
+            "fingerprint": "TakeoffLandingReportDataBuilder::weightQuantity:InvalidArgumentException",
+            "count": 1,
+            "message": "TakeoffLandingReportDataBuilder::weightQuantity() catches InvalidArgumentException and returns without recording the failure."
+        },
+        {
+            "id": "53776dd6391a6ce0",
+            "rule": "SL107",
+            "file": "app/Services/FlightPlan/WeatherDataBuilder.php",
+            "fingerprint": "WeatherDataBuilder::airportWeather:InvalidArgumentException",
+            "count": 1,
+            "message": "WeatherDataBuilder::airportWeather() catches InvalidArgumentException and returns without recording the failure."
+        },
+        {
+            "id": "388b641963aac4b9",
+            "rule": "SL107",
+            "file": "app/Services/FlightPlan/WeightBalanceDataBuilder.php",
+            "fingerprint": "WeightBalanceDataBuilder::weightQuantity:InvalidArgumentException",
+            "count": 1,
+            "message": "WeightBalanceDataBuilder::weightQuantity() catches InvalidArgumentException and returns without recording the failure."
+        },
+        {
+            "id": "bab2aab3115c7545",
+            "rule": "SL107",
+            "file": "app/Services/Schedule/AirportResolver.php",
+            "fingerprint": "AirportResolver::resolveMany:InvalidArgumentException",
+            "count": 1,
+            "message": "AirportResolver::resolveMany() catches InvalidArgumentException and returns without recording the failure."
+        },
+        {
+            "id": "773b0ae1d713d9d0",
+            "rule": "SL107",
+            "file": "app/Services/Schedule/Extractor/TripInformationParser.php",
+            "fingerprint": "TripInformationParser::parseDetailBlock:InvalidFormatException",
+            "count": 1,
+            "message": "TripInformationParser::parseDetailBlock() catches InvalidFormatException and returns without recording the failure."
+        },
+        {
+            "id": "e613075cd8aac800",
+            "rule": "SL107",
+            "file": "app/ValueObjects/FuelQuantity.php",
+            "fingerprint": "FuelQuantity::fromArray:InvalidArgumentException",
+            "count": 1,
+            "message": "FuelQuantity::fromArray() catches InvalidArgumentException and returns without recording the failure."
+        },
+        {
+            "id": "aacea0df3fceb982",
+            "rule": "SL107",
+            "file": "app/View/Presenters/FlightRelease/FlightInitPresenter.php",
+            "fingerprint": "FlightInitPresenter::etdUtc:InvalidFormatException",
+            "count": 1,
+            "message": "FlightInitPresenter::etdUtc() catches InvalidFormatException and returns without recording the failure."
+        },
+        {
+            "id": "2e35ea6cc144d208",
+            "rule": "SL107",
+            "file": "app/View/Presenters/FlightRelease/SchedulePresenter.php",
+            "fingerprint": "SchedulePresenter::parseUtc:InvalidFormatException",
+            "count": 1,
+            "message": "SchedulePresenter::parseUtc() catches InvalidFormatException and returns without recording the failure."
+        },
+        {
+            "id": "aba16a047e5dc257",
+            "rule": "SL207",
+            "file": "app/Actions/FlightPlan/BuildFlightPlanData.php",
+            "fingerprint": "BuildFlightPlanData",
+            "count": 1,
+            "message": "BuildFlightPlanData injects 8 dependencies, past the limit of 7 for a service class."
+        },
+        {
+            "id": "1def26ce1f1b4c58",
+            "rule": "SL207",
+            "file": "app/Actions/FlightPlan/BuildFlightPlanPageData.php",
+            "fingerprint": "BuildFlightPlanPageData",
+            "count": 1,
+            "message": "BuildFlightPlanPageData injects 8 dependencies, past the limit of 7 for a service class."
+        },
+        {
+            "id": "50489720b462c0ee",
+            "rule": "SL207",
+            "file": "app/Services/FlightPlan/Extractor/ExtractFlightPlanData.php",
+            "fingerprint": "ExtractFlightPlanData",
+            "count": 1,
+            "message": "ExtractFlightPlanData injects 12 dependencies, past the limit of 7 for a service class."
+        },
+        {
+            "id": "38b99a1fdfad85d8",
+            "rule": "SL209",
+            "file": "app/Models/User.php",
+            "fingerprint": "User",
+            "count": 1,
+            "message": "Model User does more than persist a row: 1 notification or queue dispatch(es)."
+        }
+    ]
+}

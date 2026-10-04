@@ -6,8 +6,8 @@ use App\DTOs\SlotTimeData;
 use App\Enums\SlotDirection;
 use App\View\Models\FlightPlanPageData;
 use Carbon\CarbonImmutable;
+use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Support\Number;
-use Throwable;
 
 final readonly class SchedulePresenter
 {
@@ -114,46 +114,10 @@ final readonly class SchedulePresenter
         };
         $comparisonHeading = $slot->direction->comparisonHeading();
         $plannedTimeLabel = $slot->direction->plannedTimeLabel();
-        $plannedTime = null;
-        $comparison = null;
-        $plannedPosition = null;
-        $buffer = null;
-        $alert = null;
-        $alertDetail = null;
         $bufferBasis = $plannedTimeLabel === null
             ? 'A confirmed slot direction is required to calculate the buffer.'
             : 'Planned '.$plannedTimeLabel.' minus the earliest '.$slot->direction->value.' window time (UTC). Negative values are before the window.';
-
-        if ($this->formatUtcPart($plannedValue, 'c') !== null && $plannedTimeLabel !== null && $tolerance !== null && $tolerance >= 0) {
-            try {
-                $plannedInstant = CarbonImmutable::parse($plannedValue)->utc();
-                $offsetMinutes = $slot->instantUtc->diffInMinutes($plannedInstant, false);
-                $windowStart = $slot->instantUtc->subMinutes($tolerance);
-                $windowEnd = $slot->instantUtc->addMinutes($tolerance);
-                $minutesFromStart = $windowStart->diffInMinutes($plannedInstant, false);
-                $minutesUntilEnd = $plannedInstant->diffInMinutes($windowEnd, false);
-                $buffer = Number::format($minutesFromStart, maxPrecision: 2, locale: 'en').' min';
-                $plannedTime = $plannedInstant->format('M j, Hi\Z').' UTC';
-                $comparison = abs($offsetMinutes) <= $tolerance
-                    ? 'Planned '.$plannedTimeLabel.' is within the confirmed window'
-                    : 'Planned '.$plannedTimeLabel.' is outside the confirmed window';
-                $plannedPosition = $tolerance === 0
-                    ? ($offsetMinutes === 0.0 ? 50.0 : ($offsetMinutes < 0 ? 0.0 : 100.0))
-                    : max(0, min(100, 50 + (($offsetMinutes / ($tolerance * 4)) * 100)));
-
-                if ($plannedInstant->equalTo($windowStart)) {
-                    $alert = 'Do not depart early';
-                    $alertDetail = 'Planned '.$plannedTimeLabel.' equals the earliest approved '.$slot->direction->value.' time (UTC).';
-                } elseif ($minutesFromStart < 0 || $minutesUntilEnd < 0) {
-                    $alert = 'Planned time outside slot window';
-                    $alertDetail = 'Planned '.$plannedTimeLabel.' is outside the confirmed UTC window. Review the approved slot.';
-                } elseif (min($minutesFromStart, $minutesUntilEnd) <= self::CLOSE_WINDOW_MINUTES) {
-                    $alert = 'Close UTC slot window';
-                    $alertDetail = 'Planned '.$plannedTimeLabel.' is within '.self::CLOSE_WINDOW_MINUTES.' min of a confirmed window boundary.';
-                }
-            } catch (Throwable) {
-            }
-        }
+        $comparison = $this->slotComparison($slot, $this->parseUtc($plannedValue), $plannedTimeLabel);
 
         return [
             'direction' => $slot->direction->label(),
@@ -169,25 +133,86 @@ final readonly class SchedulePresenter
                 $slot->instantUtc->addMinutes($tolerance)->format('M j, Hi\Z'),
             ),
             'comparisonHeading' => $comparisonHeading,
-            'plannedTime' => $plannedTime,
-            'comparison' => $comparison,
-            'plannedPosition' => $plannedPosition,
-            'buffer' => $buffer,
+            'plannedTime' => $comparison['plannedTime'],
+            'comparison' => $comparison['comparison'],
+            'plannedPosition' => $comparison['plannedPosition'],
+            'buffer' => $comparison['buffer'],
             'bufferBasis' => $bufferBasis,
-            'alert' => $alert,
-            'alertDetail' => $alertDetail,
+            'alert' => $comparison['alert'],
+            'alertDetail' => $comparison['alertDetail'],
         ];
     }
 
+    /** @return array{plannedTime: ?string, comparison: ?string, plannedPosition: ?float, buffer: ?string, alert: ?string, alertDetail: ?string} */
+    private function slotComparison(SlotTimeData $slot, ?CarbonImmutable $plannedInstant, ?string $plannedTimeLabel): array
+    {
+        $tolerance = $slot->toleranceMinutes;
+
+        if ($plannedInstant === null || $plannedTimeLabel === null || $tolerance === null || $tolerance < 0) {
+            return ['plannedTime' => null, 'comparison' => null, 'plannedPosition' => null, 'buffer' => null, 'alert' => null, 'alertDetail' => null];
+        }
+
+        $offsetMinutes = $slot->instantUtc->diffInMinutes($plannedInstant, false);
+        $windowStart = $slot->instantUtc->subMinutes($tolerance);
+        $windowEnd = $slot->instantUtc->addMinutes($tolerance);
+        $minutesFromStart = $windowStart->diffInMinutes($plannedInstant, false);
+        $minutesUntilEnd = $plannedInstant->diffInMinutes($windowEnd, false);
+        $alert = $this->slotAlert($slot, $plannedTimeLabel, $plannedInstant->equalTo($windowStart), $minutesFromStart, $minutesUntilEnd);
+
+        return [
+            'plannedTime' => $plannedInstant->format('M j, Hi\Z').' UTC',
+            'comparison' => abs($offsetMinutes) <= $tolerance
+                ? 'Planned '.$plannedTimeLabel.' is within the confirmed window'
+                : 'Planned '.$plannedTimeLabel.' is outside the confirmed window',
+            'plannedPosition' => $tolerance === 0
+                ? ($offsetMinutes === 0.0 ? 50.0 : ($offsetMinutes < 0 ? 0.0 : 100.0))
+                : max(0, min(100, 50 + (($offsetMinutes / ($tolerance * 4)) * 100))),
+            'buffer' => Number::format($minutesFromStart, maxPrecision: 2, locale: 'en').' min',
+            ...$alert,
+        ];
+    }
+
+    /** @return array{alert: ?string, alertDetail: ?string} */
+    private function slotAlert(SlotTimeData $slot, string $plannedTimeLabel, bool $atWindowStart, float $minutesFromStart, float $minutesUntilEnd): array
+    {
+        if ($atWindowStart) {
+            return [
+                'alert' => 'Do not depart early',
+                'alertDetail' => 'Planned '.$plannedTimeLabel.' equals the earliest approved '.$slot->direction->value.' time (UTC).',
+            ];
+        }
+
+        if ($minutesFromStart < 0 || $minutesUntilEnd < 0) {
+            return [
+                'alert' => 'Planned time outside slot window',
+                'alertDetail' => 'Planned '.$plannedTimeLabel.' is outside the confirmed UTC window. Review the approved slot.',
+            ];
+        }
+
+        if (min($minutesFromStart, $minutesUntilEnd) <= self::CLOSE_WINDOW_MINUTES) {
+            return [
+                'alert' => 'Close UTC slot window',
+                'alertDetail' => 'Planned '.$plannedTimeLabel.' is within '.self::CLOSE_WINDOW_MINUTES.' min of a confirmed window boundary.',
+            ];
+        }
+
+        return ['alert' => null, 'alertDetail' => null];
+    }
+
     private function formatUtcPart(?string $value, string $format): ?string
+    {
+        return $this->parseUtc($value)?->format($format);
+    }
+
+    private function parseUtc(?string $value): ?CarbonImmutable
     {
         if ($value === null || preg_match('/(?:Z|\+00:00)\z/', $value) !== 1) {
             return null;
         }
 
         try {
-            return CarbonImmutable::parse($value)->utc()->format($format);
-        } catch (Throwable) {
+            return CarbonImmutable::parse($value)->utc();
+        } catch (InvalidFormatException) {
             return null;
         }
     }

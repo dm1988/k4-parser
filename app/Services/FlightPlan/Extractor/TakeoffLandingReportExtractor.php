@@ -7,6 +7,8 @@ use Illuminate\Support\Str;
 
 class TakeoffLandingReportExtractor
 {
+    public function __construct(private readonly TakeoffLandingReportSections $reportSections = new TakeoffLandingReportSections) {}
+
     private const SOURCE_TYPE = 'takeoff_landing_report';
 
     private const WEIGHT_MULTIPLIER = 100;
@@ -14,7 +16,7 @@ class TakeoffLandingReportExtractor
     /** @return array{data: array<string, mixed>, source_fragments: array<string, string>} */
     public function extract(string $text): array
     {
-        $sections = $this->sections($text);
+        $sections = $this->reportSections->extract($text);
         $results = [];
         $sourceFragment = null;
 
@@ -41,26 +43,6 @@ class TakeoffLandingReportExtractor
                 'takeoff_landing_report' => $sourceFragment,
             ],
         ];
-    }
-
-    /** @return list<string> */
-    private function sections(string $text): array
-    {
-        $matches = [];
-
-        if (preg_match_all('/\bTAKEOFF\h+AND\h+LANDING\h+REPORT\b/i', $text, $matches, PREG_OFFSET_CAPTURE) === false) {
-            return [];
-        }
-
-        $sections = [];
-
-        foreach ($matches[0] as $index => $match) {
-            $start = $match[1];
-            $end = $matches[0][$index + 1][1] ?? strlen($text);
-            $sections[] = substr($text, $start, $end - $start);
-        }
-
-        return $sections;
     }
 
     /** @return array<string, mixed>|null */

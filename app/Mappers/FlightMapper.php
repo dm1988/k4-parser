@@ -6,6 +6,7 @@ use App\DTOs\Flight;
 use App\DTOs\ScheduleData;
 use App\Enums\MetadataKey;
 use App\Enums\ScheduleEventType;
+use App\ValueObjects\StringList;
 use Carbon\CarbonImmutable;
 
 final class FlightMapper
@@ -175,21 +176,7 @@ final class FlightMapper
      */
     private function stringList(mixed $values): array
     {
-        if (! is_array($values)) {
-            return [];
-        }
-
-        $normalized = [];
-
-        foreach ($values as $value) {
-            $value = trim((string) $value);
-
-            if ($value !== '') {
-                $normalized[] = $value;
-            }
-        }
-
-        return $normalized;
+        return (new StringList($values))->values;
     }
 
     private function normalizeTailNumber(?string $tailNumber): ?string

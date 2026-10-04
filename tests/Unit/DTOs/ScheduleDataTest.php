@@ -11,6 +11,21 @@ use Tests\TestCase;
 
 class ScheduleDataTest extends TestCase
 {
+    public function test_it_rejects_invalid_slot_values_and_keeps_valid_slots(): void
+    {
+        $valid = ['direction' => 'arrival', 'airport' => 'KLAX', 'instantUtc' => '2026-08-21T16:00:00Z', 'sourceTime' => '1600Z', 'toleranceMinutes' => 0];
+
+        $schedule = ScheduleData::fromArray(['slots' => [
+            [...$valid, 'airport' => '?'],
+            [...$valid, 'instantUtc' => 'not a date'],
+            $valid,
+        ]]);
+
+        $this->assertCount(1, $schedule->slots);
+        $this->assertSame('KLAX', $schedule->slots[0]->airport->value);
+        $this->assertSame(0, $schedule->slots[0]->toleranceMinutes);
+    }
+
     public function test_it_keeps_utc_and_local_operational_times_explicit(): void
     {
         $schedule = new ScheduleData(

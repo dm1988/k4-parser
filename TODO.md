@@ -28,58 +28,51 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Sloppy static findings
-./vendor/bin/sloppy
-
-## [x] Completed: Flight plan: Weight & Balance: Progress bar readability
+## [x] Completed: Sloppy static findings
 
 ### Goal
 
-Adopt the Chrome DevTools prototype's clean hierarchy and improve colors across Weight & Balance bars, overview alerts, and badges. Preserve all existing classification thresholds, rounding, labels, alert counts, and severity ordering. No animation or transitions. Complete the authorized Tailwind 4 migration to resolve the Vite/PostCSS build failure.
+Review Sloppy's findings, fix actionable error handling and duplication, and reduce parsing/formatting complexity while preserving operational values and existing presentation contracts.
 
-### UI Overhaul: Weight and Balance Progress Bars
+### Current implementation
 
-Implemented the preferred prototype: external labels, a prominent monospaced planned value with its unit, an uninterrupted 8px (`h-2`) rounded native progress bar, and the structural limit with its unit below. Status wording remains visible so color is not the sole cue. Mobile retains the preferred title/percentage layout. At desktop widths (`xl`), cards with content widths up to `28rem` move the percentage directly above the bar; wider cards retain the right-aligned header percentage. CSS displays only one percentage at a time.
+Shared fuel deserialization now lives in `FuelQuantity::fromArray()`; DTOs and mappers reuse the immutable `StringList` normalizer. Flight Init and Takeoff/Landing extraction reuse `TakeoffLandingReportSections`. Calendar serialization delegates description formatting to `IcsDescriptionFormatter`. Trip parsing delegates roster sections/summary to `TripInformationSections` and duty/flight matching to `TripDutyFlightContext`.
 
-### Gemini enum review outcome
+### Problem
 
-Retained the proposed emerald / sky / amber / rose palette, tinted badges, and subtle colored accents, with darker light-mode shades for readable text and meaningful bar graphics:
+The original scan reported 62 findings: 26 high, 13 medium, and 23 low. It found silent operational fallbacks, repeated normalization, mixed parser responsibilities, and comments restating code.
 
-| Existing state | Existing rounded utilization | Text: light / dark | Native fill: light / dark |
-| --- | --- | --- | --- |
-| Safe (normal) | Below 90% | emerald-700 / emerald-400 | emerald-600 / emerald-400 |
-| Heavy | 90% to below 98% | sky-700 / sky-400 | sky-600 / sky-400 |
-| Caution | 98% through 100% | amber-700 / amber-400 | amber-700 / amber-400 |
-| Exceeded (over-limit warning) | Above 100% | rose-700 / rose-400 | rose-600 / rose-400 |
+### Implementation outcome
 
-Gemini's proposed thresholds were rejected; enum cases, labels, operational-alert behavior and severity ordering remain unchanged. Muted limit text uses slate-600/slate-400. Text and badges meet [4.5:1 contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html); native fills meet [3:1](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html) against their tracks. Overview cards retain Aviation Blue structure with subtle slate perimeter borders and state-colored left accents/tints.
+- Report airline database failures and image-preprocessing failures while preserving bundled-airline/original-image fallbacks. Optional schedule DTO export failures are reported and display a warning while retaining parsed JSON output.
+- Narrow date/value parsing catches to expected validation exceptions so unrelated runtime errors propagate. Document why invalid ETOPS entries are rejected independently and why optional diagnostics must not interrupt extraction.
+- Consolidate all nine duplicate-logic findings and remove all five narrative-comment findings. Separate calendar descriptions from serialization and roster structure/context from event parsing.
+- Split all five flagged long methods into their distinct jobs: PDF page reading, individual slot extraction, slot comparison/alerts, flight-detail construction, and pasted-text processing. Preserve PDF caching/progress/timing, source evidence, slot order/deduplication, missing-data behavior, calendar formatting, and slot-window thresholds.
+- Review the remaining findings individually. No dependency packages or Sloppy thresholds/rules were changed. The optional [agent-skills repository](https://github.com/asyrafhussin/agent-skills) was not needed; the installed Laravel best-practices skill covered this work.
 
-### Implementation outcome and validation
+### Final scan and retained findings
 
-- Updated the shared Blade component, view-model percentage label, enum presentation classes, and theme-aware native WebKit/Firefox fills. Removed overlay text and Heavy's hard-coded blue override; badges now use independent tinted backgrounds. Added no animation or transitions.
-- Preserved one-decimal rounding before classification, existing thresholds/labels/severity/alert counts, progress clamping at 100% with actual exceeded percentages in visible and accessible text, units, and unavailable/conflicting source states.
-- Sail focused PHPUnit checks passed: 34 tests, 443 assertions across component rendering, palette contrast, field calculations/boundaries, Livewire Weight & Balance, and affected overview assertions. Pint passed; final targeted Larastan passed with zero errors.
-- Completed the authorized Tailwind 4 migration using the installed Vite plugin. Replaced legacy PostCSS/JavaScript configuration with CSS imports, explicit Blade/PHP/JavaScript source paths, the forms plugin, Figtree font, and manual `.dark` mode. Kept the reviewed slate/status palette and existing shadow, radius, blur, border, cursor and placeholder defaults. Migrated focus classes to `outline-hidden` to retain forced-colors accessibility. Updated the project version in AGENTS.md.
-- Production `sail npm run build` passed. Eight focused Node tests passed, including actual Vite compilation and existing theme behavior. The new build regression covers PHP enum classes, dark badges, forms, forced-colors focus outlines, native fills and the correctly prefixed dark WebKit track selector.
-- Chrome checks passed in eight light/dark/mobile/desktop cases, including a viewport equivalent to 200% zoom reflow and doubled root font size: one visible percentage, correct placement, no clipping/overflow, preserved forms/focus styles and no bar transitions. Minimum measured text/badge/fill contrast: 5.02:1 / 4.84:1 / 3.44:1. Desktop screenshots verified native fills and dark tracks. Firefox runtime checks were unavailable locally.
-- Main readability implementation, Tailwind 4 migration, and both follow-ups below are complete.
+`vendor/bin/sail php vendor/bin/sloppy scan --all --no-baseline --format=json` reports **35 findings: 5 high, 4 medium, 26 low**, with a score of **95** (originally 81). There are zero duplicate-logic, narrative-comment, and long-method findings. All high-severity swallowed-exception warnings are cleared.
 
-Implementation commit message: `refactor: migrate to Tailwind 4 and improve weight progress readability`
+| Remaining rule | Count | Review decision |
+| --- | ---: | --- |
+| SL107 Swallowed Exception | 26 low | Narrow parse-or-reject helpers deliberately return null or omit invalid entries; optional PDF logging/Debugbar failures must not break extraction. Missing operational data remains unavailable. |
+| SL102 God Class | 5 high | The three flight-plan extraction/building classes coordinate one workflow across typed sections; the two view models expose existing presentation APIs and delegate to presenters. Retain these boundaries rather than add dependency bags or break template contracts solely to reduce a metric. |
+| SL207 Excessive Service Dependencies | 3 medium | The same extraction/building orchestrators legitimately coordinate specialized section extractors/builders. Retain explicit constructor injection. |
+| SL209 Model Doing Too Much | 1 medium | `User::sendEmailVerificationNotification()` is Laravel's verification-notification customization hook; retain its existing OTP behavior. |
 
-### [x] Completed follow-up: `Estimated landing weight` card height
+A `.sloppy-baseline.json` containing these 35 findings was added concurrently during this task and preserved. The normal scan passes with **zero new findings**; the unbaselined report above records actual remaining findings rather than presenting them as eliminated.
 
-Single-field groups align at the top at `xl`, so Arrival and its landing card size to their content instead of stretching to the tallest neighboring column. The landing value, percentage, bar and limit stay together without a fixed height cap. Multi-field column sizing and the mobile stacking behavior are preserved.
+### Validation outcome
 
-### [x] Completed follow-up: Remove `Planned` from each W&B card
+- Focused Sail integration across 24 affected PHPUnit files: 225 tests, 222 passed, two skipped because private PDF fixtures are unavailable, and one private ETOPS OCR test exceeded its existing 30-second Tesseract timeout. That test passed in isolation (one test, two assertions). The final updated TripInformationParser file also passed all 18 tests, including the added regression proving absent local-time keys are omitted.
+- Coverage includes fuel unit aliases/zero/invalid amounts, list normalization, repeated report headings, invalid dates/slots, database and OCR fallback reporting, CLI warning/output, roster year rollover, matched/unmatched duty context, calendar exports, builders, and Livewire schedule extraction.
+- Pint passes after the PHP changes.
+- Larastan ran once over the configured application paths. It reported one PHPDoc error in the extracted duty-context helper: local-time keys were declared required although the method omits unavailable times. Corrected the annotation to optional string keys and verified the behavior with the focused regression. Larastan was not rerun, honoring the one-run limit.
+- `git diff HEAD --check` passes. Unrelated TODO edits and the concurrently staged work were preserved.
 
-Removed the repeated `Planned` label and its value's extra top margin from the shared field component. The section's planned-weight explanation remains; field headings, values, units, limits, statuses and accessibility data are preserved.
+Commit message: `refactor: address actionable Sloppy static findings`
 
-Follow-up validation: Sail's nine focused component/Livewire tests passed (201 assertions), Pint passed, and the production Vite build passed. Six Chrome geometry checks passed across desktop/mobile/light/dark and enlarged-text/reflow cases: compact landing card, unchanged neighboring column sizing for the height fix, no clipping/overflow, all seven fields retained and zero repeated `Planned` labels.
-
-Follow-up commit message: `fix: compact weight cards and remove redundant planned labels`
-
-References:
-resources/views/components/flight-release/weight-balance-field.blade.php
 
 ## Paused: Flight release: 24 hour time limit
 
@@ -102,9 +95,9 @@ An old cached result remains readable until the user replaces or manually clears
 
 1. Add an immutable extraction timestamp and an indexed expiry timestamp to `flight_plan_results`. Set both when a successful extraction is saved, including when the user's existing row is replaced. Compute expiry as extraction time plus 24 hours, independent of the flight schedule. Compare instants in UTC and define expiry at the deadline (`now >= expires_at`).
 2. Make `FlightPlanResultStore::get()` and `latest()` exclude expired rows and delete a matching expired row when encountered. Keep owner and result-key checks in place. The brief should return to its upload state after expiry; the Fuel Score URL should return 404. Clear any stale Livewire result key or selected task when a rendered result expires so the UI does not retain a link to it.
-3. Add a scheduled cleanup command that deletes expired rows even if their owners never return. Use the same expiry rule for read checks and cleanup; make cleanup safe to repeat and scope deletion to rows whose stored deadline has passed. Define how existing rows receive an expiry during migration so deployment cannot make old releases persist indefinitely or expose them past the new limit.
-4. Inventory cache entries belonging specifically to the saved result and invalidate those with the result. Preserve the independent shared PDF-text cache and its existing seven-day lifetime, along with airport and schedule caches. No source-document or other application data cleanup is part of this task.
-5. Document the 24-hour cached-result lifetime in the upload/result UI with a concise UTC-aware message, including that re-upload is needed after expiry.
+
+3. Inventory cache entries belonging specifically to the saved result and invalidate those with the result. Preserve the independent shared PDF-text cache and its existing seven-day lifetime, along with airport and schedule caches. No source-document or other application data cleanup is part of this task.
+4. Document the 24-hour cached-result lifetime in the upload/result UI with a concise UTC-aware message, including that re-upload is needed after expiry.
 
 ### Acceptance criteria
 
@@ -253,16 +246,6 @@ Commit message for this plan: `docs: plan aircraft-specific flight plan reserve 
 
 -------------------------------------------------------
 
-## [x] Completed: feat: Overview cards Spatial Organization (Grid & Layout)
-## [x] Completed: Refactor welcome page for use with new features
-## [x] Complete: Lat / Long cut off, some waypoints prefixed with `-`
-## [x] Complete: Ramp fuel stat card
-## [x] Completed: Move B44 badge to Ramp Fuel card
-## [x] Completed: Extract dispatcher notes
-## Completed: Mobile flight plan hamburger menu
-## [x] Completed: Flight plan task routes
-## [x] Completed: Bug: Crew name extract boundary
-## [x] Completed: Flight plan: Refactor FlightPlanBriefTest
 ## [x] Completed: Flight plan: Crew list: WCAG 2.2 AA compliance
 ## [x] Completed: Flight plan: header refactor
 Refactor the Flight Plan Brief header and action controls in our Livewire component and Blade view:
@@ -307,3 +290,53 @@ Commit message: `refactor: integrate flight plan header actions and clear result
 Remove `Flight plan brief ready. Upload and extraction completed successfully.`
 
 resources/views/livewire/flight-plan-brief.blade.php
+
+## [x] Completed: Flight plan: Weight & Balance: Progress bar readability
+
+### Goal
+
+Adopt the Chrome DevTools prototype's clean hierarchy and improve colors across Weight & Balance bars, overview alerts, and badges. Preserve all existing classification thresholds, rounding, labels, alert counts, and severity ordering. No animation or transitions. Complete the authorized Tailwind 4 migration to resolve the Vite/PostCSS build failure.
+
+### UI Overhaul: Weight and Balance Progress Bars
+
+Implemented the preferred prototype: external labels, a prominent monospaced planned value with its unit, an uninterrupted 8px (`h-2`) rounded native progress bar, and the structural limit with its unit below. Status wording remains visible so color is not the sole cue. Mobile retains the preferred title/percentage layout. At desktop widths (`xl`), cards with content widths up to `28rem` move the percentage directly above the bar; wider cards retain the right-aligned header percentage. CSS displays only one percentage at a time.
+
+### Gemini enum review outcome
+
+Retained the proposed emerald / sky / amber / rose palette, tinted badges, and subtle colored accents, with darker light-mode shades for readable text and meaningful bar graphics:
+
+| Existing state | Existing rounded utilization | Text: light / dark | Native fill: light / dark |
+| --- | --- | --- | --- |
+| Safe (normal) | Below 90% | emerald-700 / emerald-400 | emerald-600 / emerald-400 |
+| Heavy | 90% to below 98% | sky-700 / sky-400 | sky-600 / sky-400 |
+| Caution | 98% through 100% | amber-700 / amber-400 | amber-700 / amber-400 |
+| Exceeded (over-limit warning) | Above 100% | rose-700 / rose-400 | rose-600 / rose-400 |
+
+Gemini's proposed thresholds were rejected; enum cases, labels, operational-alert behavior and severity ordering remain unchanged. Muted limit text uses slate-600/slate-400. Text and badges meet [4.5:1 contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html); native fills meet [3:1](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html) against their tracks. Overview cards retain Aviation Blue structure with subtle slate perimeter borders and state-colored left accents/tints.
+
+### Implementation outcome and validation
+
+- Updated the shared Blade component, view-model percentage label, enum presentation classes, and theme-aware native WebKit/Firefox fills. Removed overlay text and Heavy's hard-coded blue override; badges now use independent tinted backgrounds. Added no animation or transitions.
+- Preserved one-decimal rounding before classification, existing thresholds/labels/severity/alert counts, progress clamping at 100% with actual exceeded percentages in visible and accessible text, units, and unavailable/conflicting source states.
+- Sail focused PHPUnit checks passed: 34 tests, 443 assertions across component rendering, palette contrast, field calculations/boundaries, Livewire Weight & Balance, and affected overview assertions. Pint passed; final targeted Larastan passed with zero errors.
+- Completed the authorized Tailwind 4 migration using the installed Vite plugin. Replaced legacy PostCSS/JavaScript configuration with CSS imports, explicit Blade/PHP/JavaScript source paths, the forms plugin, Figtree font, and manual `.dark` mode. Kept the reviewed slate/status palette and existing shadow, radius, blur, border, cursor and placeholder defaults. Migrated focus classes to `outline-hidden` to retain forced-colors accessibility. Updated the project version in AGENTS.md.
+- Production `sail npm run build` passed. Eight focused Node tests passed, including actual Vite compilation and existing theme behavior. The new build regression covers PHP enum classes, dark badges, forms, forced-colors focus outlines, native fills and the correctly prefixed dark WebKit track selector.
+- Chrome checks passed in eight light/dark/mobile/desktop cases, including a viewport equivalent to 200% zoom reflow and doubled root font size: one visible percentage, correct placement, no clipping/overflow, preserved forms/focus styles and no bar transitions. Minimum measured text/badge/fill contrast: 5.02:1 / 4.84:1 / 3.44:1. Desktop screenshots verified native fills and dark tracks. Firefox runtime checks were unavailable locally.
+- Main readability implementation, Tailwind 4 migration, and both follow-ups below are complete.
+
+Implementation commit message: `refactor: migrate to Tailwind 4 and improve weight progress readability`
+
+### [x] Completed follow-up: `Estimated landing weight` card height
+
+Single-field groups align at the top at `xl`, so Arrival and its landing card size to their content instead of stretching to the tallest neighboring column. The landing value, percentage, bar and limit stay together without a fixed height cap. Multi-field column sizing and the mobile stacking behavior are preserved.
+
+### [x] Completed follow-up: Remove `Planned` from each W&B card
+
+Removed the repeated `Planned` label and its value's extra top margin from the shared field component. The section's planned-weight explanation remains; field headings, values, units, limits, statuses and accessibility data are preserved.
+
+Follow-up validation: Sail's nine focused component/Livewire tests passed (201 assertions), Pint passed, and the production Vite build passed. Six Chrome geometry checks passed across desktop/mobile/light/dark and enlarged-text/reflow cases: compact landing card, unchanged neighboring column sizing for the height fix, no clipping/overflow, all seven fields retained and zero repeated `Planned` labels.
+
+Follow-up commit message: `fix: compact weight cards and remove redundant planned labels`
+
+References:
+resources/views/components/flight-release/weight-balance-field.blade.php

@@ -2,6 +2,8 @@
 
 namespace App\DTOs;
 
+use App\ValueObjects\StringList;
+
 final readonly class ScheduleData
 {
     public function __construct(
@@ -86,21 +88,7 @@ final readonly class ScheduleData
     /** @return list<string> */
     private static function stringList(mixed $values): array
     {
-        if (! is_array($values)) {
-            return [];
-        }
-
-        $normalized = [];
-
-        foreach ($values as $value) {
-            $value = trim((string) $value);
-
-            if ($value !== '') {
-                $normalized[] = $value;
-            }
-        }
-
-        return $normalized;
+        return (new StringList($values))->values;
     }
 
     /** @return list<SlotTimeData> */

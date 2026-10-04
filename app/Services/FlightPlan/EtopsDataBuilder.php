@@ -57,6 +57,7 @@ class EtopsDataBuilder
                 );
                 $scenarios[] = new EtopsScenarioData($scenario, $label);
             } catch (InvalidArgumentException) {
+                // Malformed source entries are rejected individually so valid ETOPS data remains available.
                 $sequence++;
 
                 continue;
@@ -190,6 +191,7 @@ class EtopsDataBuilder
                     secondAlternate: $this->airportCode($value['secondAlternate'] ?? null),
                 );
             } catch (InvalidArgumentException) {
+                // Invalid saved points are omitted rather than inventing an operational coordinate.
                 continue;
             }
         }
@@ -256,6 +258,7 @@ class EtopsDataBuilder
                     remarks: $this->nullableString($value['remarks'] ?? null),
                 );
             } catch (InvalidArgumentException) {
+                // Invalid saved scenarios are omitted while preserving independently valid scenarios.
                 continue;
             }
         }
@@ -335,22 +338,7 @@ class EtopsDataBuilder
 
     private function fuelQuantity(mixed $value): ?FuelQuantity
     {
-        if (! is_array($value)) {
-            return null;
-        }
-
-        $amount = $value['amount'] ?? null;
-        $unit = $value['unit'] ?? null;
-
-        if ((! is_int($amount) && ! is_float($amount)) || ! is_string($unit)) {
-            return null;
-        }
-
-        try {
-            return new FuelQuantity($amount, $unit);
-        } catch (InvalidArgumentException) {
-            return null;
-        }
+        return FuelQuantity::fromArray($value);
     }
 
     private function nonNegativeInteger(mixed $value): ?int

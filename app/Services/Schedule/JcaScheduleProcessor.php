@@ -143,20 +143,7 @@ class JcaScheduleProcessor
     private function processSources(array $files, ?string $text): array
     {
         if ($files === []) {
-            try {
-                $source = $this->scheduleInputResolver->resolve(null, $text);
-            } catch (Throwable $throwable) {
-                throw ExtractSourceResolutionException::fromThrowable($throwable, false);
-            }
-
-            return [
-                'sources' => [$source],
-                'parsed_results' => [$this->scheduleFormatParser->parse(
-                    (string) $source['raw_text'],
-                    $source['document_type'] ?? null,
-                )],
-                'failed_files' => [],
-            ];
+            return $this->processTextSource($text);
         }
 
         $allowPartialResults = count($files) > 1;
@@ -230,6 +217,25 @@ class JcaScheduleProcessor
             'sources' => $sources,
             'parsed_results' => $parsedResults,
             'failed_files' => $failedFiles,
+        ];
+    }
+
+    /** @return array{sources: list<array<string, mixed>>, parsed_results: list<array<string, mixed>>, failed_files: list<array{filename: string, error: string}>} */
+    private function processTextSource(?string $text): array
+    {
+        try {
+            $source = $this->scheduleInputResolver->resolve(null, $text);
+        } catch (Throwable $throwable) {
+            throw ExtractSourceResolutionException::fromThrowable($throwable, false);
+        }
+
+        return [
+            'sources' => [$source],
+            'parsed_results' => [$this->scheduleFormatParser->parse(
+                (string) $source['raw_text'],
+                $source['document_type'] ?? null,
+            )],
+            'failed_files' => [],
         ];
     }
 

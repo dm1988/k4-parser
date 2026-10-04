@@ -158,7 +158,6 @@ readonly class FlightCardViewModel
         );
     }
 
-    // Airport Details
     public function hasAirportDetails(): bool
     {
         return $this->originAirportInfo() !== null
@@ -308,7 +307,6 @@ readonly class FlightCardViewModel
         return AirportResolutionStatus::tryFrom($value);
     }
 
-    // Aircraft Details
     public function hasAircraftDetails(): bool
     {
         return $this->flight->aircraft !== null

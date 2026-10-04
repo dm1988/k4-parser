@@ -38,6 +38,19 @@ class FuelQuantityTest extends TestCase
         FuelQuantity::kilograms(-1);
     }
 
+    public function test_it_deserializes_supported_quantities_and_preserves_zero(): void
+    {
+        $this->assertSame(['amount' => 0.0, 'unit' => 'lb'], FuelQuantity::fromArray(['amount' => 0, 'unit' => ' LBS '])?->toArray());
+        $this->assertSame(['amount' => 12.5, 'unit' => 'kg'], FuelQuantity::fromArray(['amount' => 12.5, 'unit' => 'kgs'])?->toArray());
+    }
+
+    public function test_it_rejects_malformed_serialized_quantities(): void
+    {
+        foreach ([null, 'fuel', [], ['amount' => '12', 'unit' => 'lb'], ['amount' => 12], ['amount' => -1, 'unit' => 'lb'], ['amount' => INF, 'unit' => 'kg'], ['amount' => NAN, 'unit' => 'lb'], ['amount' => 12, 'unit' => 'gallons']] as $value) {
+            $this->assertNull(FuelQuantity::fromArray($value));
+        }
+    }
+
     public function test_it_rejects_unsupported_units(): void
     {
         $this->expectException(InvalidArgumentException::class);

@@ -7,6 +7,15 @@ use Tests\TestCase;
 
 class FlightDutyEventTest extends TestCase
 {
+    public function test_it_rejects_invalid_utc_times(): void
+    {
+        $this->assertNull(app(FlightDutyEvent::class)->buildFromFlight([
+            'type' => 'flight',
+            'start' => 'not a date',
+            'end' => '2026-06-27T08:00:00+00:00',
+        ]));
+    }
+
     public function test_it_builds_a_duty_calendar_event_from_flight_and_local_duty_offsets(): void
     {
         $event = app(FlightDutyEvent::class)->buildFromFlight([

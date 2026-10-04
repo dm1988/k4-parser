@@ -8,6 +8,7 @@ use Fruitcake\LaravelDebugbar\LaravelDebugbar;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Smalot\PdfParser\Page;
 use Smalot\PdfParser\Parser;
 use Throwable;
 
@@ -80,66 +81,7 @@ class FlightPlanTextExtractor
                 return str_replace("\x00", '', $document->getText());
             }
 
-            $pageTexts = [];
-            $ocrTexts = [];
-            $pageCount = count($pages);
-            $previousPageUsedOcr = false;
-
-            foreach ($pages as $pageIndex => $page) {
-                $pageNumber = $pageIndex + 1;
-                $pageTextStartedAt = microtime(true);
-                $ocrRequired = null;
-
-                if ($pageNumber === 1 || $pageNumber % 10 === 0 || $pageNumber === $pageCount || $previousPageUsedOcr) {
-                    $onProgress?->__invoke("Extracting text — page {$pageNumber} of {$pageCount}…");
-                }
-
-                try {
-                    $pageText = str_replace("\x00", '', $page->getText());
-                    $ocrRequired = Str::squish($pageText) === '';
-                } finally {
-                    $this->recordTiming('Flight plan page text extraction', $pageTextStartedAt, [
-                        'operation' => 'page_text',
-                        'page_index' => $pageIndex,
-                        'page_number' => $pageNumber,
-                        'ocr_required' => $ocrRequired,
-                    ]);
-                }
-
-                $previousPageUsedOcr = $ocrRequired;
-
-                if (! $ocrRequired) {
-                    $pageTexts[] = trim($pageText);
-
-                    continue;
-                }
-
-                $ocrStartedAt = microtime(true);
-                $onProgress?->__invoke("Extracting text from images — page {$pageNumber} of {$pageCount}…");
-
-                try {
-                    $ocrText = $this->imagePageTextExtractor->extract($filePath, $pageIndex);
-                } finally {
-                    $this->recordTiming('Flight plan page OCR', $ocrStartedAt, [
-                        'operation' => 'ocr',
-                        'page_index' => $pageIndex,
-                        'page_number' => $pageNumber,
-                        'ocr_required' => true,
-                    ]);
-                }
-
-                if ($ocrText !== '') {
-                    $ocrTexts[] = $ocrText;
-                }
-            }
-
-            $text = implode("\n\n", $pageTexts);
-
-            foreach ($ocrTexts as $ocrText) {
-                $text .= "\n".$ocrText;
-            }
-
-            return $text;
+            return $this->readPages($pages, $filePath, $onProgress);
         } catch (FlightRouteNotFoundException $exception) {
             throw $exception;
         } catch (Throwable $throwable) {
@@ -156,8 +98,74 @@ class FlightPlanTextExtractor
     }
 
     /**
-     * @param  array<string, bool|int|string|null>  $context
+     * @param  array<int, Page>  $pages
+     * @param  (Closure(string): void)|null  $onProgress
      */
+    private function readPages(array $pages, string $filePath, ?Closure $onProgress): string
+    {
+        $pageTexts = [];
+        $ocrTexts = [];
+        $pageCount = count($pages);
+        $previousPageUsedOcr = false;
+
+        foreach ($pages as $pageIndex => $page) {
+            $pageNumber = $pageIndex + 1;
+            $pageTextStartedAt = microtime(true);
+            $ocrRequired = null;
+
+            if ($pageNumber === 1 || $pageNumber % 10 === 0 || $pageNumber === $pageCount || $previousPageUsedOcr) {
+                $onProgress?->__invoke("Extracting text — page {$pageNumber} of {$pageCount}…");
+            }
+
+            try {
+                $pageText = str_replace("\x00", '', $page->getText());
+                $ocrRequired = Str::squish($pageText) === '';
+            } finally {
+                $this->recordTiming('Flight plan page text extraction', $pageTextStartedAt, [
+                    'operation' => 'page_text',
+                    'page_index' => $pageIndex,
+                    'page_number' => $pageNumber,
+                    'ocr_required' => $ocrRequired,
+                ]);
+            }
+
+            $previousPageUsedOcr = $ocrRequired;
+
+            if (! $ocrRequired) {
+                $pageTexts[] = trim($pageText);
+
+                continue;
+            }
+
+            $ocrStartedAt = microtime(true);
+            $onProgress?->__invoke("Extracting text from images — page {$pageNumber} of {$pageCount}…");
+
+            try {
+                $ocrText = $this->imagePageTextExtractor->extract($filePath, $pageIndex);
+            } finally {
+                $this->recordTiming('Flight plan page OCR', $ocrStartedAt, [
+                    'operation' => 'ocr',
+                    'page_index' => $pageIndex,
+                    'page_number' => $pageNumber,
+                    'ocr_required' => true,
+                ]);
+            }
+
+            if ($ocrText !== '') {
+                $ocrTexts[] = $ocrText;
+            }
+        }
+
+        $text = implode("\n\n", $pageTexts);
+
+        foreach ($ocrTexts as $ocrText) {
+            $text .= "\n".$ocrText;
+        }
+
+        return $text;
+    }
+
+    /** @param array<string, bool|int|string|null> $context */
     private function recordTiming(string $label, float $startedAt, array $context): void
     {
         try {
@@ -180,6 +188,7 @@ class FlightPlanTextExtractor
                 'Flight plan extraction',
             );
         } catch (Throwable) {
+            // Optional diagnostics must not turn successful extraction into a failure.
         }
     }
 }

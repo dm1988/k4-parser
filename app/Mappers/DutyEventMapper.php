@@ -5,6 +5,7 @@ namespace App\Mappers;
 use App\DTOs\DutyEvent;
 use App\Enums\MetadataKey;
 use App\Enums\ScheduleEventType;
+use App\ValueObjects\StringList;
 use Carbon\CarbonImmutable;
 
 final class DutyEventMapper
@@ -107,20 +108,6 @@ final class DutyEventMapper
      */
     private function stringList(mixed $values): array
     {
-        if (! is_array($values)) {
-            return [];
-        }
-
-        $normalized = [];
-
-        foreach ($values as $value) {
-            $value = trim((string) $value);
-
-            if ($value !== '') {
-                $normalized[] = $value;
-            }
-        }
-
-        return $normalized;
+        return (new StringList($values))->values;
     }
 }

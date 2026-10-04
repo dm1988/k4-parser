@@ -50,6 +50,26 @@ final readonly class FuelQuantity implements JsonSerializable
         return new self($amount, 'kg');
     }
 
+    public static function fromArray(mixed $value): ?self
+    {
+        if (! is_array($value)) {
+            return null;
+        }
+
+        $amount = $value['amount'] ?? null;
+        $unit = $value['unit'] ?? null;
+
+        if ((! is_int($amount) && ! is_float($amount)) || ! is_string($unit)) {
+            return null;
+        }
+
+        try {
+            return new self($amount, $unit);
+        } catch (InvalidArgumentException) {
+            return null;
+        }
+    }
+
     public function toPounds(): self
     {
         return $this->unit === 'lb'

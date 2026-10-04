@@ -40,7 +40,9 @@ class ExtractSchedule extends Command
                     fn ($flight): array => $flight->toArray(),
                     $flightDtos,
                 );
-            } catch (Throwable) {
+            } catch (Throwable $exception) {
+                report($exception);
+                $this->warn('Flight DTO export failed; parsed schedule data is still available.');
             }
 
             $this->line((string) json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));

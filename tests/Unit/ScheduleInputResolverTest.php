@@ -7,7 +7,9 @@ use App\Services\Schedule\Extractor\PdfTextExtractor;
 use App\Services\Schedule\ScheduleInputResolver;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Validation\ValidationException;
+use Intervention\Image\Exceptions\ImageDecoderException;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
@@ -102,6 +104,7 @@ class ScheduleInputResolverTest extends TestCase
 
     public function test_it_cleans_up_after_preprocessing_fallback_and_preserves_the_upload(): void
     {
+        Exceptions::fake();
         config()->set('services.ocr.tesseract_path', $this->successfulTesseractScript());
 
         $before = $this->ocrTempFiles();
@@ -113,6 +116,7 @@ class ScheduleInputResolverTest extends TestCase
         $this->assertSame("Trip Information\nDuty Summary", $result['raw_text']);
         $this->assertSame($before, $this->ocrTempFiles());
         $this->assertFileExists($sourcePath);
+        Exceptions::assertReported(ImageDecoderException::class);
     }
 
     public function test_empty_ocr_output_uses_the_visible_file_error_and_cleans_up(): void

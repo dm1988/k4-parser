@@ -194,65 +194,12 @@ class FlightScheduleExtractor
         $evidence = [];
 
         foreach ($matches as $sourceOrder => $match) {
-            $sourceDigits = match (true) {
-                ($match['time_only'] ?? '') !== '' => $match['time_only'],
-                ($match['time_before'] ?? '') !== '' => $match['time_before'],
-                default => $match['time_after'] ?? '',
-            };
-            $direction = Str::upper(
-                match (true) {
-                    ($match['direction_only'] ?? '') !== '' => $match['direction_only'],
-                    ($match['direction_before'] ?? '') !== '' => $match['direction_before'],
-                    ($match['direction_between'] ?? '') !== '' => $match['direction_between'],
-                    default => $match['direction_after'] ?? '',
-                },
-            );
+            $result = $this->slotFromMatch($match, $sourceOrder, $sectionMatches[1], $flightDate, $etd, $departureAirport, $arrivalAirport);
 
-            if ($direction === '' && preg_match('/\bARRIVAL\b/i', $sectionMatches[1]) === 1) {
-                $direction = 'ARR';
+            if ($result !== null) {
+                $slots[] = $result['slot'];
+                $evidence[] = $result['evidence'];
             }
-
-            $time = $this->utcInstant($flightDate, [1 => substr($sourceDigits, 0, 2), 2 => substr($sourceDigits, 2, 2)], dayIndex: 5, after: $etd);
-
-            if ($time === null) {
-                continue;
-            }
-
-            $airport = Str::upper(match (true) {
-                ($match['airport_before'] ?? '') !== '' => $match['airport_before'],
-                ($match['airport_after'] ?? '') !== '' => $match['airport_after'],
-                $direction === 'DEP' => $departureAirport ?? '',
-                $direction === 'ARR' => $arrivalAirport ?? '',
-                default => '',
-            });
-
-            if ($airport === '') {
-                continue;
-            }
-
-            $sourceTime = $sourceDigits.'Z';
-            $tolerance = match (true) {
-                ($match['tolerance_only'] ?? '') !== '' => $match['tolerance_only'],
-                ($match['tolerance_before'] ?? '') !== '' => $match['tolerance_before'],
-                default => $match['tolerance_after'] ?? '',
-            };
-            $slots[] = [
-                'direction' => match ($direction) {
-                    'DEP' => 'departure',
-                    'ARR' => 'arrival',
-                    default => 'unspecified',
-                },
-                'airport' => $airport,
-                'instant' => $time,
-                'source_time' => $sourceTime,
-                'tolerance_minutes' => $tolerance === '' ? null : (int) $tolerance,
-                'source_order' => $sourceOrder,
-            ];
-            $evidence[] = [
-                'direction' => $direction === '' ? 'UNSPECIFIED' : $direction,
-                'airport' => $airport,
-                'time' => $sourceTime,
-            ];
         }
 
         usort($slots, static fn (array $left, array $right): int => [
@@ -279,5 +226,74 @@ class FlightScheduleExtractor
         $sourceText = preg_replace('/(?:\s*\*+\s*)+$/', '', $sectionMatches[1]) ?? $sectionMatches[1];
 
         return [$slots, $evidence, Str::squish('APPROVED SLOT TIMES: '.$sourceText)];
+    }
+
+    /**
+     * @param  array<string|int, string>  $match
+     * @return array{slot: array{direction: 'arrival'|'departure'|'unspecified', airport: string, instant: CarbonImmutable, source_time: string, tolerance_minutes: ?int, source_order: int}, evidence: array{direction: string, airport: string, time: string}}|null
+     */
+    private function slotFromMatch(array $match, int $sourceOrder, string $section, string $flightDate, ?CarbonImmutable $etd, ?string $departureAirport, ?string $arrivalAirport): ?array
+    {
+        $sourceDigits = match (true) {
+            ($match['time_only'] ?? '') !== '' => $match['time_only'],
+            ($match['time_before'] ?? '') !== '' => $match['time_before'],
+            default => $match['time_after'] ?? '',
+        };
+        $direction = Str::upper(
+            match (true) {
+                ($match['direction_only'] ?? '') !== '' => $match['direction_only'],
+                ($match['direction_before'] ?? '') !== '' => $match['direction_before'],
+                ($match['direction_between'] ?? '') !== '' => $match['direction_between'],
+                default => $match['direction_after'] ?? '',
+            },
+        );
+
+        if ($direction === '' && preg_match('/\bARRIVAL\b/i', $section) === 1) {
+            $direction = 'ARR';
+        }
+
+        $time = $this->utcInstant($flightDate, [1 => substr($sourceDigits, 0, 2), 2 => substr($sourceDigits, 2, 2)], dayIndex: 5, after: $etd);
+
+        if ($time === null) {
+            return null;
+        }
+
+        $airport = Str::upper(match (true) {
+            ($match['airport_before'] ?? '') !== '' => $match['airport_before'],
+            ($match['airport_after'] ?? '') !== '' => $match['airport_after'],
+            $direction === 'DEP' => $departureAirport ?? '',
+            $direction === 'ARR' => $arrivalAirport ?? '',
+            default => '',
+        });
+
+        if ($airport === '') {
+            return null;
+        }
+
+        $sourceTime = $sourceDigits.'Z';
+        $tolerance = match (true) {
+            ($match['tolerance_only'] ?? '') !== '' => $match['tolerance_only'],
+            ($match['tolerance_before'] ?? '') !== '' => $match['tolerance_before'],
+            default => $match['tolerance_after'] ?? '',
+        };
+        $slot = [
+            'direction' => match ($direction) {
+                'DEP' => 'departure',
+                'ARR' => 'arrival',
+                default => 'unspecified',
+            },
+            'airport' => $airport,
+            'instant' => $time,
+            'source_time' => $sourceTime,
+            'tolerance_minutes' => $tolerance === '' ? null : (int) $tolerance,
+            'source_order' => $sourceOrder,
+        ];
+        $evidence = [
+            'direction' => $direction === '' ? 'UNSPECIFIED' : $direction,
+            'airport' => $airport,
+            'time' => $sourceTime,
+        ];
+
+        return ['slot' => $slot, 'evidence' => $evidence];
     }
 }

@@ -7,6 +7,8 @@ use Illuminate\Support\Str;
 
 class FlightInitExtractor
 {
+    public function __construct(private readonly TakeoffLandingReportSections $reportSections = new TakeoffLandingReportSections) {}
+
     /**
      * @return array{
      *     data: array{section_present: bool, acars_init_date: ?string, filed_initial_altitude: ?string, fms_initial_altitude: ?string},
@@ -15,7 +17,7 @@ class FlightInitExtractor
      */
     public function extract(string $text): array
     {
-        $sections = $this->sections($text);
+        $sections = $this->reportSections->extract($text);
         $dates = [];
         $sourceFragment = null;
         $filedInitialAltitude = $this->filedInitialAltitude($text);
@@ -99,26 +101,6 @@ class FlightInitExtractor
             'value' => $level === null ? null : 'F'.str_pad((string) $level, 3, '0', STR_PAD_LEFT),
             'source' => isset($matches[0][0]) ? Str::squish($matches[0][0]) : null,
         ];
-    }
-
-    /** @return list<string> */
-    private function sections(string $text): array
-    {
-        $matches = [];
-
-        if (preg_match_all('/\bTAKEOFF\h+AND\h+LANDING\h+REPORT\b/i', $text, $matches, PREG_OFFSET_CAPTURE) === false) {
-            return [];
-        }
-
-        $sections = [];
-
-        foreach ($matches[0] as $index => $match) {
-            $start = $match[1];
-            $end = $matches[0][$index + 1][1] ?? strlen($text);
-            $sections[] = substr($text, $start, $end - $start);
-        }
-
-        return $sections;
     }
 
     private function acarsInitDate(string $section): ?string

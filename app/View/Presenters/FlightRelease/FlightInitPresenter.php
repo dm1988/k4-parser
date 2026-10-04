@@ -4,7 +4,7 @@ namespace App\View\Presenters\FlightRelease;
 
 use App\View\Models\FlightPlanPageData;
 use Carbon\CarbonImmutable;
-use Throwable;
+use Carbon\Exceptions\InvalidFormatException;
 
 final readonly class FlightInitPresenter
 {
@@ -20,7 +20,7 @@ final readonly class FlightInitPresenter
 
         try {
             return CarbonImmutable::parse($etdUtc)->utc()->format('Hi\Z');
-        } catch (Throwable) {
+        } catch (InvalidFormatException) {
             return null;
         }
     }

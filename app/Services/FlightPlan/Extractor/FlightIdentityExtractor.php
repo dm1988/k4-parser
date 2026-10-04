@@ -4,8 +4,8 @@ namespace App\Services\FlightPlan\Extractor;
 
 use App\Exceptions\FlightPlanDataConflictException;
 use Carbon\CarbonImmutable;
+use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Support\Str;
-use Throwable;
 
 class FlightIdentityExtractor
 {
@@ -116,7 +116,7 @@ class FlightIdentityExtractor
 
         try {
             $date = CarbonImmutable::createFromFormat($format, $value, 'UTC');
-        } catch (Throwable) {
+        } catch (InvalidFormatException) {
             return null;
         }
 

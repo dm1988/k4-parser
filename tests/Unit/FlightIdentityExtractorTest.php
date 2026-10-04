@@ -8,6 +8,14 @@ use PHPUnit\Framework\TestCase;
 
 class FlightIdentityExtractorTest extends TestCase
 {
+    public function test_it_rejects_an_invalid_source_date_without_losing_identity(): void
+    {
+        $result = (new FlightIdentityExtractor)->extract('KALITTA AIR TRIP 109546 RECALL 62930 N774CK B777-200F 99/25/26');
+
+        $this->assertNull($result['data']['flight_date']);
+        $this->assertSame('N774CK', $result['data']['tail_number']);
+    }
+
     public function test_it_extracts_and_corroborates_release_identity(): void
     {
         $result = (new FlightIdentityExtractor)->extract(<<<'TEXT'

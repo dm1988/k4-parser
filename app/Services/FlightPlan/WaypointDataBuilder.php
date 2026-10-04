@@ -5,7 +5,6 @@ namespace App\Services\FlightPlan;
 use App\DTOs\WaypointData;
 use App\Enums\WaypointKind;
 use App\ValueObjects\FuelQuantity;
-use InvalidArgumentException;
 
 class WaypointDataBuilder
 {
@@ -119,22 +118,7 @@ class WaypointDataBuilder
 
     private function serializedFuel(mixed $value): ?FuelQuantity
     {
-        if (! is_array($value)) {
-            return null;
-        }
-
-        $amount = $value['amount'] ?? null;
-        $unit = $value['unit'] ?? null;
-
-        if ((! is_int($amount) && ! is_float($amount)) || ! is_string($unit)) {
-            return null;
-        }
-
-        try {
-            return new FuelQuantity($amount, $unit);
-        } catch (InvalidArgumentException) {
-            return null;
-        }
+        return FuelQuantity::fromArray($value);
     }
 
     private function nonNegativeInteger(mixed $value): ?int

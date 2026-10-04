@@ -5,12 +5,77 @@ namespace Tests\Unit;
 use App\Enums\ScheduleEventType;
 use App\Models\Airline;
 use App\Models\User;
+use App\Services\Clients\AirlineCodeLookupClient;
+use App\Services\Schedule\Extractor\TripDutyFlightContext;
 use App\Services\Schedule\Extractor\TripInformationParser;
+use Illuminate\Database\ConnectionResolverInterface;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Exceptions;
 use Tests\TestCase;
 
 class TripInformationParserTest extends TestCase
 {
+    public function test_missing_local_times_are_omitted_from_duty_context(): void
+    {
+        $context = new TripDutyFlightContext;
+
+        $this->assertSame([], $context->extractFlightLocalTimes([]));
+        $this->assertSame([], $context->extractFlightLocalTimes(['No local time data']));
+        $this->assertSame(['leg_local_start' => 'Jun 15 15:00', 'leg_local_end' => 'Jun 15 17:00'], $context->extractFlightLocalTimes(['Leg LT Jun 15 15:00 - Jun 15 17:00']));
+    }
+
+    public function test_airline_database_failures_are_reported_before_using_bundled_data(): void
+    {
+        Exceptions::fake();
+        $exception = new QueryException('testing', 'select name from airlines', [], new \RuntimeException('Database unavailable'));
+        $originalResolver = Airline::getConnectionResolver();
+        $resolver = $this->createMock(ConnectionResolverInterface::class);
+        $resolver->method('connection')->willThrowException($exception);
+        Airline::setConnectionResolver($resolver);
+
+        try {
+            $this->assertSame('United Airlines', app(AirlineCodeLookupClient::class)->airlineNameForIataCode(' ua '));
+            Exceptions::assertReported(fn (QueryException $reported): bool => $reported === $exception);
+        } finally {
+            Airline::setConnectionResolver($originalResolver);
+        }
+    }
+
+    public function test_it_merges_duty_context_into_the_overlapping_flight_and_preserves_other_flights(): void
+    {
+        $first = ['type' => 'flight', 'start' => '2026-06-15T08:00:00Z', 'end' => '2026-06-15T10:00:00Z', 'metadata' => ['raw_lines' => ['First flight']]];
+        $second = ['type' => 'flight', 'start' => '2026-06-15T15:00:00Z', 'end' => '2026-06-15T17:00:00Z', 'metadata' => ['raw_lines' => ['Leg LT Jun 15 15:00 - Jun 15 17:00'], 'crew_count' => 2]];
+        $duty = ['type' => 'duty', 'start' => '2026-06-15T14:00:00Z', 'end' => '2026-06-15T18:00:00Z', 'metadata' => ['raw_lines' => ['Duty LT Jun 15 14:00 - Jun 15 18:00'], 'station' => 'CVG', 'crew_count' => 3, 'crew' => [['name' => 'Crew member']]]];
+
+        $events = (new TripDutyFlightContext)->attachDutyFlightContext([$first, $second, $duty]);
+
+        $this->assertCount(2, $events);
+        $this->assertSame($first, $events[0]);
+        $this->assertSame(2, $events[1]['metadata']['crew_count']);
+        $this->assertSame('CVG', $events[1]['metadata']['duty_station']);
+        $this->assertSame('Jun 15 14:00', $events[1]['metadata']['duty_local_start']);
+        $this->assertSame('Jun 15 17:00', $events[1]['metadata']['leg_local_end']);
+        $this->assertSame($duty['metadata']['crew'], $events[1]['metadata']['crew']);
+        $this->assertSame($duty['metadata']['raw_lines'], $events[1]['metadata']['duty_raw_lines']);
+    }
+
+    public function test_it_preserves_unmatched_duties(): void
+    {
+        $duty = ['type' => 'duty', 'start' => '2026-06-15T14:00:00Z', 'end' => '2026-06-15T18:00:00Z', 'metadata' => ['raw_lines' => ['Crew list']]];
+
+        $this->assertSame([$duty], (new TripDutyFlightContext)->attachDutyFlightContext([$duty]));
+    }
+
+    public function test_it_preserves_year_rollover_and_normalizes_ocr_spacing_in_detail_sections(): void
+    {
+        $events = app(TripInformationParser::class)->parse("December 2026\r\nDetails\r\nDec 3123:45 – Jan 1 01:00\r\nK4 240\r\nICN - HKG | FO 77X 1:15h\r\nDuty Summary")['calendar_events'];
+
+        $this->assertCount(1, $events);
+        $this->assertSame('2026-12-31T23:45:00+00:00', $events[0]['start']);
+        $this->assertSame('2027-01-01T01:00:00+00:00', $events[0]['end']);
+    }
+
     public function test_it_uses_the_authenticated_users_airline_code_preferences(): void
     {
         $this->actingAs(User::factory()->make([

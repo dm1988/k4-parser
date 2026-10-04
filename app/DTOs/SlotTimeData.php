@@ -5,8 +5,9 @@ namespace App\DTOs;
 use App\Enums\SlotDirection;
 use App\ValueObjects\AirportCode;
 use Carbon\CarbonImmutable;
+use Carbon\Exceptions\InvalidFormatException;
+use InvalidArgumentException;
 use JsonSerializable;
-use Throwable;
 
 final readonly class SlotTimeData implements JsonSerializable
 {
@@ -43,7 +44,7 @@ final readonly class SlotTimeData implements JsonSerializable
                 $sourceTime,
                 is_int($toleranceMinutes) && $toleranceMinutes >= 0 ? $toleranceMinutes : null,
             );
-        } catch (Throwable) {
+        } catch (InvalidArgumentException|InvalidFormatException) {
             return null;
         }
     }

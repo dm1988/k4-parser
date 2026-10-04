@@ -8,6 +8,7 @@ use App\Enums\ScheduleEventType;
 use App\Mappers\FlightMapper;
 use App\Services\Clients\AirlineCodeLookupClient;
 use App\Services\Schedule\ScheduleAirlineCodes;
+use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Support\Carbon;
 
 class TripInformationParser
@@ -19,18 +20,20 @@ class TripInformationParser
         private readonly CrewListParser $crewListParser,
         private readonly AirlineCodeLookupClient $airlineCodeLookupClient,
         private readonly ScheduleAirlineCodes $scheduleAirlineCodes,
+        private readonly TripInformationSections $sections,
+        private readonly TripDutyFlightContext $dutyFlightContext,
     ) {}
 
     public function parse(string $text): array
     {
-        $lines = $this->normaliseLines($text);
-        $defaultYear = $this->detectRosterYear($lines);
-        $monthYears = $this->detectMonthYears($lines, $defaultYear);
-        $detailLines = $this->detailSectionLines($lines);
+        $lines = $this->sections->normaliseLines($text);
+        $defaultYear = $this->sections->detectRosterYear($lines);
+        $monthYears = $this->sections->detectMonthYears($lines, $defaultYear);
+        $detailLines = $this->sections->detailSectionLines($lines);
 
         $events = [];
 
-        foreach ($this->detailBlocks($detailLines) as $block) {
+        foreach ($this->sections->detailBlocks($detailLines) as $block) {
             $event = $this->parseDetailBlock($block, $monthYears, $defaultYear);
 
             if ($event !== null) {
@@ -38,10 +41,10 @@ class TripInformationParser
             }
         }
 
-        $events = $this->attachDutyFlightContext($events);
+        $events = $this->dutyFlightContext->attachDutyFlightContext($events);
 
         return [
-            'trip' => $this->extractTripSummary($lines),
+            'trip' => $this->sections->extractTripSummary($lines),
             'calendar_events' => $events,
         ];
     }
@@ -81,161 +84,9 @@ class TripInformationParser
         ));
     }
 
-    private function normaliseLines(string $text): array
-    {
-        $text = str_replace(["\r\n", "\r"], "\n", $text);
-
-        $lines = [];
-
-        foreach (explode("\n", $text) as $line) {
-            $line = str_replace(['—', '–'], '-', $line);
-            $line = preg_replace('/\b([A-Z][a-z]{2}\s+\d{1,2})(\d{2}:\d{2})\b/', '$1 $2', $line) ?? $line;
-            $line = trim(preg_replace('/\s+/', ' ', $line));
-
-            if ($line === '') {
-                continue;
-            }
-
-            if (preg_match('/('.self::MONTH_ABBREVIATION_PATTERN.'\s+\d{1,2}\s+\d{2}:\d{2}\s+-\s+'.self::MONTH_ABBREVIATION_PATTERN.'\s+\d{1,2}\s+\d{2}:\d{2})/', $line, $matches)) {
-                $before = trim(substr($line, 0, strpos($line, $matches[1])));
-                $after = trim(substr($line, strpos($line, $matches[1]) + strlen($matches[1])));
-
-                if ($before !== '') {
-                    $lines[] = $before;
-                }
-
-                $lines[] = $matches[1];
-
-                if ($after !== '') {
-                    $lines[] = $after;
-                }
-
-                continue;
-            }
-
-            $lines[] = $line;
-        }
-
-        return $lines;
-    }
-
-    private function detectRosterYear(array $lines): int
-    {
-        foreach ($lines as $line) {
-            if (preg_match('/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2}\s+\d{2}:\d{2}\b/', $line)) {
-                continue;
-            }
-
-            if (preg_match('/\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b/', $line, $matches)) {
-                return (int) $matches[1];
-            }
-        }
-
-        return (int) now()->year;
-    }
-
-    private function detectMonthYears(array $lines, int $defaultYear): array
-    {
-        $monthYears = [];
-
-        foreach ($lines as $line) {
-            if (preg_match('/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b/', $line, $matches)) {
-                $monthYears[substr($matches[1], 0, 3)] = (int) $matches[2];
-                $monthYears[strtolower(substr($matches[1], 0, 3))] = (int) $matches[2];
-            }
-        }
-
-        return $monthYears ?: ['Jan' => $defaultYear];
-    }
-
-    private function detailSectionLines(array $lines): array
-    {
-        $detailLines = [];
-        $isCollecting = false;
-        $foundDetailHeader = false;
-
-        foreach ($lines as $line) {
-            if (preg_match('/\b(?:Details|Day\s*Flight\s*Departure)\b/i', $line) === 1) {
-                $isCollecting = true;
-                $foundDetailHeader = true;
-
-                continue;
-            }
-
-            if ($isCollecting && preg_match('/Duty Summary/i', $line) === 1) {
-                $isCollecting = false;
-
-                continue;
-            }
-
-            if ($isCollecting) {
-                $detailLines[] = $line;
-            }
-        }
-
-        return $foundDetailHeader ? $detailLines : $lines;
-    }
-
-    private function detailBlocks(array $lines): array
-    {
-        $blocks = [];
-        $currentBlock = [];
-        $mode = null;
-
-        foreach ($lines as $line) {
-            $trimmedLine = trim($line);
-
-            if (str_contains($trimmedLine, 'Duty start')) {
-                if (! empty($currentBlock)) {
-                    $blocks[] = $currentBlock;
-                }
-
-                $currentBlock = [$trimmedLine];
-                $mode = 'duty';
-
-                continue;
-            }
-
-            if ($this->isDateRange($trimmedLine)) {
-                $previousLine = $currentBlock === [] ? null : end($currentBlock);
-
-                if (is_string($previousLine) && preg_match('/\b(?:Leg|Duty) LT\b/i', $previousLine) === 1) {
-                    $currentBlock[] = $trimmedLine;
-
-                    continue;
-                }
-
-                if (! empty($currentBlock)) {
-                    $blocks[] = $currentBlock;
-                }
-
-                $currentBlock = [$trimmedLine];
-                $mode = 'date-range';
-
-                continue;
-            }
-
-            if ($mode !== null) {
-                $currentBlock[] = $trimmedLine;
-
-                if ($mode === 'duty' && str_contains($trimmedLine, 'Duty end')) {
-                    $blocks[] = $currentBlock;
-                    $currentBlock = [];
-                    $mode = null;
-                }
-            }
-        }
-
-        if (! empty($currentBlock)) {
-            $blocks[] = $currentBlock;
-        }
-
-        return $blocks;
-    }
-
     private function parseDetailBlock(array $block, array $monthYears, int $defaultYear): ?array
     {
-        if ($this->isDateRange($block[0] ?? '')) {
+        if ($this->sections->isDateRange($block[0] ?? '')) {
             return $this->parseDateRangeDetailBlock($block, $monthYears, $defaultYear);
         }
 
@@ -279,7 +130,7 @@ class TripInformationParser
             if ($end->lessThan($start)) {
                 $end->addDay();
             }
-        } catch (\Exception) {
+        } catch (InvalidFormatException) {
             return null;
         }
 
@@ -333,48 +184,7 @@ class TripInformationParser
         $joinedBody = implode(' ', $body);
 
         if ($route = $this->extractFlightRoute($body)) {
-            $flightNumber = $this->extractFlightNumber($body);
-            $position = $this->extractFlightPosition($body);
-            $aircraft = $this->detectAircraft($body);
-            $tailNumber = $this->detectTailNumber($body);
-            $flightAwareUrl = $tailNumber
-                ? 'https://www.flightaware.com/live/flight/'.rawurlencode($tailNumber)
-                : null;
-            $blockTime = $this->extractBlockTime($body);
-            $dutyStation = $this->extractDutyStationFromLines($body);
-            $dutyRawLines = $this->extractDutyRawLines($body);
-            $isDeadhead = $position === CrewPosition::Deadhead->value;
-            $commercialDeadhead = $this->resolveCommercialDeadhead($flightNumber, $isDeadhead);
-            $flightNumber = $commercialDeadhead['flight_number'];
-            $crewSummary = $this->crewListParser->parseWithSummary($body);
-            $localTimes = $this->extractFlightLocalTimes($body);
-
-            return $this->calendarEvent(
-                $isDeadhead ? ScheduleEventType::Deadhead->value : ScheduleEventType::Flight->value,
-                trim(($flightNumber ? "{$flightNumber} " : '')."{$route['origin']}-{$route['destination']}"),
-                $start,
-                $end,
-                array_filter([
-                    'flight_number' => $flightNumber,
-                    'origin' => $route['origin'],
-                    'destination' => $route['destination'],
-                    'position' => $position,
-                    'aircraft' => $aircraft,
-                    'tail_number' => $tailNumber,
-                    'flightaware_url' => $flightAwareUrl,
-                    'block_time' => $blockTime,
-                    'duty_station' => $dutyStation,
-                    'crew_count' => $crewSummary['crew_count'],
-                    'operating_crew_count' => $crewSummary['operating_crew_count'],
-                    'deadheading_crew_count' => $crewSummary['deadheading_crew_count'],
-                    'crew' => $crewSummary['crew'] !== [] ? $crewSummary['crew'] : null,
-                    'deadhead' => $isDeadhead,
-                    'airline_name' => $commercialDeadhead['airline_name'],
-                    'raw_lines' => $body,
-                    'duty_raw_lines' => $dutyRawLines !== [] ? $dutyRawLines : null,
-                    ...$localTimes,
-                ], fn (mixed $value): bool => $value !== null)
-            );
+            return $this->parseFlightDetailBlock($body, $route, $start, $end);
         }
 
         if ($layover = $this->extractLayover($body)) {
@@ -425,6 +235,53 @@ class TripInformationParser
         return null;
     }
 
+    /** @param array{origin: string, destination: string} $route */
+    private function parseFlightDetailBlock(array $body, array $route, Carbon $start, Carbon $end): array
+    {
+        $flightNumber = $this->extractFlightNumber($body);
+        $position = $this->extractFlightPosition($body);
+        $aircraft = $this->detectAircraft($body);
+        $tailNumber = $this->detectTailNumber($body);
+        $flightAwareUrl = $tailNumber
+            ? 'https://www.flightaware.com/live/flight/'.rawurlencode($tailNumber)
+            : null;
+        $blockTime = $this->extractBlockTime($body);
+        $dutyStation = $this->dutyFlightContext->extractDutyStationFromLines($body);
+        $dutyRawLines = $this->extractDutyRawLines($body);
+        $isDeadhead = $position === CrewPosition::Deadhead->value;
+        $commercialDeadhead = $this->resolveCommercialDeadhead($flightNumber, $isDeadhead);
+        $flightNumber = $commercialDeadhead['flight_number'];
+        $crewSummary = $this->crewListParser->parseWithSummary($body);
+        $localTimes = $this->dutyFlightContext->extractFlightLocalTimes($body);
+
+        return $this->calendarEvent(
+            $isDeadhead ? ScheduleEventType::Deadhead->value : ScheduleEventType::Flight->value,
+            trim(($flightNumber ? "{$flightNumber} " : '')."{$route['origin']}-{$route['destination']}"),
+            $start,
+            $end,
+            array_filter([
+                'flight_number' => $flightNumber,
+                'origin' => $route['origin'],
+                'destination' => $route['destination'],
+                'position' => $position,
+                'aircraft' => $aircraft,
+                'tail_number' => $tailNumber,
+                'flightaware_url' => $flightAwareUrl,
+                'block_time' => $blockTime,
+                'duty_station' => $dutyStation,
+                'crew_count' => $crewSummary['crew_count'],
+                'operating_crew_count' => $crewSummary['operating_crew_count'],
+                'deadheading_crew_count' => $crewSummary['deadheading_crew_count'],
+                'crew' => $crewSummary['crew'] !== [] ? $crewSummary['crew'] : null,
+                'deadhead' => $isDeadhead,
+                'airline_name' => $commercialDeadhead['airline_name'],
+                'raw_lines' => $body,
+                'duty_raw_lines' => $dutyRawLines !== [] ? $dutyRawLines : null,
+                ...$localTimes,
+            ], fn (mixed $value): bool => $value !== null)
+        );
+    }
+
     private function extractRosterDate(string $value, array $monthYears, int $defaultYear): Carbon
     {
         preg_match('/^('.self::MONTH_ABBREVIATION_PATTERN.')\s+(\d{1,2})\s+(\d{2}:\d{2})$/', $value, $matches);
@@ -432,129 +289,6 @@ class TripInformationParser
         $year = $monthYears[$matches[1]] ?? $defaultYear;
 
         return Carbon::createFromFormat('Y M j H:i', "{$year} {$matches[1]} {$matches[2]} {$matches[3]}");
-    }
-
-    private function attachDutyFlightContext(array $events): array
-    {
-        foreach ($events as $eventIndex => $event) {
-            if (! $this->shouldAttachDutyToFlight($event)) {
-                continue;
-            }
-
-            $flightIndex = $this->findMatchingFlightEventIndex($events, $event);
-
-            if ($flightIndex === null) {
-                continue;
-            }
-
-            $events[$flightIndex] = $this->mergeDutyIntoFlightEvent($events[$flightIndex], $event);
-            unset($events[$eventIndex]);
-        }
-
-        return array_values($events);
-    }
-
-    private function shouldAttachDutyToFlight(array $event): bool
-    {
-        if (($event['type'] ?? null) !== 'duty') {
-            return false;
-        }
-
-        $rawLines = data_get($event, 'metadata.raw_lines');
-
-        if (! is_array($rawLines) || $rawLines === []) {
-            return false;
-        }
-
-        $joinedLines = implode(' ', $rawLines);
-
-        return preg_match('/\bDuty LT\b/i', $joinedLines) === 1
-            || preg_match('/\bFlight Info\b/i', $joinedLines) === 1
-            || preg_match('/\bCrew list\b/i', $joinedLines) === 1;
-    }
-
-    private function findMatchingFlightEventIndex(array $events, array $dutyEvent): ?int
-    {
-        $bestIndex = null;
-        $bestScore = 0;
-        $dutyStart = Carbon::parse($dutyEvent['start']);
-        $dutyEnd = Carbon::parse($dutyEvent['end']);
-
-        foreach ($events as $index => $event) {
-            if (! ScheduleEventType::fromEvent($event)->isFlightLike()) {
-                continue;
-            }
-
-            $score = 0;
-            $flightRawLines = data_get($event, 'metadata.raw_lines', []);
-            $flightJoinedLines = is_array($flightRawLines) ? implode(' ', $flightRawLines) : '';
-
-            if (preg_match('/\bLeg LT\b/i', $flightJoinedLines) === 1) {
-                $score += 3;
-            }
-
-            $flightStart = Carbon::parse($event['start']);
-            $flightEnd = Carbon::parse($event['end']);
-
-            if ($flightStart->lessThan($dutyEnd) && $flightEnd->greaterThan($dutyStart)) {
-                $score += 4;
-            } elseif ($flightStart->diffInHours($dutyStart) <= 18) {
-                $score += 1;
-            }
-
-            if ($score > $bestScore) {
-                $bestScore = $score;
-                $bestIndex = $index;
-            }
-        }
-
-        return $bestScore >= 4 ? $bestIndex : null;
-    }
-
-    private function mergeDutyIntoFlightEvent(array $flightEvent, array $dutyEvent): array
-    {
-        $flightMetadata = is_array($flightEvent['metadata'] ?? null) ? $flightEvent['metadata'] : [];
-        $dutyMetadata = is_array($dutyEvent['metadata'] ?? null) ? $dutyEvent['metadata'] : [];
-        $flightRawLines = is_array($flightMetadata['raw_lines'] ?? null) ? $flightMetadata['raw_lines'] : [];
-        $dutyRawLines = is_array($dutyMetadata['raw_lines'] ?? null) ? $dutyMetadata['raw_lines'] : [];
-
-        $flightMetadata['raw_lines'] = array_values(array_unique([
-            ...$flightRawLines,
-            ...$dutyRawLines,
-        ]));
-        $flightMetadata['duty_raw_lines'] = $dutyRawLines;
-        $flightMetadata = [
-            ...$flightMetadata,
-            ...$this->extractFlightLocalTimes($flightMetadata['raw_lines']),
-        ];
-
-        if (! empty($dutyMetadata['station']) && empty($flightMetadata['duty_station'])) {
-            $flightMetadata['duty_station'] = $dutyMetadata['station'];
-        }
-
-        if (empty($flightMetadata['duty_station'])) {
-            $flightMetadata['duty_station'] = $this->extractDutyStationFromLines($flightMetadata['raw_lines']);
-        }
-
-        if (! empty($dutyMetadata['crew_count']) && empty($flightMetadata['crew_count'])) {
-            $flightMetadata['crew_count'] = $dutyMetadata['crew_count'];
-        }
-
-        if (! empty($dutyMetadata['operating_crew_count']) && empty($flightMetadata['operating_crew_count'])) {
-            $flightMetadata['operating_crew_count'] = $dutyMetadata['operating_crew_count'];
-        }
-
-        if (! empty($dutyMetadata['deadheading_crew_count']) && empty($flightMetadata['deadheading_crew_count'])) {
-            $flightMetadata['deadheading_crew_count'] = $dutyMetadata['deadheading_crew_count'];
-        }
-
-        if (! empty($dutyMetadata['crew']) && empty($flightMetadata['crew'])) {
-            $flightMetadata['crew'] = $dutyMetadata['crew'];
-        }
-
-        $flightEvent['metadata'] = $flightMetadata;
-
-        return $flightEvent;
     }
 
     /**
@@ -607,56 +341,6 @@ class TripInformationParser
 
     /**
      * @param  list<string>  $lines
-     * @return array{
-     *     leg_local_start?: string,
-     *     leg_local_end?: string,
-     *     duty_local_start?: string,
-     *     duty_local_end?: string
-     * }
-     */
-    private function extractFlightLocalTimes(array $lines): array
-    {
-        $joinedLines = trim(preg_replace('/\s+/', ' ', implode(' ', $lines)) ?? '');
-
-        if ($joinedLines === '') {
-            return [];
-        }
-
-        return array_filter([
-            'leg_local_start' => $this->extractLocalTimeBoundary($joinedLines, 'Leg LT', 1),
-            'leg_local_end' => $this->extractLocalTimeBoundary($joinedLines, 'Leg LT', 2),
-            'duty_local_start' => $this->extractLocalTimeBoundary($joinedLines, 'Duty LT', 1),
-            'duty_local_end' => $this->extractLocalTimeBoundary($joinedLines, 'Duty LT', 2),
-        ], static fn (?string $value): bool => $value !== null && $value !== '');
-    }
-
-    private function extractLocalTimeBoundary(string $input, string $label, int $captureGroup): ?string
-    {
-        $pattern = '/\b'.preg_quote($label, '/').'\b\s+([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2})\s*-\s*([A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2})/';
-
-        if (preg_match($pattern, $input, $matches) !== 1) {
-            return null;
-        }
-
-        return $matches[$captureGroup] ?? null;
-    }
-
-    /**
-     * @param  list<string>  $lines
-     */
-    private function extractDutyStationFromLines(array $lines): ?string
-    {
-        foreach ($lines as $line) {
-            if (preg_match('/\b([A-Z]{3})\s+\1\b.*(?:Flight Info|Customer|\.)/i', $line, $matches) === 1) {
-                return strtoupper($matches[1]);
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * @param  list<string>  $lines
      * @return list<string>
      */
     private function extractDutyRawLines(array $lines): array
@@ -680,62 +364,6 @@ class TripInformationParser
             'timezone' => config('app.timezone'),
             'metadata' => $metadata,
         ];
-    }
-
-    private function extractTripSummary(array $lines): array
-    {
-        $summary = [
-            'trip_number' => null,
-            'position' => null,
-            'base' => null,
-            'layovers' => [],
-            'block_time' => null,
-            'roster_range' => null,
-        ];
-
-        $fullText = implode("\n", $lines);
-
-        if (preg_match('/Trip\s*Id:\s*(\d+)/i', $fullText, $matches)) {
-            $summary['trip_number'] = $matches[1];
-        } elseif (preg_match('/\bTrip\b\D+(\d{4,})\b/s', $fullText, $matches)) {
-            $summary['trip_number'] = $matches[1];
-        }
-
-        if (preg_match('/Crew:\s*\d*([A-Z]{2})/i', $fullText, $matches)) {
-            $summary['position'] = strtoupper($matches[1]);
-        } elseif (preg_match('/\b\d{4,}\s*\|?\s*([A-Z]{2})\.?\s+[A-Z]{3}\b/', $fullText, $matches)) {
-            $summary['position'] = strtoupper($matches[1]);
-        } else {
-            $summary['position'] = $this->crewListParser->detectPosition($lines);
-        }
-
-        if (preg_match('/Homebase:\s*([A-Z]{3})/i', $fullText, $matches)) {
-            $summary['base'] = $matches[1];
-        } elseif (preg_match('/\b\d{4,}\s*\|?\s*[A-Z]{2}\.?\s+([A-Z]{3})\b/', $fullText, $matches)) {
-            $summary['base'] = $matches[1];
-        }
-
-        if (preg_match('/Block\s+Time:\s*(\d{2}:\d{2})/i', $fullText, $matches)) {
-            $summary['block_time'] = $matches[1];
-        } elseif (preg_match('/\bBlock\s+(\d{1,2}:\d{2}h?)\b/i', $fullText, $matches)) {
-            $summary['block_time'] = $matches[1];
-        }
-
-        if (preg_match_all('/([A-Z]{3})-([A-Z]{3})/', $fullText, $matches)) {
-            $stations = [];
-            foreach ($matches[2] as $arrivalStation) {
-                if ($summary['base'] && $arrivalStation !== $summary['base']) {
-                    $stations[] = $arrivalStation;
-                }
-            }
-            $summary['layovers'] = array_values(array_unique($stations));
-        }
-
-        if (preg_match('/Date:\s*(\d{2}[A-Za-z]{3}\d{4})/', $fullText, $matches)) {
-            $summary['roster_range'] = $matches[1];
-        }
-
-        return $summary;
     }
 
     private function extractFlightRoute(array $lines): ?array
@@ -817,11 +445,6 @@ class TripInformationParser
         }
 
         return null;
-    }
-
-    private function isDateRange(string $line): bool
-    {
-        return (bool) preg_match('/^'.self::MONTH_ABBREVIATION_PATTERN.'\s+\d{1,2}\s+\d{2}:\d{2}\s+-\s+'.self::MONTH_ABBREVIATION_PATTERN.'\s+\d{1,2}\s+\d{2}:\d{2}$/', $line);
     }
 
     private function detectAircraft(array $lines): ?string

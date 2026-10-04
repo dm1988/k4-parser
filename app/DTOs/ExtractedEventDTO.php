@@ -2,6 +2,7 @@
 
 namespace App\DTOs;
 
+use App\ValueObjects\StringList;
 use ArrayAccess;
 use JsonSerializable;
 
@@ -148,20 +149,6 @@ abstract readonly class ExtractedEventDTO implements ArrayAccess, JsonSerializab
      */
     protected static function stringList(mixed $values): array
     {
-        if (! is_array($values)) {
-            return [];
-        }
-
-        $normalized = [];
-
-        foreach ($values as $value) {
-            $value = trim((string) $value);
-
-            if ($value !== '') {
-                $normalized[] = $value;
-            }
-        }
-
-        return $normalized;
+        return (new StringList($values))->values;
     }
 }

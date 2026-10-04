@@ -7,7 +7,7 @@ use App\Enums\MetadataKey;
 use App\Enums\ScheduleEventType;
 use App\Mappers\FlightMapper;
 use Carbon\CarbonImmutable;
-use Throwable;
+use Carbon\Exceptions\InvalidFormatException;
 
 final class FlightDutyEvent
 {
@@ -113,7 +113,7 @@ final class FlightDutyEvent
 
         try {
             return CarbonImmutable::parse($value)->setTimezone('UTC');
-        } catch (Throwable) {
+        } catch (InvalidFormatException) {
             return null;
         }
     }

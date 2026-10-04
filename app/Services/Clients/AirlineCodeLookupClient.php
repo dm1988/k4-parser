@@ -24,7 +24,8 @@ class AirlineCodeLookupClient
             $databaseMatch = Airline::query()
                 ->where('iata_code', $normalizedCode)
                 ->value('name');
-        } catch (QueryException) {
+        } catch (QueryException $exception) {
+            report($exception);
             $databaseMatch = null;
         }
 
