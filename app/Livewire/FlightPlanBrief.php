@@ -194,6 +194,11 @@ class FlightPlanBrief extends Component
 
     public function extractAnotherFlightPlan(): void
     {
+        $this->clearResults();
+    }
+
+    public function clearResults(): void
+    {
         $this->resetToUpload($this->authorizedUser());
 
         if ($this->usesTaskRoutes) {

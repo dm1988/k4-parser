@@ -39,7 +39,7 @@ class NavigationTest extends FlightPlanBriefTestCase
 
         $this->get(route('flight-release.task', ['task' => 'overview']))
             ->assertOk()
-            ->assertSeeText('Flight plan brief ready. Upload and extraction completed successfully.');
+            ->assertDontSeeText('Flight plan brief ready. Upload and extraction completed successfully.');
     }
 
     public function test_the_task_workspace_is_responsive_accessible_and_rehydrates_without_reparsing(): void

@@ -30,47 +30,255 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 # Tasks
 ## Sloppy static findings
 ./vendor/bin/sloppy
+## [x] Completed: Flight plan: header refactor
+Refactor the Flight Plan Brief header and action controls in our Livewire component and Blade view:
 
-## Paused: Flight release: 24 hour time limit or past ETA
+1. **Header Action Integration:**
+   - Move the "Extract another flight plan" button into the top-right corner of the active `Flight Plan Brief` header card.
+   - Add a "Clear results" button adjacent/stacked with "Extract another flight plan".
+   - Stack both buttons vertically in a subtle button group (or ghost button style) to save horizontal space and avoid crowding the route details (`CKS272`, `SBKP -> SCEL`).
+   - Use clean inline SVG or Heroicons for both buttons:
+     - `Extract another`: Import/upload icon (e.g., `arrow-up-tray` or `document-plus`).
+     - `Clear results`: Close/trash icon (e.g., `x-mark` or `trash`).
+
+2. **State & Header Behavior:**
+   - Keep the main "Flight Plan Brief" title visible at all times, but ensure layout hierarchy remains clean.
+   - Add a Livewire/Blade action for `clearResults` that resets the active flight model state.
+   - When no flight plan is loaded (cleared state), display a clean empty-state upload container under the main title.
+   - Convert the header to a flex container (`flex justify-between items-start`) to support a split layout between branding and actions.
+   - Implement a `flex-col` button group in the top-right corner to stack actions without interfering with the primary typography.
+
+3. **Styling & Theme Alignment:**
+   - Maintain the current Tailwind CSS dark theme (`bg-slate-900`/`bg-slate-800` cards, subtle borders, accent colors).
+   - Ensure buttons are responsive and collapse gracefully on mobile viewports.
+   - Applied ghost-style borders (`border-[#F8F9FA]/20`) and hover transitions (primary CTA for extraction, transparent red for clearing) to align with the dark theme aesthetic.
+
+### Header refactor outcome
+
+Moved extraction into the main Flight Plan Brief header beside a new Clear results action. Both use stacked ghost buttons, decorative Heroicons, visible keyboard focus, disabled/loading states, gold extraction hover, and a subtle red clearing hover. The title stays visible in every state; actions move below the branding and fill the available width on mobile, leaving the flight/route summary separate.
+
+Added an authorized `clearResults()` action using the existing owner-scoped result deletion and upload reset. Both header actions reset the result key, file, selected task, completion flag, and validation errors; task pages navigate to the upload URL. Clearing persists across reloads and preserves other users' results.
+
+### Header refactor validation
+
+The five focused PHPUnit files pass through Sail: SavedResultTest, UploadTest, AccessTest, ExtractionTest, and FlightPlanTaskRouteTest (32 tests in total). Coverage includes header action placement, persistent title/upload states, owner isolation, repeated clearing, validation reset, authorization, and embedded/task-route transitions. Pint passes. The final focused Larastan check passes with zero errors after correcting a test assertion-chain type issue found by the initial integration run.
+
+Headless Chrome reviewed the actual rendered header in 375px light/dark frames and a 960px light frame using the existing CSS bundle. The header/actions fit without horizontal overflow, stack on mobile, and split horizontally on desktop. This was an isolated layout preview, not an authenticated interaction audit; the old bundle does not include every new utility.
+
+`vendor/bin/sail npm run build` fails because installed Tailwind 4 is configured as a Tailwind 3 PostCSS plugin. Dependency/build configuration changes are outside this task and were left untouched; rebuilding and checking the final generated CSS remain blocked by that existing mismatch.
+
+Commit message: `refactor: integrate flight plan header actions and clear results`
+
+## Flight plan: Weight & Balance: Progress bar readability
+Move Progress Labels Outside the Bar (Recommended)
+
+Why: Placing text inside or across a fill bar creates severe low-contrast zones whenever the bar partially fills behind the text.
+
+Implementation: Move the percentage and limit label directly above or below the track.
+
+Top line: ZERO-FUEL WEIGHT (left) | 81.2% of Limit (right)
+
+Second line: 443,963 LB (large value)
+
+Third line (Track): Clean, uninterrupted progress bar.
+
+Bottom line: Max limit: 547,000 LB in a muted text style (text-slate-400).
+
+Refine Color Coding & Status States
+
+Bright neon green across the entire bar can be visually aggressive and visually overpowers the numeric data (443,963 LB).
+
+Use purposeful status colors:
+
+Normal (< 85-90%): A balanced emerald/teal  (e.g., #10B981).
+
+Warning: Amber/Yellow (#F59E0B).
+
+Limit/Critical (> 95% or Over Limit): Crimson Red (#EF4444).
+
+Improve Track & Bar Geometry
+
+Reduce the height of the bar (e.g., h-2 or h-2.5 / 8px–10px). Thinner tracks look cleaner in data-dense dashboards and don't compete with the primary numbers.
+
+Add overflow-hidden and rounded pill edges (rounded-full) for a modern finish.
+
+
+
+### Safe & Progress Bar (Neon Green / Emerald):
+
+Currently, cc-weight-progress-safe renders as a bright neon green (#10B981 / #00FF88), which pulls excessive visual weight for a normal/nominal state (81.2%).
+
+It makes a standard flight weight look like a highlighted system alert rather than calm baseline status.
+
+Heavy (#1B365D / sky-300):
+
+Using custom hex #1B365D (dark blue) for light mode borders/backgrounds creates an awkward mismatch with Tailwind's standard palette, and sky-300 / sky-400 in dark mode feels too close to cyan/info states rather than indicating high payload/operational mass.
+
+Contrast & System Consistency:
+
+Tailwind emerald-700, amber-700, and red-700 in light mode can look muted against white backgrounds, whereas dark mode variants (emerald-400, amber-400, rose-400) should pop cleanly against bg-slate-900 / bg-slate-950.
+
+Switching red to Tailwind’s rose palette provides a cleaner, modern aviation warning aesthetic that aligns better with dark UI panels.
+
+Recommended Changes
+Here is the updated PHP enum implementation using refined Tailwind CSS classes:
+
+PHP
+public function label(): string
+{
+    return match ($this) {
+        self::Safe => 'Within operating margin',
+        self::Heavy => 'Heavy operation',
+        self::Caution => 'Near structural limit',
+        self::Exceeded => 'Structural limit exceeded',
+    };
+}
+
+public function textClasses(): string
+{
+    return match ($this) {
+        self::Safe => 'text-emerald-600 dark:text-emerald-400',
+        self::Heavy => 'text-sky-600 dark:text-sky-400',
+        self::Caution => 'text-amber-600 dark:text-amber-400',
+        self::Exceeded => 'text-rose-600 dark:text-rose-400',
+    };
+}
+
+public function overviewCardClasses(): string
+{
+    return match ($this) {
+        self::Safe => 'border-slate-800/80 border-l-4 border-l-emerald-500 bg-emerald-500/5 dark:border-slate-800 dark:border-l-emerald-400 dark:bg-emerald-500/10',
+        self::Heavy => 'border-slate-800/80 border-l-4 border-l-sky-500 bg-sky-500/5 dark:border-slate-800 dark:border-l-sky-400 dark:bg-sky-500/10',
+        self::Caution => 'border-slate-800/80 border-l-4 border-l-amber-500 bg-amber-500/5 dark:border-slate-800 dark:border-l-amber-400 dark:bg-amber-500/10',
+        self::Exceeded => 'border-slate-800/80 border-l-4 border-l-rose-500 bg-rose-500/5 dark:border-slate-800 dark:border-l-rose-400 dark:bg-rose-500/10',
+    };
+}
+
+public function progressClass(): string
+{
+    return match ($this) {
+        self::Safe => 'bg-emerald-500 dark:bg-emerald-400',
+        self::Heavy => 'bg-sky-500 dark:bg-sky-400',
+        self::Caution => 'bg-amber-500 dark:bg-amber-400',
+        self::Exceeded => 'bg-rose-500 dark:bg-rose-400',
+    };
+}
+
+public function badgeClasses(): string
+{
+    return match ($this) {
+        self::Safe => 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300 border border-emerald-500/20 dark:border-emerald-400/20',
+        self::Heavy => 'bg-sky-500/15 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300 border border-sky-500/20 dark:border-sky-400/20',
+        self::Caution => 'bg-amber-500/15 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300 border border-amber-500/20 dark:border-amber-400/20',
+        self::Exceeded => 'bg-rose-500/15 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300 border border-rose-500/20 dark:border-rose-400/20',
+    };
+}
+
+### UI Overhaul: Weight and Balance Progress Bars
+
+**Context**
+Restructuring of progress bar components within the `section#flight-plan-task-panel` to resolve accessibility (low-contrast) issues and improve data hierarchy.
+
+**Diagnostics**
+The original implementation placed text labels directly inside the progress bar, causing readability issues as the fill color intersected with the text. The UI used a uniform green color that lacked status differentiation.
+
+**Actionable Findings**
+*   **Contrast:** Labels were moved to external positions (top/bottom) to ensure legibility regardless of the bar's fill level.
+*   **Hierarchy:** The primary numeric value was emphasized (2xl font), while metadata like limits was muted.
+*   **Status Logic:** Dynamic coloring was applied based on utilization thresholds:
+    *   **Normal (< 85%):** Emerald Green (`#10B981`)
+    *   **Warning (85% – 95%):** Amber (`#F59E0B`)
+    *   **Critical (> 95%):** Crimson (`#EF4444`)
+
+**Code Fixes**
+The following changes were identified as a potential fix for the card layout and progress indicators:
+
+
+`````html
+<!-- Proposed Card Structure -->
+<article class="flex flex-col gap-4 p-5 rounded-lg border bg-white dark:bg-slate-900">
+  <div class="flex flex-col gap-2 w-full">
+    <!-- Top Line: Title and Percentage -->
+    <div class="flex justify-between items-end">
+      <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Zero-fuel weight</span>
+      <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300">81.2% of Limit</span>
+    </div>
+
+    <!-- Second Line: Primary Value -->
+    <div class="flex items-baseline gap-1.5 font-mono text-slate-900 dark:text-slate-100">
+      <span class="text-2xl font-black tracking-tight">443,963</span>
+      <span class="text-[11px] font-bold text-slate-500">LB</span>
+    </div>
+
+    <!-- Third Line: Refined Track (8px height) -->
+    <div class="relative h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+      <div class="h-full rounded-full transition-all duration-700" 
+           style="width: 81.2%; background-color: #10B981;"></div>
+    </div>
+
+    <!-- Bottom Line: Muted Context -->
+    <div class="text-[10px] font-medium text-slate-400">
+      Max limit: 547,000 LB
+    </div>
+  </div>
+</article>
+`````
+
+
+**Implementation Strategy**
+| Feature | Style Guidance |
+| :--- | :--- |
+| **Track Height** | Use `h-2` (8px) for a thinner, cleaner appearance. |
+| **Border Radius** | Apply `rounded-full` to both the track and the fill bar. |
+| **Transitions** | Use `transition-all duration-700 ease-out` for smooth fill updates. |
+| **Text Styling** | Use `text-slate-400` for the max limit to maintain visual hierarchy. |
+
+*Note: The code fixes and findings above were identified on a live page in DevTools. When applying them to your codebase, please adapt them to your project's specific technical stack (e.g., Tailwind CSS classes, CSS modules, framework components) rather than applying them as literal CSS overrides.*
+
+## Paused: Flight release: 24 hour time limit
 
 ### Goal
 
-Expire a cached flight release at the earlier of 24 hours after extraction and its planned ETA. Remove the expired release from the database and any release-specific cache, and stop serving it through the brief or Fuel Score URL.
+Expire only the cached flight-release result 24 hours after successful extraction. Remove its saved `flight_plan_results` row and any cache entries belonging specifically to that result, and stop serving it through the brief or Fuel Score URL.
 
 ### Current implementation
 
-- `FlightPlanResultStore` keeps one encrypted `flight_plan_results` row per user. `save()` replaces that row; `get()` checks owner and key, and `latest()` checks owner, but neither checks age or ETA. The row has timestamps, but no explicit extraction or expiry timestamp.
+- `FlightPlanResultStore` keeps one encrypted `flight_plan_results` row per user. `save()` replaces that row; `get()` checks owner and key, and `latest()` checks owner, but neither checks age. The row has timestamps, but no explicit extraction or expiry timestamp.
 - `FlightPlanBrief` loads the latest row on mount and retrieves it on render. `OfflineFuelScoreController` retrieves the same row by key. Both rely on the store, so expiry enforcement belongs there.
 - `FlightPlanTextExtractor` caches PDF text for seven days under a file-hash key. This cache is independent of the saved result and can be shared by identical uploads; it has no owner or result-key mapping. The uploaded PDF is deleted after extraction.
-- `schedule.etaUtc` in the serialized `flight_plan_data` is a dated UTC instant when extraction can establish one; it may be absent. Existing scheduling in `routes/console.php` can run database cleanup.
+- Existing scheduling in `routes/console.php` can run cleanup of expired cached results.
 
 ### Problem
 
-An old result remains readable until the user replaces or manually clears it. The PDF-text cache may retain release content longer than the proposed limit. `updated_at` is not a reliable extraction clock if a row is later touched, and deleting a shared file-hash cache entry for one owner could affect another owner's extraction.
+An old cached result remains readable until the user replaces or manually clears it. `updated_at` is not a reliable extraction clock if a row is later touched. Expiration must apply to the saved result rather than the independent, shared PDF-text extraction cache.
 
 ### Implementation plan
 
-1. Add an immutable extraction timestamp and an indexed expiry timestamp to `flight_plan_results`. Set both when a successful extraction is saved, including when the user's existing row is replaced. Compute expiry as the earlier of extraction time plus 24 hours and a valid, dated `schedule.etaUtc`; if ETA is missing or unusable, use the 24-hour deadline. Treat an ETA already in the past at save time as immediately expired. Compare instants in UTC and define expiry at the deadline (`now >= expires_at`).
+1. Add an immutable extraction timestamp and an indexed expiry timestamp to `flight_plan_results`. Set both when a successful extraction is saved, including when the user's existing row is replaced. Compute expiry as extraction time plus 24 hours, independent of the flight schedule. Compare instants in UTC and define expiry at the deadline (`now >= expires_at`).
 2. Make `FlightPlanResultStore::get()` and `latest()` exclude expired rows and delete a matching expired row when encountered. Keep owner and result-key checks in place. The brief should return to its upload state after expiry; the Fuel Score URL should return 404. Clear any stale Livewire result key or selected task when a rendered result expires so the UI does not retain a link to it.
 3. Add a scheduled cleanup command that deletes expired rows even if their owners never return. Use the same expiry rule for read checks and cleanup; make cleanup safe to repeat and scope deletion to rows whose stored deadline has passed. Define how existing rows receive an expiry during migration so deployment cannot make old releases persist indefinitely or expose them past the new limit.
-4. Inventory release-specific cache entries and invalidate them with the result. The current PDF-text cache is shared by file hash, so replace it with an owner/release-scoped entry that can be invalidated, or remove that cache if scoping has no useful benefit. Ensure existing seven-day hash entries age out without being read after the change. Do not flush unrelated airport or schedule caches.
-5. Document the expiry behavior in the upload/result UI with a concise UTC-aware message, including that re-upload is needed after expiry. Avoid presenting the planned ETA as a confirmed arrival time.
+4. Inventory cache entries belonging specifically to the saved result and invalidate those with the result. Preserve the independent shared PDF-text cache and its existing seven-day lifetime, along with airport and schedule caches. No source-document or other application data cleanup is part of this task.
+5. Document the 24-hour cached-result lifetime in the upload/result UI with a concise UTC-aware message, including that re-upload is needed after expiry.
 
 ### Acceptance criteria
 
-- A release is accessible before both deadlines and unavailable at the earlier deadline, including exact-boundary, midnight rollover, and already-past ETA cases.
-- Missing or invalid ETA never extends the 24-hour limit; a valid ETA earlier than 24 hours wins. Replacing a release starts a new extraction clock and invalidates the old key.
+- A cached result is accessible before extraction time plus 24 hours and unavailable at or after that deadline, including exact-boundary and midnight rollover cases.
+- Flight schedule values never shorten or extend the cached-result lifetime. Replacing a result starts a new extraction clock and invalidates the old key.
 - Expired data is removed from the database by scheduled cleanup even without another request. Brief and Fuel Score reads deny an expired result immediately, regardless of whether cleanup has run.
-- No release-specific cached content remains available after expiry. Shared, unrelated caches are unaffected; pre-change PDF-text entries cannot be reused and expire naturally.
+- No cache entries belonging specifically to the expired result remain available. Shared PDF-text, airport, and schedule caches retain their existing behavior and lifetimes.
 - Ownership checks, encrypted storage, and the normal upload/error flows continue to work.
 
 ### Validation for implementation
 
-- Add focused store tests using a frozen clock for both deadlines, exact equality, missing/malformed ETA, replacement, ownership, and deletion on read.
+- Add focused store tests using a frozen clock for the 24-hour deadline, exact equality, midnight rollover, schedule-independent expiration, replacement, ownership, and deletion on read.
 - Add focused Livewire and Fuel Score tests for expiry transitions and a cleanup-command test for unattended expiration and repeat runs.
 - Run only affected tests through Sail, Pint after PHP changes, and Larastan once at the final integration checkpoint. Record the outcomes here.
 
-Commit message: `feat: expire flight releases after 24 hours or planned ETA`
+### Planning outcome
+
+Restricted expiration to the cached flight-release result and its own cache entries, with a fixed 24-hour lifetime after successful extraction. Removed arrival-time expiration and shared PDF-text cache changes. This update changes documentation only; the task remains paused.
+
+Commit message: `feat: expire cached flight release results after 24 hours`
 
 ## Plan: feat: Track schedule upload count
 - For multiple file uploads within each user request
@@ -163,8 +371,12 @@ The FMS label conflates alternate burn with reserve fuel. There is no stored air
 
 ### Calculation decisions needed before implementation
 
-- Confirm the exact FMS reserve formula: which of alternate burn, the release's `RESERVE` amount, and the aircraft additive participate. Do not assume `alternate + finalReserve + additive` or count the source reserve twice.
-- Supply approved additive values and units for each model; confirm whether the two 777 variants share a value and whether tail-specific overrides are needed.
+- Confirm the exact FMS reserve formula: which of alternate burn:
+  - alternate + finalReserve
+- Supply approved additive values and units for each model; 
+  - the two 777 variants share a value, while 747 differs
+  - 777 = 8,000lbs additive
+  - 747 = ?
 - Define the no-alternate case: whether the confirmed formula permits calculation without alternate burn. A missing value is not an explicit zero.
 - Confirm calculation/display rounding. Recommended storage is whole pounds per aircraft, conversion through `FuelQuantity` when the release uses kilograms, and rounding only for display; adjust storage precision if the supplied values require it.
 

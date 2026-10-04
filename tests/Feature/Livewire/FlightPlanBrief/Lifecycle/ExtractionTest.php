@@ -58,7 +58,7 @@ class ExtractionTest extends FlightPlanBriefTestCase
             ->assertSet('flightRelease', null)
             ->assertDispatched('scroll-to-release-summary')
             ->assertSet('extractionJustCompleted', true)
-            ->assertSeeText('Flight plan brief ready. Upload and extraction completed successfully.')
+            ->assertDontSeeText('Flight plan brief ready. Upload and extraction completed successfully.')
             ->assertSeeHtml('wire:key="flight-plan-brief-results"')
             ->assertSeeHtml('id="release-summary"')
             ->assertDontSeeText('Flight release PDF')

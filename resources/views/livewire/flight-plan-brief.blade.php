@@ -1,13 +1,40 @@
 <div class="py-6 sm:py-8">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="overflow-hidden rounded-lg bg-white shadow-sm dark:bg-slate-900 dark:shadow-black/20">
-            <div class="border-b border-[#1B365D]/10 bg-[#1B365D] px-4 py-5 text-[#F8F9FA] dark:border-slate-600 dark:bg-[#1B365D] sm:px-6">
-                <p class="text-sm font-semibold uppercase tracking-[0.16em] text-[#C5A059]">Flight deck</p>
-                <h1 class="mt-2 text-3xl font-bold">Flight Plan Brief</h1>
-                <p class="mt-3 max-w-2xl text-sm leading-6 text-[#F8F9FA]/80">
-                    Your flight release, distilled into the details that matter.
-                </p>
-            </div>
+            <header class="flex flex-col items-start justify-between gap-5 border-b border-[#1B365D]/10 bg-[#1B365D] px-4 py-5 text-[#F8F9FA] dark:border-slate-600 dark:bg-[#1B365D] sm:flex-row sm:px-6">
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold uppercase tracking-[0.16em] text-[#C5A059]">Flight deck</p>
+                    <h1 class="mt-2 text-3xl font-bold">Flight Plan Brief</h1>
+                    <p class="mt-3 max-w-2xl text-sm leading-6 text-[#F8F9FA]/80">
+                        Your flight release, distilled into the details that matter.
+                    </p>
+                </div>
+
+                @if ($isResultsView)
+                    <div class="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0" role="group" aria-label="Flight plan actions">
+                        <button
+                            type="button"
+                            wire:click="extractAnotherFlightPlan"
+                            wire:loading.attr="disabled"
+                            class="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-[#F8F9FA]/20 bg-transparent px-3 py-2 text-sm font-semibold text-[#F8F9FA] transition hover:border-[#C5A059] hover:bg-[#C5A059] hover:text-[#0B0E14] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C5A059] disabled:cursor-wait disabled:opacity-60"
+                        >
+                            <x-heroicon-o-arrow-up-tray class="h-4 w-4 shrink-0" aria-hidden="true" />
+                            <span wire:loading.remove wire:target="extractAnotherFlightPlan">Extract another flight plan</span>
+                            <span wire:loading wire:target="extractAnotherFlightPlan" role="status">Opening upload…</span>
+                        </button>
+                        <button
+                            type="button"
+                            wire:click="clearResults"
+                            wire:loading.attr="disabled"
+                            class="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-[#F8F9FA]/20 bg-transparent px-3 py-2 text-sm font-semibold text-[#F8F9FA] transition hover:border-red-300/50 hover:bg-red-500/10 hover:text-red-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C5A059] disabled:cursor-wait disabled:opacity-60"
+                        >
+                            <x-heroicon-o-x-mark class="h-4 w-4 shrink-0" aria-hidden="true" />
+                            <span wire:loading.remove wire:target="clearResults">Clear results</span>
+                            <span wire:loading wire:target="clearResults" role="status">Clearing results…</span>
+                        </button>
+                    </div>
+                @endif
+            </header>
 
             <div class="p-4 sm:p-6">
     @if (! $isResultsView)
@@ -80,20 +107,6 @@
         </div>
     @else
         <section wire:key="flight-plan-brief-results" class="flex flex-col gap-6">
-            @if ($extractionJustCompleted)
-                <p class="text-sm font-medium text-[#1B365D] dark:text-slate-100" role="status">Flight plan brief ready. Upload and extraction completed successfully.</p>
-            @endif
-            <div class="flex justify-end">
-                <button
-                    type="button"
-                    wire:click="extractAnotherFlightPlan"
-                    wire:loading.attr="disabled"
-                    class="inline-flex items-center justify-center rounded-md bg-[#1B365D] px-4 py-2 text-sm font-semibold text-[#F8F9FA] transition hover:bg-[#142a49] disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#C5A059] dark:text-[#0B0E14] dark:hover:bg-[#d3b271]"
-                >
-                    Extract another flight plan
-                </button>
-            </div>
-
             <x-flight-release.workspace
                 :tasks="$tasks"
                 :active-task="$activeTaskCase"

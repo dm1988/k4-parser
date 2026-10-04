@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Config;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\Livewire\FlightPlanBrief\FlightPlanBriefTestCase;
 
 class AccessTest extends FlightPlanBriefTestCase
@@ -67,5 +68,42 @@ class AccessTest extends FlightPlanBriefTestCase
             ->test(FlightPlanBrief::class)
             ->call('extractAnotherFlightPlan')
             ->assertForbidden();
+    }
+
+    #[DataProvider('resetActions')]
+    public function test_reset_actions_enforce_authentication_verification_feature_and_gate_access(string $action): void
+    {
+        Livewire::test(FlightPlanBrief::class)
+            ->call($action)
+            ->assertUnauthorized();
+
+        Livewire::actingAs(User::factory()->unverified()->create())
+            ->test(FlightPlanBrief::class)
+            ->call($action)
+            ->assertForbidden();
+
+        Config::set('features.flight_release.enabled', false);
+
+        Livewire::actingAs(User::factory()->admin()->create())
+            ->test(FlightPlanBrief::class)
+            ->call($action)
+            ->assertNotFound();
+
+        Config::set('features.flight_release.enabled', true);
+        Config::set('features.flight_release.for_all_users', false);
+
+        Livewire::actingAs(User::factory()->create())
+            ->test(FlightPlanBrief::class)
+            ->call($action)
+            ->assertForbidden();
+    }
+
+    /** @return array<string, array{string}> */
+    public static function resetActions(): array
+    {
+        return [
+            'extract another' => ['extractAnotherFlightPlan'],
+            'clear results' => ['clearResults'],
+        ];
     }
 }

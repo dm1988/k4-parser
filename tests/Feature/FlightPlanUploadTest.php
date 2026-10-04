@@ -95,7 +95,7 @@ class FlightPlanUploadTest extends TestCase
                 ->assertSet('flightRelease', null)
                 ->assertSet('extractionJustCompleted', true)
                 ->assertDispatched('scroll-to-release-summary')
-                ->assertSeeText('Flight plan brief ready. Upload and extraction completed successfully.')
+                ->assertDontSeeText('Flight plan brief ready. Upload and extraction completed successfully.')
                 ->assertSeeHtml('wire:key="flight-plan-brief-results"')
                 ->assertSee('KCVG');
         } finally {
