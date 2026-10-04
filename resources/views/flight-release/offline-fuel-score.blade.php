@@ -31,7 +31,7 @@
                         <input type="text" inputmode="decimal" autocomplete="off" placeholder="Fuel amount" x-model="startingFob" :disabled="fuelUnit === null"
                             class="rounded-lg border-[#1B365D]/20 bg-white font-mono text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                     </label>
-                    <button type="button" x-on:click="reset()" class="rounded-lg border border-[#1B365D]/20 px-4 py-2 text-sm font-semibold text-[#1B365D] transition hover:bg-[#F8F9FA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059] dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800">Reset inputs</button>
+                    <button type="button" x-on:click="reset()" class="rounded-lg border border-[#1B365D]/20 px-4 py-2 text-sm font-semibold text-[#1B365D] transition hover:bg-[#F8F9FA] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C5A059] dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800">Reset inputs</button>
                 </div>
                 <p x-show="draftUnavailable" x-cloak role="status" class="mt-3 text-sm text-amber-800 dark:text-amber-300">Browser storage is unavailable. Saved inputs may not match this page after a reload.</p>
                 <p class="mt-3 text-xs text-[#4A5568] dark:text-slate-400">Starting FOB is the actual fuel at takeoff and is used for cumulative burn at every waypoint. ETA needs only Off time and a confirmed cumulative duration. TBO is the release's cumulative planned burn. Source quantities must use the same unit. Displayed fuel values are rounded to two decimal places; calculations use full precision.</p>
@@ -60,7 +60,7 @@
                                         <div class="flex items-center gap-2">
                                             <button type="button" x-on:click="toggleWaypoint(waypoint)" :aria-expanded="waypoint.expanded.toString()" :aria-controls="`waypoint-details-${index}`"
                                                 :aria-label="`${waypoint.expanded ? 'Collapse' : 'Expand'} details for ${waypoint.displayLabel}`"
-                                                class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[#4A5568] transition hover:bg-[#1B365D]/5 hover:text-[#1B365D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059] dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200">
+                                                class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[#4A5568] transition hover:bg-[#1B365D]/5 hover:text-[#1B365D] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C5A059] dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200">
                                                 <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 transition-transform" :class="waypoint.expanded ? 'rotate-90' : ''">
                                                     <path d="m9 5 7 7-7 7" />
                                                 </svg>

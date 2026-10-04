@@ -29,7 +29,7 @@
 
     @if ($calculatorUrl)
         <a href="{{ $calculatorUrl }}" target="_blank" rel="noopener noreferrer"
-            class="inline-flex w-fit items-center gap-2 rounded-lg bg-[#1B365D] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#142a49] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059] focus-visible:ring-offset-2 dark:bg-[#C5A059] dark:text-[#0B0E14] dark:hover:bg-[#d3b271] dark:focus-visible:ring-offset-slate-900">
+            class="inline-flex w-fit items-center gap-2 rounded-lg bg-[#1B365D] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#142a49] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C5A059] focus-visible:ring-offset-2 dark:bg-[#C5A059] dark:text-[#0B0E14] dark:hover:bg-[#d3b271] dark:focus-visible:ring-offset-slate-900">
             Open offline fuel calculator <span class="sr-only">(opens in a new tab)</span>
         </a>
     @endif

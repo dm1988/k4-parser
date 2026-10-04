@@ -181,7 +181,7 @@
     </section>
 
     <details class="group overflow-hidden rounded-xl border border-[#1B365D]/10 bg-white dark:border-slate-700 dark:bg-slate-900">
-        <summary class="flex cursor-pointer list-none items-center justify-between gap-3 bg-[#F8F9FA] px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#C5A059] dark:bg-slate-800 [&::-webkit-details-marker]:hidden">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-3 bg-[#F8F9FA] px-4 py-3 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#C5A059] dark:bg-slate-800 [&::-webkit-details-marker]:hidden">
             <span class="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[#1B365D] dark:text-slate-200">
                 <x-heroicon-o-building-office-2 class="h-4 w-4" />
                 Airport details

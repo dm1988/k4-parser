@@ -43,7 +43,7 @@
             <button
                 x-ref="trigger"
                 type="button"
-                class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#1B365D]/15 text-[#1B365D] transition hover:bg-[#1B365D]/7 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059] focus-visible:ring-offset-2 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus-visible:ring-offset-slate-900"
+                class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#1B365D]/15 text-[#1B365D] transition hover:bg-[#1B365D]/7 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C5A059] focus-visible:ring-offset-2 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus-visible:ring-offset-slate-900"
                 aria-label="Open task menu"
                 aria-controls="flight-plan-mobile-task-menu"
                 aria-expanded="false"
@@ -85,7 +85,7 @@
 
                 <button
                     type="button"
-                    class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#1B365D]/15 text-[#1B365D] transition hover:bg-[#1B365D]/7 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059] focus-visible:ring-offset-2 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus-visible:ring-offset-slate-900"
+                    class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#1B365D]/15 text-[#1B365D] transition hover:bg-[#1B365D]/7 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C5A059] focus-visible:ring-offset-2 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus-visible:ring-offset-slate-900"
                     aria-label="Close task menu"
                     x-on:click="dismissMenu"
                 >

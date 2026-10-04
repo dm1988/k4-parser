@@ -111,7 +111,7 @@ final readonly class WeightBalanceFieldViewModel
             : $utilizationPercent.'% of structural limit';
     }
 
-    public function progressOverlayLabel(): ?string
+    public function utilizationPercentLabel(): ?string
     {
         $utilizationPercent = $this->formattedUtilizationPercent();
 
@@ -119,9 +119,7 @@ final readonly class WeightBalanceFieldViewModel
             return null;
         }
 
-        return Str::upper(
-            $utilizationPercent.'% of '.$this->limitAmountLabel().' '.$this->limitUnit().' limit',
-        );
+        return $utilizationPercent.'% of limit';
     }
 
     public function comparisonLabel(): ?string

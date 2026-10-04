@@ -30,210 +30,56 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 # Tasks
 ## Sloppy static findings
 ./vendor/bin/sloppy
-## [x] Completed: Flight plan: header refactor
-Refactor the Flight Plan Brief header and action controls in our Livewire component and Blade view:
 
-1. **Header Action Integration:**
-   - Move the "Extract another flight plan" button into the top-right corner of the active `Flight Plan Brief` header card.
-   - Add a "Clear results" button adjacent/stacked with "Extract another flight plan".
-   - Stack both buttons vertically in a subtle button group (or ghost button style) to save horizontal space and avoid crowding the route details (`CKS272`, `SBKP -> SCEL`).
-   - Use clean inline SVG or Heroicons for both buttons:
-     - `Extract another`: Import/upload icon (e.g., `arrow-up-tray` or `document-plus`).
-     - `Clear results`: Close/trash icon (e.g., `x-mark` or `trash`).
+## [x] Completed: Flight plan: Weight & Balance: Progress bar readability
 
-2. **State & Header Behavior:**
-   - Keep the main "Flight Plan Brief" title visible at all times, but ensure layout hierarchy remains clean.
-   - Add a Livewire/Blade action for `clearResults` that resets the active flight model state.
-   - When no flight plan is loaded (cleared state), display a clean empty-state upload container under the main title.
-   - Convert the header to a flex container (`flex justify-between items-start`) to support a split layout between branding and actions.
-   - Implement a `flex-col` button group in the top-right corner to stack actions without interfering with the primary typography.
+### Goal
 
-3. **Styling & Theme Alignment:**
-   - Maintain the current Tailwind CSS dark theme (`bg-slate-900`/`bg-slate-800` cards, subtle borders, accent colors).
-   - Ensure buttons are responsive and collapse gracefully on mobile viewports.
-   - Applied ghost-style borders (`border-[#F8F9FA]/20`) and hover transitions (primary CTA for extraction, transparent red for clearing) to align with the dark theme aesthetic.
-
-### Header refactor outcome
-
-Moved extraction into the main Flight Plan Brief header beside a new Clear results action. Both use stacked ghost buttons, decorative Heroicons, visible keyboard focus, disabled/loading states, gold extraction hover, and a subtle red clearing hover. The title stays visible in every state; actions move below the branding and fill the available width on mobile, leaving the flight/route summary separate.
-
-Added an authorized `clearResults()` action using the existing owner-scoped result deletion and upload reset. Both header actions reset the result key, file, selected task, completion flag, and validation errors; task pages navigate to the upload URL. Clearing persists across reloads and preserves other users' results.
-
-### Header refactor validation
-
-The five focused PHPUnit files pass through Sail: SavedResultTest, UploadTest, AccessTest, ExtractionTest, and FlightPlanTaskRouteTest (32 tests in total). Coverage includes header action placement, persistent title/upload states, owner isolation, repeated clearing, validation reset, authorization, and embedded/task-route transitions. Pint passes. The final focused Larastan check passes with zero errors after correcting a test assertion-chain type issue found by the initial integration run.
-
-Headless Chrome reviewed the actual rendered header in 375px light/dark frames and a 960px light frame using the existing CSS bundle. The header/actions fit without horizontal overflow, stack on mobile, and split horizontally on desktop. This was an isolated layout preview, not an authenticated interaction audit; the old bundle does not include every new utility.
-
-`vendor/bin/sail npm run build` fails because installed Tailwind 4 is configured as a Tailwind 3 PostCSS plugin. Dependency/build configuration changes are outside this task and were left untouched; rebuilding and checking the final generated CSS remain blocked by that existing mismatch.
-
-Commit message: `refactor: integrate flight plan header actions and clear results`
-
-## Flight plan: Weight & Balance: Progress bar readability
-Move Progress Labels Outside the Bar (Recommended)
-
-Why: Placing text inside or across a fill bar creates severe low-contrast zones whenever the bar partially fills behind the text.
-
-Implementation: Move the percentage and limit label directly above or below the track.
-
-Top line: ZERO-FUEL WEIGHT (left) | 81.2% of Limit (right)
-
-Second line: 443,963 LB (large value)
-
-Third line (Track): Clean, uninterrupted progress bar.
-
-Bottom line: Max limit: 547,000 LB in a muted text style (text-slate-400).
-
-Refine Color Coding & Status States
-
-Bright neon green across the entire bar can be visually aggressive and visually overpowers the numeric data (443,963 LB).
-
-Use purposeful status colors:
-
-Normal (< 85-90%): A balanced emerald/teal  (e.g., #10B981).
-
-Warning: Amber/Yellow (#F59E0B).
-
-Limit/Critical (> 95% or Over Limit): Crimson Red (#EF4444).
-
-Improve Track & Bar Geometry
-
-Reduce the height of the bar (e.g., h-2 or h-2.5 / 8px–10px). Thinner tracks look cleaner in data-dense dashboards and don't compete with the primary numbers.
-
-Add overflow-hidden and rounded pill edges (rounded-full) for a modern finish.
-
-
-
-### Safe & Progress Bar (Neon Green / Emerald):
-
-Currently, cc-weight-progress-safe renders as a bright neon green (#10B981 / #00FF88), which pulls excessive visual weight for a normal/nominal state (81.2%).
-
-It makes a standard flight weight look like a highlighted system alert rather than calm baseline status.
-
-Heavy (#1B365D / sky-300):
-
-Using custom hex #1B365D (dark blue) for light mode borders/backgrounds creates an awkward mismatch with Tailwind's standard palette, and sky-300 / sky-400 in dark mode feels too close to cyan/info states rather than indicating high payload/operational mass.
-
-Contrast & System Consistency:
-
-Tailwind emerald-700, amber-700, and red-700 in light mode can look muted against white backgrounds, whereas dark mode variants (emerald-400, amber-400, rose-400) should pop cleanly against bg-slate-900 / bg-slate-950.
-
-Switching red to Tailwind’s rose palette provides a cleaner, modern aviation warning aesthetic that aligns better with dark UI panels.
-
-Recommended Changes
-Here is the updated PHP enum implementation using refined Tailwind CSS classes:
-
-PHP
-public function label(): string
-{
-    return match ($this) {
-        self::Safe => 'Within operating margin',
-        self::Heavy => 'Heavy operation',
-        self::Caution => 'Near structural limit',
-        self::Exceeded => 'Structural limit exceeded',
-    };
-}
-
-public function textClasses(): string
-{
-    return match ($this) {
-        self::Safe => 'text-emerald-600 dark:text-emerald-400',
-        self::Heavy => 'text-sky-600 dark:text-sky-400',
-        self::Caution => 'text-amber-600 dark:text-amber-400',
-        self::Exceeded => 'text-rose-600 dark:text-rose-400',
-    };
-}
-
-public function overviewCardClasses(): string
-{
-    return match ($this) {
-        self::Safe => 'border-slate-800/80 border-l-4 border-l-emerald-500 bg-emerald-500/5 dark:border-slate-800 dark:border-l-emerald-400 dark:bg-emerald-500/10',
-        self::Heavy => 'border-slate-800/80 border-l-4 border-l-sky-500 bg-sky-500/5 dark:border-slate-800 dark:border-l-sky-400 dark:bg-sky-500/10',
-        self::Caution => 'border-slate-800/80 border-l-4 border-l-amber-500 bg-amber-500/5 dark:border-slate-800 dark:border-l-amber-400 dark:bg-amber-500/10',
-        self::Exceeded => 'border-slate-800/80 border-l-4 border-l-rose-500 bg-rose-500/5 dark:border-slate-800 dark:border-l-rose-400 dark:bg-rose-500/10',
-    };
-}
-
-public function progressClass(): string
-{
-    return match ($this) {
-        self::Safe => 'bg-emerald-500 dark:bg-emerald-400',
-        self::Heavy => 'bg-sky-500 dark:bg-sky-400',
-        self::Caution => 'bg-amber-500 dark:bg-amber-400',
-        self::Exceeded => 'bg-rose-500 dark:bg-rose-400',
-    };
-}
-
-public function badgeClasses(): string
-{
-    return match ($this) {
-        self::Safe => 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300 border border-emerald-500/20 dark:border-emerald-400/20',
-        self::Heavy => 'bg-sky-500/15 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300 border border-sky-500/20 dark:border-sky-400/20',
-        self::Caution => 'bg-amber-500/15 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300 border border-amber-500/20 dark:border-amber-400/20',
-        self::Exceeded => 'bg-rose-500/15 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300 border border-rose-500/20 dark:border-rose-400/20',
-    };
-}
+Adopt the Chrome DevTools prototype's clean hierarchy and improve colors across Weight & Balance bars, overview alerts, and badges. Preserve all existing classification thresholds, rounding, labels, alert counts, and severity ordering. No animation or transitions. Complete the authorized Tailwind 4 migration to resolve the Vite/PostCSS build failure.
 
 ### UI Overhaul: Weight and Balance Progress Bars
 
-**Context**
-Restructuring of progress bar components within the `section#flight-plan-task-panel` to resolve accessibility (low-contrast) issues and improve data hierarchy.
+Implemented the preferred prototype: external labels, a prominent monospaced planned value with its unit, an uninterrupted 8px (`h-2`) rounded native progress bar, and the structural limit with its unit below. Status wording remains visible so color is not the sole cue. Mobile retains the preferred title/percentage layout. At desktop widths (`xl`), cards with content widths up to `28rem` move the percentage directly above the bar; wider cards retain the right-aligned header percentage. CSS displays only one percentage at a time.
 
-**Diagnostics**
-The original implementation placed text labels directly inside the progress bar, causing readability issues as the fill color intersected with the text. The UI used a uniform green color that lacked status differentiation.
+### Gemini enum review outcome
 
-**Actionable Findings**
-*   **Contrast:** Labels were moved to external positions (top/bottom) to ensure legibility regardless of the bar's fill level.
-*   **Hierarchy:** The primary numeric value was emphasized (2xl font), while metadata like limits was muted.
-*   **Status Logic:** Dynamic coloring was applied based on utilization thresholds:
-    *   **Normal (< 85%):** Emerald Green (`#10B981`)
-    *   **Warning (85% – 95%):** Amber (`#F59E0B`)
-    *   **Critical (> 95%):** Crimson (`#EF4444`)
+Retained the proposed emerald / sky / amber / rose palette, tinted badges, and subtle colored accents, with darker light-mode shades for readable text and meaningful bar graphics:
 
-**Code Fixes**
-The following changes were identified as a potential fix for the card layout and progress indicators:
+| Existing state | Existing rounded utilization | Text: light / dark | Native fill: light / dark |
+| --- | --- | --- | --- |
+| Safe (normal) | Below 90% | emerald-700 / emerald-400 | emerald-600 / emerald-400 |
+| Heavy | 90% to below 98% | sky-700 / sky-400 | sky-600 / sky-400 |
+| Caution | 98% through 100% | amber-700 / amber-400 | amber-700 / amber-400 |
+| Exceeded (over-limit warning) | Above 100% | rose-700 / rose-400 | rose-600 / rose-400 |
 
+Gemini's proposed thresholds were rejected; enum cases, labels, operational-alert behavior and severity ordering remain unchanged. Muted limit text uses slate-600/slate-400. Text and badges meet [4.5:1 contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html); native fills meet [3:1](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html) against their tracks. Overview cards retain Aviation Blue structure with subtle slate perimeter borders and state-colored left accents/tints.
 
-`````html
-<!-- Proposed Card Structure -->
-<article class="flex flex-col gap-4 p-5 rounded-lg border bg-white dark:bg-slate-900">
-  <div class="flex flex-col gap-2 w-full">
-    <!-- Top Line: Title and Percentage -->
-    <div class="flex justify-between items-end">
-      <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Zero-fuel weight</span>
-      <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300">81.2% of Limit</span>
-    </div>
+### Implementation outcome and validation
 
-    <!-- Second Line: Primary Value -->
-    <div class="flex items-baseline gap-1.5 font-mono text-slate-900 dark:text-slate-100">
-      <span class="text-2xl font-black tracking-tight">443,963</span>
-      <span class="text-[11px] font-bold text-slate-500">LB</span>
-    </div>
+- Updated the shared Blade component, view-model percentage label, enum presentation classes, and theme-aware native WebKit/Firefox fills. Removed overlay text and Heavy's hard-coded blue override; badges now use independent tinted backgrounds. Added no animation or transitions.
+- Preserved one-decimal rounding before classification, existing thresholds/labels/severity/alert counts, progress clamping at 100% with actual exceeded percentages in visible and accessible text, units, and unavailable/conflicting source states.
+- Sail focused PHPUnit checks passed: 34 tests, 443 assertions across component rendering, palette contrast, field calculations/boundaries, Livewire Weight & Balance, and affected overview assertions. Pint passed; final targeted Larastan passed with zero errors.
+- Completed the authorized Tailwind 4 migration using the installed Vite plugin. Replaced legacy PostCSS/JavaScript configuration with CSS imports, explicit Blade/PHP/JavaScript source paths, the forms plugin, Figtree font, and manual `.dark` mode. Kept the reviewed slate/status palette and existing shadow, radius, blur, border, cursor and placeholder defaults. Migrated focus classes to `outline-hidden` to retain forced-colors accessibility. Updated the project version in AGENTS.md.
+- Production `sail npm run build` passed. Eight focused Node tests passed, including actual Vite compilation and existing theme behavior. The new build regression covers PHP enum classes, dark badges, forms, forced-colors focus outlines, native fills and the correctly prefixed dark WebKit track selector.
+- Chrome checks passed in eight light/dark/mobile/desktop cases, including a viewport equivalent to 200% zoom reflow and doubled root font size: one visible percentage, correct placement, no clipping/overflow, preserved forms/focus styles and no bar transitions. Minimum measured text/badge/fill contrast: 5.02:1 / 4.84:1 / 3.44:1. Desktop screenshots verified native fills and dark tracks. Firefox runtime checks were unavailable locally.
+- Main readability implementation, Tailwind 4 migration, and both follow-ups below are complete.
 
-    <!-- Third Line: Refined Track (8px height) -->
-    <div class="relative h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-      <div class="h-full rounded-full transition-all duration-700" 
-           style="width: 81.2%; background-color: #10B981;"></div>
-    </div>
+Implementation commit message: `refactor: migrate to Tailwind 4 and improve weight progress readability`
 
-    <!-- Bottom Line: Muted Context -->
-    <div class="text-[10px] font-medium text-slate-400">
-      Max limit: 547,000 LB
-    </div>
-  </div>
-</article>
-`````
+### [x] Completed follow-up: `Estimated landing weight` card height
 
+Single-field groups align at the top at `xl`, so Arrival and its landing card size to their content instead of stretching to the tallest neighboring column. The landing value, percentage, bar and limit stay together without a fixed height cap. Multi-field column sizing and the mobile stacking behavior are preserved.
 
-**Implementation Strategy**
-| Feature | Style Guidance |
-| :--- | :--- |
-| **Track Height** | Use `h-2` (8px) for a thinner, cleaner appearance. |
-| **Border Radius** | Apply `rounded-full` to both the track and the fill bar. |
-| **Transitions** | Use `transition-all duration-700 ease-out` for smooth fill updates. |
-| **Text Styling** | Use `text-slate-400` for the max limit to maintain visual hierarchy. |
+### [x] Completed follow-up: Remove `Planned` from each W&B card
 
-*Note: The code fixes and findings above were identified on a live page in DevTools. When applying them to your codebase, please adapt them to your project's specific technical stack (e.g., Tailwind CSS classes, CSS modules, framework components) rather than applying them as literal CSS overrides.*
+Removed the repeated `Planned` label and its value's extra top margin from the shared field component. The section's planned-weight explanation remains; field headings, values, units, limits, statuses and accessibility data are preserved.
+
+Follow-up validation: Sail's nine focused component/Livewire tests passed (201 assertions), Pint passed, and the production Vite build passed. Six Chrome geometry checks passed across desktop/mobile/light/dark and enlarged-text/reflow cases: compact landing card, unchanged neighboring column sizing for the height fix, no clipping/overflow, all seven fields retained and zero repeated `Planned` labels.
+
+Follow-up commit message: `fix: compact weight cards and remove redundant planned labels`
+
+References:
+resources/views/components/flight-release/weight-balance-field.blade.php
 
 ## Paused: Flight release: 24 hour time limit
 
@@ -418,41 +264,46 @@ Commit message for this plan: `docs: plan aircraft-specific flight plan reserve 
 ## [x] Completed: Bug: Crew name extract boundary
 ## [x] Completed: Flight plan: Refactor FlightPlanBriefTest
 ## [x] Completed: Flight plan: Crew list: WCAG 2.2 AA compliance
+## [x] Completed: Flight plan: header refactor
+Refactor the Flight Plan Brief header and action controls in our Livewire component and Blade view:
 
-Currently: Crew role avatars use 12px white text on role-specific solid backgrounds. The emerald-600 and amber-600 light-mode combinations measure approximately 3.77:1 and 3.19:1, below the 4.5:1 WCAG 2.2 AA minimum for normal text. Existing component and enum tests preserve these failing color combinations.
+1. **Header Action Integration:**
+   - Move the "Extract another flight plan" button into the top-right corner of the active `Flight Plan Brief` header card.
+   - Add a "Clear results" button adjacent/stacked with "Extract another flight plan".
+   - Stack both buttons vertically in a subtle button group (or ghost button style) to save horizontal space and avoid crowding the route details (`CKS272`, `SBKP -> SCEL`).
+   - Use clean inline SVG or Heroicons for both buttons:
+     - `Extract another`: Import/upload icon (e.g., `arrow-up-tray` or `document-plus`).
+     - `Clear results`: Close/trash icon (e.g., `x-mark` or `trash`).
 
-Goal: Make the reusable crew card WCAG 2.2 AA compliant in Maintenance Log, Envelope, and Flight Init while retaining a compact, scannable role avatar.
+2. **State & Header Behavior:**
+   - Keep the main "Flight Plan Brief" title visible at all times, but ensure layout hierarchy remains clean.
+   - Add a Livewire/Blade action for `clearResults` that resets the active flight model state.
+   - When no flight plan is loaded (cleared state), display a clean empty-state upload container under the main title.
+   - Convert the header to a flex container (`flex justify-between items-start`) to support a split layout between branding and actions.
+   - Implement a `flex-col` button group in the top-right corner to stack actions without interfering with the primary typography.
 
-Acceptance criteria:
+3. **Styling & Theme Alignment:**
+   - Maintain the current Tailwind CSS dark theme (`bg-slate-900`/`bg-slate-800` cards, subtle borders, accent colors).
+   - Ensure buttons are responsive and collapse gracefully on mobile viewports.
+   - Applied ghost-style borders (`border-[#F8F9FA]/20`) and hover transitions (primary CTA for extraction, transparent red for clearing) to align with the dark theme aesthetic.
 
-- Every role-label foreground/background combination reaches at least 4.5:1 contrast in light and dark modes.
-- Role identity remains available as visible text and through an accurate accessible name; color must not be the only distinguishing cue.
-- Names, employee numbers, base details, missing-value labels, and High mins status retain sufficient contrast and meaningful reading order.
-- Crew cards remain readable at 200% zoom and reflow without clipped role labels, names, or identifiers at supported breakpoints.
-- Update role-color and employee-card tests to cover every palette group, fallback roles, missing roles, accessible labels, and both theme palettes.
-- Perform a browser accessibility check for contrast, semantics, and reflow after the focused automated tests pass.
+### Header refactor outcome
 
-References:
+Moved extraction into the main Flight Plan Brief header beside a new Clear results action. Both use stacked ghost buttons, decorative Heroicons, visible keyboard focus, disabled/loading states, gold extraction hover, and a subtle red clearing hover. The title stays visible in every state; actions move below the branding and fill the available width on mobile, leaving the flight/route summary separate.
 
-- `app/Enums/CrewPosition.php`
-- `resources/views/components/flight-release/employee-card.blade.php`
-- `tests/Unit/Enums/CrewPositionTest.php`
-- `tests/Feature/EmployeeCardComponentTest.php`
+Added an authorized `clearResults()` action using the existing owner-scoped result deletion and upload reset. Both header actions reset the result key, file, selected task, completion flag, and validation errors; task pages navigate to the upload URL. Clearing persists across reloads and preserves other users' results.
 
-### Outcome
+### Header refactor validation
 
-Darkened light-mode captain and relief-pilot badges to emerald-700 and amber-700, and made the foreground explicit in every role palette. Preserved compact visible role labels and accurate accessible names, including unknown and missing roles. Crew names, employee numbers, and base details can now wrap anywhere; role avatars have a minimum height rather than a fixed height so long fallback labels remain visible. Removed the faded employee-number marker and hid the decorative High mins icon from assistive technology.
+The five focused PHPUnit files pass through Sail: SavedResultTest, UploadTest, AccessTest, ExtractionTest, and FlightPlanTaskRouteTest (32 tests in total). Coverage includes header action placement, persistent title/upload states, owner isolation, repeated clearing, validation reset, authorization, and embedded/task-route transitions. Pint passes. The final focused Larastan check passes with zero errors after correcting a test assertion-chain type issue found by the initial integration run.
 
-### Validation
+Headless Chrome reviewed the actual rendered header in 375px light/dark frames and a 960px light frame using the existing CSS bundle. The header/actions fit without horizontal overflow, stack on mobile, and split horizontally on desktop. This was an isolated layout preview, not an authenticated interaction audit; the old bundle does not include every new utility.
 
-The focused enum, employee-card, Maintenance Log, Envelope, and Flight Init tests pass: 13 tests, 551 assertions. Tests calculate WCAG contrast for every role and fallback in both themes, compositing translucent dark backgrounds over the card surface, and verify visible/accessibly named roles, missing employee numbers, and reading order. Pint, the production Vite build, and one focused Larastan run pass with zero errors.
+`vendor/bin/sail npm run build` fails because installed Tailwind 4 is configured as a Tailwind 3 PostCSS plugin. Dependency/build configuration changes are outside this task and were left untouched; rebuilding and checking the final generated CSS remain blocked by that existing mismatch.
 
-A headless Chrome check of the actual Blade component with production CSS passed 336 card checks covering all roles plus unknown/missing roles, both themes, widths of 320/640/768/1024 CSS pixels, and normal/200% CSS scaling. Computed text contrast was at least 4.7588:1, exceeding the [WCAG normal-text minimum](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html), with no card or text overflow. The check verified role names and native list markup; it used an isolated component fixture rather than an authenticated full-page screen-reader audit or native browser zoom.
+Commit message: `refactor: integrate flight plan header actions and clear results`
 
-Commit message: `fix: improve crew card contrast and accessible reflow`
+## [x] Completed: Remove results output near header:
+Remove `Flight plan brief ready. Upload and extraction completed successfully.`
 
-### Follow-up outcome
-
-Updated the two stale captain badge assertions in `FlightReleasePageViewModelTest` from emerald-600 to emerald-700 for Maintenance Log and Flight Init. The focused test file passes through Sail: 66 tests, 661 assertions. Pint passes, and one focused Larastan run on the updated test passes with zero errors.
-
-Follow-up commit message: `fix: update crew member role badge color test`
+resources/views/livewire/flight-plan-brief.blade.php

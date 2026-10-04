@@ -22,7 +22,7 @@
         x-bind:aria-controls="$id('airport-popover')"
         aria-label="Airport info for {{ $info['iata'] }}"
         @class([
-            'group flex flex-col gap-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059]/50 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 rounded-md',
+            'group flex flex-col gap-0.5 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C5A059]/50 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 rounded-md',
             'items-end text-right' => $align === 'right',
             'items-start text-left' => $align !== 'right',
         ])

@@ -21,7 +21,7 @@
         <div>
             <button
                 type="button"
-                class="rounded-md text-sm font-medium text-indigo-600 underline hover:text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-indigo-400 dark:hover:text-indigo-300 dark:focus:ring-offset-gray-900"
+                class="rounded-md text-sm font-medium text-indigo-600 underline hover:text-indigo-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-indigo-400 dark:hover:text-indigo-300 dark:focus:ring-offset-gray-900"
                 x-on:click="showOtp = true"
                 x-bind:aria-expanded="showOtp"
                 aria-controls="otp-verification-form"
@@ -64,7 +64,7 @@
         <form method="POST" action="{{ route('logout') }}">
             @csrf
 
-            <button type="submit" class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-gray-400 dark:hover:text-white dark:focus:ring-offset-gray-900">
+            <button type="submit" class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-gray-400 dark:hover:text-white dark:focus:ring-offset-gray-900">
                 {{ __('Log Out') }}
             </button>
         </form>

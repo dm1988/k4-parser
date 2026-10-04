@@ -34,7 +34,7 @@
 
         <div class="flex items-center justify-end mt-4">
             @if (Route::has('password.request'))
-                <a class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-gray-400 dark:hover:text-white dark:focus:ring-offset-gray-900" href="{{ route('password.request') }}">
+                <a class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-gray-400 dark:hover:text-white dark:focus:ring-offset-gray-900" href="{{ route('password.request') }}">
                     {{ __('Forgot your password?') }}
                 </a>
             @endif
@@ -48,7 +48,7 @@
     @if (Route::has('register'))
         <p class="mt-6 flex items-center justify-center gap-1 text-sm text-gray-600 dark:text-gray-400">
             <span>{{ __('New user?') }}</span>
-            <a class="rounded-md font-medium text-indigo-600 underline hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-indigo-400 dark:hover:text-indigo-300 dark:focus:ring-offset-gray-900" href="{{ route('register') }}">
+            <a class="rounded-md font-medium text-indigo-600 underline hover:text-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-indigo-400 dark:hover:text-indigo-300 dark:focus:ring-offset-gray-900" href="{{ route('register') }}">
                 {{ __('Register') }}
             </a>
         </p>

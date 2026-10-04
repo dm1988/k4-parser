@@ -26,7 +26,7 @@
         x-on:click="selectTask"
     @endif
     @class([
-        'group flex w-full items-center gap-2 rounded-lg border-s-4 px-3 py-2.5 text-left text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A059] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900',
+        'group flex w-full items-center gap-2 rounded-lg border-s-4 px-3 py-2.5 text-left text-sm font-semibold transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C5A059] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900',
         'border-[#C5A059] bg-[#1B365D] text-white shadow-sm' => $isActive && $mobile,
         'border-transparent text-[#1B365D] hover:bg-[#1B365D]/7 dark:text-slate-200 dark:hover:bg-slate-800' => ! $isActive,
         'border-transparent bg-[#1B365D] text-white shadow-sm' => $isActive && ! $mobile,

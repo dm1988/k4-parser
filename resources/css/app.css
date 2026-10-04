@@ -1,8 +1,89 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss" source(none);
+
+@source "../../app";
+@source "../views";
+@source "../js";
+@source "../../storage/framework/views";
+@source "../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views";
+
+@plugin "@tailwindcss/forms";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+	--font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+	--blur-sm: 4px;
+	--radius-sm: 0.125rem;
+	--color-slate-100: #f1f5f9;
+	--color-slate-200: #e2e8f0;
+	--color-slate-300: #cbd5e1;
+	--color-slate-400: #94a3b8;
+	--color-slate-500: #64748b;
+	--color-slate-600: #475569;
+	--color-slate-700: #334155;
+	--color-slate-800: #1e293b;
+	--color-slate-900: #0f172a;
+	--color-emerald-100: #d1fae5;
+	--color-emerald-300: #6ee7b7;
+	--color-emerald-400: #34d399;
+	--color-emerald-500: #10b981;
+	--color-emerald-600: #059669;
+	--color-emerald-700: #047857;
+	--color-sky-100: #e0f2fe;
+	--color-sky-300: #7dd3fc;
+	--color-sky-400: #38bdf8;
+	--color-sky-500: #0ea5e9;
+	--color-sky-600: #0284c7;
+	--color-sky-700: #0369a1;
+	--color-amber-100: #fef3c7;
+	--color-amber-300: #fcd34d;
+	--color-amber-400: #fbbf24;
+	--color-amber-500: #f59e0b;
+	--color-amber-600: #d97706;
+	--color-amber-700: #b45309;
+	--color-amber-800: #92400e;
+	--color-rose-100: #ffe4e6;
+	--color-rose-300: #fda4af;
+	--color-rose-400: #fb7185;
+	--color-rose-500: #f43f5e;
+	--color-rose-600: #e11d48;
+	--color-rose-700: #be123c;
+}
+
+/* Preserve existing utility behavior across the v4 migration. */
+@layer utilities {
+	.shadow {
+		@apply shadow-[0_1px_3px_0_rgb(0_0_0_/_0.1),0_1px_2px_-1px_rgb(0_0_0_/_0.1)];
+	}
+
+	.rounded {
+		border-radius: 0.25rem;
+	}
+
+	.backdrop-blur {
+		@apply backdrop-blur-[8px];
+	}
+}
 
 @layer base {
+	*,
+	::before,
+	::after,
+	::backdrop,
+	::file-selector-button {
+		border-color: var(--color-gray-200, currentColor);
+	}
+
+	button:not(:disabled),
+	[role="button"]:not(:disabled) {
+		cursor: pointer;
+	}
+
+	input::placeholder,
+	textarea::placeholder {
+		color: var(--color-gray-400);
+	}
+
 	[x-cloak] {
 		display: none !important;
 	}
@@ -45,47 +126,78 @@
 		@apply block w-full rounded-md border border-[#4A5568]/30 bg-[#F8F9FA] p-3 text-sm text-[#0B0E14] file:me-3 file:rounded-md file:border-0 file:bg-[#1B365D] file:px-3 file:py-2 file:font-semibold file:text-white dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:file:bg-[#C5A059] dark:file:text-[#0B0E14];
 	}
 
+	.cc-weight-field {
+		container-name: weight-field;
+		container-type: inline-size;
+	}
+
+	.cc-weight-percentage-above-bar {
+		display: none;
+	}
+
+	@media (min-width: 1280px) {
+		@container weight-field (max-width: 28rem) {
+			.cc-weight-percentage-header {
+				display: none;
+			}
+
+			.cc-weight-percentage-above-bar {
+				display: block;
+			}
+		}
+	}
+
 	.cc-weight-progress {
-		@apply appearance-none overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800;
+		@apply appearance-none overflow-hidden rounded-full border-0 bg-slate-100 dark:bg-slate-800;
 	}
 
 	.cc-weight-progress::-webkit-progress-bar {
-		@apply rounded-full bg-slate-100 dark:bg-slate-800;
+		@apply rounded-full bg-slate-100;
+	}
+
+	.dark .cc-weight-progress::-webkit-progress-bar {
+		@apply bg-slate-800;
 	}
 
 	.cc-weight-progress::-webkit-progress-value {
+		@apply rounded-full;
 		background-color: var(--cc-weight-progress-color);
 	}
 
 	.cc-weight-progress::-moz-progress-bar {
+		@apply rounded-full;
 		background-color: var(--cc-weight-progress-color);
 	}
 
-	.cc-weight-badge {
-		background-color: var(--cc-weight-progress-color);
+	.cc-weight-progress-safe {
+		--cc-weight-progress-color: #059669;
 	}
 
-	.cc-weight-progress-safe,
-	.cc-weight-badge-safe {
-		--cc-weight-progress-color: #10b981;
+	.cc-weight-progress-heavy {
+		--cc-weight-progress-color: #0284c7;
 	}
 
-	.cc-weight-progress-heavy,
-	.cc-weight-badge-heavy {
-		--cc-weight-progress-color: #001bfc;
+	.cc-weight-progress-caution {
+		--cc-weight-progress-color: #b45309;
 	}
 
-	.cc-weight-progress-heavy::-webkit-progress-value {
-		background-color: #001bfc !important;
+	.cc-weight-progress-exceeded {
+		--cc-weight-progress-color: #e11d48;
 	}
 
-	.cc-weight-progress-caution,
-	.cc-weight-badge-caution {
-		--cc-weight-progress-color: #f59e0b;
+	.dark .cc-weight-progress-safe {
+		--cc-weight-progress-color: #34d399;
 	}
 
-	.cc-weight-progress-exceeded,
-	.cc-weight-badge-exceeded {
-		--cc-weight-progress-color: #dc2626;
+	.dark .cc-weight-progress-heavy {
+		--cc-weight-progress-color: #38bdf8;
+	}
+
+	.dark .cc-weight-progress-caution {
+		--cc-weight-progress-color: #fbbf24;
+	}
+
+	.dark .cc-weight-progress-exceeded {
+		--cc-weight-progress-color: #fb7185;
 	}
 }

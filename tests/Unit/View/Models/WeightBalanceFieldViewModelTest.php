@@ -3,9 +3,11 @@
 namespace Tests\Unit\View\Models;
 
 use App\DTOs\WeightBalance\WeightBalanceFieldData;
+use App\Enums\WeightBalanceComparisonTone;
 use App\Enums\WeightBalanceSourceStatus;
 use App\ValueObjects\WeightQuantity;
 use App\View\Models\FlightRelease\WeightBalanceFieldViewModel;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -35,7 +37,7 @@ class WeightBalanceFieldViewModelTest extends TestCase
         $this->assertTrue($viewModel->integratesLimitWithinProgress());
         $this->assertSame(99.5, $viewModel->progressValue());
         $this->assertSame('99.5% of structural limit', $viewModel->utilizationLabel());
-        $this->assertSame('99.5% OF 580,000 LB LIMIT', $viewModel->progressOverlayLabel());
+        $this->assertSame('99.5% of limit', $viewModel->utilizationPercentLabel());
         $this->assertSame('99.5% of 580,000 LB limit', $viewModel->utilizationAriaValueText());
         $this->assertSame('cc-weight-progress-caution', $viewModel->comparisonProgressClass());
     }
@@ -58,6 +60,8 @@ class WeightBalanceFieldViewModelTest extends TestCase
         $this->assertSame(100.0, $viewModel->progressValue());
         $this->assertSame('Structural limit exceeded', $viewModel->comparisonLabel());
         $this->assertSame('cc-weight-progress-exceeded', $viewModel->comparisonProgressClass());
+        $this->assertSame('100.5% of limit', $viewModel->utilizationPercentLabel());
+        $this->assertSame('100.5% of 370,000 LB limit', $viewModel->utilizationAriaValueText());
     }
 
     #[Test]
@@ -89,5 +93,51 @@ class WeightBalanceFieldViewModelTest extends TestCase
         $this->assertSame('Comparison unavailable: units differ', $unitMismatch->comparisonUnavailableLabel());
         $this->assertTrue($unitMismatch->showsStandaloneLimit());
         $this->assertSame('grid grid-cols-2 gap-4', $unitMismatch->valueLayoutClasses());
+        $this->assertNull($unitMismatch->utilizationPercentLabel());
+        $this->assertNull($unitMismatch->comparisonTone());
+        $this->assertNull($conflict->utilizationPercentLabel());
+    }
+
+    #[DataProvider('utilizationBoundaries')]
+    public function test_existing_thresholds_and_rounding_are_preserved(int $amount, float $roundedPercent, WeightBalanceComparisonTone $tone): void
+    {
+        $viewModel = new WeightBalanceFieldViewModel(
+            label: 'Zero-fuel weight',
+            field: new WeightBalanceFieldData(
+                plannedValue: WeightQuantity::pounds($amount),
+                sourceStatus: WeightBalanceSourceStatus::Confirmed,
+                permittedLimit: WeightQuantity::pounds(100000),
+                limitStatus: WeightBalanceSourceStatus::Confirmed,
+            ),
+            comparesToLimit: true,
+            integratesLimitInProgress: true,
+        );
+
+        $this->assertSame($tone, $viewModel->comparisonTone());
+        $this->assertSame(min($roundedPercent, 100.0), $viewModel->progressValue());
+        $this->assertSame(number_format($roundedPercent, 1).'% of limit', $viewModel->utilizationPercentLabel());
+    }
+
+    /** @return array<string, array{int, float, WeightBalanceComparisonTone}> */
+    public static function utilizationBoundaries(): array
+    {
+        return [
+            'zero is confirmed safe' => [0, 0.0, WeightBalanceComparisonTone::Safe],
+            'below heavy' => [89900, 89.9, WeightBalanceComparisonTone::Safe],
+            'at heavy' => [90000, 90.0, WeightBalanceComparisonTone::Heavy],
+            'above heavy' => [90100, 90.1, WeightBalanceComparisonTone::Heavy],
+            'rounds below heavy' => [89949, 89.9, WeightBalanceComparisonTone::Safe],
+            'rounds to heavy' => [89950, 90.0, WeightBalanceComparisonTone::Heavy],
+            'below caution' => [97900, 97.9, WeightBalanceComparisonTone::Heavy],
+            'at caution' => [98000, 98.0, WeightBalanceComparisonTone::Caution],
+            'above caution' => [98100, 98.1, WeightBalanceComparisonTone::Caution],
+            'rounds below caution' => [97949, 97.9, WeightBalanceComparisonTone::Heavy],
+            'rounds to caution' => [97950, 98.0, WeightBalanceComparisonTone::Caution],
+            'below limit' => [99900, 99.9, WeightBalanceComparisonTone::Caution],
+            'at limit' => [100000, 100.0, WeightBalanceComparisonTone::Caution],
+            'above limit' => [100100, 100.1, WeightBalanceComparisonTone::Exceeded],
+            'rounds to limit' => [100049, 100.0, WeightBalanceComparisonTone::Caution],
+            'rounds over limit' => [100050, 100.1, WeightBalanceComparisonTone::Exceeded],
+        ];
     }
 }

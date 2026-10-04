@@ -50,7 +50,7 @@
                                         wire:click="$removeUpload('files', '{{ $selectedFile->getFilename() }}')"
                                         wire:loading.attr="disabled"
                                         wire:target="files"
-                                        class="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#4A5568] transition hover:bg-red-50 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-[#C5A059] focus:ring-offset-2 disabled:cursor-wait disabled:opacity-50 dark:text-slate-400 dark:hover:bg-red-950/50 dark:hover:text-red-300 dark:focus:ring-offset-slate-900"
+                                        class="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#4A5568] transition hover:bg-red-50 hover:text-red-700 focus:outline-hidden focus:ring-2 focus:ring-[#C5A059] focus:ring-offset-2 disabled:cursor-wait disabled:opacity-50 dark:text-slate-400 dark:hover:bg-red-950/50 dark:hover:text-red-300 dark:focus:ring-offset-slate-900"
                                         aria-label="Remove {{ $selectedFile->getClientOriginalName() }}"
                                     >
                                         <x-heroicon-o-x-mark class="h-5 w-5" aria-hidden="true" />
@@ -164,7 +164,7 @@
     <details class="border-t border-[#1B365D]/10 p-5">
         <summary class="cursor-pointer font-semibold text-[#1B365D]">Paste extracted text instead</summary>
         <textarea name="text"
-            class="mt-3 h-40 w-full rounded-md border border-[#4A5568]/30 bg-[#F8F9FA] p-3 text-sm text-[#0B0E14] outline-none focus:border-[#C5A059]"
+            class="mt-3 h-40 w-full rounded-md border border-[#4A5568]/30 bg-[#F8F9FA] p-3 text-sm text-[#0B0E14] outline-hidden focus:border-[#C5A059]"
             wire:model="text"
             placeholder="Paste OCR text if you already have it..."></textarea>
         @error('text')

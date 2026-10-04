@@ -81,7 +81,7 @@
                         <button
                             type="button"
                             x-on:click="$dispatch('close')"
-                            class="inline-flex items-center justify-center rounded-md bg-[#1B365D] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#142a49] focus:outline-none focus:ring-2 focus:ring-[#C5A059] focus:ring-offset-2 dark:bg-[#C5A059] dark:text-[#0B0E14] dark:hover:bg-[#d3b271] dark:focus:ring-offset-slate-900"
+                            class="inline-flex items-center justify-center rounded-md bg-[#1B365D] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#142a49] focus:outline-hidden focus:ring-2 focus:ring-[#C5A059] focus:ring-offset-2 dark:bg-[#C5A059] dark:text-[#0B0E14] dark:hover:bg-[#d3b271] dark:focus:ring-offset-slate-900"
                         >
                             View extracted results
                         </button>

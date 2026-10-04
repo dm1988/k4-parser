@@ -13,7 +13,10 @@
 
     <div class="grid grid-cols-1 gap-4 xl:grid-cols-3">
         @foreach ($model->weightBalanceGroups() as $group)
-            <section class="flex min-w-0 flex-col gap-3 rounded-xl border border-[#1B365D]/10 bg-[#F8F9FA] p-3 dark:border-slate-700 dark:bg-slate-800/60">
+            <section @class([
+                'flex min-w-0 flex-col gap-3 rounded-xl border border-[#1B365D]/10 bg-[#F8F9FA] p-3 dark:border-slate-700 dark:bg-slate-800/60',
+                'xl:self-start' => count($group['fields']) === 1,
+            ])>
                 <header class="flex min-h-16 flex-col gap-1 border-b border-[#1B365D]/10 px-1 pb-3 dark:border-slate-700">
                     <h3 class="text-xs font-black uppercase tracking-[0.16em] text-[#1B365D] dark:text-[#C5A059]">{{ $group['label'] }}</h3>
                     <p class="text-[11px] font-medium leading-4 text-[#4A5568] dark:text-slate-400">{{ $group['description'] }}</p>

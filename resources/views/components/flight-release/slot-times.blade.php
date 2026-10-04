@@ -72,7 +72,7 @@
 
     @if ($model->slotSourceText() !== null)
         <details open class="group rounded-xl border border-[#1B365D]/10 bg-[#F8F9FA] dark:border-slate-700 dark:bg-slate-800/60">
-            <summary class="cursor-pointer rounded-xl px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-[#1B365D] outline-none focus-visible:ring-2 focus-visible:ring-[#B8860B] focus-visible:ring-offset-2 dark:text-slate-200 dark:focus-visible:ring-offset-slate-900">Extracted slot text</summary>
+            <summary class="cursor-pointer rounded-xl px-4 py-3 text-xs font-bold uppercase tracking-[0.16em] text-[#1B365D] outline-hidden focus-visible:ring-2 focus-visible:ring-[#B8860B] focus-visible:ring-offset-2 dark:text-slate-200 dark:focus-visible:ring-offset-slate-900">Extracted slot text</summary>
             <p class="whitespace-pre-wrap break-words border-t border-[#1B365D]/10 px-4 py-3 font-mono text-xs leading-relaxed text-[#0B0E14] dark:border-slate-700 dark:text-slate-100">{{ $model->slotSourceText() }}</p>
         </details>
     @endif

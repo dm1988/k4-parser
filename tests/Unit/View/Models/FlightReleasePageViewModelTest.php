@@ -745,7 +745,7 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame(1, $heavyViewModel->overviewWeightBalanceAlertCount());
         $this->assertSame('1 operational weight alert', $heavyViewModel->overviewWeightBalanceAlertCountLabel());
         $this->assertSame(
-            'border-[#1B365D]/30 border-l-4 border-l-[#1B365D] bg-[#1B365D]/5 backdrop-blur dark:border-sky-400/30 dark:border-l-sky-400 dark:bg-sky-400/10',
+            'border-slate-200 border-l-4 border-l-sky-600 bg-sky-500/5 dark:border-slate-700 dark:border-l-sky-400 dark:bg-sky-400/10',
             $heavyViewModel->overviewWeightBalanceAlertCardClasses(),
         );
         $this->assertSame('Heavy weight operation', $heavyViewModel->overviewWeightBalanceAlertSummary());
