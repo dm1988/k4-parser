@@ -52,6 +52,12 @@ class ExtractRequestsTable
                     ->suffix(' ms')
                     ->sortable()
                     ->toggleable(),
+                TextColumn::make('uploaded_file_count')
+                    ->label('Uploaded files')
+                    ->numeric(decimalPlaces: 0)
+                    ->placeholder('Unknown')
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('detected_event_count')
                     ->label('Events')
                     ->numeric()

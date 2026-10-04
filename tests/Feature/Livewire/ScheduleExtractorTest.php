@@ -6,6 +6,7 @@ use App\Actions\ShouldPromptForCoffee;
 use App\DTOs\ExtractedResultData;
 use App\Exceptions\ExtractSourceResolutionException;
 use App\Livewire\ScheduleExtractor;
+use App\Models\ExtractRequest;
 use App\Models\User;
 use App\Services\Infrastructure\EngineResultCache;
 use App\Services\Schedule\Extractor\ScheduleFormatParser;
@@ -67,6 +68,9 @@ class ScheduleExtractorTest extends TestCase
 
     public function test_selected_uploads_can_be_removed_individually(): void
     {
+        $this->mockResolvedSource('image/png', 'Remaining image OCR');
+        $this->mockParsedEvents([$this->event('Remaining duty')]);
+
         $component = Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
             ->set('files', [
@@ -87,6 +91,12 @@ class ScheduleExtractorTest extends TestCase
             ->assertDontSee('Remove first-page.png')
             ->assertSee('second-page.png')
             ->assertSee('Remove second-page.png');
+
+        $this->assertSame(0, ExtractRequest::query()->count());
+
+        $component->call('extractRoster')->assertHasNoErrors();
+
+        $this->assertSame(1, ExtractRequest::query()->sole()->uploaded_file_count);
     }
 
     private function assertExtractButtonDisabled(string $html): void
@@ -135,6 +145,8 @@ class ScheduleExtractorTest extends TestCase
             ->assertSee('Cached duty')
             ->assertSee('Extract another roster')
             ->assertNotDispatched('open-modal');
+
+        $this->assertSame(0, ExtractRequest::query()->count());
     }
 
     public function test_it_falls_back_to_the_latest_result_when_the_component_parse_key_is_stale(): void
@@ -179,6 +191,8 @@ class ScheduleExtractorTest extends TestCase
             ->call('extractRoster')
             ->assertHasErrors(['eventTypes.0' => 'in'])
             ->assertSee('The selected event type is invalid.');
+
+        $this->assertSame(0, ExtractRequest::query()->count());
     }
 
     public function test_it_rejects_an_unsupported_upload(): void
@@ -189,6 +203,8 @@ class ScheduleExtractorTest extends TestCase
             ->call('extractRoster')
             ->assertHasErrors(['files.0' => 'mimes'])
             ->assertSet('view', 'upload');
+
+        $this->assertSame(0, ExtractRequest::query()->count());
     }
 
     public function test_source_validation_errors_clear_when_the_corresponding_input_changes(): void
@@ -247,6 +263,7 @@ class ScheduleExtractorTest extends TestCase
         $latest = app(EngineResultCache::class)->latest();
         $this->assertNotNull($latest);
         $this->assertSame(['duty', 'flight'], $latest->filters);
+        $this->assertSame(0, ExtractRequest::query()->sole()->uploaded_file_count);
     }
 
     public function test_eligible_successful_non_empty_extraction_dispatches_the_coffee_modal(): void
@@ -283,6 +300,8 @@ class ScheduleExtractorTest extends TestCase
             ->assertSet('view', 'results')
             ->assertSet('files', [])
             ->assertSee('PDF duty');
+
+        $this->assertSame(1, ExtractRequest::query()->sole()->uploaded_file_count);
     }
 
     public function test_it_parses_an_image_temporary_upload(): void
@@ -298,6 +317,8 @@ class ScheduleExtractorTest extends TestCase
             ->assertNoRedirect()
             ->assertSet('view', 'results')
             ->assertSee('Image duty');
+
+        $this->assertSame(1, ExtractRequest::query()->sole()->uploaded_file_count);
     }
 
     public function test_it_merges_deduplicates_and_sorts_multiple_image_results(): void
@@ -341,6 +362,7 @@ class ScheduleExtractorTest extends TestCase
             static fn (mixed $event): string => (string) data_get($event, 'title'),
             $events,
         ));
+        $this->assertSame(2, ExtractRequest::query()->sole()->uploaded_file_count);
     }
 
     public function test_it_shows_successful_results_and_a_modal_for_images_that_failed_extraction(): void
@@ -406,6 +428,7 @@ class ScheduleExtractorTest extends TestCase
 
         $this->assertCount(1, $events);
         $this->assertSame('Recovered duty', data_get($events, '0.title'));
+        $this->assertSame(3, ExtractRequest::query()->sole()->uploaded_file_count);
     }
 
     public function test_it_lists_an_image_with_no_events_as_failed_when_another_image_succeeds(): void
@@ -446,6 +469,8 @@ class ScheduleExtractorTest extends TestCase
             ->assertSee('invalid-image.jpeg')
             ->assertSee('No calendar events were found in this image.')
             ->assertDispatched('open-modal', name: 'schedule-extraction-errors');
+
+        $this->assertSame(2, ExtractRequest::query()->sole()->uploaded_file_count);
     }
 
     public function test_multiple_images_stay_on_upload_when_every_image_fails_extraction(): void
@@ -480,6 +505,9 @@ class ScheduleExtractorTest extends TestCase
             ->assertNotDispatched('open-modal', name: 'schedule-extraction-errors');
 
         $this->assertNull(app(EngineResultCache::class)->latest());
+        $request = ExtractRequest::query()->sole();
+        $this->assertSame(2, $request->uploaded_file_count);
+        $this->assertSame('failed', $request->status);
     }
 
     public function test_source_resolution_failure_stays_on_upload_and_preserves_the_previous_result(): void
@@ -629,6 +657,88 @@ class ScheduleExtractorTest extends TestCase
             ->test(ScheduleExtractor::class)
             ->call('extractRoster')
             ->assertForbidden();
+
+        $this->assertSame(0, ExtractRequest::query()->count());
+    }
+
+    public function test_five_duplicate_images_count_as_five_files_and_new_submissions_create_new_requests(): void
+    {
+        $user = User::factory()->create();
+        $image = UploadedFile::fake()->image('roster.png', 300, 200);
+        $this->mock(ScheduleInputResolver::class, function (MockInterface $mock) use ($user): void {
+            $mock->shouldReceive('resolve')
+                ->times(5)
+                ->andReturnUsing(function () use ($user): array {
+                    $request = ExtractRequest::query()->sole();
+                    $this->assertSame(5, $request->uploaded_file_count);
+                    $this->assertSame($user->getKey(), $request->user_id);
+
+                    return $this->resolvedImageSource('Duplicate roster OCR');
+                });
+        });
+        $this->mock(ScheduleFormatParser::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('parse')
+                ->times(5)
+                ->andReturn(['trip' => [], 'calendar_events' => [$this->event('Duplicate duty')]]);
+        });
+
+        $component = Livewire::actingAs($user)
+            ->test(ScheduleExtractor::class)
+            ->set('files', array_fill(0, 5, $image))
+            ->call('extractRoster')
+            ->assertHasNoErrors()
+            ->assertSet('view', 'results');
+
+        $this->assertCount(1, app(EngineResultCache::class)->latest()->parsed['calendar_events']);
+        $request = ExtractRequest::query()->sole();
+        $this->assertSame(5, $request->uploaded_file_count);
+
+        $component->refresh()->assertSee('Duplicate duty');
+        $this->get(route('parse.index'))->assertOk();
+        $this->get(route('parse.export'))->assertOk();
+        $this->assertSame(5, ExtractRequest::query()->sole()->uploaded_file_count);
+
+        $this->mockResolvedSource('image/png', 'Second submission OCR');
+        $this->mockParsedEvents([$this->event('Another duty')]);
+
+        $component->call('extractAnotherRoster')
+            ->set('files', [UploadedFile::fake()->image('new-roster.png', 300, 200)])
+            ->call('extractRoster')
+            ->assertHasNoErrors();
+
+        $this->assertSame([5, 1], ExtractRequest::query()->orderBy('id')->pluck('uploaded_file_count')->all());
+        $this->assertSame(5, $request->refresh()->uploaded_file_count);
+    }
+
+    public function test_an_uploaded_file_with_no_events_still_records_its_count(): void
+    {
+        $this->mockResolvedSource('image/png', 'Empty schedule OCR');
+        $this->mockParsedEvents([]);
+
+        Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->set('files', [UploadedFile::fake()->image('empty.png', 300, 200)])
+            ->call('extractRoster')
+            ->assertHasErrors(['files'])
+            ->assertSet('view', 'upload');
+
+        $this->assertSame(1, ExtractRequest::query()->sole()->uploaded_file_count);
+    }
+
+    public function test_submissions_exceeding_the_upload_limit_do_not_create_a_request(): void
+    {
+        $files = array_map(
+            static fn (int $number): UploadedFile => UploadedFile::fake()->image("roster-{$number}.png", 300, 200),
+            range(1, 6),
+        );
+
+        Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->set('files', $files)
+            ->call('extractRoster')
+            ->assertHasErrors(['files' => 'max']);
+
+        $this->assertSame(0, ExtractRequest::query()->count());
     }
 
     private function mockResolvedSource(?string $mime, string $rawText): void

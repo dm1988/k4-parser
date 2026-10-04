@@ -55,6 +55,10 @@ class ExtractRequestForm
                                     ->label('File size (bytes)')
                                     ->integer()
                                     ->minValue(0),
+                                TextInput::make('uploaded_file_count')
+                                    ->label('Uploaded files')
+                                    ->integer()
+                                    ->minValue(0),
                                 TextInput::make('page_count')
                                     ->integer()
                                     ->minValue(0),

@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'extraction_duration_ms',
     'file_hash',
     'file_size_bytes',
+    'uploaded_file_count',
     'page_count',
     'detected_event_count',
     'detected_flight_count',
@@ -26,6 +27,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ExtractRequest extends Model
 {
     public const UPDATED_AT = null;
+
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return [
+            'uploaded_file_count' => 'integer',
+        ];
+    }
 
     public function user(): BelongsTo
     {

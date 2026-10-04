@@ -36,6 +36,10 @@ class ExtractRequestLogger
             'extraction_duration_ms' => 0,
             'file_hash' => $hashes === [] ? null : hash('sha256', implode('', $hashes)),
             'file_size_bytes' => $sizes === [] ? null : array_sum($sizes),
+            'uploaded_file_count' => count(array_filter(
+                $files,
+                static fn (mixed $upload): bool => $upload instanceof UploadedFile,
+            )),
             'detected_event_count' => 0,
             'detected_flight_count' => 0,
             'detected_hotel_count' => 0,

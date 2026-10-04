@@ -3,17 +3,81 @@
 namespace Tests\Feature;
 
 use App\Filament\Resources\ExtractRequests\Pages\ListExtractRequests;
+use App\Filament\Resources\ExtractRequests\Schemas\ExtractRequestForm;
 use App\Models\ExtractRequest;
 use App\Models\User;
+use Filament\Forms\Components\Field;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Validator;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class ExtractRequestResourceTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_uploaded_file_counts_are_visible_and_sort_numerically(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+        $unknown = $this->createExtractRequest();
+        $text = $this->createExtractRequest(['uploaded_file_count' => 0]);
+        $single = $this->createExtractRequest(['uploaded_file_count' => 1]);
+        $multiple = $this->createExtractRequest(['uploaded_file_count' => 3]);
+        $larger = $this->createExtractRequest(['uploaded_file_count' => 12]);
+
+        $this->assertNull($unknown->refresh()->uploaded_file_count);
+
+        Livewire::test(ListExtractRequests::class)
+            ->assertSee('Uploaded files')
+            ->assertSee('Unknown')
+            ->assertTableColumnExists('uploaded_file_count', fn (TextColumn $column): bool => $column->isSortable()
+                && $column->getPlaceholder() === 'Unknown')
+            ->assertTableColumnStateSet('uploaded_file_count', null, $unknown)
+            ->assertTableColumnFormattedStateSet('uploaded_file_count', '0', $text)
+            ->assertTableColumnFormattedStateSet('uploaded_file_count', '1', $single)
+            ->assertTableColumnFormattedStateSet('uploaded_file_count', '3', $multiple)
+            ->sortTable('uploaded_file_count', 'asc')
+            ->assertCanSeeTableRecords([$text, $single, $multiple, $larger], inOrder: true)
+            ->sortTable('uploaded_file_count', 'desc')
+            ->assertCanSeeTableRecords([$larger, $multiple, $single, $text], inOrder: true);
+    }
+
+    #[DataProvider('uploadCountFormValues')]
+    public function test_upload_count_form_rules_allow_only_nullable_non_negative_integers(mixed $value, bool $isValid): void
+    {
+        $this->actingAs($this->makeAdminUser());
+        $component = Livewire::test(ListExtractRequests::class);
+        $schema = ExtractRequestForm::configure(Schema::make($component->instance()));
+        $field = collect($schema->getFlatFields())->first(
+            fn (Field $field): bool => $field->getName() === 'uploaded_file_count',
+        );
+        $this->assertInstanceOf(TextInput::class, $field);
+
+        $validator = Validator::make(['uploaded_file_count' => $value], [
+            'uploaded_file_count' => $field->getValidationRules(),
+        ]);
+
+        $this->assertSame($isValid, $validator->passes());
+    }
+
+    /** @return array<string, array{mixed, bool}> */
+    public static function uploadCountFormValues(): array
+    {
+        return [
+            'unknown' => [null, true],
+            'text' => [0, true],
+            'one file' => [1, true],
+            'multiple files' => [5, true],
+            'no schedule limit on shared metrics' => [12, true],
+            'negative' => [-1, false],
+            'fraction' => [1.5, false],
+        ];
+    }
 
     public function test_admins_can_search_extract_requests_in_the_resource_table(): void
     {
@@ -128,7 +192,7 @@ class ExtractRequestResourceTest extends TestCase
             );
         }
 
-        foreach (['user.email', 'extraction_duration_ms', 'detected_event_count', 'detected_flight_count'] as $columnName) {
+        foreach (['user.email', 'extraction_duration_ms', 'uploaded_file_count', 'detected_event_count', 'detected_flight_count'] as $columnName) {
             $component->assertTableColumnExists(
                 $columnName,
                 fn (TextColumn $column): bool => $column->isToggleable()

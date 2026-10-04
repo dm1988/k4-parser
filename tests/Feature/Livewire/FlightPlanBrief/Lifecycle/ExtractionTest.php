@@ -172,6 +172,7 @@ class ExtractionTest extends FlightPlanBriefTestCase
                     $this->assertSame('pdf', $extractRequest->source_type);
                     $this->assertSame('flight_plan', $extractRequest->parser_type);
                     $this->assertSame('partial', $extractRequest->status);
+                    $this->assertSame(1, $extractRequest->uploaded_file_count);
 
                     return $this->parsedFlightPlan([...$this->flightPlan(), 'route' => 'DCT TEST']);
                 });
@@ -185,6 +186,7 @@ class ExtractionTest extends FlightPlanBriefTestCase
         $extractRequest = ExtractRequest::query()->sole();
 
         $this->assertSame('success', $extractRequest->status);
+        $this->assertSame(1, $extractRequest->uploaded_file_count);
         $this->assertNull($extractRequest->error_code);
         $this->assertSame(1, $extractRequest->detected_event_count);
         $this->assertSame(1, $extractRequest->detected_flight_count);
@@ -229,6 +231,7 @@ class ExtractionTest extends FlightPlanBriefTestCase
 
         $extractRequest = ExtractRequest::query()->sole();
         $this->assertSame('failed', $extractRequest->status);
+        $this->assertSame(1, $extractRequest->uploaded_file_count);
         $this->assertSame(class_basename(FlightRouteNotFoundException::class), $extractRequest->error_code);
         $this->assertSame([], Storage::disk('user_flight_releases')->allFiles());
     }

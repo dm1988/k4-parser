@@ -28,99 +28,45 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## [x] Completed: Sloppy static findings
+## [x] Completed: feat: Track schedule upload count
 
 ### Goal
 
-Review Sloppy's findings, fix actionable error handling and duplication, and reduce parsing/formatting complexity while preserving operational values and existing presentation contracts.
+Persist the number of schedule files submitted in each extraction request and display it in the existing Filament Extract Requests table. Keep one database record per submission, linked to the user, even when several images are processed together.
 
 ### Current implementation
 
-Shared fuel deserialization now lives in `FuelQuantity::fromArray()`; DTOs and mappers reuse the immutable `StringList` normalizer. Flight Init and Takeoff/Landing extraction reuse `TakeoffLandingReportSections`. Calendar serialization delegates description formatting to `IcsDescriptionFormatter`. Trip parsing delegates roster sections/summary to `TripInformationSections` and duty/flight matching to `TripDutyFlightContext`.
+- `ExtractRequestLogger::start()` persists `uploaded_file_count` from submitted `UploadedFile` instances before processing. `ExtractRequest` permits the attribute and casts known counts to integers while preserving null.
+- A new reversible migration adds a nullable unsigned integer to `extract_requests`, with no zero default or historical backfill. The migration has been applied to the local Sail database.
+- Filament displays a visible, numeric, sortable, toggleable `Uploaded files` column. Null displays `Unknown`; pasted-text requests display `0`. The existing form schema includes a nullable, non-negative integer field.
+- Schedule validation still permits up to five images or one PDF. The shared logger also records `1` for new flight-plan PDF extractions. Existing dashboard widgets continue to count requests.
 
 ### Problem
 
-The original scan reported 62 findings: 26 high, 13 medium, and 23 low. It found silent operational fallbacks, repeated normalization, mixed parser responsibilities, and comments restating code.
+A request with several images previously lacked a stored file count. Page counts, file size, and merged event counts cannot recover that metric; historical image requests cannot safely be assumed to contain one file.
+
+### Counting contract
+
+- `uploaded_file_count` means files accepted by validation and submitted for extraction: one PDF or image is `1`, and three images are `3`. Count each submitted file entry, including identical content; event deduplication does not reduce the count.
+- Pasted-text extraction records `0`. Count uploaded files rather than PDF pages, generated OCR images, parsed events, or successfully parsed files.
+- Record the count at request start and retain it after success, partial file failures, complete parser failure, or an empty result. Rejected validation, denied access, cancelled temporary uploads, and files removed before submission do not create an extraction record.
+- Reading cached results, rendering, filtering results, and calendar exports do not add records or change counts. An explicit new extraction submission creates another request with its own count; this metric does not introduce retry deduplication.
+- Historical rows remain null and display `Unknown`. Do not infer their counts from hashes, sizes, or page counts.
 
 ### Implementation outcome
 
-- Report airline database failures and image-preprocessing failures while preserving bundled-airline/original-image fallbacks. Optional schedule DTO export failures are reported and display a warning while retaining parsed JSON output.
-- Narrow date/value parsing catches to expected validation exceptions so unrelated runtime errors propagate. Document why invalid ETOPS entries are rejected independently and why optional diagnostics must not interrupt extraction.
-- Consolidate all nine duplicate-logic findings and remove all five narrative-comment findings. Separate calendar descriptions from serialization and roster structure/context from event parsing.
-- Split all five flagged long methods into their distinct jobs: PDF page reading, individual slot extraction, slot comparison/alerts, flight-detail construction, and pasted-text processing. Preserve PDF caching/progress/timing, source evidence, slot order/deduplication, missing-data behavior, calendar formatting, and slot-window thresholds.
-- Review the remaining findings individually. No dependency packages or Sloppy thresholds/rules were changed. The optional [agent-skills repository](https://github.com/asyrafhussin/agent-skills) was not needed; the installed Laravel best-practices skill covered this work.
+Extended the existing request record and logger without adding per-file records or user lifetime counters. Counts are independent of parsing success, readable hash paths, and event deduplication. Aggregate hashes/sizes, parser statuses, result caching, and request-count widgets retain their existing behavior.
 
-### Final scan and retained findings
-
-`vendor/bin/sail php vendor/bin/sloppy scan --all --no-baseline --format=json` reports **35 findings: 5 high, 4 medium, 26 low**, with a score of **95** (originally 81). There are zero duplicate-logic, narrative-comment, and long-method findings. All high-severity swallowed-exception warnings are cleared.
-
-| Remaining rule | Count | Review decision |
-| --- | ---: | --- |
-| SL107 Swallowed Exception | 26 low | Narrow parse-or-reject helpers deliberately return null or omit invalid entries; optional PDF logging/Debugbar failures must not break extraction. Missing operational data remains unavailable. |
-| SL102 God Class | 5 high | The three flight-plan extraction/building classes coordinate one workflow across typed sections; the two view models expose existing presentation APIs and delegate to presenters. Retain these boundaries rather than add dependency bags or break template contracts solely to reduce a metric. |
-| SL207 Excessive Service Dependencies | 3 medium | The same extraction/building orchestrators legitimately coordinate specialized section extractors/builders. Retain explicit constructor injection. |
-| SL209 Model Doing Too Much | 1 medium | `User::sendEmailVerificationNotification()` is Laravel's verification-notification customization hook; retain its existing OTP behavior. |
-
-A `.sloppy-baseline.json` containing these 35 findings was added concurrently during this task and preserved. The normal scan passes with **zero new findings**; the unbaselined report above records actual remaining findings rather than presenting them as eliminated.
+The existing Extract Request policy forbids admin creation and editing, including for admins. Those restrictions remain in place; the form schema was updated and its actual validation rules tested without enabling those pages. No dependencies, unified upload routing, CLI tracking, or other tasks were changed.
 
 ### Validation outcome
 
-- Focused Sail integration across 24 affected PHPUnit files: 225 tests, 222 passed, two skipped because private PDF fixtures are unavailable, and one private ETOPS OCR test exceeded its existing 30-second Tesseract timeout. That test passed in isolation (one test, two assertions). The final updated TripInformationParser file also passed all 18 tests, including the added regression proving absent local-time keys are omitted.
-- Coverage includes fuel unit aliases/zero/invalid amounts, list normalization, repeated report headings, invalid dates/slots, database and OCR fallback reporting, CLI warning/output, roster year rollover, matched/unmatched duty context, calendar exports, builders, and Livewire schedule extraction.
-- Pint passes after the PHP changes.
-- Larastan ran once over the configured application paths. It reported one PHPDoc error in the extracted duty-context helper: local-time keys were declared required although the method omits unavailable times. Corrected the annotation to optional string keys and verified the behavior with the focused regression. Larastan was not rerun, honoring the one-run limit.
-- `git diff HEAD --check` passes. Unrelated TODO edits and the concurrently staged work were preserved.
+- All **60 focused PHPUnit tests pass** through Sail across `ExtractRequestLoggerTest`, `UploadedFileCountMigrationTest`, `ExtractRequestResourceTest`, `Livewire/ScheduleExtractorTest`, and `Livewire/FlightPlanBrief/Lifecycle/ExtractionTest`.
+- Coverage includes text/single/multiple uploads, five duplicate images producing one request, user association, counts saved before parsing, partial and complete failures, empty results, removed files, six-file rejection, denied access, cache reads/exports, repeated submissions, aggregate hash/size preservation, and flight-plan success/failure.
+- Migration coverage verifies legacy null values, explicit zero, and rollback preserving rows using an isolated SQLite connection. Local Sail migration completed successfully. Filament coverage verifies numeric sorting, `Unknown` versus `0`, column visibility, form integer validation, and existing filters/access restrictions.
+- Pint completed after PHP changes. Larastan ran once over the configured application paths and passed with zero errors. Code diff whitespace checks pass; unrelated TODO/BACKLOG edits, including existing TODO end-of-file whitespace, are preserved.
 
-Commit message: `refactor: address actionable Sloppy static findings`
-
-
-## Paused: Flight release: 24 hour time limit
-
-### Goal
-
-Expire only the cached flight-release result 24 hours after successful extraction. Remove its saved `flight_plan_results` row and any cache entries belonging specifically to that result, and stop serving it through the brief or Fuel Score URL.
-
-### Current implementation
-
-- `FlightPlanResultStore` keeps one encrypted `flight_plan_results` row per user. `save()` replaces that row; `get()` checks owner and key, and `latest()` checks owner, but neither checks age. The row has timestamps, but no explicit extraction or expiry timestamp.
-- `FlightPlanBrief` loads the latest row on mount and retrieves it on render. `OfflineFuelScoreController` retrieves the same row by key. Both rely on the store, so expiry enforcement belongs there.
-- `FlightPlanTextExtractor` caches PDF text for seven days under a file-hash key. This cache is independent of the saved result and can be shared by identical uploads; it has no owner or result-key mapping. The uploaded PDF is deleted after extraction.
-- Existing scheduling in `routes/console.php` can run cleanup of expired cached results.
-
-### Problem
-
-An old cached result remains readable until the user replaces or manually clears it. `updated_at` is not a reliable extraction clock if a row is later touched. Expiration must apply to the saved result rather than the independent, shared PDF-text extraction cache.
-
-### Implementation plan
-
-1. Add an immutable extraction timestamp and an indexed expiry timestamp to `flight_plan_results`. Set both when a successful extraction is saved, including when the user's existing row is replaced. Compute expiry as extraction time plus 24 hours, independent of the flight schedule. Compare instants in UTC and define expiry at the deadline (`now >= expires_at`).
-2. Make `FlightPlanResultStore::get()` and `latest()` exclude expired rows and delete a matching expired row when encountered. Keep owner and result-key checks in place. The brief should return to its upload state after expiry; the Fuel Score URL should return 404. Clear any stale Livewire result key or selected task when a rendered result expires so the UI does not retain a link to it.
-
-3. Inventory cache entries belonging specifically to the saved result and invalidate those with the result. Preserve the independent shared PDF-text cache and its existing seven-day lifetime, along with airport and schedule caches. No source-document or other application data cleanup is part of this task.
-4. Document the 24-hour cached-result lifetime in the upload/result UI with a concise UTC-aware message, including that re-upload is needed after expiry.
-
-### Acceptance criteria
-
-- A cached result is accessible before extraction time plus 24 hours and unavailable at or after that deadline, including exact-boundary and midnight rollover cases.
-- Flight schedule values never shorten or extend the cached-result lifetime. Replacing a result starts a new extraction clock and invalidates the old key.
-- Expired data is removed from the database by scheduled cleanup even without another request. Brief and Fuel Score reads deny an expired result immediately, regardless of whether cleanup has run.
-- No cache entries belonging specifically to the expired result remain available. Shared PDF-text, airport, and schedule caches retain their existing behavior and lifetimes.
-- Ownership checks, encrypted storage, and the normal upload/error flows continue to work.
-
-### Validation for implementation
-
-- Add focused store tests using a frozen clock for the 24-hour deadline, exact equality, midnight rollover, schedule-independent expiration, replacement, ownership, and deletion on read.
-- Add focused Livewire and Fuel Score tests for expiry transitions and a cleanup-command test for unattended expiration and repeat runs.
-- Run only affected tests through Sail, Pint after PHP changes, and Larastan once at the final integration checkpoint. Record the outcomes here.
-
-### Planning outcome
-
-Restricted expiration to the cached flight-release result and its own cache entries, with a fixed 24-hour lifetime after successful extraction. Removed arrival-time expiration and shared PDF-text cache changes. This update changes documentation only; the task remains paused.
-
-Commit message: `feat: expire cached flight release results after 24 hours`
-
-## Plan: feat: Track schedule upload count
-- For multiple file uploads within each user request
+Commit message: `feat: track uploaded file counts per extraction request`
 
 ## Unified upload
 Currently: 2 tabs have 2 different upload points, user has to choose 
@@ -340,3 +286,48 @@ Follow-up commit message: `fix: compact weight cards and remove redundant planne
 
 References:
 resources/views/components/flight-release/weight-balance-field.blade.php
+
+## [x] Completed: Sloppy static findings
+
+### Goal
+
+Review Sloppy's findings, fix actionable error handling and duplication, and reduce parsing/formatting complexity while preserving operational values and existing presentation contracts.
+
+### Current implementation
+
+Shared fuel deserialization now lives in `FuelQuantity::fromArray()`; DTOs and mappers reuse the immutable `StringList` normalizer. Flight Init and Takeoff/Landing extraction reuse `TakeoffLandingReportSections`. Calendar serialization delegates description formatting to `IcsDescriptionFormatter`. Trip parsing delegates roster sections/summary to `TripInformationSections` and duty/flight matching to `TripDutyFlightContext`.
+
+### Problem
+
+The original scan reported 62 findings: 26 high, 13 medium, and 23 low. It found silent operational fallbacks, repeated normalization, mixed parser responsibilities, and comments restating code.
+
+### Implementation outcome
+
+- Report airline database failures and image-preprocessing failures while preserving bundled-airline/original-image fallbacks. Optional schedule DTO export failures are reported and display a warning while retaining parsed JSON output.
+- Narrow date/value parsing catches to expected validation exceptions so unrelated runtime errors propagate. Document why invalid ETOPS entries are rejected independently and why optional diagnostics must not interrupt extraction.
+- Consolidate all nine duplicate-logic findings and remove all five narrative-comment findings. Separate calendar descriptions from serialization and roster structure/context from event parsing.
+- Split all five flagged long methods into their distinct jobs: PDF page reading, individual slot extraction, slot comparison/alerts, flight-detail construction, and pasted-text processing. Preserve PDF caching/progress/timing, source evidence, slot order/deduplication, missing-data behavior, calendar formatting, and slot-window thresholds.
+- Review the remaining findings individually. No dependency packages or Sloppy thresholds/rules were changed. The optional [agent-skills repository](https://github.com/asyrafhussin/agent-skills) was not needed; the installed Laravel best-practices skill covered this work.
+
+### Final scan and retained findings
+
+`vendor/bin/sail php vendor/bin/sloppy scan --all --no-baseline --format=json` reports **35 findings: 5 high, 4 medium, 26 low**, with a score of **95** (originally 81). There are zero duplicate-logic, narrative-comment, and long-method findings. All high-severity swallowed-exception warnings are cleared.
+
+| Remaining rule | Count | Review decision |
+| --- | ---: | --- |
+| SL107 Swallowed Exception | 26 low | Narrow parse-or-reject helpers deliberately return null or omit invalid entries; optional PDF logging/Debugbar failures must not break extraction. Missing operational data remains unavailable. |
+| SL102 God Class | 5 high | The three flight-plan extraction/building classes coordinate one workflow across typed sections; the two view models expose existing presentation APIs and delegate to presenters. Retain these boundaries rather than add dependency bags or break template contracts solely to reduce a metric. |
+| SL207 Excessive Service Dependencies | 3 medium | The same extraction/building orchestrators legitimately coordinate specialized section extractors/builders. Retain explicit constructor injection. |
+| SL209 Model Doing Too Much | 1 medium | `User::sendEmailVerificationNotification()` is Laravel's verification-notification customization hook; retain its existing OTP behavior. |
+
+A `.sloppy-baseline.json` containing these 35 findings was added concurrently during this task and preserved. The normal scan passes with **zero new findings**; the unbaselined report above records actual remaining findings rather than presenting them as eliminated.
+
+### Validation outcome
+
+- Focused Sail integration across 24 affected PHPUnit files: 225 tests, 222 passed, two skipped because private PDF fixtures are unavailable, and one private ETOPS OCR test exceeded its existing 30-second Tesseract timeout. That test passed in isolation (one test, two assertions). The final updated TripInformationParser file also passed all 18 tests, including the added regression proving absent local-time keys are omitted.
+- Coverage includes fuel unit aliases/zero/invalid amounts, list normalization, repeated report headings, invalid dates/slots, database and OCR fallback reporting, CLI warning/output, roster year rollover, matched/unmatched duty context, calendar exports, builders, and Livewire schedule extraction.
+- Pint passes after the PHP changes.
+- Larastan ran once over the configured application paths. It reported one PHPDoc error in the extracted duty-context helper: local-time keys were declared required although the method omits unavailable times. Corrected the annotation to optional string keys and verified the behavior with the focused regression. Larastan was not rerun, honoring the one-run limit.
+- `git diff HEAD --check` passes. Unrelated TODO edits and the concurrently staged work were preserved.
+
+Commit message: `refactor: address actionable Sloppy static findings`
