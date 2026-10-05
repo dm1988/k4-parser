@@ -1,9 +1,11 @@
 import { createFuelScoreDraft } from './offline-fuel-draft.js';
+import { bindFuelDraftLifecycle } from './offline-fuel-lifecycle.js';
 import { waypointFuelMonitor } from './waypoint-fuel-monitor.js';
 
 export const offlineFuelScoreState = (calculator, scope, storageProvider) => {
     const monitor = waypointFuelMonitor(calculator);
     const draft = createFuelScoreDraft(calculator, scope, storageProvider);
+    let unbindLifecycle = () => {};
 
     return {
         ...monitor,
@@ -25,6 +27,11 @@ export const offlineFuelScoreState = (calculator, scope, storageProvider) => {
             this.$watch('offTime', () => this.saveDraft());
             this.$watch('startingFob', () => this.saveDraft());
             this.$watch('waypoints', () => this.saveDraft());
+            unbindLifecycle = bindFuelDraftLifecycle(this);
+        },
+
+        destroy() {
+            unbindLifecycle();
         },
 
         saveDraft() {

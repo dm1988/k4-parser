@@ -5,15 +5,16 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Offline fuel calculator · {{ config('app.name') }}</title>
         <x-theme-initializer />
-        @vite(['resources/css/app.css', 'resources/js/offline-fuel-score.js'])
+        {{ $calculatorAssets }}
     </head>
     <body class="min-h-screen bg-[#F8F9FA] font-sans text-[#0B0E14] dark:bg-gray-950 dark:text-slate-100">
-        <main class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10" x-data="offlineFuelScore(@js($calculator), @js($draftScope))">
+        <main class="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10" x-data="offlineFuelScore(@js($calculator), @js($draftScope), @js($offlineRecovery))">
             <header class="rounded-2xl bg-[#1B365D] px-5 py-6 text-white sm:px-8">
                 <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#C5A059]">Flight Plan Brief</p>
                 <h1 class="mt-2 text-2xl font-bold sm:text-3xl">Offline fuel calculator</h1>
                 <p class="mt-2 font-mono text-sm text-slate-200">{{ $flightNumber ?? 'Flight number not present' }} · {{ $flightDate ?? 'Flight date not present' }}</p>
-                <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-200">Enter Off time for waypoint ETAs. Add actual fuel readings to compare fuel and burn against the release and estimate fuel at destination. Calculations run in this tab after the page loads. Inputs are saved in this tab and restored after a refresh while this release remains available; refreshing or reopening requires a connection.</p>
+                <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-200">Enter Off time for waypoint ETAs. Add actual fuel readings to compare fuel and burn against the release and estimate fuel at destination. Inputs are saved in this tab and restored after a refresh. Once offline recovery is ready, this tab can reload without a connection, including after the browser unloads it. Closing the tab clears its entered inputs.</p>
+                <p role="status" class="mt-2 text-sm font-semibold text-[#C5A059]" x-text="offlineMessage">Preparing offline recovery…</p>
             </header>
 
             <section aria-labelledby="calculator-inputs-heading" class="rounded-xl border border-[#1B365D]/10 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-6">

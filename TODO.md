@@ -11,7 +11,11 @@
 4. Mark completed by [x] and replacing `Current focus: ` with `Completed: `
 5. Reference `# Codex Usage Rules` in AGENTS.md
 6. Create a commit message for each task
-7. Each task should consist of: Goal, Current implementation, Problem. Optionally add references and constraints.
+7. Each task should consist of: Goal, Current implementation, Problem. 
+8. Definitions:
+   1. FP = Flight Plan more likely the flight plan brief tool
+   
+Optionally add references and constraints.
 
 # Flight Plan Brief Roadmap
 
@@ -28,45 +32,55 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## [x] Completed: feat: Track schedule upload count
+## [x] Completed: FP: Offline mode
+Chrome is refreshing the page dropping the off time and takeoff fuel and rendering a ERR_Connection 404.
 
 ### Goal
 
-Persist the number of schedule files submitted in each extraction request and display it in the existing Filament Extract Requests table. Keep one database record per submission, linked to the user, even when several images are processed together.
+Recover the loaded flight's calculator and entered Off time, starting FOB at takeoff, ATA, and AFOB after an offline refresh or browser-initiated tab reload.
 
 ### Current implementation
 
-- `ExtractRequestLogger::start()` persists `uploaded_file_count` from submitted `UploadedFile` instances before processing. `ExtractRequest` permits the attribute and casts known counts to integers while preserving null.
-- A new reversible migration adds a nullable unsigned integer to `extract_requests`, with no zero default or historical backfill. The migration has been applied to the local Sail database.
-- Filament displays a visible, numeric, sortable, toggleable `Uploaded files` column. Null displays `Unknown`; pasted-text requests display `0`. The existing form schema includes a nullable, non-negative integer field.
-- Schedule validation still permits up to five images or one PDF. The shared logger also records `1` for new flight-plan PDF extractions. Existing dashboard widgets continue to count requests.
+- `OfflineFuelScoreController` retains authenticated, verified, entitled, owner-scoped access. It marks successful calculator responses explicitly and supplies the production asset list, including transitive JavaScript imports, CSS, and asset dependencies from Vite's manifest.
+- `offline-fuel-worker.js` caches the successfully authorized calculator HTML (including release data) only after every required asset is available. Canonical calculator navigation uses the network first and falls back to that exact cached release only on network failure. HTTP errors and authentication redirects invalidate the copy instead of falling back. Uncached offline releases receive a useful 503 fallback.
+- The worker controls the app origin to observe authentication and Livewire responses, but only calculator pages and their required production assets are cached. Middleware identifies the current owner and release; logout, account changes, release replacement, and clearing invalidate private copies. A Livewire client event also handles streamed extraction, whose headers are sent before extraction completes. Preparation cannot publish stale data after a concurrent invalidation.
+- Existing `sessionStorage` drafts continue to preserve exact Off time, starting FOB, ATA, and AFOB strings by owner/release/source signature. `visibilitychange` to hidden and `pagehide` synchronously flush inputs; component cleanup removes the listeners. Reset and unavailable-storage warnings retain their existing behavior.
+- The calculator shows preparation, ready, unavailable, recovered-copy, and invalidated-copy states. Readiness requires worker control and successful page/asset preparation. It renders built assets through an isolated Vite instance even when `public/hot` selects development mode for other pages. Missing production builds, unsupported browsers, insecure origins, and cache failures do not claim readiness.
 
-### Problem
+### Problem and implementation outcome (2026-10-06)
 
-A request with several images previously lacked a stored file count. Page counts, file size, and merged event counts cannot recover that metric; historical image requests cannot safely be assumed to contain one file.
+The previous implementation saved inputs but required a connection to reload the page, so a discarded Chrome tab could not reconstruct the calculator offline. The new cache supplies the page, release, and assets across a worker restart, and the existing draft restores its entered values. Chrome discards cannot be intercepted reliably; saving when the tab becomes hidden prepares for that lifecycle transition. [Chrome lifecycle guidance](https://developer.chrome.com/docs/web-platform/page-lifecycle-api?authuser=00).
 
-### Counting contract
+A replaced or cleared release still produces a real server 404. That behavior and access enforcement are preserved, with cleanup preventing the cached copy from bypassing the response. The original automatic-refresh trigger was not reproduced in a real Chrome session.
 
-- `uploaded_file_count` means files accepted by validation and submitted for extraction: one PDF or image is `1`, and three images are `3`. Count each submitted file entry, including identical content; event deduplication does not reduce the count.
-- Pasted-text extraction records `0`. Count uploaded files rather than PDF pages, generated OCR images, parsed events, or successfully parsed files.
-- Record the count at request start and retain it after success, partial file failures, complete parser failure, or an empty result. Rejected validation, denied access, cancelled temporary uploads, and files removed before submission do not create an extraction record.
-- Reading cached results, rendering, filtering results, and calendar exports do not add records or change counts. An explicit new extraction submission creates another request with its own count; this metric does not introduce retry deduplication.
-- Historical rows remain null and display `Unknown`. Do not infer their counts from hashes, sizes, or page counts.
-
-### Implementation outcome
-
-Extended the existing request record and logger without adding per-file records or user lifetime counters. Counts are independent of parsing success, readable hash paths, and event deduplication. Aggregate hashes/sizes, parser statuses, result caching, and request-count widgets retain their existing behavior.
-
-The existing Extract Request policy forbids admin creation and editing, including for admins. Those restrictions remain in place; the form schema was updated and its actual validation rules tested without enabling those pages. No dependencies, unified upload routing, CLI tracking, or other tasks were changed.
+Offline readiness requires HTTPS (or localhost), same-origin production assets, enabled browser storage, and a successfully prepared copy before losing connectivity. A reported unavailable state was traced to the original development-mode guard despite an existing production build. The calculator now uses that build without stopping Vite or changing the application's shared renderer. If no build exists, the development calculator still loads but has no offline asset list. Calculator frontend edits require a new production build. Closing the tab clears its entered draft; reopening can recover a prepared page but does not promise recovery of closed-tab inputs. [MDN service workers](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers), [MDN sessionStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage). A web app manifest is not required for reload recovery and was not added.
 
 ### Validation outcome
 
-- All **60 focused PHPUnit tests pass** through Sail across `ExtractRequestLoggerTest`, `UploadedFileCountMigrationTest`, `ExtractRequestResourceTest`, `Livewire/ScheduleExtractorTest`, and `Livewire/FlightPlanBrief/Lifecycle/ExtractionTest`.
-- Coverage includes text/single/multiple uploads, five duplicate images producing one request, user association, counts saved before parsing, partial and complete failures, empty results, removed files, six-file rejection, denied access, cache reads/exports, repeated submissions, aggregate hash/size preservation, and flight-plan success/failure.
-- Migration coverage verifies legacy null values, explicit zero, and rollback preserving rows using an isolated SQLite connection. Local Sail migration completed successfully. Filament coverage verifies numeric sorting, `Unknown` versus `0`, column visibility, form integer validation, and existing filters/access restrictions.
-- Pint completed after PHP changes. Larastan ran once over the configured application paths and passed with zero errors. Code diff whitespace checks pass; unrelated TODO/BACKLOG edits, including existing TODO end-of-file whitespace, are preserved.
+Sail became available for implementation. Boost's version-specific documentation search ran through its installed MCP server via Sail. Focused checks passed: 28 unique PHPUnit tests across `OfflineFuelScoreTest`, `OfflineFuelScoreCacheTest`, Livewire `SavedResultTest`/`ExtractionTest`, and `AuthenticationTest`; 46 unique JavaScript tests across the draft, lifecycle, worker, readiness/invalidation, and calculator files. Coverage includes worker restart with no network, all required assets, exact draft restoration, unauthorized/404/redirect responses, cache failures, missing snapshots, deployment asset changes, owner isolation, streamed mutation cleanup, and invalidation during preparation. Production Vite build and Pint passed. Full application Larastan ran once and reported two findings in the initial asset traversal; that traversal was corrected, followed by a passing focused class recheck and its two dependency tests. No browser automation was available, so real Chrome discard and visual verification remain unperformed. Unrelated TODO edits and the separate fuel-score variance task were preserved.
 
-Commit message: `feat: track uploaded file counts per extraction request`
+Commit message: `fix: recover flight plan fuel calculator after offline tab reloads`
+
+Development-mode follow-up: 13 focused PHPUnit tests passed across `OfflineFuelScoreCacheTest`, `OfflineFuelScoreTest`, and `ViteDisabledTest`. The integration test uses a real Vite renderer with a hot file and build manifest, verifies built calculator tags match the cache header, and confirms the shared renderer and hot file retain development mode. Missing-build fallback also passes. Pint, one full Larastan run (zero errors), and the refreshed production build passed. Real browser readiness remains unverified.
+
+Follow-up commit message: `fix: serve built calculator assets while Vite development mode is active`
+
+## FP: Offline fuel score
+Ensure this is implemented:
+```javascript
+export const calculateBurnVariance = (startingFob, actualFob, tbo) => {
+    const actualBurn = calculateActualBurn(startingFob, actualFob);
+    const plannedBurn = calculatePlannedCumulativeBurn(tbo);
+
+    if (actualBurn === null || plannedBurn === null) {
+        return null;
+    }
+
+    // Variance = Planned Burn minus what was Actually Burned 
+    // Positive means you burned LESS than planned (saved fuel)
+    return plannedBurn - actualBurn;
+};
+```
 
 ## Unified upload
 Currently: 2 tabs have 2 different upload points, user has to choose 
@@ -74,9 +88,18 @@ Goal: Have one unified upload path. Service will determine if a schedule or flig
 
 Cached results: Keep extract schedule and flight plan brief tabs for now. There's not really a better way to render cached results for now.
 
-## Flight plan: Create a way to turn tasks on or off
-- in ENV and config files
-- in coordination with enum
+## Schedule: Max file (screenshot) upload to config
+Have setting in .env file as opposed to hard coded.
+Currently:
+max:5 set in validation
+message validation: 'files.max' => 'You may upload up to five images.',
+
+Goal:
+
+
+References:
+.env.example
+app/Validation/ExtractValidationRules.php
 
 ## Plan: PEST architechure tests
 
@@ -194,140 +217,44 @@ Commit message for this plan: `docs: plan aircraft-specific flight plan reserve 
 
 ## [x] Completed: Flight plan: Crew list: WCAG 2.2 AA compliance
 ## [x] Completed: Flight plan: header refactor
-Refactor the Flight Plan Brief header and action controls in our Livewire component and Blade view:
-
-1. **Header Action Integration:**
-   - Move the "Extract another flight plan" button into the top-right corner of the active `Flight Plan Brief` header card.
-   - Add a "Clear results" button adjacent/stacked with "Extract another flight plan".
-   - Stack both buttons vertically in a subtle button group (or ghost button style) to save horizontal space and avoid crowding the route details (`CKS272`, `SBKP -> SCEL`).
-   - Use clean inline SVG or Heroicons for both buttons:
-     - `Extract another`: Import/upload icon (e.g., `arrow-up-tray` or `document-plus`).
-     - `Clear results`: Close/trash icon (e.g., `x-mark` or `trash`).
-
-2. **State & Header Behavior:**
-   - Keep the main "Flight Plan Brief" title visible at all times, but ensure layout hierarchy remains clean.
-   - Add a Livewire/Blade action for `clearResults` that resets the active flight model state.
-   - When no flight plan is loaded (cleared state), display a clean empty-state upload container under the main title.
-   - Convert the header to a flex container (`flex justify-between items-start`) to support a split layout between branding and actions.
-   - Implement a `flex-col` button group in the top-right corner to stack actions without interfering with the primary typography.
-
-3. **Styling & Theme Alignment:**
-   - Maintain the current Tailwind CSS dark theme (`bg-slate-900`/`bg-slate-800` cards, subtle borders, accent colors).
-   - Ensure buttons are responsive and collapse gracefully on mobile viewports.
-   - Applied ghost-style borders (`border-[#F8F9FA]/20`) and hover transitions (primary CTA for extraction, transparent red for clearing) to align with the dark theme aesthetic.
-
-### Header refactor outcome
-
-Moved extraction into the main Flight Plan Brief header beside a new Clear results action. Both use stacked ghost buttons, decorative Heroicons, visible keyboard focus, disabled/loading states, gold extraction hover, and a subtle red clearing hover. The title stays visible in every state; actions move below the branding and fill the available width on mobile, leaving the flight/route summary separate.
-
-Added an authorized `clearResults()` action using the existing owner-scoped result deletion and upload reset. Both header actions reset the result key, file, selected task, completion flag, and validation errors; task pages navigate to the upload URL. Clearing persists across reloads and preserves other users' results.
-
-### Header refactor validation
-
-The five focused PHPUnit files pass through Sail: SavedResultTest, UploadTest, AccessTest, ExtractionTest, and FlightPlanTaskRouteTest (32 tests in total). Coverage includes header action placement, persistent title/upload states, owner isolation, repeated clearing, validation reset, authorization, and embedded/task-route transitions. Pint passes. The final focused Larastan check passes with zero errors after correcting a test assertion-chain type issue found by the initial integration run.
-
-Headless Chrome reviewed the actual rendered header in 375px light/dark frames and a 960px light frame using the existing CSS bundle. The header/actions fit without horizontal overflow, stack on mobile, and split horizontally on desktop. This was an isolated layout preview, not an authenticated interaction audit; the old bundle does not include every new utility.
-
-`vendor/bin/sail npm run build` fails because installed Tailwind 4 is configured as a Tailwind 3 PostCSS plugin. Dependency/build configuration changes are outside this task and were left untouched; rebuilding and checking the final generated CSS remain blocked by that existing mismatch.
-
-Commit message: `refactor: integrate flight plan header actions and clear results`
-
-## [x] Completed: Remove results output near header:
-Remove `Flight plan brief ready. Upload and extraction completed successfully.`
-
-resources/views/livewire/flight-plan-brief.blade.php
-
 ## [x] Completed: Flight plan: Weight & Balance: Progress bar readability
-
-### Goal
-
-Adopt the Chrome DevTools prototype's clean hierarchy and improve colors across Weight & Balance bars, overview alerts, and badges. Preserve all existing classification thresholds, rounding, labels, alert counts, and severity ordering. No animation or transitions. Complete the authorized Tailwind 4 migration to resolve the Vite/PostCSS build failure.
-
-### UI Overhaul: Weight and Balance Progress Bars
-
-Implemented the preferred prototype: external labels, a prominent monospaced planned value with its unit, an uninterrupted 8px (`h-2`) rounded native progress bar, and the structural limit with its unit below. Status wording remains visible so color is not the sole cue. Mobile retains the preferred title/percentage layout. At desktop widths (`xl`), cards with content widths up to `28rem` move the percentage directly above the bar; wider cards retain the right-aligned header percentage. CSS displays only one percentage at a time.
-
-### Gemini enum review outcome
-
-Retained the proposed emerald / sky / amber / rose palette, tinted badges, and subtle colored accents, with darker light-mode shades for readable text and meaningful bar graphics:
-
-| Existing state | Existing rounded utilization | Text: light / dark | Native fill: light / dark |
-| --- | --- | --- | --- |
-| Safe (normal) | Below 90% | emerald-700 / emerald-400 | emerald-600 / emerald-400 |
-| Heavy | 90% to below 98% | sky-700 / sky-400 | sky-600 / sky-400 |
-| Caution | 98% through 100% | amber-700 / amber-400 | amber-700 / amber-400 |
-| Exceeded (over-limit warning) | Above 100% | rose-700 / rose-400 | rose-600 / rose-400 |
-
-Gemini's proposed thresholds were rejected; enum cases, labels, operational-alert behavior and severity ordering remain unchanged. Muted limit text uses slate-600/slate-400. Text and badges meet [4.5:1 contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html); native fills meet [3:1](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html) against their tracks. Overview cards retain Aviation Blue structure with subtle slate perimeter borders and state-colored left accents/tints.
-
-### Implementation outcome and validation
-
-- Updated the shared Blade component, view-model percentage label, enum presentation classes, and theme-aware native WebKit/Firefox fills. Removed overlay text and Heavy's hard-coded blue override; badges now use independent tinted backgrounds. Added no animation or transitions.
-- Preserved one-decimal rounding before classification, existing thresholds/labels/severity/alert counts, progress clamping at 100% with actual exceeded percentages in visible and accessible text, units, and unavailable/conflicting source states.
-- Sail focused PHPUnit checks passed: 34 tests, 443 assertions across component rendering, palette contrast, field calculations/boundaries, Livewire Weight & Balance, and affected overview assertions. Pint passed; final targeted Larastan passed with zero errors.
-- Completed the authorized Tailwind 4 migration using the installed Vite plugin. Replaced legacy PostCSS/JavaScript configuration with CSS imports, explicit Blade/PHP/JavaScript source paths, the forms plugin, Figtree font, and manual `.dark` mode. Kept the reviewed slate/status palette and existing shadow, radius, blur, border, cursor and placeholder defaults. Migrated focus classes to `outline-hidden` to retain forced-colors accessibility. Updated the project version in AGENTS.md.
-- Production `sail npm run build` passed. Eight focused Node tests passed, including actual Vite compilation and existing theme behavior. The new build regression covers PHP enum classes, dark badges, forms, forced-colors focus outlines, native fills and the correctly prefixed dark WebKit track selector.
-- Chrome checks passed in eight light/dark/mobile/desktop cases, including a viewport equivalent to 200% zoom reflow and doubled root font size: one visible percentage, correct placement, no clipping/overflow, preserved forms/focus styles and no bar transitions. Minimum measured text/badge/fill contrast: 5.02:1 / 4.84:1 / 3.44:1. Desktop screenshots verified native fills and dark tracks. Firefox runtime checks were unavailable locally.
-- Main readability implementation, Tailwind 4 migration, and both follow-ups below are complete.
-
-Implementation commit message: `refactor: migrate to Tailwind 4 and improve weight progress readability`
-
-### [x] Completed follow-up: `Estimated landing weight` card height
-
-Single-field groups align at the top at `xl`, so Arrival and its landing card size to their content instead of stretching to the tallest neighboring column. The landing value, percentage, bar and limit stay together without a fixed height cap. Multi-field column sizing and the mobile stacking behavior are preserved.
-
-### [x] Completed follow-up: Remove `Planned` from each W&B card
-
-Removed the repeated `Planned` label and its value's extra top margin from the shared field component. The section's planned-weight explanation remains; field headings, values, units, limits, statuses and accessibility data are preserved.
-
-Follow-up validation: Sail's nine focused component/Livewire tests passed (201 assertions), Pint passed, and the production Vite build passed. Six Chrome geometry checks passed across desktop/mobile/light/dark and enlarged-text/reflow cases: compact landing card, unchanged neighboring column sizing for the height fix, no clipping/overflow, all seven fields retained and zero repeated `Planned` labels.
-
-Follow-up commit message: `fix: compact weight cards and remove redundant planned labels`
-
-References:
-resources/views/components/flight-release/weight-balance-field.blade.php
-
 ## [x] Completed: Sloppy static findings
+## [x] Completed: feat: Track schedule upload count
 
 ### Goal
 
-Review Sloppy's findings, fix actionable error handling and duplication, and reduce parsing/formatting complexity while preserving operational values and existing presentation contracts.
+Persist the number of schedule files submitted in each extraction request and display it in the existing Filament Extract Requests table. Keep one database record per submission, linked to the user, even when several images are processed together.
 
 ### Current implementation
 
-Shared fuel deserialization now lives in `FuelQuantity::fromArray()`; DTOs and mappers reuse the immutable `StringList` normalizer. Flight Init and Takeoff/Landing extraction reuse `TakeoffLandingReportSections`. Calendar serialization delegates description formatting to `IcsDescriptionFormatter`. Trip parsing delegates roster sections/summary to `TripInformationSections` and duty/flight matching to `TripDutyFlightContext`.
+- `ExtractRequestLogger::start()` persists `uploaded_file_count` from submitted `UploadedFile` instances before processing. `ExtractRequest` permits the attribute and casts known counts to integers while preserving null.
+- A new reversible migration adds a nullable unsigned integer to `extract_requests`, with no zero default or historical backfill. The migration has been applied to the local Sail database.
+- Filament displays a visible, numeric, sortable, toggleable `Uploaded files` column. Null displays `Unknown`; pasted-text requests display `0`. The existing form schema includes a nullable, non-negative integer field.
+- Schedule validation still permits up to five images or one PDF. The shared logger also records `1` for new flight-plan PDF extractions. Existing dashboard widgets continue to count requests.
 
 ### Problem
 
-The original scan reported 62 findings: 26 high, 13 medium, and 23 low. It found silent operational fallbacks, repeated normalization, mixed parser responsibilities, and comments restating code.
+A request with several images previously lacked a stored file count. Page counts, file size, and merged event counts cannot recover that metric; historical image requests cannot safely be assumed to contain one file.
+
+### Counting contract
+
+- `uploaded_file_count` means files accepted by validation and submitted for extraction: one PDF or image is `1`, and three images are `3`. Count each submitted file entry, including identical content; event deduplication does not reduce the count.
+- Pasted-text extraction records `0`. Count uploaded files rather than PDF pages, generated OCR images, parsed events, or successfully parsed files.
+- Record the count at request start and retain it after success, partial file failures, complete parser failure, or an empty result. Rejected validation, denied access, cancelled temporary uploads, and files removed before submission do not create an extraction record.
+- Reading cached results, rendering, filtering results, and calendar exports do not add records or change counts. An explicit new extraction submission creates another request with its own count; this metric does not introduce retry deduplication.
+- Historical rows remain null and display `Unknown`. Do not infer their counts from hashes, sizes, or page counts.
 
 ### Implementation outcome
 
-- Report airline database failures and image-preprocessing failures while preserving bundled-airline/original-image fallbacks. Optional schedule DTO export failures are reported and display a warning while retaining parsed JSON output.
-- Narrow date/value parsing catches to expected validation exceptions so unrelated runtime errors propagate. Document why invalid ETOPS entries are rejected independently and why optional diagnostics must not interrupt extraction.
-- Consolidate all nine duplicate-logic findings and remove all five narrative-comment findings. Separate calendar descriptions from serialization and roster structure/context from event parsing.
-- Split all five flagged long methods into their distinct jobs: PDF page reading, individual slot extraction, slot comparison/alerts, flight-detail construction, and pasted-text processing. Preserve PDF caching/progress/timing, source evidence, slot order/deduplication, missing-data behavior, calendar formatting, and slot-window thresholds.
-- Review the remaining findings individually. No dependency packages or Sloppy thresholds/rules were changed. The optional [agent-skills repository](https://github.com/asyrafhussin/agent-skills) was not needed; the installed Laravel best-practices skill covered this work.
+Extended the existing request record and logger without adding per-file records or user lifetime counters. Counts are independent of parsing success, readable hash paths, and event deduplication. Aggregate hashes/sizes, parser statuses, result caching, and request-count widgets retain their existing behavior.
 
-### Final scan and retained findings
-
-`vendor/bin/sail php vendor/bin/sloppy scan --all --no-baseline --format=json` reports **35 findings: 5 high, 4 medium, 26 low**, with a score of **95** (originally 81). There are zero duplicate-logic, narrative-comment, and long-method findings. All high-severity swallowed-exception warnings are cleared.
-
-| Remaining rule | Count | Review decision |
-| --- | ---: | --- |
-| SL107 Swallowed Exception | 26 low | Narrow parse-or-reject helpers deliberately return null or omit invalid entries; optional PDF logging/Debugbar failures must not break extraction. Missing operational data remains unavailable. |
-| SL102 God Class | 5 high | The three flight-plan extraction/building classes coordinate one workflow across typed sections; the two view models expose existing presentation APIs and delegate to presenters. Retain these boundaries rather than add dependency bags or break template contracts solely to reduce a metric. |
-| SL207 Excessive Service Dependencies | 3 medium | The same extraction/building orchestrators legitimately coordinate specialized section extractors/builders. Retain explicit constructor injection. |
-| SL209 Model Doing Too Much | 1 medium | `User::sendEmailVerificationNotification()` is Laravel's verification-notification customization hook; retain its existing OTP behavior. |
-
-A `.sloppy-baseline.json` containing these 35 findings was added concurrently during this task and preserved. The normal scan passes with **zero new findings**; the unbaselined report above records actual remaining findings rather than presenting them as eliminated.
+The existing Extract Request policy forbids admin creation and editing, including for admins. Those restrictions remain in place; the form schema was updated and its actual validation rules tested without enabling those pages. No dependencies, unified upload routing, CLI tracking, or other tasks were changed.
 
 ### Validation outcome
 
-- Focused Sail integration across 24 affected PHPUnit files: 225 tests, 222 passed, two skipped because private PDF fixtures are unavailable, and one private ETOPS OCR test exceeded its existing 30-second Tesseract timeout. That test passed in isolation (one test, two assertions). The final updated TripInformationParser file also passed all 18 tests, including the added regression proving absent local-time keys are omitted.
-- Coverage includes fuel unit aliases/zero/invalid amounts, list normalization, repeated report headings, invalid dates/slots, database and OCR fallback reporting, CLI warning/output, roster year rollover, matched/unmatched duty context, calendar exports, builders, and Livewire schedule extraction.
-- Pint passes after the PHP changes.
-- Larastan ran once over the configured application paths. It reported one PHPDoc error in the extracted duty-context helper: local-time keys were declared required although the method omits unavailable times. Corrected the annotation to optional string keys and verified the behavior with the focused regression. Larastan was not rerun, honoring the one-run limit.
-- `git diff HEAD --check` passes. Unrelated TODO edits and the concurrently staged work were preserved.
+- All **60 focused PHPUnit tests pass** through Sail across `ExtractRequestLoggerTest`, `UploadedFileCountMigrationTest`, `ExtractRequestResourceTest`, `Livewire/ScheduleExtractorTest`, and `Livewire/FlightPlanBrief/Lifecycle/ExtractionTest`.
+- Coverage includes text/single/multiple uploads, five duplicate images producing one request, user association, counts saved before parsing, partial and complete failures, empty results, removed files, six-file rejection, denied access, cache reads/exports, repeated submissions, aggregate hash/size preservation, and flight-plan success/failure.
+- Migration coverage verifies legacy null values, explicit zero, and rollback preserving rows using an isolated SQLite connection. Local Sail migration completed successfully. Filament coverage verifies numeric sorting, `Unknown` versus `0`, column visibility, form integer validation, and existing filters/access restrictions.
+- Pint completed after PHP changes. Larastan ran once over the configured application paths and passed with zero errors. Code diff whitespace checks pass; unrelated TODO/BACKLOG edits, including existing TODO end-of-file whitespace, are preserved.
 
-Commit message: `refactor: address actionable Sloppy static findings`
+Commit message: `feat: track uploaded file counts per extraction request`

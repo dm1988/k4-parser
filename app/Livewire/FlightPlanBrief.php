@@ -144,6 +144,7 @@ class FlightPlanBrief extends Component
             $flightPlan = $this->handleFlightPlanExtraction->handle($user, $uploadedFile, $this->streamProgress(...));
             $this->streamProgress('Saving your brief…');
             $this->flightPlanKey = $this->flightPlanResultStore->save($user, $flightPlan);
+            $this->dispatch('offline-fuel-release-changed', ownerId: (string) $user->getKey(), flightPlanKey: $this->flightPlanKey);
             $this->activeTask = FlightPlanTask::Overview->value;
             $this->extractionJustCompleted = true;
         } catch (FlightRouteNotFoundException $exception) {
@@ -270,6 +271,7 @@ class FlightPlanBrief extends Component
 
         $this->reset(['flightRelease', 'flightPlanKey', 'activeTask', 'extractionJustCompleted']);
         $this->resetValidation();
+        $this->dispatch('offline-fuel-release-changed', ownerId: (string) $user->getKey(), flightPlanKey: null);
     }
 
     private function resetFailedUpload(): void

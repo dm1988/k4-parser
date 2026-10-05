@@ -59,6 +59,7 @@ class SavedResultTest extends FlightPlanBriefTestCase
             ->assertHasNoErrors()
             ->assertSet('flightRelease', null)
             ->assertSet('flightPlanKey', null)
+            ->assertDispatched('offline-fuel-release-changed', ownerId: (string) $user->getKey(), flightPlanKey: null)
             ->assertSet('activeTask', FlightPlanTask::Overview->value)
             ->assertSet('extractionJustCompleted', false);
 

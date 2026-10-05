@@ -23,6 +23,11 @@ class OfflineFuelScoreTest extends TestCase
             ->assertSeeText('Offline fuel calculator')
             ->assertSeeText('CKS241')
             ->assertSeeText('Inputs are saved in this tab and restored after a refresh')
+            ->assertSeeText('Once offline recovery is ready')
+            ->assertSeeText('Preparing offline recovery')
+            ->assertHeader('X-Offline-Fuel-Page', '1')
+            ->assertHeader('X-Offline-Fuel-Owner', (string) $owner->getKey())
+            ->assertHeader('X-Offline-Fuel-Key', $key)
             ->assertSeeText('Browser storage is unavailable.')
             ->assertSeeHtml('x-show="draftUnavailable"')
             ->assertViewHas('draftScope', [

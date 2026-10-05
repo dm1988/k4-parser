@@ -57,6 +57,10 @@ class ExtractionTest extends FlightPlanBriefTestCase
             ->assertNoRedirect()
             ->assertSet('flightRelease', null)
             ->assertDispatched('scroll-to-release-summary')
+            ->assertDispatched('offline-fuel-release-changed', function (string $event, array $params) use ($user): bool {
+                return $params['ownerId'] === (string) $user->getKey()
+                    && $params['flightPlanKey'] === app(FlightPlanResultStore::class)->latest($user)?->result_key;
+            })
             ->assertSet('extractionJustCompleted', true)
             ->assertDontSeeText('Flight plan brief ready. Upload and extraction completed successfully.')
             ->assertSeeHtml('wire:key="flight-plan-brief-results"')

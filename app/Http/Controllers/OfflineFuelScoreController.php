@@ -5,10 +5,11 @@ namespace App\Http\Controllers;
 use App\Actions\FlightPlan\BuildFlightPlanPageData;
 use App\Models\User;
 use App\Services\Infrastructure\FlightPlanResultStore;
+use App\Services\Infrastructure\OfflineFuelScoreAssets;
 use App\View\Presenters\FlightRelease\FuelPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Illuminate\Http\Response;
 
 class OfflineFuelScoreController extends Controller
 {
@@ -16,14 +17,16 @@ class OfflineFuelScoreController extends Controller
         Request $request,
         FlightPlanResultStore $resultStore,
         BuildFlightPlanPageData $buildFlightPlanPageData,
+        OfflineFuelScoreAssets $offlineAssets,
         string $flightPlanKey,
-    ): View {
+    ): Response {
         [$user, $result] = $this->authorizedResult($request, $resultStore, $flightPlanKey);
 
         $pageData = $buildFlightPlanPageData->handle($result);
         abort_if($pageData === null, 404);
+        $assets = $offlineAssets->handle();
 
-        return view('flight-release.offline-fuel-score', [
+        return response()->view('flight-release.offline-fuel-score', [
             'flightNumber' => $pageData->flightPlan->identity->flightNumber,
             'flightDate' => $pageData->flightPlan->identity->flightDate?->format('M j, Y'),
             'calculator' => (new FuelPresenter($pageData))->calculatorData(),
@@ -31,7 +34,14 @@ class OfflineFuelScoreController extends Controller
                 'ownerId' => (string) $user->getKey(),
                 'flightPlanKey' => $flightPlanKey,
             ],
-        ]);
+            'calculatorAssets' => $offlineAssets->tags(),
+            'offlineRecovery' => [
+                'workerUrl' => asset('offline-fuel-worker.js'),
+                'assets' => $assets,
+            ],
+        ])->header('Cache-Control', 'private, no-store')
+            ->header('X-Offline-Fuel-Page', '1')
+            ->header('X-Offline-Fuel-Assets', json_encode($assets, JSON_THROW_ON_ERROR));
     }
 
     public function redirectLegacy(
