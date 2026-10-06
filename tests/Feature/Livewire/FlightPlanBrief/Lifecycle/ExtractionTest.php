@@ -99,6 +99,24 @@ class ExtractionTest extends FlightPlanBriefTestCase
             ->assertSee('break-words font-mono text-xs leading-relaxed', escape: false)
             ->assertSeeTextInOrder(['DCT', 'Q139', 'TEST']);
 
+        $frames = array_map(
+            static fn (string $frame): array => json_decode($frame, true, flags: JSON_THROW_ON_ERROR),
+            explode("\n", str_replace('}{"stream":', "}\n{\"stream\":", $this->streamedOutput)),
+        );
+        $this->assertSame([
+            'Upload successful',
+            'Preparing your flight plan…',
+            'Building your flight plan brief…',
+            'Saving your brief…',
+        ], array_column(array_column($frames, 'body'), 'content'));
+        $this->assertSame([
+            'flight-plan-upload-status',
+            'flight-plan-progress',
+            'flight-plan-progress',
+            'flight-plan-progress',
+        ], array_column(array_column($frames, 'body'), 'name'));
+        $this->assertSame('', ob_get_contents());
+
         $this->assertTrue($component->viewData('isResultsView'));
         $viewModel = $component->viewData('model');
         $this->assertInstanceOf(FlightReleasePageViewModel::class, $viewModel);
@@ -232,6 +250,11 @@ class ExtractionTest extends FlightPlanBriefTestCase
             ->assertSet('extractionJustCompleted', false)
             ->assertDontSeeText('Flight plan brief ready.')
             ->assertSee('A flight plan block was found, but the route segment could not be identified');
+
+        $this->assertStringContainsString('Upload successful', $this->streamedOutput);
+        $this->assertStringContainsString('Preparing your flight plan', $this->streamedOutput);
+        $this->assertStringNotContainsString('Saving your brief', $this->streamedOutput);
+        $this->assertSame('', ob_get_contents());
 
         $extractRequest = ExtractRequest::query()->sole();
         $this->assertSame('failed', $extractRequest->status);

@@ -17,6 +17,30 @@ abstract class FlightPlanBriefTestCase extends TestCase
 {
     use RefreshDatabase;
 
+    protected string $streamedOutput = '';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->streamedOutput = '';
+
+        ob_start(function (string $output): string {
+            $this->streamedOutput .= $output;
+
+            return '';
+        });
+    }
+
+    protected function tearDown(): void
+    {
+        try {
+            ob_end_clean();
+        } finally {
+            parent::tearDown();
+        }
+    }
+
     /** @return array<string, mixed> */
     protected function flightPlan(): array
     {
