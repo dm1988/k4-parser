@@ -28,7 +28,17 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Bug: Extracted crew list:
+## [x] Completed: Bug: Extracted crew list:
+
+### Goal
+
+Extract the four crew members from the applicable flight-release manifest in `CKS024201RJGG.pdf`, excluding unrelated Hong Kong runway-closure and contact information.
+
+### Current implementation
+
+`FlightCrewExtractor` prioritizes manifests bounded by `121-91 FLIGHT RELEASE I.F.R` and their status/release-time/fuel footer or the next release heading. It handles flattened and multiline rows, repeated release pages, empty initial manifests, and single-member manifests. The generic `CREW`/`CREW LIST` fallback accepts consecutive crew rows and stops at unrelated prose. Role-like text elsewhere in the document is no longer treated as an unheaded manifest. Existing name parsing, employee numbers, deduplication, and high-minimums annotations are retained.
+
+### Problem
 
 Extracted `AC
 PHONE +852
@@ -61,6 +71,16 @@ IRP
        ACM                             ACM
    CIRCLE `
 
+### Implementation and validation outcome (2026-10-06)
+
+The supplied private PDF now extracts `MACDONALD T` / `70388` / `PIC`, `SINHA A` / `72480` / `SIC/FO`, `BRANDT-JENSEN J` / `71022` / `CAPT`, and `TAYLOR K` / `73425` / `IRP`. Regression tests cover competing NOTAM text before and after the release, repeated flattened manifests, bounded source evidence, unheaded false positives, unrelated prose under a crew heading, empty initial manifests, single-member manifests, and the supplied PDF's embedded text. Existing crew extraction tests remain passing.
+
+Through Sail, 30 focused PHPUnit tests passed across `FlightCrewExtractorTest`, `CrewListParserTest`, `ExtractFlightPlanDataTest`, and the crew-containing serialization round trip in `SubdomainDataBuilderTest`. One separate private-PDF characterization test was skipped because its fixture is unavailable. Pint passed; one full Larastan run passed with zero errors. Boost's version-specific documentation search succeeded. Unrelated working-tree changes were preserved.
+
+Previously saved releases must be uploaded/extracted again to replace the stored incorrect crew list. No frontend rebuild is required. The private-PDF regression test reads embedded PDF text; OCR and browser behavior were not separately exercised.
+
+Commit message: `fix: scope crew extraction to the flight release manifest`
+
 ## [x] Completed: FP: Fuel Score: Include TOC, TOD
 ### Goal
 
@@ -68,7 +88,7 @@ Include source TOC and TOD rows in Fuel Score's waypoint list, in release order,
 
 ### Current implementation
 
-`WaypointExtractor` now separates TOC/TOD rows within the computed flight plan, preserving source order and each row's TIME, T/TME, TBO, FRMG, and evidence. It handles multiline, CRLF, and flattened text, including markers before the first fix. Explicit marker coordinates are retained; absent coordinates stay null, and departure-field coordinates are not borrowed.
+`WaypointExtractor` now separates TOC/TOD rows within the computed flight plan, preserving source order and each row's TIME, T/TME, TBO, FRMG, and evidence. It handles multiline, CRLF, and flattened text, including markers before the first fix and labels joined to a preceding DSTN value or closing FIR arrow. Explicit marker coordinates are retained; absent coordinates stay null, and departure-field coordinates are not borrowed.
 
 The waypoint DTO, extraction/serialization builders, and calculator payload support null coordinates for TOC/TOD. Builders continue requiring coordinates for fixes and FIR boundaries, and infer the existing phase kinds from TOC/TOD identifiers. Fuel Score's existing waypoint rendering, ETA calculations, and draft storage handle these rows without additional frontend logic.
 

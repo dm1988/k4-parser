@@ -20,8 +20,8 @@ class FlightCrewExtractor
     public function extract(string $text): array
     {
         $sections = [
-            $this->crewSection($text),
             $this->releaseManifestSection($text),
+            $this->crewSection($text),
         ];
 
         foreach ($sections as $section) {
@@ -76,7 +76,7 @@ class FlightCrewExtractor
     /** @return array{body: string, source: string}|null */
     private function crewSection(string $text): ?array
     {
-        $pattern = '/(?:^|\R)\h*CREW(?:\h+LIST)?\h*:?\h*(?<body>.*?)'
+        $pattern = '/(?:^|\R)\h*(?<heading>CREW(?:\h+LIST)?\h*:?)\h*(?<body>.*?)'
             .'(?=(?:\R\h*(?:MAINTENANCE(?:\h+LOG|\h+ITEMS?)?|MEL\h*\/\h*CDL\h*\/\h*DMI|FUEL\h+SUMMARY|ROUTE|NOTAMS?|WEATHER)\b)|\z)/is';
         $matches = [];
 
@@ -84,48 +84,25 @@ class FlightCrewExtractor
             return null;
         }
 
-        return [
-            'body' => trim($matches['body']),
-            'source' => Str::squish($matches[0]),
-        ];
-    }
-
-    /** @return array{body: string, source: string}|null */
-    private function releaseManifestSection(string $text): ?array
-    {
-        $lines = preg_split('/\R/', $text) ?: [];
         $sourceLines = [];
-        $memberCount = 0;
 
-        foreach ($lines as $line) {
+        foreach (preg_split('/\R/', $matches['body']) ?: [] as $line) {
             $line = trim($line);
-            $members = $this->crewListParser->parseReleaseManifestLine($line);
 
-            if ($members !== []) {
-                $sourceLines[] = $line;
-                $memberCount += count($members);
-
+            if ($line === '' || preg_match('/^Name\h+Crew\h+Pos\h+Base$/i', $line) === 1) {
                 continue;
             }
 
-            if ($memberCount === 0) {
-                continue;
+            $members = $this->crewListParser->parse($line);
+
+            if ($members === [] || array_filter($members, static fn (array $member): bool => $member['role'] === null) !== []) {
+                break;
             }
 
-            if ($line === '') {
-                continue;
-            }
-
-            if (preg_match('/^(?:ADDNTL|CAPT|ACM(?:\h+ACM)*)$/i', $line) === 1) {
-                $sourceLines[] = $line;
-
-                continue;
-            }
-
-            break;
+            $sourceLines[] = $line;
         }
 
-        if ($memberCount < 2) {
+        if ($sourceLines === []) {
             return null;
         }
 
@@ -133,7 +110,59 @@ class FlightCrewExtractor
 
         return [
             'body' => $body,
-            'source' => Str::squish($body),
+            'source' => Str::squish($matches['heading'].' '.$body),
         ];
+    }
+
+    /** @return array{body: string, source: string}|null */
+    private function releaseManifestSection(string $text): ?array
+    {
+        $headerPattern = '121-91\h+FLIGHT\h+RELEASE\h+I\.F\.R';
+        $pattern = '/\b'.$headerPattern.'\b\h*:?\h*(?<body>.*?)'
+            .'(?=\b(?:CIRCLE\h+THE\h+APPROPRIATE\h+STATUS|RELEASE\h+TIME|FUEL\h+SUMMARY|'.$headerPattern.')\b|\z)/is';
+        $sections = [];
+
+        if (preg_match_all($pattern, $text, $sections, PREG_SET_ORDER) < 1) {
+            return null;
+        }
+
+        foreach ($sections as $section) {
+            $lines = preg_split('/\R/', $section['body']) ?: [];
+            $sourceLines = [];
+            $memberCount = 0;
+
+            foreach ($lines as $line) {
+                $line = trim($line);
+                $members = $this->crewListParser->parseReleaseManifestLine($line);
+
+                if ($members !== []) {
+                    $sourceLines[] = $line;
+                    $memberCount += count($members);
+
+                    continue;
+                }
+
+                if ($line === '' || preg_match('/^(?:ADDNTL|CAPT|IRP|MX|LM|ACM)(?:\h+(?:CAPT|IRP|MX|LM|ACM))*$/i', $line) === 1) {
+                    $sourceLines[] = $line;
+
+                    continue;
+                }
+
+                break;
+            }
+
+            if ($memberCount === 0) {
+                continue;
+            }
+
+            $body = trim(implode("\n", $sourceLines));
+
+            return [
+                'body' => $body,
+                'source' => Str::squish($body),
+            ];
+        }
+
+        return null;
     }
 }

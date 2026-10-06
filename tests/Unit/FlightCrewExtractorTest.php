@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Services\FlightPlan\Extractor\FlightCrewExtractor;
 use App\Services\Schedule\Extractor\CrewListParser;
 use PHPUnit\Framework\TestCase;
+use Smalot\PdfParser\Parser;
 
 class FlightCrewExtractorTest extends TestCase
 {
@@ -148,6 +149,88 @@ TEXT);
             ['name' => 'YATES R', 'role' => 'ACM', 'base' => null, 'employee_number' => null, 'high_mins' => false],
         ], $result['data']);
         $this->assertStringContainsString('ACM YATES R', $result['source_fragments']['flight_crew']);
+    }
+
+    public function test_it_prefers_the_bounded_flattened_release_manifest_over_notam_crew_text(): void
+    {
+        $manifest = '121-91 FLIGHT RELEASE I.F.R 70388 PIC MACDONALD T 72480 SIC/FO SINHA A ADDNTL 71022 CAPT BRANDT-JENSEN J 73425 IRP TAYLOR K IRP MX LM ACM ACM ACM ACM CIRCLE THE APPROPRIATE STATUS (BASIC / STANDARD / DOUBLE)RELEASE TIME 1219';
+        $notam = "CREW\nRUNWAY CLOSURES\nAC PHONE +852 2910 AC ISO\nWEATHER";
+
+        foreach (["{$manifest}\n{$manifest}\n{$notam}", "{$notam}\n{$manifest}"] as $text) {
+            $result = $this->extractor()->extract($text);
+
+            $this->assertSame([
+                ['name' => 'MACDONALD T', 'role' => 'PIC', 'base' => null, 'employee_number' => '70388', 'high_mins' => false],
+                ['name' => 'SINHA A', 'role' => 'SIC/FO', 'base' => null, 'employee_number' => '72480', 'high_mins' => false],
+                ['name' => 'BRANDT-JENSEN J', 'role' => 'CAPT', 'base' => null, 'employee_number' => '71022', 'high_mins' => false],
+                ['name' => 'TAYLOR K', 'role' => 'IRP', 'base' => null, 'employee_number' => '73425', 'high_mins' => false],
+            ], $result['data']);
+            $this->assertStringNotContainsString('PHONE', $result['source_fragments']['flight_crew']);
+            $this->assertStringNotContainsString('RELEASE TIME', $result['source_fragments']['flight_crew']);
+            $this->assertStringNotContainsString('CIRCLE', $result['source_fragments']['flight_crew']);
+        }
+    }
+
+    public function test_it_does_not_extract_role_like_text_outside_a_crew_or_release_section(): void
+    {
+        $result = $this->extractor()->extract("NOTAM\n4387 PIC CONTACT A\n72914 SIC/FO CONTACT B\nWEATHER");
+
+        $this->assertSame([], $result['data']);
+        $this->assertSame([], $result['source_fragments']);
+    }
+
+    public function test_it_does_not_search_notam_prose_for_crew_rows_after_a_crew_heading(): void
+    {
+        $result = $this->extractor()->extract("CREW\nRUNWAY CLOSURES\nAC PHONE +852 2910 AC ISO\nWEATHER");
+
+        $this->assertSame([], $result['data']);
+        $this->assertSame([], $result['source_fragments']);
+    }
+
+    public function test_it_tries_a_later_release_manifest_when_the_first_one_has_no_members(): void
+    {
+        $result = $this->extractor()->extract(<<<'TEXT'
+121-91 FLIGHT RELEASE I.F.R
+ACM ACM
+RELEASE TIME 1219
+121-91 FLIGHT RELEASE I.F.R
+70388 PIC MACDONALD T
+72480 SIC/FO SINHA A
+FUEL SUMMARY
+TEXT);
+
+        $this->assertSame(['MACDONALD T', 'SINHA A'], array_column($result['data'], 'name'));
+    }
+
+    public function test_it_keeps_a_single_manifest_member_and_excludes_records_after_the_release_footer(): void
+    {
+        $result = $this->extractor()->extract(<<<'TEXT'
+121-91 FLIGHT RELEASE I.F.R
+70388 PIC MACDONALD T
+RELEASE TIME 1219
+73425 IRP CONTACT A
+72914 SIC/FO CONTACT B
+TEXT);
+
+        $this->assertSame(['MACDONALD T'], array_column($result['data'], 'name'));
+        $this->assertStringNotContainsString('CONTACT', $result['source_fragments']['flight_crew']);
+    }
+
+    public function test_it_extracts_the_reported_private_pdf_crew_manifest(): void
+    {
+        $path = __DIR__.'/../../storage/app/private/flight_releases/CKS024201RJGG.pdf';
+
+        if (! is_file($path)) {
+            $this->markTestSkipped('The private flight-release PDF fixture is not available.');
+        }
+
+        $text = (new Parser)->parseFile($path)->getText();
+        $result = $this->extractor()->extract($text);
+
+        $this->assertSame(['MACDONALD T', 'SINHA A', 'BRANDT-JENSEN J', 'TAYLOR K'], array_column($result['data'], 'name'));
+        $this->assertSame(['70388', '72480', '71022', '73425'], array_column($result['data'], 'employee_number'));
+        $this->assertSame(['PIC', 'SIC/FO', 'CAPT', 'IRP'], array_column($result['data'], 'role'));
+        $this->assertStringNotContainsString('PHONE', $result['source_fragments']['flight_crew']);
     }
 
     private function extractor(): FlightCrewExtractor
