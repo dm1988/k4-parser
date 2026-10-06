@@ -28,7 +28,9 @@ class DispatcherNotesExtractor
         $this->addUnavailableSlotNote($notes, $header);
         $this->addSimpleNote($notes, $header, '/\bFUEL\s+BURN\s+INCLUDES\s+\d+(?:\.\d+)?%\s+PENALTY\s+FOR\s+(?:PERISHABLES|PRSHBLS)\b/i');
         $this->addSimpleNote($notes, $header, '/\bPLANNED\s+FL\d{3}\s+THROUGH\s+NAT\s+HLA\s+ON\s+A\s+RANDOM\s+ROUTE\b/i');
-        $this->addEnrouteSigwxNote($notes, $header);
+        $this->addBulletedNote($notes, $header, 'ENROUTE\s+SIGWX\s+NOTATIONS');
+        $this->addBulletedNote($notes, $header, 'GOVT\s+SIGWX\s+PROG\s+FORECASTS\s+AREAS\s+OF');
+        $this->addBulletedNote($notes, $header, 'ADDITIONAL\s+FUEL\s+ADDED');
 
         if (! Str::contains($header, 'ETOPS PRE-DEPARTURE BRIEF COMPLETE', true)) {
             $this->addForecastRunwayNote($notes, $header);
@@ -125,17 +127,17 @@ class DispatcherNotesExtractor
     }
 
     /** @param list<array{offset: int, text: string}> $notes */
-    private function addEnrouteSigwxNote(array &$notes, string $header): void
+    private function addBulletedNote(array &$notes, string $header, string $labelPattern): void
     {
         $matches = [];
 
-        if (preg_match('/\bENROUTE\s+SIGWX\s+NOTATIONS:\s*-\s*(?<notation>.+?)(?=\s*\*{3}|\s*--)/is', $header, $matches, PREG_OFFSET_CAPTURE) !== 1) {
+        if (preg_match('/\b(?<label>'.$labelPattern.'):\s*-\s*(?<notation>[^\s*-].*?)(?=\s*\*{3}|\s*--|$)/is', $header, $matches, PREG_OFFSET_CAPTURE) !== 1) {
             return;
         }
 
         $notes[] = [
             'offset' => $matches[0][1],
-            'text' => "ENROUTE SIGWX NOTATIONS:\n- ".$this->clean($matches['notation'][0]),
+            'text' => $this->clean($matches['label'][0]).":\n- ".$this->clean($matches['notation'][0]),
         ];
     }
 

@@ -108,6 +108,41 @@ class DispatcherNotesExtractorTest extends TestCase
     }
 
     #[Test]
+    #[DataProvider('governmentForecastNoteLayoutProvider')]
+    public function it_extracts_government_forecast_and_additional_fuel_notes(string $separator, string $ending): void
+    {
+        $text = implode($separator, [
+            'RELEASE TIME 0600 / FLIGHT FOLLOWER TEST',
+            '-- GOVT SIGWX PROG FORECASTS AREAS OF:',
+            '   - OCNL CB WYPTS MAGOG-VHHH  SFC-FL440',
+            '-- ADDITIONAL FUEL ADDED:',
+            ' - 30 MINS HOLD FUEL DUE TO WX, T-STORMS AT',
+            '      ETA TO DESTINATION (VHHH)',
+        ]).$ending;
+
+        $result = (new DispatcherNotesExtractor)->extract($text);
+
+        $expected = [
+            "GOVT SIGWX PROG FORECASTS AREAS OF:\n- OCNL CB WYPTS MAGOG-VHHH SFC-FL440",
+            "ADDITIONAL FUEL ADDED:\n- 30 MINS HOLD FUEL DUE TO WX, T-STORMS AT ETA TO DESTINATION (VHHH)",
+        ];
+
+        $this->assertSame($expected, $result['data']);
+        $this->assertSame(implode("\n\n", $expected), $result['source_fragments']['dispatcher_notes']);
+    }
+
+    /** @return array<string, array{string, string}> */
+    public static function governmentForecastNoteLayoutProvider(): array
+    {
+        return [
+            'multiline boxed boundary' => ["\n", "\n******************************************************************\nMEL/CDL NONE"],
+            'flattened next-note boundary' => [' ', ' -- UNRELATED DISPATCH NOTE MEL/CDL NONE'],
+            'CRLF MEL boundary' => ["\r\n", "\r\nMEL/CDL NONE\r\n-- ADDITIONAL FUEL ADDED: - OUTSIDE HEADER"],
+            'end of text' => ["\n", ''],
+        ];
+    }
+
+    #[Test]
     public function it_ignores_text_outside_the_dispatch_header_and_returns_an_empty_result_without_a_header(): void
     {
         $extractor = new DispatcherNotesExtractor;
@@ -145,6 +180,16 @@ class DispatcherNotesExtractorTest extends TestCase
     public static function privateReleaseProvider(): array
     {
         return [
+            'RJGG release' => [
+                'CKS024201RJGG.pdf',
+                [
+                    "GOVT SIGWX PROG FORECASTS AREAS OF:\n- OCNL CB WYPTS MAGOG-VHHH SFC-FL440",
+                    "ADDITIONAL FUEL ADDED:\n- 30 MINS HOLD FUEL DUE TO WX, T-STORMS AT ETA TO DESTINATION (VHHH)",
+                    "BASED ON FORECAST WINDS:\nPLANNED TO DEPT RUNWAY: 36 ISE3 ESPAN\nPLANNED TO ARRV RUNWAY: 25C    ABBEY ABBE3B",
+                    'AIRCRAFT REPETITIVE MAINTENANCE ITEMS: N/A',
+                    'REFER TO FSA PRIOR TO DEPARTURE:  24-03',
+                ],
+            ],
             'RJAA release' => [
                 'CKS021617RJAA.pdf',
                 [

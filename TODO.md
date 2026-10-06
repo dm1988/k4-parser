@@ -28,93 +28,47 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## [x] Completed: Bug: Extracted crew list:
+## [x] Completed: FP: Missing SIGWX and additional fuel notes
 
 ### Goal
 
-Extract the four crew members from the applicable flight-release manifest in `CKS024201RJGG.pdf`, excluding unrelated Hong Kong runway-closure and contact information.
+Extract all five dispatcher notes from `storage/app/private/flight_releases/CKS024201RJGG.pdf`, including the government SIGWX forecast and additional holding fuel for destination thunderstorms.
 
 ### Current implementation
 
-`FlightCrewExtractor` prioritizes manifests bounded by `121-91 FLIGHT RELEASE I.F.R` and their status/release-time/fuel footer or the next release heading. It handles flattened and multiline rows, repeated release pages, empty initial manifests, and single-member manifests. The generic `CREW`/`CREW LIST` fallback accepts consecutive crew rows and stops at unrelated prose. Role-like text elsewhere in the document is no longer treated as an unheaded manifest. Existing name parsing, employee numbers, deduplication, and high-minimums annotations are retained.
+`DispatcherNotesExtractor` recognizes both missing headings through the existing bulleted-note parser. It retains source order, joins wrapped bullet text, preserves heading/bullet line breaks, and bounds extraction at the next note, boxed separator, MEL/CDL section, or end of text. Existing ENROUTE SIGWX notes reuse the same parser.
 
 ### Problem
 
-Extracted `AC
-PHONE +852
-Employee number:
-#
-2910
-ISO`
-Expected:
-`   70388 PIC MACDONALD T
-   72480 SIC/FO  SINHA A
-  ADDNTL
-   71022 CAPT BRANDT-JENSEN J
-   73425 IRP  TAYLOR K`
+The parser's supported heading patterns omitted `GOVT SIGWX PROG FORECASTS AREAS OF` and `ADDITIONAL FUEL ADDED`, silently returning only the runway, maintenance, and FSA notes. The supplied PDF and four synthetic layout regressions reproduced the omission before the fix.
 
-The current extracted text was from page 112 on a page about Hong Kong Runway closures. 
+### Validation outcome (2026-10-06)
 
-Fix: Ensure regex extraction comes from the applicable section or look for the surrounding context without breaking previous extraction tests.
+Through Sail, all 12 `DispatcherNotesExtractorTest` cases passed, including the supplied PDF's exact five-note result and the existing RJAA, PANC, and KCVG release regressions. The focused extraction orchestration and Notes rendering checks also passed: 14 passing tests and 99 assertions total; one separate private-PDF characterization was skipped because `CKS025625KLAX.pdf` is unavailable. Pint passed, and one full application Larastan run passed with zero errors. Boost's version-specific documentation search succeeded. Unrelated working-tree changes and staging were preserved.
 
-` 121-91 FLIGHT RELEASE I.F.R
-   70388 PIC MACDONALD T
-   72480 SIC/FO  SINHA A
-  ADDNTL
-   71022 CAPT BRANDT-JENSEN J
-   73425 IRP  TAYLOR K
-IRP
-       MX                              LM
-       ACM                             ACM
-       ACM                             ACM
-       ACM                             ACM
-       ACM                             ACM
-   CIRCLE `
+Previously saved releases require uploading/extracting the PDF again to populate the two omitted notes. No frontend rebuild is required.
 
-### Implementation and validation outcome (2026-10-06)
+Commit message: `fix: extract government SIGWX and additional fuel dispatcher notes`
 
-The supplied private PDF now extracts `MACDONALD T` / `70388` / `PIC`, `SINHA A` / `72480` / `SIC/FO`, `BRANDT-JENSEN J` / `71022` / `CAPT`, and `TAYLOR K` / `73425` / `IRP`. Regression tests cover competing NOTAM text before and after the release, repeated flattened manifests, bounded source evidence, unheaded false positives, unrelated prose under a crew heading, empty initial manifests, single-member manifests, and the supplied PDF's embedded text. Existing crew extraction tests remain passing.
+## [x] Completed: Capture flight-plan test streams
 
-Through Sail, 30 focused PHPUnit tests passed across `FlightCrewExtractorTest`, `CrewListParserTest`, `ExtractFlightPlanDataTest`, and the crew-containing serialization round trip in `SubdomainDataBuilderTest`. One separate private-PDF characterization test was skipped because its fixture is unavailable. Pint passed; one full Larastan run passed with zero errors. Boost's version-specific documentation search succeeded. Unrelated working-tree changes were preserved.
-
-Previously saved releases must be uploaded/extracted again to replace the stored incorrect crew list. No frontend rebuild is required. The private-PDF regression test reads embedded PDF text; OCR and browser behavior were not separately exercised.
-
-Commit message: `fix: scope crew extraction to the flight release manifest`
-
-## [x] Completed: FP: Fuel Score: Include TOC, TOD
 ### Goal
 
-Include source TOC and TOD rows in Fuel Score's waypoint list, in release order, with UTC ETA calculated from Off time and their cumulative duration just like fixes and FIR boundaries.
+Keep Livewire flight-plan progress frames out of PHPUnit console output while preserving progress assertions.
 
 ### Current implementation
 
-`WaypointExtractor` now separates TOC/TOD rows within the computed flight plan, preserving source order and each row's TIME, T/TME, TBO, FRMG, and evidence. It handles multiline, CRLF, and flattened text, including markers before the first fix and labels joined to a preceding DSTN value or closing FIR arrow. Explicit marker coordinates are retained; absent coordinates stay null, and departure-field coordinates are not borrowed.
-
-The waypoint DTO, extraction/serialization builders, and calculator payload support null coordinates for TOC/TOD. Builders continue requiring coordinates for fixes and FIR boundaries, and infer the existing phase kinds from TOC/TOD identifiers. Fuel Score's existing waypoint rendering, ETA calculations, and draft storage handle these rows without additional frontend logic.
-
-Classification is centralized in `WaypointKind::fromIdentifier($identifier, $kind)`. The extractor and both builder paths reuse it; the builder's private classifier and the extractor's duplicate TOC/TOD branches were removed. TOC/TOD identifiers take precedence over supplied metadata, valid supplied kinds are retained for other identifiers, and missing, invalid, or non-string kinds fall back to `Fix`.
+The shared flight-plan test case captures output with a callback buffer that absorbs Livewire's explicit flushes and closes in teardown. Extraction tests check captured success and failure progress plus an empty output buffer. Browser streaming remains unchanged.
 
 ### Problem
 
-The previous coordinate-only extraction and normalization omitted coordinate-less TOC/TOD, removing useful ETA and fuel comparison points. These rows now use their own cumulative duration and fuel fields. Missing cumulative time retains the calculator's unavailable ETA state; missing fuel remains absent instead of becoming zero or inheriting an adjacent row's data.
+Livewire writes progress frames directly and flushes the buffer, leaking JSON into otherwise passing test output.
 
-### Implementation and validation outcome
+### Validation outcome (2026-10-06)
 
-Planned and tagged `Current focus:` before implementation, then completed through Sail. Twenty-one unique focused PHPUnit tests passed across `WaypointExtractorTest`, `SubdomainDataBuilderTest`, and `OfflineFuelScoreTest`; the extractor's twelve tests passed again after adding departure-field coordinate isolation. Twenty-two focused JavaScript tests passed across `waypoint-fuel-monitor.test.js` and `offline-fuel-draft.test.js`. Coverage includes source order, optional coordinates, repeated markers, computed-section/alternate boundaries, null fields and explicit zeroes, JSON round trips, calculator output, UTC midnight rollover, and separate restored inputs for coordinate-less markers. Pint passed and one full Larastan run passed with zero errors. Boost's documentation search was attempted but its remote service was unreachable; official [Laravel 13 HTTP testing documentation](https://laravel.com/framework/docs/http-tests) was used as the fallback.
+Through Sail, all 41 focused flight-plan Livewire tests passed with 977 assertions and no streamed JSON in console output. The updated extraction test file also passed individually. Pint passed and one full application Larastan run passed with zero errors. Unrelated TODO edits were preserved.
 
-Previously extracted saved releases need their PDF uploaded/extracted again to populate TOC/TOD; the old normalized data cannot reconstruct omitted rows. No frontend asset rebuild is needed for this server-side extraction change. Real browser visual verification was not performed. Unrelated TODO edits were preserved.
-
-Commit message: `feat: include TOC and TOD in fuel score waypoint estimates`
-
-Enum follow-up: 35 focused PHPUnit tests passed across `Enums/WaypointKindTest`, `WaypointExtractorTest`, `SubdomainDataBuilderTest`, and `OfflineFuelScoreTest`. New enum tests cover identifier precedence, optional metadata, every valid kind, and malformed values. Pint and one Larastan run passed with zero errors. Boost's version-specific documentation search succeeded for this refactor.
-
-Enum refactor commit message: `refactor: resolve waypoint kinds through the enum`
-
-PDF follow-up (`storage/app/private/flight_releases/CKS024201RJGG.pdf`): the real embedded text joins rows as `0460TOC` and `FIR-> VHHK <-TOD`, with TOD's secondary row on the next page. The previous boundary rule rejected digits and hyphens before a marker, yielding 47 main-leg waypoints and no TOC/TOD. The boundary rule now recognizes completed DSTN fields and closing FIR arrows without splitting ordinary fix identifiers such as `1234TOC`. A regression fixture retains the PDF's actual computed flight plan text and page breaks. The failing-before-fix regression and calculator feature test now verify 49 main-leg rows, TOC between ESPAN/KEC (15 minutes, FRMG `0801`, TBO `0103`), and TOD between VHHK/MAGOG (174 minutes, FRMG `0400`, TBO `0505`). Both coordinates remain null and alternate rows stay excluded.
-
-Twenty-one unique focused PHPUnit tests passed across `WaypointExtractorTest` and `OfflineFuelScoreTest`, including the successful real-text regression recheck; fourteen `waypoint-fuel-monitor.test.js` tests passed, including midnight rollover with this PDF's durations. Pint and one Larastan run passed with zero errors. Boost's documentation search succeeded. Previously saved normalized results still require uploading/extracting the PDF again; refreshing the old result alone cannot add omitted rows. Real browser visual verification was not performed. Unrelated crew-task changes and staging were preserved.
-
-PDF fix commit message: `fix: extract joined TOC and TOD rows from flight release PDFs`
+Commit message: `test: capture flight-plan progress streams during Livewire tests`
 
 ## FP: Prelim flight plans
 Goal:
@@ -299,3 +253,94 @@ Follow-up commit message: `fix: serve built calculator assets while Vite develop
 Form-field follow-up: Off time, starting FOB, and repeated ATA/AFOB inputs were missing IDs and names, producing Chrome's form-element warnings. All fields now have IDs, names, and matching label associations; waypoint fields use the row index so repeated waypoint identifiers remain distinct. Six focused `OfflineFuelScoreTest` tests passed, including a markup regression checking identifier/name uniqueness across 50 waypoint rows. Pint and one Larastan run passed with zero errors. Chrome's Issues panel was not directly verified.
 
 Form-field commit message: `fix: identify offline fuel calculator input fields`
+
+## [x] Completed: Bug: Extracted crew list:
+
+### Goal
+
+Extract the four crew members from the applicable flight-release manifest in `CKS024201RJGG.pdf`, excluding unrelated Hong Kong runway-closure and contact information.
+
+### Current implementation
+
+`FlightCrewExtractor` prioritizes manifests bounded by `121-91 FLIGHT RELEASE I.F.R` and their status/release-time/fuel footer or the next release heading. It handles flattened and multiline rows, repeated release pages, empty initial manifests, and single-member manifests. The generic `CREW`/`CREW LIST` fallback accepts consecutive crew rows and stops at unrelated prose. Role-like text elsewhere in the document is no longer treated as an unheaded manifest. Existing name parsing, employee numbers, deduplication, and high-minimums annotations are retained.
+
+### Problem
+
+Extracted 
+```text
+AC
+PHONE +852
+Employee number:
+#
+2910
+ISO
+```
+Expected:
+`   70388 PIC MACDONALD T
+   72480 SIC/FO  SINHA A
+  ADDNTL
+   71022 CAPT BRANDT-JENSEN J
+   73425 IRP  TAYLOR K`
+
+The current extracted text was from page 112 on a page about Hong Kong Runway closures. 
+
+Fix: Ensure regex extraction comes from the applicable section or look for the surrounding context without breaking previous extraction tests.
+
+` 121-91 FLIGHT RELEASE I.F.R
+   70388 PIC MACDONALD T
+   72480 SIC/FO  SINHA A
+  ADDNTL
+   71022 CAPT BRANDT-JENSEN J
+   73425 IRP  TAYLOR K
+IRP
+       MX                              LM
+       ACM                             ACM
+       ACM                             ACM
+       ACM                             ACM
+       ACM                             ACM
+   CIRCLE `
+
+### Implementation and validation outcome (2026-10-06)
+
+The supplied private PDF now extracts `MACDONALD T` / `70388` / `PIC`, `SINHA A` / `72480` / `SIC/FO`, `BRANDT-JENSEN J` / `71022` / `CAPT`, and `TAYLOR K` / `73425` / `IRP`. Regression tests cover competing NOTAM text before and after the release, repeated flattened manifests, bounded source evidence, unheaded false positives, unrelated prose under a crew heading, empty initial manifests, single-member manifests, and the supplied PDF's embedded text. Existing crew extraction tests remain passing.
+
+Through Sail, 30 focused PHPUnit tests passed across `FlightCrewExtractorTest`, `CrewListParserTest`, `ExtractFlightPlanDataTest`, and the crew-containing serialization round trip in `SubdomainDataBuilderTest`. One separate private-PDF characterization test was skipped because its fixture is unavailable. Pint passed; one full Larastan run passed with zero errors. Boost's version-specific documentation search succeeded. Unrelated working-tree changes were preserved.
+
+Previously saved releases must be uploaded/extracted again to replace the stored incorrect crew list. No frontend rebuild is required. The private-PDF regression test reads embedded PDF text; OCR and browser behavior were not separately exercised.
+
+Commit message: `fix: scope crew extraction to the flight release manifest`
+
+## [x] Completed: FP: Fuel Score: Include TOC, TOD
+### Goal
+
+Include source TOC and TOD rows in Fuel Score's waypoint list, in release order, with UTC ETA calculated from Off time and their cumulative duration just like fixes and FIR boundaries.
+
+### Current implementation
+
+`WaypointExtractor` now separates TOC/TOD rows within the computed flight plan, preserving source order and each row's TIME, T/TME, TBO, FRMG, and evidence. It handles multiline, CRLF, and flattened text, including markers before the first fix and labels joined to a preceding DSTN value or closing FIR arrow. Explicit marker coordinates are retained; absent coordinates stay null, and departure-field coordinates are not borrowed.
+
+The waypoint DTO, extraction/serialization builders, and calculator payload support null coordinates for TOC/TOD. Builders continue requiring coordinates for fixes and FIR boundaries, and infer the existing phase kinds from TOC/TOD identifiers. Fuel Score's existing waypoint rendering, ETA calculations, and draft storage handle these rows without additional frontend logic.
+
+Classification is centralized in `WaypointKind::fromIdentifier($identifier, $kind)`. The extractor and both builder paths reuse it; the builder's private classifier and the extractor's duplicate TOC/TOD branches were removed. TOC/TOD identifiers take precedence over supplied metadata, valid supplied kinds are retained for other identifiers, and missing, invalid, or non-string kinds fall back to `Fix`.
+
+### Problem
+
+The previous coordinate-only extraction and normalization omitted coordinate-less TOC/TOD, removing useful ETA and fuel comparison points. These rows now use their own cumulative duration and fuel fields. Missing cumulative time retains the calculator's unavailable ETA state; missing fuel remains absent instead of becoming zero or inheriting an adjacent row's data.
+
+### Implementation and validation outcome
+
+Planned and tagged `Current focus:` before implementation, then completed through Sail. Twenty-one unique focused PHPUnit tests passed across `WaypointExtractorTest`, `SubdomainDataBuilderTest`, and `OfflineFuelScoreTest`; the extractor's twelve tests passed again after adding departure-field coordinate isolation. Twenty-two focused JavaScript tests passed across `waypoint-fuel-monitor.test.js` and `offline-fuel-draft.test.js`. Coverage includes source order, optional coordinates, repeated markers, computed-section/alternate boundaries, null fields and explicit zeroes, JSON round trips, calculator output, UTC midnight rollover, and separate restored inputs for coordinate-less markers. Pint passed and one full Larastan run passed with zero errors. Boost's documentation search was attempted but its remote service was unreachable; official [Laravel 13 HTTP testing documentation](https://laravel.com/framework/docs/http-tests) was used as the fallback.
+
+Previously extracted saved releases need their PDF uploaded/extracted again to populate TOC/TOD; the old normalized data cannot reconstruct omitted rows. No frontend asset rebuild is needed for this server-side extraction change. Real browser visual verification was not performed. Unrelated TODO edits were preserved.
+
+Commit message: `feat: include TOC and TOD in fuel score waypoint estimates`
+
+Enum follow-up: 35 focused PHPUnit tests passed across `Enums/WaypointKindTest`, `WaypointExtractorTest`, `SubdomainDataBuilderTest`, and `OfflineFuelScoreTest`. New enum tests cover identifier precedence, optional metadata, every valid kind, and malformed values. Pint and one Larastan run passed with zero errors. Boost's version-specific documentation search succeeded for this refactor.
+
+Enum refactor commit message: `refactor: resolve waypoint kinds through the enum`
+
+PDF follow-up (`storage/app/private/flight_releases/CKS024201RJGG.pdf`): the real embedded text joins rows as `0460TOC` and `FIR-> VHHK <-TOD`, with TOD's secondary row on the next page. The previous boundary rule rejected digits and hyphens before a marker, yielding 47 main-leg waypoints and no TOC/TOD. The boundary rule now recognizes completed DSTN fields and closing FIR arrows without splitting ordinary fix identifiers such as `1234TOC`. A regression fixture retains the PDF's actual computed flight plan text and page breaks. The failing-before-fix regression and calculator feature test now verify 49 main-leg rows, TOC between ESPAN/KEC (15 minutes, FRMG `0801`, TBO `0103`), and TOD between VHHK/MAGOG (174 minutes, FRMG `0400`, TBO `0505`). Both coordinates remain null and alternate rows stay excluded.
+
+Twenty-one unique focused PHPUnit tests passed across `WaypointExtractorTest` and `OfflineFuelScoreTest`, including the successful real-text regression recheck; fourteen `waypoint-fuel-monitor.test.js` tests passed, including midnight rollover with this PDF's durations. Pint and one Larastan run passed with zero errors. Boost's documentation search succeeded. Previously saved normalized results still require uploading/extracting the PDF again; refreshing the old result alone cannot add omitted rows. Real browser visual verification was not performed. Unrelated crew-task changes and staging were preserved.
+
+PDF fix commit message: `fix: extract joined TOC and TOD rows from flight release PDFs`
