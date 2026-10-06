@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Services\Infrastructure\FlightPlanResultStore;
+use DOMDocument;
+use DOMElement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
@@ -83,6 +85,50 @@ class OfflineFuelScoreTest extends TestCase
                     && $calculator['waypoints'][0]['tbo'] === '0011'
                     && $calculator['waypoints'][0]['remainingFuel'] === ['amount' => 120000.0, 'unit' => 'lb'];
             });
+    }
+
+    public function test_calculator_fields_have_unique_identifiers_and_associated_labels(): void
+    {
+        $owner = User::factory()->admin()->create();
+        $result = $this->flightPlanResult();
+        $result['flight_plan_data']['waypoints'] = array_fill(0, 50, $result['flight_plan_data']['waypoints'][0]);
+        $key = app(FlightPlanResultStore::class)->save($owner, $result);
+
+        $response = $this->actingAs($owner)
+            ->get(route('flight-release.fuel-score', ['flightPlanKey' => $key]))
+            ->assertOk();
+
+        $document = new DOMDocument;
+        $this->assertTrue($document->loadHTML($response->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING));
+        $inputs = $document->getElementsByTagName('input');
+        $this->assertCount(4, $inputs);
+        $identifiers = [];
+        $names = [];
+
+        foreach ($inputs as $input) {
+            $isWaypointInput = $input->hasAttribute(':id');
+            $identifier = $input->getAttribute($isWaypointInput ? ':id' : 'id');
+            $name = $input->getAttribute($isWaypointInput ? ':name' : 'name');
+            $this->assertNotEmpty($identifier);
+            $this->assertNotEmpty($name);
+            $this->assertInstanceOf(DOMElement::class, $input->parentNode);
+            $this->assertSame('label', $input->parentNode->tagName);
+            $this->assertSame($identifier, $input->parentNode->getAttribute($isWaypointInput ? ':for' : 'for'));
+
+            if ($isWaypointInput) {
+                $this->assertStringContainsString('${index}', $identifier);
+                $this->assertStringContainsString('${index}', $name);
+            }
+
+            foreach ($isWaypointInput ? array_keys($result['flight_plan_data']['waypoints']) : [0] as $index) {
+                $identifiers[] = trim(str_replace('${index}', (string) $index, $identifier), '`');
+                $names[] = trim(str_replace('${index}', (string) $index, $name), '`');
+            }
+        }
+
+        $this->assertCount(102, $identifiers);
+        $this->assertSame($identifiers, array_values(array_unique($identifiers)));
+        $this->assertSame($names, array_values(array_unique($names)));
     }
 
     public function test_calculator_uses_display_labels_without_changing_source_waypoint_identity(): void

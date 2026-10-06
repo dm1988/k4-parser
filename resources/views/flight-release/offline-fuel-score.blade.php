@@ -22,14 +22,14 @@
                 <p class="mt-1 text-sm text-[#4A5568] dark:text-slate-400">Confirmed release takeoff fuel: <span class="font-mono font-semibold" x-text="sourceFuelLabel(takeoffFuel)">Not present in this release</span></p>
                 <p class="mt-1 text-sm text-[#4A5568] dark:text-slate-400">Confirmed estimated landing fuel: <span class="font-mono font-semibold" x-text="sourceFuelLabel(estimatedLandingFuel)">Not present in this release</span></p>
                 <div class="mt-4 flex flex-wrap items-end gap-4">
-                    <label class="flex min-w-40 flex-col gap-1 text-sm font-semibold text-[#1B365D] dark:text-slate-200">
+                    <label for="fuel-score-off-time" class="flex min-w-40 flex-col gap-1 text-sm font-semibold text-[#1B365D] dark:text-slate-200">
                         Off time (UTC, HHMM)
-                        <input type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="0000–2359" x-model="offTime"
+                        <input id="fuel-score-off-time" name="off_time" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="0000–2359" x-model="offTime"
                             class="rounded-lg border-[#1B365D]/20 bg-white font-mono text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                     </label>
-                    <label class="flex min-w-44 flex-col gap-1 text-sm font-semibold text-[#1B365D] dark:text-slate-200">
+                    <label for="fuel-score-starting-fob" class="flex min-w-44 flex-col gap-1 text-sm font-semibold text-[#1B365D] dark:text-slate-200">
                         <span class="whitespace-nowrap">Starting FOB at takeoff (<span x-text="fuelUnit?.toUpperCase() ?? 'unit unavailable'"></span>)</span>
-                        <input type="text" inputmode="decimal" autocomplete="off" placeholder="Fuel amount" x-model="startingFob" :disabled="fuelUnit === null"
+                        <input id="fuel-score-starting-fob" name="starting_fob" type="text" inputmode="decimal" autocomplete="off" placeholder="Fuel amount" x-model="startingFob" :disabled="fuelUnit === null"
                             class="rounded-lg border-[#1B365D]/20 bg-white font-mono text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                     </label>
                     <button type="button" x-on:click="reset()" class="rounded-lg border border-[#1B365D]/20 px-4 py-2 text-sm font-semibold text-[#1B365D] transition hover:bg-[#F8F9FA] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C5A059] dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800">Reset inputs</button>
@@ -95,9 +95,9 @@
                                             <div class="flex flex-col gap-2">
                                                 <span class="font-semibold text-[#1B365D] dark:text-slate-200">Time (UTC)</span>
                                                 <span class="text-[#4A5568] dark:text-slate-400" x-show="etaReason(waypoint)" x-text="etaReason(waypoint)"></span>
-                                                <label class="flex flex-col gap-1 font-semibold text-[#1B365D] dark:text-slate-200">
+                                                <label :for="`fuel-score-waypoint-${index}-ata`" class="flex flex-col gap-1 font-semibold text-[#1B365D] dark:text-slate-200">
                                                     <span>ATA (UTC, HHMM) at <span x-text="waypoint.displayLabel"></span></span>
-                                                    <input type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="HHMM" x-model="waypoint.ata"
+                                                    <input :id="`fuel-score-waypoint-${index}-ata`" :name="`waypoints[${index}][ata]`" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="HHMM" x-model="waypoint.ata"
                                                         class="w-28 rounded-md border-[#1B365D]/20 bg-white font-mono text-sm text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                                                 </label>
                                                 <span class="text-red-700 dark:text-red-400" x-show="ataReason(waypoint)" x-text="ataReason(waypoint)"></span>
@@ -110,9 +110,9 @@
                                                 <span class="font-semibold text-[#1B365D] dark:text-slate-200">Fuel and burn</span>
                                                 <span class="text-[#4A5568] dark:text-slate-400">Planned FOB (FRMG): <span class="font-mono" x-text="sourceFuelLabel(waypoint.remainingFuel)"></span></span>
                                                 <span class="text-[#4A5568] dark:text-slate-400">TBO (source, cumulative): <span class="font-mono" x-text="plannedBurnLabel(waypoint)"></span></span>
-                                                <label class="flex flex-col gap-1 font-semibold text-[#1B365D] dark:text-slate-200">
+                                                <label :for="`fuel-score-waypoint-${index}-actual-fob`" class="flex flex-col gap-1 font-semibold text-[#1B365D] dark:text-slate-200">
                                                     <span>AFOB (<span x-text="fuelUnit?.toUpperCase() ?? 'unit unavailable'"></span>) at <span x-text="waypoint.displayLabel"></span></span>
-                                                    <input type="text" inputmode="decimal" autocomplete="off" placeholder="Actual fuel" x-model="waypoint.actualFob" :disabled="fuelUnit === null"
+                                                    <input :id="`fuel-score-waypoint-${index}-actual-fob`" :name="`waypoints[${index}][actual_fob]`" type="text" inputmode="decimal" autocomplete="off" placeholder="Actual fuel" x-model="waypoint.actualFob" :disabled="fuelUnit === null"
                                                         class="w-36 rounded-md border-[#1B365D]/20 bg-white font-mono text-sm text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                                                 </label>
                                                 <div x-show="hasActualFob(waypoint)" class="flex flex-col gap-1">

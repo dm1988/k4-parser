@@ -32,6 +32,15 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## FP: Prelim flight plans
+Goal:
+1. Determine if an uploaded flight plan is preliminary
+2. Tag non finalized data
+   1. Weights
+   2. Fuel
+   3. Route
+   4. ETOPS
+
 ## [x] Completed: FP: Offline mode
 Chrome is refreshing the page dropping the off time and takeoff fuel and rendering a ERR_Connection 404.
 
@@ -65,22 +74,9 @@ Development-mode follow-up: 13 focused PHPUnit tests passed across `OfflineFuelS
 
 Follow-up commit message: `fix: serve built calculator assets while Vite development mode is active`
 
-## FP: Offline fuel score
-Ensure this is implemented:
-```javascript
-export const calculateBurnVariance = (startingFob, actualFob, tbo) => {
-    const actualBurn = calculateActualBurn(startingFob, actualFob);
-    const plannedBurn = calculatePlannedCumulativeBurn(tbo);
+Form-field follow-up: Off time, starting FOB, and repeated ATA/AFOB inputs were missing IDs and names, producing Chrome's form-element warnings. All fields now have IDs, names, and matching label associations; waypoint fields use the row index so repeated waypoint identifiers remain distinct. Six focused `OfflineFuelScoreTest` tests passed, including a markup regression checking identifier/name uniqueness across 50 waypoint rows. Pint and one Larastan run passed with zero errors. Chrome's Issues panel was not directly verified.
 
-    if (actualBurn === null || plannedBurn === null) {
-        return null;
-    }
-
-    // Variance = Planned Burn minus what was Actually Burned 
-    // Positive means you burned LESS than planned (saved fuel)
-    return plannedBurn - actualBurn;
-};
-```
+Form-field commit message: `fix: identify offline fuel calculator input fields`
 
 ## Unified upload
 Currently: 2 tabs have 2 different upload points, user has to choose 
