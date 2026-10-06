@@ -74,7 +74,7 @@ final readonly class FuelPresenter
     }
 
     /**
-     * @return array{fuelUnit: ?string, takeoffFuel: array{amount: float, unit: 'kg'|'lb'}|null, estimatedLandingFuel: array{amount: float, unit: 'kg'|'lb'}|null, waypoints: list<array{identifier: string, displayLabel: string, kind: string, coordinate: string, tbo: ?string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: array{amount: float, unit: 'kg'|'lb'}|null}>}
+     * @return array{fuelUnit: ?string, takeoffFuel: array{amount: float, unit: 'kg'|'lb'}|null, estimatedLandingFuel: array{amount: float, unit: 'kg'|'lb'}|null, waypoints: list<array{identifier: string, displayLabel: string, kind: string, coordinate: ?string, tbo: ?string, legDurationMinutes: ?int, cumulativeDurationMinutes: ?int, remainingFuel: array{amount: float, unit: 'kg'|'lb'}|null}>}
      */
     public function calculatorData(): array
     {

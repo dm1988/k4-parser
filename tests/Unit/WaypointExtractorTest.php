@@ -20,12 +20,13 @@ class WaypointExtractorTest extends TestCase
             ['coordinate' => 'N52 03.5 E011 21.0', 'identifier' => 'EMBOX', 'display_label' => 'EMBOX', 'kind' => 'fix', 'time' => '003', 'total_time' => '00.10', 'remaining_fuel' => '1774', 'tbo' => '0086'],
             ['coordinate' => 'N52 05.9 E011 03.5', 'identifier' => '-EDVV', 'display_label' => 'EDVV (FIR)', 'kind' => 'fir', 'time' => null, 'total_time' => '00.12', 'remaining_fuel' => '1765', 'tbo' => null],
             ['coordinate' => 'N52 07.7 E010 49.7', 'identifier' => 'POVEL', 'display_label' => 'POVEL', 'kind' => 'fix', 'time' => '003', 'total_time' => '00.13', 'remaining_fuel' => '1757', 'tbo' => '0104'],
+            ['coordinate' => null, 'identifier' => 'TOC', 'display_label' => 'TOC', 'kind' => 'toc', 'time' => '002', 'total_time' => '00.15', 'remaining_fuel' => '1741', 'tbo' => '0119'],
             ['coordinate' => 'N51 51.4 E007 42.5', 'identifier' => 'HMM', 'display_label' => 'HMM', 'kind' => 'fix', 'time' => '013', 'total_time' => '00.28', 'remaining_fuel' => '1702', 'tbo' => '0158'],
             ['coordinate' => 'N51 50.4 E006 25.9', 'identifier' => '-EHAA', 'display_label' => 'EHAA (FIR)', 'kind' => 'fir', 'time' => null, 'total_time' => '00.34', 'remaining_fuel' => '1683', 'tbo' => null],
         ], $result['data']);
 
         $this->assertArrayHasKey('computed_flight_plan_waypoints', $result['source_fragments']);
-        $this->assertStringNotContainsString('TOC 0021', $result['source_fragments']['computed_flight_plan_waypoints']);
+        $this->assertStringContainsString('TOC 002 00.15 1741 0119', $result['source_fragments']['computed_flight_plan_waypoints']);
         $this->assertStringNotContainsString('FUEL SUMMARY', $result['source_fragments']['computed_flight_plan_waypoints']);
     }
 
@@ -98,8 +99,13 @@ TEXT;
 
         $waypoints = (new WaypointExtractor)->extract($text)['data'];
 
-        $this->assertCount(1, $waypoints);
+        $this->assertCount(2, $waypoints);
         $this->assertSame('POVEL', $waypoints[0]['identifier']);
+        $this->assertSame('00.13', $waypoints[0]['total_time']);
+        $this->assertSame('TOC', $waypoints[1]['identifier']);
+        $this->assertNull($waypoints[1]['coordinate']);
+        $this->assertSame('00.15', $waypoints[1]['total_time']);
+        $this->assertSame('1741', $waypoints[1]['remaining_fuel']);
     }
 
     public function test_it_handles_crlf_and_extra_horizontal_whitespace(): void
@@ -109,7 +115,7 @@ TEXT;
 
         $waypoints = (new WaypointExtractor)->extract($text)['data'];
 
-        $this->assertCount(10, $waypoints);
+        $this->assertCount(11, $waypoints);
         $this->assertSame('DP550', $waypoints[1]['identifier']);
     }
 
@@ -201,6 +207,108 @@ TEXT;
         $this->assertSame('N50 00.0 W095 00.050', $waypoints[1]['coordinate']);
         $this->assertSame('NODLE', $waypoints[1]['display_label']);
         $this->assertSame('S50E095', $waypoints[2]['display_label']);
+    }
+
+    public function test_it_preserves_phase_marker_order_with_optional_coordinates_and_flattened_text(): void
+    {
+        $text = <<<'TEXT'
+IDENT DIST MC FL WIND CMP TAS/MAC TIME ETA ATA TBO FRMG EFB
+FRQ DTGO MH W/S OAT G/S T/TME REV REM ABO AFOB DSTN
+LEJ FIELD N51 25.4/E012 14.2
+TOC 0021 259 CLB 28/038 M037 498 CLB 002 ... ... 0119 1741 ....
+3902 260 CLB 461 00.15 ... ... .... .... 1431
+N52 07.7 E010 49.7
+FIX01 0020 278 320 27/042 M041 491 837 003 ... ... 0120 1740 ....
+3923 277 320 449 00.18 ... ... .... .... 1446
+N51 51.4 E007 42.5
+KALITTA BRIEF PAGE 5 OF 8
+TOC 0021 259 CLB 28/038 M037 498 CLB 002 ... ... 0130 1730 ....
+3902 260 CLB 461 00.20 ... ... .... .... 1431
+TOD 0021 259 DSC 28/038 M037 498 DSC 002 ... ... 0140 1720 ....
+3902 260 DSC 461 00.22 ... ... .... .... 1431
+N51 50.4 E006 25.9
+TOD 0021 259 DSC 28/038 M037 498 DSC 002 ... ... 0150 1710 ....
+3902 260 DSC 461 00.24 ... ... .... .... 1431
+----------------------- ALTERNATE ---------------------
+TOC 0021 259 CLB 28/038 M037 498 CLB 002 ... ... 0160 1700 ....
+3902 260 CLB 461 00.26 ... ... .... .... 1431
+TEXT;
+
+        foreach ([$text, preg_replace('/\s+/', ' ', $text), str_replace("\n", "\r\n", $text)] as $source) {
+            $result = (new WaypointExtractor)->extract($source);
+            $waypoints = $result['data'];
+
+            $this->assertSame(['TOC', 'FIX01', 'TOC', 'TOD', 'TOD'], array_column($waypoints, 'identifier'));
+            $this->assertSame(['toc', 'fix', 'toc', 'tod', 'tod'], array_column($waypoints, 'kind'));
+            $this->assertSame([null, 'N52 07.7 E010 49.7', 'N51 51.4 E007 42.5', null, 'N51 50.4 E006 25.9'], array_column($waypoints, 'coordinate'));
+            $this->assertSame(['00.15', '00.18', '00.20', '00.22', '00.24'], array_column($waypoints, 'total_time'));
+            $this->assertSame(['1741', '1740', '1730', '1720', '1710'], array_column($waypoints, 'remaining_fuel'));
+            $this->assertSame(['0119', '0120', '0130', '0140', '0150'], array_column($waypoints, 'tbo'));
+            $this->assertStringContainsString('TOD 002 00.22 1720 0140', $result['source_fragments']['computed_flight_plan_waypoints']);
+        }
+    }
+
+    public function test_it_keeps_missing_phase_fields_null_and_does_not_borrow_adjacent_values(): void
+    {
+        $text = <<<'TEXT'
+IDENT DIST MC FL WIND CMP TAS/MAC TIME ETA ATA TBO FRMG EFB
+FRQ DTGO MH W/S OAT G/S T/TME REV REM ABO AFOB DSTN
+N52 07.7 E010 49.7
+FIX01 0020 278 CLB 27/042 M041 491 CLB --- ... ... ---- ---- ....
+TOC ---- --- --- --/--- ---- --- --- --- ... ... ---- ---- ....
+TOD 0000 259 DSC 28/038 M037 498 DSC 000 ... ... 0000 0000 ....
+3902 260 DSC 461 00.00 ... ... .... .... 1431
+TEXT;
+
+        $waypoints = (new WaypointExtractor)->extract($text)['data'];
+
+        $this->assertSame(['FIX01', 'TOC', 'TOD'], array_column($waypoints, 'identifier'));
+        $this->assertSame([null, null, '00.00'], array_column($waypoints, 'total_time'));
+        $this->assertSame([null, null, '0000'], array_column($waypoints, 'remaining_fuel'));
+        $this->assertSame([null, null, '0000'], array_column($waypoints, 'tbo'));
+        $this->assertSame([null, null, '000'], array_column($waypoints, 'time'));
+    }
+
+    public function test_it_extracts_phase_markers_from_cks024201rjgg_text(): void
+    {
+        $source = $this->fixture('cks024201rjgg-computed.txt');
+        $this->assertStringContainsString('0460TOC', $source);
+        $this->assertStringContainsString('<-TOD', $source);
+        $result = (new WaypointExtractor)->extract($source);
+        $phases = array_values(array_filter($result['data'], static fn (array $waypoint): bool => in_array($waypoint['identifier'], ['TOC', 'TOD'], true)));
+
+        $this->assertSame([
+            ['coordinate' => null, 'identifier' => 'TOC', 'display_label' => 'TOC', 'kind' => 'toc', 'time' => '006', 'total_time' => '00.15', 'remaining_fuel' => '0801', 'tbo' => '0103'],
+            ['coordinate' => null, 'identifier' => 'TOD', 'display_label' => 'TOD', 'kind' => 'tod', 'time' => '007', 'total_time' => '02.54', 'remaining_fuel' => '0400', 'tbo' => '0505'],
+        ], $phases);
+        $this->assertCount(49, $result['data']);
+        $identifiers = array_column($result['data'], 'identifier');
+        $this->assertSame(['ESPAN', 'TOC', 'KEC'], array_slice($identifiers, 6, 3));
+        $this->assertSame(['-VHHK', 'TOD', 'MAGOG'], array_slice($identifiers, 39, 3));
+        $this->assertSame('02.47', $result['data'][39]['total_time']);
+        $this->assertNull($result['data'][39]['tbo']);
+        $this->assertStringContainsString('TOC 006 00.15 0801 0103', $result['source_fragments']['computed_flight_plan_waypoints']);
+        $this->assertStringContainsString('TOD 007 02.54 0400 0505', $result['source_fragments']['computed_flight_plan_waypoints']);
+    }
+
+    public function test_it_does_not_split_fix_identifiers_ending_with_phase_marker_letters(): void
+    {
+        $text = <<<'TEXT'
+IDENT DIST MC FL WIND CMP TAS/MAC TIME ETA ATA TBO FRMG EFB
+FRQ DTGO MH W/S OAT G/S T/TME REV REM ABO AFOB DSTN
+N01 02.3 E004 05.6
+1234TOC 0001 001 CLB 01/002 P003 004 CLB 005 ... ... 0006 0007 ....
+0008 009 CLB 010 00.11 ... ... .... .... 0012
+N02 03.4 E005 06.7
+1234TOD 0013 014 150 15/016 M017 018 819 019 ... ... 0020 0021 ....
+0022 023 024 025 00.26 ... ... .... .... 0027
+TEXT;
+
+        $waypoints = (new WaypointExtractor)->extract($text)['data'];
+
+        $this->assertSame(['1234TOC', '1234TOD'], array_column($waypoints, 'identifier'));
+        $this->assertSame(['fix', 'fix'], array_column($waypoints, 'kind'));
+        $this->assertSame(['00.11', '00.26'], array_column($waypoints, 'total_time'));
     }
 
     private function fixture(string $name): string

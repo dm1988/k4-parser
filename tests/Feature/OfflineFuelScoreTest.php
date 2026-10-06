@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\DTOs\WaypointData;
 use App\Models\User;
+use App\Services\FlightPlan\Extractor\WaypointExtractor;
+use App\Services\FlightPlan\WaypointDataBuilder;
 use App\Services\Infrastructure\FlightPlanResultStore;
 use DOMDocument;
 use DOMElement;
@@ -151,6 +154,42 @@ class OfflineFuelScoreTest extends TestCase
                     && $calculator['waypoints'][0]['displayLabel'] === 'N50W095'
                     && $calculator['waypoints'][0]['coordinate'] === 'N50 00.0 W095 00.0'
                     && $calculator['waypoints'][0]['kind'] === 'fix';
+            });
+    }
+
+    public function test_calculator_includes_extracted_toc_and_tod_in_release_order(): void
+    {
+        $owner = User::factory()->admin()->create();
+        $result = $this->flightPlanResult();
+        $source = file_get_contents(base_path('tests/Fixtures/FlightPlan/waypoints/cks024201rjgg-computed.txt'));
+        $this->assertIsString($source);
+        $extracted = app(WaypointExtractor::class)->extract($source);
+        $waypoints = app(WaypointDataBuilder::class)->fromExtracted($extracted['data'], $result['flight_plan_data']['fuelPlan']);
+        $result['flight_plan_data']['waypoints'] = array_map(static fn (WaypointData $waypoint): array => $waypoint->toArray(), $waypoints);
+        $key = app(FlightPlanResultStore::class)->save($owner, $result);
+
+        $this->actingAs($owner)
+            ->get(route('flight-release.fuel-score', ['flightPlanKey' => $key]))
+            ->assertOk()
+            ->assertSeeHtml('x-text="plannedEta(waypoint)"')
+            ->assertViewHas('calculator', function (array $calculator): bool {
+                $identifiers = array_column($calculator['waypoints'], 'identifier');
+
+                return count($calculator['waypoints']) === 49
+                    && array_slice($identifiers, 6, 3) === ['ESPAN', 'TOC', 'KEC']
+                    && array_slice($identifiers, 39, 3) === ['-VHHK', 'TOD', 'MAGOG']
+                    && $calculator['waypoints'][7]['displayLabel'] === 'TOC'
+                    && $calculator['waypoints'][7]['kind'] === 'toc'
+                    && $calculator['waypoints'][7]['coordinate'] === null
+                    && $calculator['waypoints'][7]['cumulativeDurationMinutes'] === 15
+                    && $calculator['waypoints'][7]['remainingFuel'] === ['amount' => 80100.0, 'unit' => 'lb']
+                    && $calculator['waypoints'][7]['tbo'] === '0103'
+                    && $calculator['waypoints'][40]['displayLabel'] === 'TOD'
+                    && $calculator['waypoints'][40]['kind'] === 'tod'
+                    && $calculator['waypoints'][40]['coordinate'] === null
+                    && $calculator['waypoints'][40]['cumulativeDurationMinutes'] === 174
+                    && $calculator['waypoints'][40]['remainingFuel'] === ['amount' => 40000.0, 'unit' => 'lb']
+                    && $calculator['waypoints'][40]['tbo'] === '0505';
             });
     }
 

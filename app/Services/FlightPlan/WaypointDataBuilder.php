@@ -22,7 +22,7 @@ class WaypointDataBuilder
             $identifier = $this->nullableString($waypoint['identifier'] ?? null);
             $coordinate = $this->nullableString($waypoint['coordinate'] ?? null);
 
-            if ($identifier === null || $coordinate === null) {
+            if ($identifier === null || ($coordinate === null && ! in_array($identifier, ['TOC', 'TOD'], true))) {
                 continue;
             }
 
@@ -34,7 +34,7 @@ class WaypointDataBuilder
                 remainingFuel: $this->extractedFuel($waypoint['remaining_fuel'] ?? null, $fuelUnit),
                 tbo: $this->tbo($waypoint['tbo'] ?? null),
                 displayLabel: $this->nullableString($waypoint['display_label'] ?? null),
-                kind: WaypointKind::tryFrom(is_string($waypoint['kind'] ?? null) ? $waypoint['kind'] : '') ?? WaypointKind::Fix,
+                kind: WaypointKind::fromIdentifier($identifier, $waypoint['kind'] ?? null),
             );
         }
 
@@ -58,7 +58,7 @@ class WaypointDataBuilder
             $identifier = $this->nullableString($waypoint['identifier'] ?? null);
             $coordinate = $this->nullableString($waypoint['coordinate'] ?? null);
 
-            if ($identifier === null || $coordinate === null) {
+            if ($identifier === null || ($coordinate === null && ! in_array($identifier, ['TOC', 'TOD'], true))) {
                 continue;
             }
 
@@ -70,7 +70,7 @@ class WaypointDataBuilder
                 remainingFuel: $this->serializedFuel($waypoint['remainingFuel'] ?? null),
                 tbo: $this->tbo($waypoint['tbo'] ?? null),
                 displayLabel: $this->nullableString($waypoint['displayLabel'] ?? null),
-                kind: WaypointKind::tryFrom(is_string($waypoint['kind'] ?? null) ? $waypoint['kind'] : '') ?? WaypointKind::Fix,
+                kind: WaypointKind::fromIdentifier($identifier, $waypoint['kind'] ?? null),
             );
         }
 

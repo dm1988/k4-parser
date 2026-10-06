@@ -20,7 +20,7 @@ final readonly class ParsedFlightPlanData
      * @param  list<string>  $dispatcherNotes
      * @param  array<string, array{amount?: ?int, unit?: string, status?: string}>  $weightBalance
      * @param  array<string, string|list<array{direction: string, airport: string, time: string}>>  $sourceFragments
-     * @param  list<array{coordinate: string, identifier: string, time: ?string, total_time: ?string, remaining_fuel: ?string}>  $waypoints
+     * @param  list<array{coordinate: ?string, identifier: string, time: ?string, total_time: ?string, remaining_fuel: ?string}>  $waypoints
      */
     public function __construct(
         public array $identity,

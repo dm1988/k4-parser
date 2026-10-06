@@ -73,6 +73,33 @@ test('restores before watchers are registered and saves every input change', () 
     assert.equal(session.getItem(draft.key) !== null, true);
 });
 
+test('restores separate phase marker inputs when coordinates are absent and identifiers repeat', () => {
+    const source = calculator();
+    source.waypoints = [
+        { identifier: 'TOC', displayLabel: 'TOC', kind: 'toc', coordinate: null, cumulativeDurationMinutes: 15 },
+        { identifier: 'TOC', displayLabel: 'TOC', kind: 'toc', coordinate: null, cumulativeDurationMinutes: 20 },
+        { identifier: 'TOD', displayLabel: 'TOD', kind: 'tod', coordinate: null, cumulativeDurationMinutes: 45 },
+    ];
+    const session = storage();
+    const first = state(source, scope(), session);
+    first.monitor.offTime = '2350';
+    first.monitor.startingFob = '20000';
+    first.monitor.waypoints[0].ata = '0006';
+    first.monitor.waypoints[0].actualFob = '19000';
+    first.monitor.waypoints[1].actualFob = '18000';
+    first.monitor.waypoints[2].ata = '0036';
+    first.monitor.waypoints[2].actualFob = '10000';
+    first.watchers.get('waypoints')();
+
+    const restored = state(source, scope(), session).monitor;
+    assert.equal(restored.offTime, '2350');
+    assert.equal(restored.startingFob, '20000');
+    assert.deepEqual(restored.waypoints.map(({ ata, actualFob }) => [ata, actualFob]), [
+        ['0006', '19000'], ['', '18000'], ['0036', '10000'],
+    ]);
+    assert.deepEqual(restored.waypoints.map((waypoint) => restored.plannedEta(waypoint)), ['0005', '0010', '0035']);
+});
+
 test('reset clears stored values even when queued watchers run afterward', () => {
     const session = storage();
     const first = state(calculator(), scope(), session);

@@ -47,6 +47,27 @@ test('ETA calculation does not require starting FOB', () => {
     assert.equal(monitor.plannedEta(monitor.waypoints[0]), '0010');
 });
 
+test('TOC and TOD use their own cumulative durations for UTC ETA without coordinates', () => {
+    const monitor = waypointFuelMonitor({
+        fuelUnit: 'lb',
+        takeoffFuel: { amount: 186000, unit: 'lb' },
+        estimatedLandingFuel: null,
+        waypoints: [
+            { identifier: 'TOC', displayLabel: 'TOC', kind: 'toc', coordinate: null, cumulativeDurationMinutes: 15 },
+            { identifier: 'TOD', displayLabel: 'TOD', kind: 'tod', coordinate: null, cumulativeDurationMinutes: 174 },
+        ],
+    });
+
+    assert.deepEqual(monitor.waypoints.map((waypoint) => monitor.plannedEta(waypoint)), ['—', '—']);
+    monitor.offTime = '2350';
+    assert.equal(monitor.startingFob, '');
+    assert.deepEqual(monitor.waypoints.map((waypoint) => monitor.plannedEta(waypoint)), ['0005', '0244']);
+
+    monitor.waypoints[1].cumulativeDurationMinutes = null;
+    assert.equal(monitor.plannedEta(monitor.waypoints[1]), 'Unable to calculate');
+    assert.match(monitor.etaReason(monitor.waypoints[1]), /Cumulative duration/);
+});
+
 test('compares ETA and ATA with signed UTC minutes across midnight', () => {
     assert.equal(calculateEtaAtaDifference('1200', '1150'), 10);
     assert.equal(calculateEtaAtaDifference('1200', '1215'), -15);

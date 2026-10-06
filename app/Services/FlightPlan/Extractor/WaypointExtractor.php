@@ -19,7 +19,7 @@ class WaypointExtractor
 
     /**
      * @return array{
-     *     data: list<array{coordinate: string, identifier: string, display_label: string, kind: string, time: ?string, total_time: ?string, remaining_fuel: ?string, tbo: ?string}>,
+     *     data: list<array{coordinate: ?string, identifier: string, display_label: string, kind: string, time: ?string, total_time: ?string, remaining_fuel: ?string, tbo: ?string}>,
      *     source_fragments: array<string, string>
      * }
      */
@@ -34,7 +34,7 @@ class WaypointExtractor
         $waypoints = [];
         $sourceLines = [self::PRIMARY_HEADER, self::SECONDARY_HEADER];
 
-        $records = $this->coordinateDelimitedRecords($section);
+        $records = $this->phaseDelimitedRecords($this->coordinateDelimitedRecords($section));
 
         foreach ($records as $record) {
             $detail = $this->detail($record['content']);
@@ -45,6 +45,10 @@ class WaypointExtractor
 
             $totalTime = $this->totalTime($record['content']);
             $kind = $this->kind($record['content'], $detail['identifier']);
+
+            if ($record['coordinate'] === null && ! in_array($kind, [WaypointKind::Toc, WaypointKind::Tod], true)) {
+                continue;
+            }
 
             $waypoints[] = [
                 'coordinate' => $record['coordinate'],
@@ -103,7 +107,7 @@ class WaypointExtractor
     }
 
     /**
-     * @return list<array{coordinate: string, content: string}>
+     * @return list<array{coordinate: ?string, content: string}>
      */
     private function coordinateDelimitedRecords(string $section): array
     {
@@ -113,8 +117,11 @@ class WaypointExtractor
             return [];
         }
 
-        $records = [];
         $coordinates = $matches[0];
+        $records = [[
+            'coordinate' => null,
+            'content' => Str::squish(substr($section, 0, $coordinates[0][1] ?? strlen($section))),
+        ]];
 
         foreach ($coordinates as $index => [$rawCoordinate, $offset]) {
             $contentStart = $offset + strlen($rawCoordinate);
@@ -125,12 +132,44 @@ class WaypointExtractor
             [$longitude, $content] = $this->restoreFlattenedIdentifier($latitude, $longitude, $content);
 
             $records[] = [
-                'coordinate' => Str::upper(Str::squish($latitude.' '.$longitude)),
+                'coordinate' => preg_match('/\bFIELD\h*$/i', substr($section, 0, $offset)) === 1
+                    ? null
+                    : Str::upper(Str::squish($latitude.' '.$longitude)),
                 'content' => Str::squish($content),
             ];
         }
 
         return $records;
+    }
+
+    /**
+     * Flattened PDF rows can join phase labels to a preceding DSTN value or FIR arrow.
+     *
+     * @param  list<array{coordinate: ?string, content: string}>  $records
+     * @return list<array{coordinate: ?string, content: string}>
+     */
+    private function phaseDelimitedRecords(array $records): array
+    {
+        $splitRecords = [];
+
+        foreach ($records as $record) {
+            $parts = preg_split('/(?:(?<![A-Z0-9-])|(?<=\.\.\h(?:\d{4}|----))|(?<=<-))'
+                .'(?=(?:TOC|TOD)\h+(?:\d{4}|----)\h+)/i', $this->withoutPageHeaders($record['content']), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+            foreach ($parts as $index => $content) {
+                $splitRecords[] = [
+                    'coordinate' => $index === 0 ? $record['coordinate'] : null,
+                    'content' => Str::squish($content),
+                ];
+            }
+        }
+
+        return $splitRecords;
+    }
+
+    private function withoutPageHeaders(string $content): string
+    {
+        return preg_replace('/^(?:\h*(?:KALITTA BRIEF PAGE|PAGE)\h+\d+\h+OF\h+\d+)+\h*/i', '', $content) ?? $content;
     }
 
     /**
@@ -185,7 +224,7 @@ class WaypointExtractor
     private function kind(string $content, string $identifier): WaypointKind
     {
         if (! str_starts_with($identifier, '-')) {
-            return WaypointKind::Fix;
+            return WaypointKind::fromIdentifier($identifier);
         }
 
         $name = preg_quote(substr($identifier, 1), '/');
@@ -195,13 +234,13 @@ class WaypointExtractor
             : WaypointKind::Fix;
     }
 
-    private function displayLabel(string $coordinate, string $identifier, WaypointKind $kind): string
+    private function displayLabel(?string $coordinate, string $identifier, WaypointKind $kind): string
     {
         if ($kind === WaypointKind::Fir) {
             return substr($identifier, 1).' (FIR)';
         }
 
-        if (preg_match('/^(?<latitude>[NS])(?<latDeg>\d{2}) 00\.0+ (?<longitude>[EW])(?<lonDeg>\d{3}) 00\.0+$/', $coordinate, $parts) === 1
+        if ($coordinate !== null && preg_match('/^(?<latitude>[NS])(?<latDeg>\d{2}) 00\.0+ (?<longitude>[EW])(?<lonDeg>\d{3}) 00\.0+$/', $coordinate, $parts) === 1
             && preg_match('/^\d{2}[NS]\d{3}$/', $identifier) === 1
             && $this->matchesCoordinateIdentifier($coordinate, $identifier)) {
             return $parts['latitude'].$parts['latDeg'].$parts['longitude'].$parts['lonDeg'];
@@ -215,7 +254,7 @@ class WaypointExtractor
     {
         $matches = [];
 
-        $line = preg_replace('/^(?:\h*(?:KALITTA BRIEF PAGE|PAGE)\h+\d+\h+OF\h+\d+)+\h*/i', '', $line) ?? $line;
+        $line = $this->withoutPageHeaders($line);
 
         if (preg_match('/^\h*(?<identifier>-?[A-Z0-9]{2,7})\h+(?:\d{4}|----)\h+(?<details>.+)$/i', $line, $matches) !== 1) {
             return null;

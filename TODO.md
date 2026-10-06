@@ -17,10 +17,6 @@
    
 Optionally add references and constraints.
 
-# Flight Plan Brief Roadmap
-
-Build one reviewable flight-release workspace from the normalized extraction pipeline. Parse each source fact once, keep operational values typed, and present unavailable data honestly instead of inferring it.
-
 # Product and UI rules
 
 - Use Aviation Blue for structure, Compass Gold for primary emphasis, and the existing light/dark theme tokens.
@@ -32,6 +28,74 @@ Build one reviewable flight-release workspace from the normalized extraction pip
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## Bug: Extracted crew list:
+
+Extracted `AC
+PHONE +852
+Employee number:
+#
+2910
+ISO`
+Expected:
+`   70388 PIC MACDONALD T
+   72480 SIC/FO  SINHA A
+  ADDNTL
+   71022 CAPT BRANDT-JENSEN J
+   73425 IRP  TAYLOR K`
+
+The current extracted text was from page 112 on a page about Hong Kong Runway closures. 
+
+Fix: Ensure regex extraction comes from the applicable section or look for the surrounding context without breaking previous extraction tests.
+
+` 121-91 FLIGHT RELEASE I.F.R
+   70388 PIC MACDONALD T
+   72480 SIC/FO  SINHA A
+  ADDNTL
+   71022 CAPT BRANDT-JENSEN J
+   73425 IRP  TAYLOR K
+IRP
+       MX                              LM
+       ACM                             ACM
+       ACM                             ACM
+       ACM                             ACM
+       ACM                             ACM
+   CIRCLE `
+
+## [x] Completed: FP: Fuel Score: Include TOC, TOD
+### Goal
+
+Include source TOC and TOD rows in Fuel Score's waypoint list, in release order, with UTC ETA calculated from Off time and their cumulative duration just like fixes and FIR boundaries.
+
+### Current implementation
+
+`WaypointExtractor` now separates TOC/TOD rows within the computed flight plan, preserving source order and each row's TIME, T/TME, TBO, FRMG, and evidence. It handles multiline, CRLF, and flattened text, including markers before the first fix. Explicit marker coordinates are retained; absent coordinates stay null, and departure-field coordinates are not borrowed.
+
+The waypoint DTO, extraction/serialization builders, and calculator payload support null coordinates for TOC/TOD. Builders continue requiring coordinates for fixes and FIR boundaries, and infer the existing phase kinds from TOC/TOD identifiers. Fuel Score's existing waypoint rendering, ETA calculations, and draft storage handle these rows without additional frontend logic.
+
+Classification is centralized in `WaypointKind::fromIdentifier($identifier, $kind)`. The extractor and both builder paths reuse it; the builder's private classifier and the extractor's duplicate TOC/TOD branches were removed. TOC/TOD identifiers take precedence over supplied metadata, valid supplied kinds are retained for other identifiers, and missing, invalid, or non-string kinds fall back to `Fix`.
+
+### Problem
+
+The previous coordinate-only extraction and normalization omitted coordinate-less TOC/TOD, removing useful ETA and fuel comparison points. These rows now use their own cumulative duration and fuel fields. Missing cumulative time retains the calculator's unavailable ETA state; missing fuel remains absent instead of becoming zero or inheriting an adjacent row's data.
+
+### Implementation and validation outcome
+
+Planned and tagged `Current focus:` before implementation, then completed through Sail. Twenty-one unique focused PHPUnit tests passed across `WaypointExtractorTest`, `SubdomainDataBuilderTest`, and `OfflineFuelScoreTest`; the extractor's twelve tests passed again after adding departure-field coordinate isolation. Twenty-two focused JavaScript tests passed across `waypoint-fuel-monitor.test.js` and `offline-fuel-draft.test.js`. Coverage includes source order, optional coordinates, repeated markers, computed-section/alternate boundaries, null fields and explicit zeroes, JSON round trips, calculator output, UTC midnight rollover, and separate restored inputs for coordinate-less markers. Pint passed and one full Larastan run passed with zero errors. Boost's documentation search was attempted but its remote service was unreachable; official [Laravel 13 HTTP testing documentation](https://laravel.com/framework/docs/http-tests) was used as the fallback.
+
+Previously extracted saved releases need their PDF uploaded/extracted again to populate TOC/TOD; the old normalized data cannot reconstruct omitted rows. No frontend asset rebuild is needed for this server-side extraction change. Real browser visual verification was not performed. Unrelated TODO edits were preserved.
+
+Commit message: `feat: include TOC and TOD in fuel score waypoint estimates`
+
+Enum follow-up: 35 focused PHPUnit tests passed across `Enums/WaypointKindTest`, `WaypointExtractorTest`, `SubdomainDataBuilderTest`, and `OfflineFuelScoreTest`. New enum tests cover identifier precedence, optional metadata, every valid kind, and malformed values. Pint and one Larastan run passed with zero errors. Boost's version-specific documentation search succeeded for this refactor.
+
+Enum refactor commit message: `refactor: resolve waypoint kinds through the enum`
+
+PDF follow-up (`storage/app/private/flight_releases/CKS024201RJGG.pdf`): the real embedded text joins rows as `0460TOC` and `FIR-> VHHK <-TOD`, with TOD's secondary row on the next page. The previous boundary rule rejected digits and hyphens before a marker, yielding 47 main-leg waypoints and no TOC/TOD. The boundary rule now recognizes completed DSTN fields and closing FIR arrows without splitting ordinary fix identifiers such as `1234TOC`. A regression fixture retains the PDF's actual computed flight plan text and page breaks. The failing-before-fix regression and calculator feature test now verify 49 main-leg rows, TOC between ESPAN/KEC (15 minutes, FRMG `0801`, TBO `0103`), and TOD between VHHK/MAGOG (174 minutes, FRMG `0400`, TBO `0505`). Both coordinates remain null and alternate rows stay excluded.
+
+Twenty-one unique focused PHPUnit tests passed across `WaypointExtractorTest` and `OfflineFuelScoreTest`, including the successful real-text regression recheck; fourteen `waypoint-fuel-monitor.test.js` tests passed, including midnight rollover with this PDF's durations. Pint and one Larastan run passed with zero errors. Boost's documentation search succeeded. Previously saved normalized results still require uploading/extracting the PDF again; refreshing the old result alone cannot add omitted rows. Real browser visual verification was not performed. Unrelated crew-task changes and staging were preserved.
+
+PDF fix commit message: `fix: extract joined TOC and TOD rows from flight release PDFs`
+
 ## FP: Prelim flight plans
 Goal:
 1. Determine if an uploaded flight plan is preliminary
@@ -40,43 +104,6 @@ Goal:
    2. Fuel
    3. Route
    4. ETOPS
-
-## [x] Completed: FP: Offline mode
-Chrome is refreshing the page dropping the off time and takeoff fuel and rendering a ERR_Connection 404.
-
-### Goal
-
-Recover the loaded flight's calculator and entered Off time, starting FOB at takeoff, ATA, and AFOB after an offline refresh or browser-initiated tab reload.
-
-### Current implementation
-
-- `OfflineFuelScoreController` retains authenticated, verified, entitled, owner-scoped access. It marks successful calculator responses explicitly and supplies the production asset list, including transitive JavaScript imports, CSS, and asset dependencies from Vite's manifest.
-- `offline-fuel-worker.js` caches the successfully authorized calculator HTML (including release data) only after every required asset is available. Canonical calculator navigation uses the network first and falls back to that exact cached release only on network failure. HTTP errors and authentication redirects invalidate the copy instead of falling back. Uncached offline releases receive a useful 503 fallback.
-- The worker controls the app origin to observe authentication and Livewire responses, but only calculator pages and their required production assets are cached. Middleware identifies the current owner and release; logout, account changes, release replacement, and clearing invalidate private copies. A Livewire client event also handles streamed extraction, whose headers are sent before extraction completes. Preparation cannot publish stale data after a concurrent invalidation.
-- Existing `sessionStorage` drafts continue to preserve exact Off time, starting FOB, ATA, and AFOB strings by owner/release/source signature. `visibilitychange` to hidden and `pagehide` synchronously flush inputs; component cleanup removes the listeners. Reset and unavailable-storage warnings retain their existing behavior.
-- The calculator shows preparation, ready, unavailable, recovered-copy, and invalidated-copy states. Readiness requires worker control and successful page/asset preparation. It renders built assets through an isolated Vite instance even when `public/hot` selects development mode for other pages. Missing production builds, unsupported browsers, insecure origins, and cache failures do not claim readiness.
-
-### Problem and implementation outcome (2026-10-06)
-
-The previous implementation saved inputs but required a connection to reload the page, so a discarded Chrome tab could not reconstruct the calculator offline. The new cache supplies the page, release, and assets across a worker restart, and the existing draft restores its entered values. Chrome discards cannot be intercepted reliably; saving when the tab becomes hidden prepares for that lifecycle transition. [Chrome lifecycle guidance](https://developer.chrome.com/docs/web-platform/page-lifecycle-api?authuser=00).
-
-A replaced or cleared release still produces a real server 404. That behavior and access enforcement are preserved, with cleanup preventing the cached copy from bypassing the response. The original automatic-refresh trigger was not reproduced in a real Chrome session.
-
-Offline readiness requires HTTPS (or localhost), same-origin production assets, enabled browser storage, and a successfully prepared copy before losing connectivity. A reported unavailable state was traced to the original development-mode guard despite an existing production build. The calculator now uses that build without stopping Vite or changing the application's shared renderer. If no build exists, the development calculator still loads but has no offline asset list. Calculator frontend edits require a new production build. Closing the tab clears its entered draft; reopening can recover a prepared page but does not promise recovery of closed-tab inputs. [MDN service workers](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers), [MDN sessionStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage). A web app manifest is not required for reload recovery and was not added.
-
-### Validation outcome
-
-Sail became available for implementation. Boost's version-specific documentation search ran through its installed MCP server via Sail. Focused checks passed: 28 unique PHPUnit tests across `OfflineFuelScoreTest`, `OfflineFuelScoreCacheTest`, Livewire `SavedResultTest`/`ExtractionTest`, and `AuthenticationTest`; 46 unique JavaScript tests across the draft, lifecycle, worker, readiness/invalidation, and calculator files. Coverage includes worker restart with no network, all required assets, exact draft restoration, unauthorized/404/redirect responses, cache failures, missing snapshots, deployment asset changes, owner isolation, streamed mutation cleanup, and invalidation during preparation. Production Vite build and Pint passed. Full application Larastan ran once and reported two findings in the initial asset traversal; that traversal was corrected, followed by a passing focused class recheck and its two dependency tests. No browser automation was available, so real Chrome discard and visual verification remain unperformed. Unrelated TODO edits and the separate fuel-score variance task were preserved.
-
-Commit message: `fix: recover flight plan fuel calculator after offline tab reloads`
-
-Development-mode follow-up: 13 focused PHPUnit tests passed across `OfflineFuelScoreCacheTest`, `OfflineFuelScoreTest`, and `ViteDisabledTest`. The integration test uses a real Vite renderer with a hot file and build manifest, verifies built calculator tags match the cache header, and confirms the shared renderer and hot file retain development mode. Missing-build fallback also passes. Pint, one full Larastan run (zero errors), and the refreshed production build passed. Real browser readiness remains unverified.
-
-Follow-up commit message: `fix: serve built calculator assets while Vite development mode is active`
-
-Form-field follow-up: Off time, starting FOB, and repeated ATA/AFOB inputs were missing IDs and names, producing Chrome's form-element warnings. All fields now have IDs, names, and matching label associations; waypoint fields use the row index so repeated waypoint identifiers remain distinct. Six focused `OfflineFuelScoreTest` tests passed, including a markup regression checking identifier/name uniqueness across 50 waypoint rows. Pint and one Larastan run passed with zero errors. Chrome's Issues panel was not directly verified.
-
-Form-field commit message: `fix: identify offline fuel calculator input fields`
 
 ## Unified upload
 Currently: 2 tabs have 2 different upload points, user has to choose 
@@ -216,41 +243,39 @@ Commit message for this plan: `docs: plan aircraft-specific flight plan reserve 
 ## [x] Completed: Flight plan: Weight & Balance: Progress bar readability
 ## [x] Completed: Sloppy static findings
 ## [x] Completed: feat: Track schedule upload count
+## [x] Completed: FP: Offline mode
+Chrome is refreshing the page dropping the off time and takeoff fuel and rendering a ERR_Connection 404.
 
 ### Goal
 
-Persist the number of schedule files submitted in each extraction request and display it in the existing Filament Extract Requests table. Keep one database record per submission, linked to the user, even when several images are processed together.
+Recover the loaded flight's calculator and entered Off time, starting FOB at takeoff, ATA, and AFOB after an offline refresh or browser-initiated tab reload.
 
 ### Current implementation
 
-- `ExtractRequestLogger::start()` persists `uploaded_file_count` from submitted `UploadedFile` instances before processing. `ExtractRequest` permits the attribute and casts known counts to integers while preserving null.
-- A new reversible migration adds a nullable unsigned integer to `extract_requests`, with no zero default or historical backfill. The migration has been applied to the local Sail database.
-- Filament displays a visible, numeric, sortable, toggleable `Uploaded files` column. Null displays `Unknown`; pasted-text requests display `0`. The existing form schema includes a nullable, non-negative integer field.
-- Schedule validation still permits up to five images or one PDF. The shared logger also records `1` for new flight-plan PDF extractions. Existing dashboard widgets continue to count requests.
+- `OfflineFuelScoreController` retains authenticated, verified, entitled, owner-scoped access. It marks successful calculator responses explicitly and supplies the production asset list, including transitive JavaScript imports, CSS, and asset dependencies from Vite's manifest.
+- `offline-fuel-worker.js` caches the successfully authorized calculator HTML (including release data) only after every required asset is available. Canonical calculator navigation uses the network first and falls back to that exact cached release only on network failure. HTTP errors and authentication redirects invalidate the copy instead of falling back. Uncached offline releases receive a useful 503 fallback.
+- The worker controls the app origin to observe authentication and Livewire responses, but only calculator pages and their required production assets are cached. Middleware identifies the current owner and release; logout, account changes, release replacement, and clearing invalidate private copies. A Livewire client event also handles streamed extraction, whose headers are sent before extraction completes. Preparation cannot publish stale data after a concurrent invalidation.
+- Existing `sessionStorage` drafts continue to preserve exact Off time, starting FOB, ATA, and AFOB strings by owner/release/source signature. `visibilitychange` to hidden and `pagehide` synchronously flush inputs; component cleanup removes the listeners. Reset and unavailable-storage warnings retain their existing behavior.
+- The calculator shows preparation, ready, unavailable, recovered-copy, and invalidated-copy states. Readiness requires worker control and successful page/asset preparation. It renders built assets through an isolated Vite instance even when `public/hot` selects development mode for other pages. Missing production builds, unsupported browsers, insecure origins, and cache failures do not claim readiness.
 
-### Problem
+### Problem and implementation outcome (2026-10-06)
 
-A request with several images previously lacked a stored file count. Page counts, file size, and merged event counts cannot recover that metric; historical image requests cannot safely be assumed to contain one file.
+The previous implementation saved inputs but required a connection to reload the page, so a discarded Chrome tab could not reconstruct the calculator offline. The new cache supplies the page, release, and assets across a worker restart, and the existing draft restores its entered values. Chrome discards cannot be intercepted reliably; saving when the tab becomes hidden prepares for that lifecycle transition. [Chrome lifecycle guidance](https://developer.chrome.com/docs/web-platform/page-lifecycle-api?authuser=00).
 
-### Counting contract
+A replaced or cleared release still produces a real server 404. That behavior and access enforcement are preserved, with cleanup preventing the cached copy from bypassing the response. The original automatic-refresh trigger was not reproduced in a real Chrome session.
 
-- `uploaded_file_count` means files accepted by validation and submitted for extraction: one PDF or image is `1`, and three images are `3`. Count each submitted file entry, including identical content; event deduplication does not reduce the count.
-- Pasted-text extraction records `0`. Count uploaded files rather than PDF pages, generated OCR images, parsed events, or successfully parsed files.
-- Record the count at request start and retain it after success, partial file failures, complete parser failure, or an empty result. Rejected validation, denied access, cancelled temporary uploads, and files removed before submission do not create an extraction record.
-- Reading cached results, rendering, filtering results, and calendar exports do not add records or change counts. An explicit new extraction submission creates another request with its own count; this metric does not introduce retry deduplication.
-- Historical rows remain null and display `Unknown`. Do not infer their counts from hashes, sizes, or page counts.
-
-### Implementation outcome
-
-Extended the existing request record and logger without adding per-file records or user lifetime counters. Counts are independent of parsing success, readable hash paths, and event deduplication. Aggregate hashes/sizes, parser statuses, result caching, and request-count widgets retain their existing behavior.
-
-The existing Extract Request policy forbids admin creation and editing, including for admins. Those restrictions remain in place; the form schema was updated and its actual validation rules tested without enabling those pages. No dependencies, unified upload routing, CLI tracking, or other tasks were changed.
+Offline readiness requires HTTPS (or localhost), same-origin production assets, enabled browser storage, and a successfully prepared copy before losing connectivity. A reported unavailable state was traced to the original development-mode guard despite an existing production build. The calculator now uses that build without stopping Vite or changing the application's shared renderer. If no build exists, the development calculator still loads but has no offline asset list. Calculator frontend edits require a new production build. Closing the tab clears its entered draft; reopening can recover a prepared page but does not promise recovery of closed-tab inputs. [MDN service workers](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers), [MDN sessionStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage). A web app manifest is not required for reload recovery and was not added.
 
 ### Validation outcome
 
-- All **60 focused PHPUnit tests pass** through Sail across `ExtractRequestLoggerTest`, `UploadedFileCountMigrationTest`, `ExtractRequestResourceTest`, `Livewire/ScheduleExtractorTest`, and `Livewire/FlightPlanBrief/Lifecycle/ExtractionTest`.
-- Coverage includes text/single/multiple uploads, five duplicate images producing one request, user association, counts saved before parsing, partial and complete failures, empty results, removed files, six-file rejection, denied access, cache reads/exports, repeated submissions, aggregate hash/size preservation, and flight-plan success/failure.
-- Migration coverage verifies legacy null values, explicit zero, and rollback preserving rows using an isolated SQLite connection. Local Sail migration completed successfully. Filament coverage verifies numeric sorting, `Unknown` versus `0`, column visibility, form integer validation, and existing filters/access restrictions.
-- Pint completed after PHP changes. Larastan ran once over the configured application paths and passed with zero errors. Code diff whitespace checks pass; unrelated TODO/BACKLOG edits, including existing TODO end-of-file whitespace, are preserved.
+Sail became available for implementation. Boost's version-specific documentation search ran through its installed MCP server via Sail. Focused checks passed: 28 unique PHPUnit tests across `OfflineFuelScoreTest`, `OfflineFuelScoreCacheTest`, Livewire `SavedResultTest`/`ExtractionTest`, and `AuthenticationTest`; 46 unique JavaScript tests across the draft, lifecycle, worker, readiness/invalidation, and calculator files. Coverage includes worker restart with no network, all required assets, exact draft restoration, unauthorized/404/redirect responses, cache failures, missing snapshots, deployment asset changes, owner isolation, streamed mutation cleanup, and invalidation during preparation. Production Vite build and Pint passed. Full application Larastan ran once and reported two findings in the initial asset traversal; that traversal was corrected, followed by a passing focused class recheck and its two dependency tests. No browser automation was available, so real Chrome discard and visual verification remain unperformed. Unrelated TODO edits and the separate fuel-score variance task were preserved.
 
-Commit message: `feat: track uploaded file counts per extraction request`
+Commit message: `fix: recover flight plan fuel calculator after offline tab reloads`
+
+Development-mode follow-up: 13 focused PHPUnit tests passed across `OfflineFuelScoreCacheTest`, `OfflineFuelScoreTest`, and `ViteDisabledTest`. The integration test uses a real Vite renderer with a hot file and build manifest, verifies built calculator tags match the cache header, and confirms the shared renderer and hot file retain development mode. Missing-build fallback also passes. Pint, one full Larastan run (zero errors), and the refreshed production build passed. Real browser readiness remains unverified.
+
+Follow-up commit message: `fix: serve built calculator assets while Vite development mode is active`
+
+Form-field follow-up: Off time, starting FOB, and repeated ATA/AFOB inputs were missing IDs and names, producing Chrome's form-element warnings. All fields now have IDs, names, and matching label associations; waypoint fields use the row index so repeated waypoint identifiers remain distinct. Six focused `OfflineFuelScoreTest` tests passed, including a markup regression checking identifier/name uniqueness across 50 waypoint rows. Pint and one Larastan run passed with zero errors. Chrome's Issues panel was not directly verified.
+
+Form-field commit message: `fix: identify offline fuel calculator input fields`

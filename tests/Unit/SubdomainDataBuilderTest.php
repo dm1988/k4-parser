@@ -97,4 +97,36 @@ class SubdomainDataBuilderTest extends TestCase
         $this->assertNotNull($etops);
         $this->assertSame($etops->toArray(), $etopsBuilder->fromSerialized($etops->toArray())?->toArray());
     }
+
+    public function test_only_phase_markers_can_round_trip_without_coordinates(): void
+    {
+        $builder = app(WaypointDataBuilder::class);
+        $source = [
+            ['identifier' => 'TOC', 'coordinate' => null, 'time' => '002', 'total_time' => '00.15', 'remaining_fuel' => '1741', 'tbo' => '0119'],
+            ['identifier' => 'TOD', 'coordinate' => '', 'time' => null, 'total_time' => null, 'remaining_fuel' => null],
+            ['identifier' => 'FIX01', 'coordinate' => null, 'kind' => 'toc'],
+            ['identifier' => '-EDWW', 'coordinate' => null, 'kind' => 'fir'],
+            ['identifier' => '', 'coordinate' => null],
+        ];
+
+        $waypoints = $builder->fromExtracted($source, ['takeoff' => ['amount' => 186000.0, 'unit' => 'lb']]);
+        $serialized = json_decode(json_encode($waypoints, JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
+
+        $this->assertSame(['TOC', 'TOD'], array_column($serialized, 'identifier'));
+        $this->assertSame(['toc', 'tod'], array_column($serialized, 'kind'));
+        $this->assertSame([null, null], array_column($serialized, 'coordinate'));
+        $this->assertSame(2, $serialized[0]['legDurationMinutes']);
+        $this->assertSame(15, $serialized[0]['cumulativeDurationMinutes']);
+        $this->assertSame(['amount' => 174100, 'unit' => 'lb'], $serialized[0]['remainingFuel']);
+        $this->assertSame('0119', $serialized[0]['tbo']);
+        $this->assertNull($serialized[1]['cumulativeDurationMinutes']);
+        $this->assertNull($serialized[1]['remainingFuel']);
+
+        $rehydrated = $builder->fromSerialized([
+            ...$serialized,
+            ['identifier' => 'FIX01', 'kind' => 'toc'],
+            ['identifier' => '-EDWW', 'kind' => 'fir'],
+        ]);
+        $this->assertSame($serialized, json_decode(json_encode($rehydrated, JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR));
+    }
 }
