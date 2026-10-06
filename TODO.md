@@ -28,6 +28,13 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## FP: Maintenance: Include flight date in task
+- Format: 10/1/2026
+- After trip number
+- Label `Date`
+
+- Inreleated: Swap order: Tail number and aircraft type
+
 ## [x] Completed: FP: Missing SIGWX and additional fuel notes
 
 ### Goal
