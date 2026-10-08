@@ -28,54 +28,202 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## Schedule: R2 status determine
+Currently: Duty types are not distingushed. $activityCode is mapped to $flightNumber. Training is an event type and no duty types are established. 
+ScheduleEventTypes include:
+- Flight
+- Duty
+- Deadhead
+- Layover
+- Off
+- Training
+- 1in7
+- Unknown
+
+Goals: 
+1. Consolidate event classifications so Duty acts as the umbrella event type for operational duties (including Deadhead, Training, and Reserve assignments).
+
+2. Implement context-aware text extraction in TripInformationParser to classify specific DutyEventType options (e.g., R1, R2, R4, Training, Deadhead, FlightDuty).
+
+3. Display context-specific UI badges (R1, R2, R4, Training) on duty cards instead of the generic Duty badge.
+
+Implementation:
+1. ScheduleEventTypes to migrate to Duty Event Type:
+- Deadhead
+- Training
+
+
+2. Introduce DutyEventType Enum
+Create a dedicated enum to represent granular duty classifications:
+
+```php
+enum DutyEventType: string
+{
+    case FlightDuty = 'flight_duty';
+    case Deadhead = 'deadhead';
+    case Training = 'training';
+    case ReserveR1 = 'R1';
+    case ReserveR2 = 'R2';
+    case ReserveR4 = 'R4';
+    case GeneralDuty = 'duty';
+```
+
+ScheduleEventType that are currently classified as deadhead and training will be encompassed within duty. 
+
+3. Create DutyTypeResolver Service
+Create a dedicated service to encapsulate pattern matching so TripInformationParser remains clean and testable.
+
+Class: App\Services\Schedule\DutyTypeResolver
+
+Input: Raw text block / $activityCode string
+
+Matching Rules:
+
+Regex matching for R1, R2, R4 (e.g., /\b(R1|R2|R4)\b/i).
+
+Keywords matching Training (e.g., SIM, RECURRING, GROUND, CLASS, TRNG).
+
+Keywords matching Deadhead (e.g., DH, DEADHEAD).
+
+Create user facing badges for R2, R4, and training. The duty type badge will replace the more generic `Duty`` badge. Deadhead badges are existing, incorporate it into the structure
+
+4. Refactor TripInformationParser.php
+Update text extraction to pass activity code or raw line context to DutyTypeResolver::resolve($text)
+
+5. Update UI & Badge Components
+* Duty Event Type,Badge Text,Suggested Styling
+ReserveR1,R1,Amber / Warning
+ReserveR2,R2,Indigo / Primary
+ReserveR4,R4,Purple
+Training,Training,Blue / Info
+Deadhead,Deadhead,Slate / Muted
+GeneralDuty,Duty,Neutral
+
+Example extracted text:
+`5 6 7 \u00ae \u00b0 10 #311 \u00a9 R2 Stn Vv"`
+
+Event title: `R2 LAX`
+
+References:
+app/Services/Schedule/Extractor/TripInformationParser.php
+duty_extracted_example.json
+
+## Schedule: Cleanup Schedule Notes
+Goal: Improve the data structure and presentation of an exported flight ical notes by grouping data, omitting data, and reducing repeating words. 
+
+Current extracted flight iCal note:
+```
+✈️ FLIGHT DETAILS
+• ICN - HKG
+• Destination iata: HKG
+• Destination icao: VHHH
+• Destination name: Hong Kong International Airport
+• Destination city: Hong Kong
+• Destination state: NT
+• Destination country: HK
+• Origin iata: ICN
+• Origin icao: RKSI
+• Origin name: Incheon International Airport
+• Origin city: Seoul
+• Origin state: 28
+• Origin country: KR
+• Flight number: CKS 256
+• Position: AFO
+• Aircraft: 77X
+• Tail number: N774CK
+• Block time: 4:00h
+• Leg local start: Oct 08 01:00
+• Leg local end: Oct 08 04:00
+• Duty local start: Oct 07 23:00
+• Duty local end: Oct 08 04:30
+• Origin airport status: found
+• Destination airport status: found
+
+👥 CREW LOGISTICS
+• Crew count: 4
+• Operating crew count: 4
+• Deadheading crew count: 0
+• Crew Members:
+  └─ Paolo Falco Beccalli (CP • PVD • #70978)
+  └─ Ali Guner (FO • SRQ • #72446)
+  └─ Eduardo Nunez Duarte (AFO • #72311)
+  └─ David Gonzalez (AFO • #72860)
+
+⏰ TIMES
+• UTC start: 10-07 16:00 Z
+• UTC end: 10-07 20:00 Z
+```
+
+Desired Output:
+```
+✈️ FLIGHT DETAILS
+Flight: CKS 256  |  Tail: N774CK (77X)  |  Pos: AFO
+Route: ICN (RKSI) ➔ HKG (VHHH)
+
+⏰ TIMES
+UTC:   Oct 07 16:00z ➔ 20:00z  (Block: 4:00h)
+Local: Oct 08 01:00  ➔ 04:00
+
+👨‍✈️ DUTY TIMES
+Local: Oct 07 23:00  ➔ Oct 08 04:30
+
+👥 CREW (4 Ops / 0 DH)
+• Paolo Falco Beccalli  │ CP  │ PVD │ #70999
+• Ali Guner             │ FO  │ SRQ │ #72999
+• Eduardo Nunez Duarte  │ AFO │ #72999
+• David Gonzalez        │ AFO │ #72999
+```
+
+## Schedule: Flight radar option
+### Implementation:
+### Unify flight aware URLs
+Goal: Have 1 source of truth for a flight aware URL. 
+Currently, valid URLs are repeated throughout the codebase.
+1. Create .env URL path settings for flight aware and flight radar 24.
+2. Create config URL service settings for the 2 flight tracking options
+3. Create a didicated URL generator helper method for existing flight aware links
+
+### Database and Model Updates
+1. Add a flight_tracker_preference column to the users table migration defaulting to flightaware
+2. Update User model fillable attributes and validation rules to allow valid tracker options like flightaware and flightradar24
+3. Ensure existing users have a default fallback value assigned
+
+### User Settings Interface
+* Add a Flight Tracker setting select input or radio group to the user preferences view
+* Connect the preference input to user profile update actions or Livewire component
+* Display clear helper text explaining that this setting affects generated iCal links
+
+### URL Generation Logic
+1. Create a dedicated URL generator helper method for FlightRadar24 using flight or tail parameters
+2. Refactor existing FlightAware URL generator into a strategy or utility class
+3. Route URL creation based on the authenticated user flight tracker preference setting
+4. Fallback gracefully to standard FlightAware URL if preferences are unset or invalid
+
+### iCal Export Updates
+* Update the iCal event generator service to fetch the dynamic tracker URL instead of hardcoding FlightAware
+* Ensure the iCal URL property renders correctly across target calendar clients
+
+### Testing and Verification
+* Write unit tests for the tracker URL generator covering both FlightAware and FlightRadar24 outputs
+* Write feature tests verifying user preference saving and persistence
+* Verify that exported iCal files contain the expected URL based on user settings
+
+References:
+valid flight radar url: https://www.flightradar24.com/data/aircraft/n772ck
+app/Services/Schedule/Extractor/TripInformationParser.php
+resources/views/extract/partials/flight-card/flight-details.blade.php
+tests/Feature/RosterParserTest.php
+tests/Unit/IcsGeneratorTest.php
+tests/Unit/TripInformationParserTest.php
+tests/Unit/DTOs/FlightDtoTest.php
+tests/Unit/View/Models/ExtractPageViewModelTest.php
+
 ## FP: Maintenance: Include flight date in task
 - Format: 10/1/2026
 - After trip number
 - Label `Date`
 
 - Inreleated: Swap order: Tail number and aircraft type
-
-## [x] Completed: FP: Missing SIGWX and additional fuel notes
-
-### Goal
-
-Extract all five dispatcher notes from `storage/app/private/flight_releases/CKS024201RJGG.pdf`, including the government SIGWX forecast and additional holding fuel for destination thunderstorms.
-
-### Current implementation
-
-`DispatcherNotesExtractor` recognizes both missing headings through the existing bulleted-note parser. It retains source order, joins wrapped bullet text, preserves heading/bullet line breaks, and bounds extraction at the next note, boxed separator, MEL/CDL section, or end of text. Existing ENROUTE SIGWX notes reuse the same parser.
-
-### Problem
-
-The parser's supported heading patterns omitted `GOVT SIGWX PROG FORECASTS AREAS OF` and `ADDITIONAL FUEL ADDED`, silently returning only the runway, maintenance, and FSA notes. The supplied PDF and four synthetic layout regressions reproduced the omission before the fix.
-
-### Validation outcome (2026-10-06)
-
-Through Sail, all 12 `DispatcherNotesExtractorTest` cases passed, including the supplied PDF's exact five-note result and the existing RJAA, PANC, and KCVG release regressions. The focused extraction orchestration and Notes rendering checks also passed: 14 passing tests and 99 assertions total; one separate private-PDF characterization was skipped because `CKS025625KLAX.pdf` is unavailable. Pint passed, and one full application Larastan run passed with zero errors. Boost's version-specific documentation search succeeded. Unrelated working-tree changes and staging were preserved.
-
-Previously saved releases require uploading/extracting the PDF again to populate the two omitted notes. No frontend rebuild is required.
-
-Commit message: `fix: extract government SIGWX and additional fuel dispatcher notes`
-
-## [x] Completed: Capture flight-plan test streams
-
-### Goal
-
-Keep Livewire flight-plan progress frames out of PHPUnit console output while preserving progress assertions.
-
-### Current implementation
-
-The shared flight-plan test case captures output with a callback buffer that absorbs Livewire's explicit flushes and closes in teardown. Extraction tests check captured success and failure progress plus an empty output buffer. Browser streaming remains unchanged.
-
-### Problem
-
-Livewire writes progress frames directly and flushes the buffer, leaking JSON into otherwise passing test output.
-
-### Validation outcome (2026-10-06)
-
-Through Sail, all 41 focused flight-plan Livewire tests passed with 977 assertions and no streamed JSON in console output. The updated extraction test file also passed individually. Pint passed and one full application Larastan run passed with zero errors. Unrelated TODO edits were preserved.
-
-Commit message: `test: capture flight-plan progress streams during Livewire tests`
 
 ## FP: Prelim flight plans
 Goal:
@@ -164,7 +312,6 @@ Planning commit message: `docs: plan Pest architecture tests and adoption constr
 Implementation commit message: `test: enforce application naming and layer boundaries`
 
 ## Plan: Flight plan: Reserve fuel
-
 ### Goal
 
 Show alternate-airport burn and calculated FMS reserve fuel as distinct values. Resolve the reserve additive from the aircraft fleet record, with explicit support for 747-400F, 777-F, and 777-300ERSF. Keep source fuel quantities separate from the derived calculation and label every unit.
@@ -219,135 +366,46 @@ Commit message for this plan: `docs: plan aircraft-specific flight plan reserve 
 
 -------------------------------------------------------
 
-## [x] Completed: Flight plan: Crew list: WCAG 2.2 AA compliance
-## [x] Completed: Flight plan: header refactor
-## [x] Completed: Flight plan: Weight & Balance: Progress bar readability
-## [x] Completed: Sloppy static findings
-## [x] Completed: feat: Track schedule upload count
-## [x] Completed: FP: Offline mode
-Chrome is refreshing the page dropping the off time and takeoff fuel and rendering a ERR_Connection 404.
-
-### Goal
-
-Recover the loaded flight's calculator and entered Off time, starting FOB at takeoff, ATA, and AFOB after an offline refresh or browser-initiated tab reload.
-
-### Current implementation
-
-- `OfflineFuelScoreController` retains authenticated, verified, entitled, owner-scoped access. It marks successful calculator responses explicitly and supplies the production asset list, including transitive JavaScript imports, CSS, and asset dependencies from Vite's manifest.
-- `offline-fuel-worker.js` caches the successfully authorized calculator HTML (including release data) only after every required asset is available. Canonical calculator navigation uses the network first and falls back to that exact cached release only on network failure. HTTP errors and authentication redirects invalidate the copy instead of falling back. Uncached offline releases receive a useful 503 fallback.
-- The worker controls the app origin to observe authentication and Livewire responses, but only calculator pages and their required production assets are cached. Middleware identifies the current owner and release; logout, account changes, release replacement, and clearing invalidate private copies. A Livewire client event also handles streamed extraction, whose headers are sent before extraction completes. Preparation cannot publish stale data after a concurrent invalidation.
-- Existing `sessionStorage` drafts continue to preserve exact Off time, starting FOB, ATA, and AFOB strings by owner/release/source signature. `visibilitychange` to hidden and `pagehide` synchronously flush inputs; component cleanup removes the listeners. Reset and unavailable-storage warnings retain their existing behavior.
-- The calculator shows preparation, ready, unavailable, recovered-copy, and invalidated-copy states. Readiness requires worker control and successful page/asset preparation. It renders built assets through an isolated Vite instance even when `public/hot` selects development mode for other pages. Missing production builds, unsupported browsers, insecure origins, and cache failures do not claim readiness.
-
-### Problem and implementation outcome (2026-10-06)
-
-The previous implementation saved inputs but required a connection to reload the page, so a discarded Chrome tab could not reconstruct the calculator offline. The new cache supplies the page, release, and assets across a worker restart, and the existing draft restores its entered values. Chrome discards cannot be intercepted reliably; saving when the tab becomes hidden prepares for that lifecycle transition. [Chrome lifecycle guidance](https://developer.chrome.com/docs/web-platform/page-lifecycle-api?authuser=00).
-
-A replaced or cleared release still produces a real server 404. That behavior and access enforcement are preserved, with cleanup preventing the cached copy from bypassing the response. The original automatic-refresh trigger was not reproduced in a real Chrome session.
-
-Offline readiness requires HTTPS (or localhost), same-origin production assets, enabled browser storage, and a successfully prepared copy before losing connectivity. A reported unavailable state was traced to the original development-mode guard despite an existing production build. The calculator now uses that build without stopping Vite or changing the application's shared renderer. If no build exists, the development calculator still loads but has no offline asset list. Calculator frontend edits require a new production build. Closing the tab clears its entered draft; reopening can recover a prepared page but does not promise recovery of closed-tab inputs. [MDN service workers](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers), [MDN sessionStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage). A web app manifest is not required for reload recovery and was not added.
-
-### Validation outcome
-
-Sail became available for implementation. Boost's version-specific documentation search ran through its installed MCP server via Sail. Focused checks passed: 28 unique PHPUnit tests across `OfflineFuelScoreTest`, `OfflineFuelScoreCacheTest`, Livewire `SavedResultTest`/`ExtractionTest`, and `AuthenticationTest`; 46 unique JavaScript tests across the draft, lifecycle, worker, readiness/invalidation, and calculator files. Coverage includes worker restart with no network, all required assets, exact draft restoration, unauthorized/404/redirect responses, cache failures, missing snapshots, deployment asset changes, owner isolation, streamed mutation cleanup, and invalidation during preparation. Production Vite build and Pint passed. Full application Larastan ran once and reported two findings in the initial asset traversal; that traversal was corrected, followed by a passing focused class recheck and its two dependency tests. No browser automation was available, so real Chrome discard and visual verification remain unperformed. Unrelated TODO edits and the separate fuel-score variance task were preserved.
-
-Commit message: `fix: recover flight plan fuel calculator after offline tab reloads`
-
-Development-mode follow-up: 13 focused PHPUnit tests passed across `OfflineFuelScoreCacheTest`, `OfflineFuelScoreTest`, and `ViteDisabledTest`. The integration test uses a real Vite renderer with a hot file and build manifest, verifies built calculator tags match the cache header, and confirms the shared renderer and hot file retain development mode. Missing-build fallback also passes. Pint, one full Larastan run (zero errors), and the refreshed production build passed. Real browser readiness remains unverified.
-
-Follow-up commit message: `fix: serve built calculator assets while Vite development mode is active`
-
-Form-field follow-up: Off time, starting FOB, and repeated ATA/AFOB inputs were missing IDs and names, producing Chrome's form-element warnings. All fields now have IDs, names, and matching label associations; waypoint fields use the row index so repeated waypoint identifiers remain distinct. Six focused `OfflineFuelScoreTest` tests passed, including a markup regression checking identifier/name uniqueness across 50 waypoint rows. Pint and one Larastan run passed with zero errors. Chrome's Issues panel was not directly verified.
-
-Form-field commit message: `fix: identify offline fuel calculator input fields`
-
 ## [x] Completed: Bug: Extracted crew list:
-
-### Goal
-
-Extract the four crew members from the applicable flight-release manifest in `CKS024201RJGG.pdf`, excluding unrelated Hong Kong runway-closure and contact information.
-
-### Current implementation
-
-`FlightCrewExtractor` prioritizes manifests bounded by `121-91 FLIGHT RELEASE I.F.R` and their status/release-time/fuel footer or the next release heading. It handles flattened and multiline rows, repeated release pages, empty initial manifests, and single-member manifests. The generic `CREW`/`CREW LIST` fallback accepts consecutive crew rows and stops at unrelated prose. Role-like text elsewhere in the document is no longer treated as an unheaded manifest. Existing name parsing, employee numbers, deduplication, and high-minimums annotations are retained.
-
-### Problem
-
-Extracted 
-```text
-AC
-PHONE +852
-Employee number:
-#
-2910
-ISO
-```
-Expected:
-`   70388 PIC MACDONALD T
-   72480 SIC/FO  SINHA A
-  ADDNTL
-   71022 CAPT BRANDT-JENSEN J
-   73425 IRP  TAYLOR K`
-
-The current extracted text was from page 112 on a page about Hong Kong Runway closures. 
-
-Fix: Ensure regex extraction comes from the applicable section or look for the surrounding context without breaking previous extraction tests.
-
-` 121-91 FLIGHT RELEASE I.F.R
-   70388 PIC MACDONALD T
-   72480 SIC/FO  SINHA A
-  ADDNTL
-   71022 CAPT BRANDT-JENSEN J
-   73425 IRP  TAYLOR K
-IRP
-       MX                              LM
-       ACM                             ACM
-       ACM                             ACM
-       ACM                             ACM
-       ACM                             ACM
-   CIRCLE `
-
-### Implementation and validation outcome (2026-10-06)
-
-The supplied private PDF now extracts `MACDONALD T` / `70388` / `PIC`, `SINHA A` / `72480` / `SIC/FO`, `BRANDT-JENSEN J` / `71022` / `CAPT`, and `TAYLOR K` / `73425` / `IRP`. Regression tests cover competing NOTAM text before and after the release, repeated flattened manifests, bounded source evidence, unheaded false positives, unrelated prose under a crew heading, empty initial manifests, single-member manifests, and the supplied PDF's embedded text. Existing crew extraction tests remain passing.
-
-Through Sail, 30 focused PHPUnit tests passed across `FlightCrewExtractorTest`, `CrewListParserTest`, `ExtractFlightPlanDataTest`, and the crew-containing serialization round trip in `SubdomainDataBuilderTest`. One separate private-PDF characterization test was skipped because its fixture is unavailable. Pint passed; one full Larastan run passed with zero errors. Boost's version-specific documentation search succeeded. Unrelated working-tree changes were preserved.
-
-Previously saved releases must be uploaded/extracted again to replace the stored incorrect crew list. No frontend rebuild is required. The private-PDF regression test reads embedded PDF text; OCR and browser behavior were not separately exercised.
-
-Commit message: `fix: scope crew extraction to the flight release manifest`
-
 ## [x] Completed: FP: Fuel Score: Include TOC, TOD
+## [x] Completed: FP: Missing SIGWX and additional fuel notes
+
 ### Goal
 
-Include source TOC and TOD rows in Fuel Score's waypoint list, in release order, with UTC ETA calculated from Off time and their cumulative duration just like fixes and FIR boundaries.
+Extract all five dispatcher notes from `storage/app/private/flight_releases/CKS024201RJGG.pdf`, including the government SIGWX forecast and additional holding fuel for destination thunderstorms.
 
 ### Current implementation
 
-`WaypointExtractor` now separates TOC/TOD rows within the computed flight plan, preserving source order and each row's TIME, T/TME, TBO, FRMG, and evidence. It handles multiline, CRLF, and flattened text, including markers before the first fix and labels joined to a preceding DSTN value or closing FIR arrow. Explicit marker coordinates are retained; absent coordinates stay null, and departure-field coordinates are not borrowed.
-
-The waypoint DTO, extraction/serialization builders, and calculator payload support null coordinates for TOC/TOD. Builders continue requiring coordinates for fixes and FIR boundaries, and infer the existing phase kinds from TOC/TOD identifiers. Fuel Score's existing waypoint rendering, ETA calculations, and draft storage handle these rows without additional frontend logic.
-
-Classification is centralized in `WaypointKind::fromIdentifier($identifier, $kind)`. The extractor and both builder paths reuse it; the builder's private classifier and the extractor's duplicate TOC/TOD branches were removed. TOC/TOD identifiers take precedence over supplied metadata, valid supplied kinds are retained for other identifiers, and missing, invalid, or non-string kinds fall back to `Fix`.
+`DispatcherNotesExtractor` recognizes both missing headings through the existing bulleted-note parser. It retains source order, joins wrapped bullet text, preserves heading/bullet line breaks, and bounds extraction at the next note, boxed separator, MEL/CDL section, or end of text. Existing ENROUTE SIGWX notes reuse the same parser.
 
 ### Problem
 
-The previous coordinate-only extraction and normalization omitted coordinate-less TOC/TOD, removing useful ETA and fuel comparison points. These rows now use their own cumulative duration and fuel fields. Missing cumulative time retains the calculator's unavailable ETA state; missing fuel remains absent instead of becoming zero or inheriting an adjacent row's data.
+The parser's supported heading patterns omitted `GOVT SIGWX PROG FORECASTS AREAS OF` and `ADDITIONAL FUEL ADDED`, silently returning only the runway, maintenance, and FSA notes. The supplied PDF and four synthetic layout regressions reproduced the omission before the fix.
 
-### Implementation and validation outcome
+### Validation outcome (2026-10-06)
 
-Planned and tagged `Current focus:` before implementation, then completed through Sail. Twenty-one unique focused PHPUnit tests passed across `WaypointExtractorTest`, `SubdomainDataBuilderTest`, and `OfflineFuelScoreTest`; the extractor's twelve tests passed again after adding departure-field coordinate isolation. Twenty-two focused JavaScript tests passed across `waypoint-fuel-monitor.test.js` and `offline-fuel-draft.test.js`. Coverage includes source order, optional coordinates, repeated markers, computed-section/alternate boundaries, null fields and explicit zeroes, JSON round trips, calculator output, UTC midnight rollover, and separate restored inputs for coordinate-less markers. Pint passed and one full Larastan run passed with zero errors. Boost's documentation search was attempted but its remote service was unreachable; official [Laravel 13 HTTP testing documentation](https://laravel.com/framework/docs/http-tests) was used as the fallback.
+Through Sail, all 12 `DispatcherNotesExtractorTest` cases passed, including the supplied PDF's exact five-note result and the existing RJAA, PANC, and KCVG release regressions. The focused extraction orchestration and Notes rendering checks also passed: 14 passing tests and 99 assertions total; one separate private-PDF characterization was skipped because `CKS025625KLAX.pdf` is unavailable. Pint passed, and one full application Larastan run passed with zero errors. Boost's version-specific documentation search succeeded. Unrelated working-tree changes and staging were preserved.
 
-Previously extracted saved releases need their PDF uploaded/extracted again to populate TOC/TOD; the old normalized data cannot reconstruct omitted rows. No frontend asset rebuild is needed for this server-side extraction change. Real browser visual verification was not performed. Unrelated TODO edits were preserved.
+Previously saved releases require uploading/extracting the PDF again to populate the two omitted notes. No frontend rebuild is required.
 
-Commit message: `feat: include TOC and TOD in fuel score waypoint estimates`
+Commit message: `fix: extract government SIGWX and additional fuel dispatcher notes`
 
-Enum follow-up: 35 focused PHPUnit tests passed across `Enums/WaypointKindTest`, `WaypointExtractorTest`, `SubdomainDataBuilderTest`, and `OfflineFuelScoreTest`. New enum tests cover identifier precedence, optional metadata, every valid kind, and malformed values. Pint and one Larastan run passed with zero errors. Boost's version-specific documentation search succeeded for this refactor.
+## [x] Completed: Capture flight-plan test streams
 
-Enum refactor commit message: `refactor: resolve waypoint kinds through the enum`
+### Goal
 
-PDF follow-up (`storage/app/private/flight_releases/CKS024201RJGG.pdf`): the real embedded text joins rows as `0460TOC` and `FIR-> VHHK <-TOD`, with TOD's secondary row on the next page. The previous boundary rule rejected digits and hyphens before a marker, yielding 47 main-leg waypoints and no TOC/TOD. The boundary rule now recognizes completed DSTN fields and closing FIR arrows without splitting ordinary fix identifiers such as `1234TOC`. A regression fixture retains the PDF's actual computed flight plan text and page breaks. The failing-before-fix regression and calculator feature test now verify 49 main-leg rows, TOC between ESPAN/KEC (15 minutes, FRMG `0801`, TBO `0103`), and TOD between VHHK/MAGOG (174 minutes, FRMG `0400`, TBO `0505`). Both coordinates remain null and alternate rows stay excluded.
+Keep Livewire flight-plan progress frames out of PHPUnit console output while preserving progress assertions.
 
-Twenty-one unique focused PHPUnit tests passed across `WaypointExtractorTest` and `OfflineFuelScoreTest`, including the successful real-text regression recheck; fourteen `waypoint-fuel-monitor.test.js` tests passed, including midnight rollover with this PDF's durations. Pint and one Larastan run passed with zero errors. Boost's documentation search succeeded. Previously saved normalized results still require uploading/extracting the PDF again; refreshing the old result alone cannot add omitted rows. Real browser visual verification was not performed. Unrelated crew-task changes and staging were preserved.
+### Current implementation
 
-PDF fix commit message: `fix: extract joined TOC and TOD rows from flight release PDFs`
+The shared flight-plan test case captures output with a callback buffer that absorbs Livewire's explicit flushes and closes in teardown. Extraction tests check captured success and failure progress plus an empty output buffer. Browser streaming remains unchanged.
+
+### Problem
+
+Livewire writes progress frames directly and flushes the buffer, leaking JSON into otherwise passing test output.
+
+### Validation outcome (2026-10-06)
+
+Through Sail, all 41 focused flight-plan Livewire tests passed with 977 assertions and no streamed JSON in console output. The updated extraction test file also passed individually. Pint passed and one full application Larastan run passed with zero errors. Unrelated TODO edits were preserved.
+
+Commit message: `test: capture flight-plan progress streams during Livewire tests`
