@@ -466,14 +466,19 @@ TEXT;
             ->assertSee('DTSTART:20260612T224400Z')
             ->assertSee('DTEND:20260613T011700Z')
             ->assertSee('✈️ FLIGHT DETAILS')
-            ->assertSee('Flight number: G4 368')
-            ->assertSee('AUS - CVG')
+            ->assertSee('Flight: G4 368')
             ->assertDontSee('Origin: AUS')
             ->assertDontSee('Destination: CVG')
-            ->assertSee('Position: DH')
+            ->assertSee('Pos: DH')
             ->assertDontSee('Aircraft:')
             ->assertDontSee('Block time:')
             ->assertDontSee('Raw lines:');
+
+        $ics = $this->unfoldIcs($response->getContent());
+        $this->assertStringContainsString('Route: AUS (KAUS) ➔ CVG (KCVG)', $ics);
+        $this->assertStringContainsString('UTC:   Jun 12 22:44z ➔ Jun 13 01:17z', $ics);
+        $this->assertStringNotContainsString('Origin airport status:', $ics);
+        $this->assertStringNotContainsString('Destination name:', $ics);
     }
 
     public function test_roster_parser_can_export_ics_with_nested_crew_metadata(): void
@@ -499,12 +504,9 @@ TEXT;
 
         $ics = $this->unfoldIcs($response->getContent());
 
-        $this->assertStringContainsString('👥 CREW LOGISTICS', $ics);
-        $this->assertStringContainsString('Crew count: 2', $ics);
-        $this->assertStringContainsString('Operating crew count: 1', $ics);
-        $this->assertStringContainsString('Deadheading crew count: 1', $ics);
-        $this->assertStringContainsString('Jane Doe (FO • CVG • #12345)', $ics);
-        $this->assertStringContainsString('John Smith (DH • AUS • #67890)', $ics);
+        $this->assertStringContainsString('👥 CREW (1 Ops / 1 DH)', $ics);
+        $this->assertStringContainsString('• Jane Doe   │ FO │ CVG │ #12345', $ics);
+        $this->assertStringContainsString('• John Smith │ DH │ AUS │ #67890', $ics);
     }
 
     public function test_per_event_export_uses_stable_download_id_instead_of_filtered_index(): void

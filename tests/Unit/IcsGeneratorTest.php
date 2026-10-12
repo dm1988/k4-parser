@@ -102,7 +102,9 @@ class IcsGeneratorTest extends TestCase
         $this->assertStringContainsString('SUMMARY:CKS 206 CVG-NRT', $unfoldedIcs);
         $this->assertStringContainsString('DTSTART:20260613T093500Z', $unfoldedIcs);
         $this->assertStringContainsString('DTEND:20260613T232500Z', $unfoldedIcs);
-        $this->assertStringContainsString('Flight number: CKS 206', $unfoldedIcs);
+        $this->assertStringContainsString('Flight: CKS 206', $unfoldedIcs);
+        $this->assertStringContainsString('Route: CVG ➔ NRT', $unfoldedIcs);
+        $this->assertStringContainsString('UTC:   Jun 13 09:35z ➔ 23:25z', $unfoldedIcs);
     }
 
     public function test_it_folds_long_unicode_content_lines_without_corrupting_utf8(): void
@@ -152,12 +154,9 @@ class IcsGeneratorTest extends TestCase
 
         $unfoldedIcs = $this->unfold($ics);
 
-        $this->assertStringContainsString('CREW LOGISTICS', $unfoldedIcs);
-        $this->assertStringContainsString('Crew count: 2', $unfoldedIcs);
-        $this->assertStringContainsString('Operating crew count: 1', $unfoldedIcs);
-        $this->assertStringContainsString('Deadheading crew count: 1', $unfoldedIcs);
-        $this->assertStringContainsString('Jane Doe (FO', $unfoldedIcs);
-        $this->assertStringContainsString('John Smith (DH', $unfoldedIcs);
+        $this->assertStringContainsString('👥 CREW (1 Ops / 1 DH)', $unfoldedIcs);
+        $this->assertStringContainsString('• Jane Doe   │ FO │ CVG │ #12345', $unfoldedIcs);
+        $this->assertStringContainsString('• John Smith │ DH │ AUS │ #67890', $unfoldedIcs);
     }
 
     private function unfold(string $ics): string
