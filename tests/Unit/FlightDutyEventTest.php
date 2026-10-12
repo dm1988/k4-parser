@@ -38,6 +38,7 @@ class FlightDutyEventTest extends TestCase
         $this->assertIsArray($event);
         $this->assertSame('Duty', $event['title']);
         $this->assertSame('duty', $event['type']);
+        $this->assertSame('flight_duty', $event['metadata']['duty_type']);
         $this->assertSame('2026-06-26T21:45:00+00:00', $event['start']);
         $this->assertSame('2026-06-27T13:40:00+00:00', $event['end']);
         $this->assertSame('Jun 26 21:45 Z', $event['metadata']['duty_utc_start']);

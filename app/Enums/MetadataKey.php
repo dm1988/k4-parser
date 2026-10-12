@@ -32,6 +32,7 @@ enum MetadataKey: string
     case LocalEnd = 'local_end';
     case Station = 'station';
     case ActivityCode = 'activity_code';
+    case DutyType = 'duty_type';
     case LayoverDuration = 'layover_duration';
     case FlightUtcStart = 'flight_utc_start';
     case FlightUtcEnd = 'flight_utc_end';
@@ -60,6 +61,7 @@ enum MetadataKey: string
             self::TripId => 'Trip ID',
             self::Station => 'Station',
             self::ActivityCode => 'Activity code',
+            self::DutyType => 'Duty type',
             self::LayoverDuration => 'Layover duration',
             self::FlightUtcStart => 'Flight UTC start',
             self::FlightUtcEnd => 'Flight UTC end',

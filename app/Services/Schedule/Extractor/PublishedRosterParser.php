@@ -2,8 +2,10 @@
 
 namespace App\Services\Schedule\Extractor;
 
+use App\Enums\DutyEventType;
 use App\Enums\MetadataKey;
 use App\Services\Clients\AirlineCodeLookupClient;
+use App\Services\Schedule\DutyTypeResolver;
 use App\Services\Schedule\ScheduleAirlineCodes;
 use Illuminate\Support\Carbon;
 
@@ -12,6 +14,7 @@ class PublishedRosterParser
     public function __construct(
         private readonly AirlineCodeLookupClient $airlineCodeLookupClient,
         private readonly ScheduleAirlineCodes $scheduleAirlineCodes,
+        private readonly DutyTypeResolver $dutyTypeResolver,
     ) {}
 
     public function parse(string $text): array
@@ -406,14 +409,17 @@ class PublishedRosterParser
             $end->addDay();
         }
 
+        $dutyType = $this->dutyTypeResolver->resolve($matches[1]);
+
         return $this->calendarEvent(
             type: 'duty',
-            title: "Duty {$matches[2]}",
+            title: $dutyType->label()." {$matches[2]}",
             start: $start,
             end: $end,
             metadata: array_filter([
                 'station' => $matches[2],
                 'activity_code' => $matches[1],
+                'duty_type' => $dutyType->value,
                 'layover_duration' => $times[2] ?? null,
             ], fn (mixed $value): bool => $value !== null && $value !== ''),
         );
@@ -440,7 +446,7 @@ class PublishedRosterParser
         }
 
         return $this->calendarEvent(
-            type: 'flight',
+            type: $deadhead ? 'duty' : 'flight',
             title: trim("{$flightNumber} {$origin}-{$destination}"),
             start: $start,
             end: $end,
@@ -450,6 +456,7 @@ class PublishedRosterParser
                 'destination' => $destination,
                 'aircraft' => $aircraft,
                 'deadhead' => $deadhead,
+                ...($deadhead ? ['duty_type' => DutyEventType::Deadhead->value] : []),
                 'trip_id' => $tripId,
                 'airline_name' => $airlineName,
             ], fn (mixed $value): bool => $value !== null && $value !== ''),

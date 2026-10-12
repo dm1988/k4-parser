@@ -4,9 +4,11 @@ namespace App\Services\Schedule\Extractor;
 
 use App\DTOs\Flight;
 use App\Enums\CrewPosition;
+use App\Enums\DutyEventType;
 use App\Enums\ScheduleEventType;
 use App\Mappers\FlightMapper;
 use App\Services\Clients\AirlineCodeLookupClient;
+use App\Services\Schedule\DutyTypeResolver;
 use App\Services\Schedule\ScheduleAirlineCodes;
 use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Support\Carbon;
@@ -22,6 +24,7 @@ class TripInformationParser
         private readonly ScheduleAirlineCodes $scheduleAirlineCodes,
         private readonly TripInformationSections $sections,
         private readonly TripDutyFlightContext $dutyFlightContext,
+        private readonly DutyTypeResolver $dutyTypeResolver,
     ) {}
 
     public function parse(string $text): array
@@ -136,15 +139,20 @@ class TripInformationParser
 
         $activityCode = $flightNumber;
         $aircraft = $this->detectAircraft([$lineData]);
-        $isDeadhead = str_contains(strtoupper($lineData), ' DH ');
+        $dutyType = $this->dutyTypeResolver->resolve($activityCode.' '.$lineData);
+        $isDeadhead = $dutyType === DutyEventType::Deadhead;
         $commercialDeadhead = $this->resolveCommercialDeadhead($flightNumber, $isDeadhead, $aircraft);
         $flightNumber = $commercialDeadhead['flight_number'];
-        $type = $this->activityEventType($activityCode, $isDeadhead)->value;
-        $title = "{$origin} - {$destination} ({$flightNumber})";
+        $type = $this->activityEventType($activityCode, $dutyType)->value;
+        $isFlight = $type === ScheduleEventType::Flight->value || $isDeadhead;
+        $title = $isFlight
+            ? "{$origin} - {$destination} ({$flightNumber})"
+            : ($type === ScheduleEventType::Duty->value ? $dutyType->label() : ScheduleEventType::fromValue($type)->label())." {$origin}";
 
         return $this->calendarEvent($type, $title, $start, $end, [
-            'flight_number' => $flightNumber,
+            ...($isFlight ? ['flight_number' => $flightNumber] : []),
             'activity_code' => $activityCode,
+            ...($type === ScheduleEventType::Duty->value ? ['duty_type' => $dutyType->value] : []),
             'station' => $origin,
             'origin' => $origin,
             'destination' => $destination,
@@ -154,17 +162,13 @@ class TripInformationParser
         ]);
     }
 
-    private function activityEventType(string $activityCode, bool $isDeadhead): ScheduleEventType
+    private function activityEventType(string $activityCode, DutyEventType $dutyType): ScheduleEventType
     {
-        if ($isDeadhead) {
-            return ScheduleEventType::Deadhead;
+        if (strtoupper($activityCode) === '1IN7') {
+            return ScheduleEventType::OneInSeven;
         }
 
-        return match (strtoupper($activityCode)) {
-            '1IN7' => ScheduleEventType::OneInSeven,
-            'R2' => ScheduleEventType::Duty,
-            default => ScheduleEventType::Flight,
-        };
+        return $dutyType === DutyEventType::GeneralDuty ? ScheduleEventType::Flight : ScheduleEventType::Duty;
     }
 
     private function parseDateRangeDetailBlock(array $block, array $monthYears, int $defaultYear): ?array
@@ -182,9 +186,13 @@ class TripInformationParser
 
         $body = array_values(array_filter(array_slice($block, 1), fn (string $line): bool => $line !== ''));
         $joinedBody = implode(' ', $body);
+        $assignmentText = preg_split('/\b(?:Crew list|Duty LT|Leg LT|Customer)\b/i', $joinedBody, 2)[0] ?? '';
+        $assignmentType = $this->dutyTypeResolver->resolve($assignmentText);
 
         if ($route = $this->extractFlightRoute($body)) {
-            return $this->parseFlightDetailBlock($body, $route, $start, $end);
+            if (! in_array($assignmentType, [DutyEventType::ReserveR1, DutyEventType::ReserveR2, DutyEventType::ReserveR4, DutyEventType::Training], true)) {
+                return $this->parseFlightDetailBlock($body, $route, $start, $end);
+            }
         }
 
         if ($layover = $this->extractLayover($body)) {
@@ -199,6 +207,27 @@ class TripInformationParser
                     'raw_lines' => $body,
                 ],
             );
+        }
+
+        $assignmentText = preg_split('/\bCrew list\b/i', $joinedBody, 2)[0] ?? '';
+        $dutyType = in_array($assignmentType, [DutyEventType::ReserveR1, DutyEventType::ReserveR2, DutyEventType::ReserveR4, DutyEventType::Training], true)
+            ? $assignmentType
+            : $this->dutyTypeResolver->resolve($assignmentText);
+        $station = $route['origin'] ?? $this->extractDutyStation($body);
+
+        if ($dutyType !== DutyEventType::GeneralDuty) {
+            $crewSummary = $this->crewListParser->parseWithSummary($body);
+
+            return $this->calendarEvent('duty', trim($dutyType->label().' '.$station), $start, $end, array_filter([
+                'duty_type' => $dutyType->value,
+                'activity_code' => $dutyType->value,
+                'station' => $station,
+                'crew_count' => $crewSummary['crew_count'],
+                'operating_crew_count' => $crewSummary['operating_crew_count'],
+                'deadheading_crew_count' => $crewSummary['deadheading_crew_count'],
+                'crew' => $crewSummary['crew'] !== [] ? $crewSummary['crew'] : null,
+                'raw_lines' => $body,
+            ], fn (mixed $value): bool => $value !== null));
         }
 
         if (preg_match('/\bCrew list\b/i', $joinedBody)) {
@@ -227,9 +256,32 @@ class TripInformationParser
                 $end,
                 [
                     'station' => $matches[1],
+                    'duty_type' => DutyEventType::GeneralDuty->value,
                     'raw_lines' => $body,
                 ],
             );
+        }
+
+        return null;
+    }
+
+    /** @param list<string> $body */
+    private function extractDutyStation(array $body): ?string
+    {
+        foreach ($body as $line) {
+            if (preg_match('/\b([A-Z]{3})\s+\1\b/', $line, $matches) === 1) {
+                return $matches[1];
+            }
+        }
+
+        foreach ($body as $line) {
+            if (preg_match('/\b(?:R1|R2|R4|SIM|TRNG|TRAINING|DH|DEADHEAD)\s+([A-Z]{3})\b/i', $line, $matches) === 1) {
+                return strtoupper($matches[1]);
+            }
+
+            if (preg_match('/^([A-Z]{3})$/', $line, $matches) === 1) {
+                return $matches[1];
+            }
         }
 
         return null;
@@ -255,7 +307,7 @@ class TripInformationParser
         $localTimes = $this->dutyFlightContext->extractFlightLocalTimes($body);
 
         return $this->calendarEvent(
-            $isDeadhead ? ScheduleEventType::Deadhead->value : ScheduleEventType::Flight->value,
+            $isDeadhead ? ScheduleEventType::Duty->value : ScheduleEventType::Flight->value,
             trim(($flightNumber ? "{$flightNumber} " : '')."{$route['origin']}-{$route['destination']}"),
             $start,
             $end,
@@ -274,6 +326,7 @@ class TripInformationParser
                 'deadheading_crew_count' => $crewSummary['deadheading_crew_count'],
                 'crew' => $crewSummary['crew'] !== [] ? $crewSummary['crew'] : null,
                 'deadhead' => $isDeadhead,
+                ...($isDeadhead ? ['duty_type' => DutyEventType::Deadhead->value] : []),
                 'airline_name' => $commercialDeadhead['airline_name'],
                 'raw_lines' => $body,
                 'duty_raw_lines' => $dutyRawLines !== [] ? $dutyRawLines : null,

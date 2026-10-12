@@ -5,6 +5,7 @@ namespace Tests\Unit\View\Models;
 use App\DTOs\DutyEvent;
 use App\DTOs\ExtractedResultData;
 use App\DTOs\Flight;
+use App\Enums\DutyEventType;
 use App\Enums\ScheduleEventType;
 use App\Services\Infrastructure\EngineResultCache;
 use App\View\Models\Extract\ExtractPageViewModel;
@@ -42,6 +43,8 @@ class ExtractPageViewModelTest extends TestCase
                     'metadata' => [
                         'tail_number' => 'hl1234',
                         'deadhead' => true,
+                        'origin' => 'ICN',
+                        'destination' => 'NRT',
                     ],
                 ]],
             ],
@@ -58,9 +61,9 @@ class ExtractPageViewModelTest extends TestCase
             $viewModel->result->exportUrl
         );
         $this->assertCount(1, $viewModel->result->events);
-        $this->assertSame(ScheduleEventType::Deadhead->value, $viewModel->result->events[0]->type);
-        $this->assertSame(ScheduleEventType::Deadhead->label(), $viewModel->result->events[0]->typeLabel);
-        $this->assertSame(ScheduleEventType::Deadhead->icon(), $viewModel->result->events[0]->typeIcon);
+        $this->assertSame(ScheduleEventType::Duty->value, $viewModel->result->events[0]->type);
+        $this->assertSame(DutyEventType::Deadhead->label(), $viewModel->result->events[0]->typeLabel);
+        $this->assertSame(DutyEventType::Deadhead->icon(), $viewModel->result->events[0]->typeIcon);
         $this->assertSame('Jun 15 • 9:00 AM - 11:30 AM', $viewModel->result->events[0]->scheduleLabel);
         $this->assertSame('2h 30m', $viewModel->result->events[0]->durationLabel);
         $this->assertSame('HL1234', $viewModel->result->events[0]->tailNumber);

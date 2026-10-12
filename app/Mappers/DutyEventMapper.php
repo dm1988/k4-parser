@@ -3,6 +3,7 @@
 namespace App\Mappers;
 
 use App\DTOs\DutyEvent;
+use App\Enums\DutyEventType;
 use App\Enums\MetadataKey;
 use App\Enums\ScheduleEventType;
 use App\ValueObjects\StringList;
@@ -12,13 +13,15 @@ final class DutyEventMapper
 {
     public function fromCalendarEvent(array $event, ?string $downloadId = null): ?DutyEvent
     {
-        $eventType = ScheduleEventType::fromValue((string) ($event['type'] ?? null));
+        $eventType = ScheduleEventType::fromEvent($event);
 
         if ($eventType !== ScheduleEventType::Duty) {
             return null;
         }
 
         $metadata = is_array($event['metadata'] ?? null) ? $event['metadata'] : [];
+        $dutyType = DutyEventType::fromEvent($event);
+        $metadata[MetadataKey::DutyType->value] = $dutyType->value;
         $start = $this->nullableString($event, 'start');
         $end = $this->nullableString($event, 'end');
         [$scheduleLabel, $durationLabel] = $this->buildTimeLabels(
@@ -31,13 +34,13 @@ final class DutyEventMapper
         return new DutyEvent(
             title: (string) ($event['title'] ?? 'Untitled event'),
             type: $eventType->value,
-            typeLabel: (string) ($event['typeLabel'] ?? $event['type_label'] ?? $eventType->label()),
-            typeDescription: (string) ($event['typeDescription'] ?? $event['type_description'] ?? $eventType->description()),
-            typeIcon: (string) ($event['typeIcon'] ?? $event['type_icon'] ?? $eventType->icon()),
+            typeLabel: $dutyType->label(),
+            typeDescription: $dutyType->description(),
+            typeIcon: $dutyType->icon(),
             scheduleLabel: $scheduleLabel,
             durationLabel: $durationLabel,
-            isDeadhead: (bool) ($metadata[MetadataKey::Deadhead->value] ?? $event['is_deadhead'] ?? false),
-            badgeColor: (string) ($event['badgeColor'] ?? $event['badge_color'] ?? $eventType->badgeColor()),
+            isDeadhead: $dutyType === DutyEventType::Deadhead,
+            badgeColor: $dutyType->badgeColor(),
             downloadUrl: (string) ($metadata[MetadataKey::DownloadUrl->value] ?? $event['download_url'] ?? ''),
             downloadId: $downloadId ?? $this->nullableString($event, MetadataKey::DownloadId->value),
             station: $this->nullableString($metadata, MetadataKey::Station->value),
@@ -51,6 +54,7 @@ final class DutyEventMapper
             timezone: $this->nullableString($event, 'timezone'),
             rawLines: $this->stringList($metadata[MetadataKey::RawLines->value] ?? []),
             metadata: $metadata,
+            dutyType: $dutyType,
         );
     }
 

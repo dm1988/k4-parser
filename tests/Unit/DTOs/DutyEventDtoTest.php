@@ -3,7 +3,9 @@
 namespace Tests\Unit\DTOs;
 
 use App\DTOs\DutyEvent;
+use App\Enums\DutyEventType;
 use App\Mappers\DutyEventMapper;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class DutyEventDtoTest extends TestCase
@@ -29,7 +31,8 @@ class DutyEventDtoTest extends TestCase
         ]);
 
         $this->assertNotNull($dto);
-        $this->assertSame('Duty', $dto->typeLabel);
+        $this->assertSame('R2', $dto->typeLabel);
+        $this->assertSame(DutyEventType::ReserveR2, $dto->dutyType);
         $this->assertSame('CVG', $dto->station);
         $this->assertSame('R2', $dto->activityCode);
         $this->assertSame('2:00', $dto->layoverDuration);
@@ -57,7 +60,7 @@ class DutyEventDtoTest extends TestCase
             ],
         ]);
 
-        $this->assertSame('Duty', $dto->typeLabel);
+        $this->assertSame('R2', $dto->typeLabel);
         $this->assertSame('ANC', $dto->station);
         $this->assertSame('R2', $dto->activityCode);
         $this->assertSame(3, $dto->operatingCrewCount);
@@ -74,5 +77,46 @@ class DutyEventDtoTest extends TestCase
 
         $this->assertNotNull($dto);
         $this->assertSame('1h 0m', $dto->durationLabel);
+    }
+
+    #[DataProvider('dutyTypes')]
+    public function test_duty_badges_survive_serialization_and_download_updates(DutyEventType $dutyType): void
+    {
+        $dto = app(DutyEventMapper::class)->fromCalendarEvent([
+            'title' => $dutyType->label().' LAX',
+            'type' => 'duty',
+            'metadata' => ['duty_type' => $dutyType->value, 'station' => 'LAX'],
+        ]);
+        $this->assertNotNull($dto);
+
+        $restored = DutyEvent::fromArray($dto->toArray())->withDownloadId('event-id')->withDownloadUrl('/export');
+
+        $this->assertSame($dutyType, $restored->dutyType);
+        $this->assertSame('duty', $restored->type);
+        $this->assertSame($dutyType->label(), $restored->typeLabel);
+        $this->assertSame($dutyType->badgeColor(), $restored->badgeColor);
+        $this->assertSame($dutyType->value, $restored->metadata['duty_type']);
+        $this->assertSame('event-id', $restored->downloadId);
+        $this->assertSame('/export', $restored->downloadUrl);
+    }
+
+    public static function dutyTypes(): array
+    {
+        return array_map(static fn (DutyEventType $type): array => [$type], DutyEventType::cases());
+    }
+
+    public function test_it_normalizes_legacy_training_and_unknown_duty_payloads(): void
+    {
+        $training = DutyEvent::fromArray(['type' => 'training']);
+        $this->assertSame('duty', $training->type);
+        $this->assertSame(DutyEventType::Training, $training->dutyType);
+        $this->assertSame('Training', $training->typeLabel);
+        $this->assertSame(DutyEventType::GeneralDuty, DutyEvent::fromArray(['duty_type' => 'invalid'])->dutyType);
+    }
+
+    public function test_it_reads_legacy_meta_and_camel_case_duty_type_fields(): void
+    {
+        $this->assertSame(DutyEventType::ReserveR4, DutyEvent::fromArray(['meta' => ['activity_code' => 'R4']])->dutyType);
+        $this->assertSame(DutyEventType::Training, DutyEvent::fromArray(['dutyType' => 'training'])->dutyType);
     }
 }

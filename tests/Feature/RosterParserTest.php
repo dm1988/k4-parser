@@ -15,6 +15,48 @@ class RosterParserTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_calendar_filters_group_reserve_training_and_deadhead_under_duty(): void
+    {
+        $text = <<<'TEXT'
+October 2026
+Details
+Oct 10 07:00 - Oct 10 15:00
+R2 LAX
+Oct 11 07:00 - Oct 11 15:00
+TRNG LAX
+Oct 12 07:00 - Oct 12 09:00
+UA 123
+LAX - AUS | DH 2:00h
+Oct 13 07:00 - Oct 13 09:00
+K4 240
+LAX - AUS | FO 77X 2:00h
+TEXT;
+        $this->extractRoster($text);
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+
+        $this->get(route('parse.export', ['parse_key' => $parseKey, 'event_types' => ['duty']]))
+            ->assertOk()
+            ->assertSee('SUMMARY:R2 LAX')
+            ->assertSee('SUMMARY:Training LAX')
+            ->assertSee('SUMMARY:UA 123 LAX-AUS')
+            ->assertDontSee('SUMMARY:CKS 240 LAX-AUS');
+
+        $this->get(route('parse.export', ['parse_key' => $parseKey, 'event_types' => ['flight']]))
+            ->assertOk()
+            ->assertSee('SUMMARY:CKS 240 LAX-AUS')
+            ->assertDontSee('SUMMARY:R2 LAX')
+            ->assertDontSee('SUMMARY:Training LAX')
+            ->assertDontSee('SUMMARY:UA 123 LAX-AUS');
+
+        $this->extractRoster($text, ['flight']);
+        $flightKey = session('latest_parse_key');
+        $this->assertIsString($flightKey);
+        $flights = Cache::get($this->cacheKeyForSession($flightKey));
+        $this->assertCount(1, $flights['parsed']['calendar_events']);
+        $this->assertSame('flight', $flights['parsed']['calendar_events'][0]['type']);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -77,7 +119,7 @@ TEXT;
         $this->assertSame('FO', $parsed['trip']['position']);
         $this->assertCount(4, $parsed['calendar_events']);
         $this->assertIsString($parsed['calendar_events'][0]['download_id'] ?? null);
-        $this->assertSame('deadhead', $parsed['calendar_events'][0]['type']);
+        $this->assertSame('duty', $parsed['calendar_events'][0]['type']);
         $this->assertSame('G4 368', $parsed['calendar_events'][0]['metadata']['flight_number']);
         $this->assertSame('Allegiant Air', $parsed['calendar_events'][0]['metadata']['airline_name']);
         $this->assertSame('AUS', $parsed['calendar_events'][0]['metadata']['origin']);
@@ -109,16 +151,17 @@ CVG
 2:00
 TEXT;
 
-        $this->extractRoster($text, ['flight']);
+        $this->extractRoster($text, ['duty']);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);
 
         $result = Cache::get($this->cacheKeyForSession($parseKey));
         $this->assertIsArray($result);
-        $this->assertCount(1, $result['parsed']['calendar_events']);
+        $this->assertCount(2, $result['parsed']['calendar_events']);
         $this->assertIsString($result['parsed']['calendar_events'][0]['download_id'] ?? null);
-        $this->assertSame('deadhead', $result['parsed']['calendar_events'][0]['type']);
+        $this->assertSame('duty', $result['parsed']['calendar_events'][0]['type']);
+        $this->assertSame('deadhead', $result['parsed']['calendar_events'][0]['metadata']['duty_type']);
     }
 
     public function test_roster_parser_handles_noisy_image_ocr_output(): void
@@ -165,7 +208,7 @@ TEXT;
         $events = $result['parsed']['calendar_events'];
 
         $this->assertCount(6, $events);
-        $this->assertSame('deadhead', $events[0]['type']);
+        $this->assertSame('duty', $events[0]['type']);
         $this->assertIsString($events[0]['download_id'] ?? null);
         $this->assertSame('G4 368', $events[0]['metadata']['flight_number']);
         $this->assertSame('Allegiant Air', $events[0]['metadata']['airline_name']);
@@ -479,7 +522,7 @@ TEXT;
         6:18h
         TEXT;
 
-        $this->extractRoster($text, ['flight']);
+        $this->extractRoster($text, ['duty']);
 
         $parseKey = session('latest_parse_key');
         $this->assertIsString($parseKey);

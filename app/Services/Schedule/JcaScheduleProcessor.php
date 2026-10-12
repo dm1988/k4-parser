@@ -324,19 +324,11 @@ class JcaScheduleProcessor
 
     private function eventType(mixed $event): string
     {
-        $eventType = $event instanceof ExtractedEventDTO
-            ? ScheduleEventType::fromValue($event->type)
-            : (is_array($event) ? ScheduleEventType::fromEvent($event) : ScheduleEventType::Unknown);
-
-        if ($eventType->isFlightLike()) {
-            return ScheduleEventType::Flight->value;
-        }
-
         if ($event instanceof ExtractedEventDTO) {
-            return $event->type;
+            $event = $event->toArray();
         }
 
-        return is_array($event) ? (string) ($event['type'] ?? '') : '';
+        return is_array($event) ? ScheduleEventType::fromEvent($event)->value : '';
     }
 
     private function parserType(string $source, ?string $documentType): string

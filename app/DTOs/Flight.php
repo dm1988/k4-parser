@@ -2,6 +2,9 @@
 
 namespace App\DTOs;
 
+use App\Enums\DutyEventType;
+use App\Enums\ScheduleEventType;
+
 final readonly class Flight extends ExtractedEventDTO
 {
     public function __construct(
@@ -56,19 +59,24 @@ final readonly class Flight extends ExtractedEventDTO
     {
         $metadata = self::metadataFrom($data);
         $schedule = is_array($data['schedule'] ?? null) ? $data['schedule'] : [];
+        $isDeadhead = DutyEventType::fromEvent($data) === DutyEventType::Deadhead;
+
+        if ($isDeadhead) {
+            $metadata['duty_type'] = DutyEventType::Deadhead->value;
+        }
 
         return new self(
             title: self::stringOrDefault($data, 'title'),
-            type: self::stringOrDefault($data, 'type', default: 'flight'),
-            typeLabel: self::stringOrDefault($data, 'typeLabel', 'type_label'),
-            typeDescription: self::stringOrDefault($data, 'typeDescription', 'type_description'),
-            typeIcon: self::stringOrDefault($data, 'typeIcon', 'type_icon'),
+            type: $isDeadhead ? ScheduleEventType::Duty->value : self::stringOrDefault($data, 'type', default: 'flight'),
+            typeLabel: $isDeadhead ? DutyEventType::Deadhead->label() : self::stringOrDefault($data, 'typeLabel', 'type_label'),
+            typeDescription: $isDeadhead ? DutyEventType::Deadhead->description() : self::stringOrDefault($data, 'typeDescription', 'type_description'),
+            typeIcon: $isDeadhead ? DutyEventType::Deadhead->icon() : self::stringOrDefault($data, 'typeIcon', 'type_icon'),
             scheduleLabel: self::stringOrDefault($data, 'scheduleLabel', 'schedule_label'),
             durationLabel: self::stringOrDefault($data, 'durationLabel', 'duration_label'),
             tailNumber: self::nullableString($data, 'tailNumber', 'tail_number') ?? self::nullableString($metadata, 'tail_number'),
             schedule: ScheduleData::fromArray([...$metadata, ...$data, ...$schedule]),
-            isDeadhead: self::boolOrDefault($data, 'isDeadhead', 'is_deadhead'),
-            badgeColor: self::stringOrDefault($data, 'badgeColor', 'badge_color'),
+            isDeadhead: $isDeadhead,
+            badgeColor: $isDeadhead ? DutyEventType::Deadhead->badgeColor() : self::stringOrDefault($data, 'badgeColor', 'badge_color'),
             downloadUrl: self::stringOrDefault($data, 'downloadUrl', 'download_url'),
             downloadId: self::nullableString($data, 'downloadId', 'download_id'),
             flightNumber: self::nullableString($data, 'flightNumber', 'flight_number') ?? self::nullableString($metadata, 'flight_number'),

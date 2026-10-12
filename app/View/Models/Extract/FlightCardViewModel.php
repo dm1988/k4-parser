@@ -20,7 +20,7 @@ readonly class FlightCardViewModel
 
     public function heading(): string
     {
-        if (ScheduleEventType::fromValue($this->flight->type)->isFlightLike() && $this->flight->flightNumber) {
+        if (($this->flight->type === ScheduleEventType::Flight->value || $this->flight->isDeadhead) && $this->flight->flightNumber) {
             return $this->flight->flightNumber;
         }
 

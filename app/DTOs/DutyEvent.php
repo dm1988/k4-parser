@@ -2,6 +2,9 @@
 
 namespace App\DTOs;
 
+use App\Enums\DutyEventType;
+use App\Enums\ScheduleEventType;
+
 final readonly class DutyEvent extends ExtractedEventDTO
 {
     public function __construct(
@@ -27,6 +30,7 @@ final readonly class DutyEvent extends ExtractedEventDTO
         ?string $timezone = null,
         public array $rawLines = [],
         array $metadata = [],
+        public DutyEventType $dutyType = DutyEventType::GeneralDuty,
     ) {
         parent::__construct(
             title: $title,
@@ -50,17 +54,19 @@ final readonly class DutyEvent extends ExtractedEventDTO
     public static function fromArray(array $data): self
     {
         $metadata = self::metadataFrom($data);
+        $dutyType = DutyEventType::fromEvent($data);
+        $metadata['duty_type'] = $dutyType->value;
 
         return new self(
             title: self::stringOrDefault($data, 'title'),
-            type: self::stringOrDefault($data, 'type', default: 'duty'),
-            typeLabel: self::stringOrDefault($data, 'typeLabel', 'type_label'),
-            typeDescription: self::stringOrDefault($data, 'typeDescription', 'type_description'),
-            typeIcon: self::stringOrDefault($data, 'typeIcon', 'type_icon'),
+            type: ScheduleEventType::Duty->value,
+            typeLabel: $dutyType->label(),
+            typeDescription: $dutyType->description(),
+            typeIcon: $dutyType->icon(),
             scheduleLabel: self::stringOrDefault($data, 'scheduleLabel', 'schedule_label'),
             durationLabel: self::stringOrDefault($data, 'durationLabel', 'duration_label'),
-            isDeadhead: self::boolOrDefault($data, 'isDeadhead', 'is_deadhead'),
-            badgeColor: self::stringOrDefault($data, 'badgeColor', 'badge_color'),
+            isDeadhead: $dutyType === DutyEventType::Deadhead,
+            badgeColor: $dutyType->badgeColor(),
             downloadUrl: self::stringOrDefault($data, 'downloadUrl', 'download_url'),
             downloadId: self::nullableString($data, 'downloadId', 'download_id'),
             station: self::nullableString($data, 'station') ?? self::nullableString($metadata, 'station'),
@@ -74,6 +80,7 @@ final readonly class DutyEvent extends ExtractedEventDTO
             timezone: self::nullableString($data, 'timezone'),
             rawLines: self::stringList($data['rawLines'] ?? $data['raw_lines'] ?? $metadata['raw_lines'] ?? []),
             metadata: $metadata,
+            dutyType: $dutyType,
         );
     }
 
@@ -82,6 +89,8 @@ final readonly class DutyEvent extends ExtractedEventDTO
         return [
             ...$this->baseArray(),
             'station' => $this->station,
+            'dutyType' => $this->dutyType->value,
+            'duty_type' => $this->dutyType->value,
             'activityCode' => $this->activityCode,
             'layoverDuration' => $this->layoverDuration,
             'crewCount' => $this->crewCount,
@@ -122,6 +131,7 @@ final readonly class DutyEvent extends ExtractedEventDTO
             timezone: $this->timezone,
             rawLines: $this->rawLines,
             metadata: $this->metadata,
+            dutyType: $this->dutyType,
         );
     }
 
@@ -150,6 +160,7 @@ final readonly class DutyEvent extends ExtractedEventDTO
             timezone: $this->timezone,
             rawLines: $this->rawLines,
             metadata: $this->metadata,
+            dutyType: $this->dutyType,
         );
     }
 }

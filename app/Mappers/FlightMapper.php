@@ -4,6 +4,7 @@ namespace App\Mappers;
 
 use App\DTOs\Flight;
 use App\DTOs\ScheduleData;
+use App\Enums\DutyEventType;
 use App\Enums\MetadataKey;
 use App\Enums\ScheduleEventType;
 use App\ValueObjects\StringList;
@@ -15,11 +16,17 @@ final class FlightMapper
     {
         $eventType = ScheduleEventType::fromEvent($event);
 
-        if (! $eventType->isFlightLike()) {
+        if (! ScheduleEventType::isFlightEvent($event)) {
             return null;
         }
 
+        $badgeType = $eventType === ScheduleEventType::Duty ? DutyEventType::fromEvent($event) : $eventType;
+
         $metadata = is_array($event['metadata'] ?? null) ? $event['metadata'] : [];
+
+        if ($eventType === ScheduleEventType::Duty) {
+            $metadata[MetadataKey::DutyType->value] = DutyEventType::Deadhead->value;
+        }
         $start = $this->nullableString($event, 'start');
         $end = $this->nullableString($event, 'end');
         [$scheduleLabel, $durationLabel] = $this->buildTimeLabels(
@@ -32,9 +39,9 @@ final class FlightMapper
         return new Flight(
             title: (string) ($event['title'] ?? 'Untitled event'),
             type: $eventType->value,
-            typeLabel: (string) ($event['typeLabel'] ?? $event['type_label'] ?? $eventType->label()),
-            typeDescription: (string) ($event['typeDescription'] ?? $event['type_description'] ?? $eventType->description()),
-            typeIcon: (string) ($event['typeIcon'] ?? $event['type_icon'] ?? $eventType->icon()),
+            typeLabel: $badgeType->label(),
+            typeDescription: $badgeType->description(),
+            typeIcon: $badgeType->icon(),
             scheduleLabel: $scheduleLabel,
             durationLabel: $durationLabel,
             tailNumber: $this->normalizeTailNumber(
@@ -53,8 +60,8 @@ final class FlightMapper
                 slotTimesUtc: $this->stringList($metadata[MetadataKey::SlotTimesUtc->value] ?? []),
                 slotTimesLocal: $this->stringList($metadata[MetadataKey::SlotTimesLocal->value] ?? []),
             ),
-            isDeadhead: (bool) ($metadata[MetadataKey::Deadhead->value] ?? $event['is_deadhead'] ?? false),
-            badgeColor: (string) ($event['badgeColor'] ?? $event['badge_color'] ?? $eventType->badgeColor()),
+            isDeadhead: $badgeType === DutyEventType::Deadhead,
+            badgeColor: $badgeType->badgeColor(),
             downloadUrl: (string) ($metadata[MetadataKey::FlightawareUrl->value] ?? $metadata[MetadataKey::DownloadUrl->value] ?? $event['download_url'] ?? ''),
             downloadId: $downloadId ?? $this->nullableString($event, MetadataKey::DownloadId->value),
             flightNumber: $this->nullableString($metadata, MetadataKey::FlightNumber->value),

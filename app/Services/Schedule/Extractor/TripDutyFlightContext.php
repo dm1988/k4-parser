@@ -2,6 +2,7 @@
 
 namespace App\Services\Schedule\Extractor;
 
+use App\Enums\DutyEventType;
 use App\Enums\ScheduleEventType;
 use Illuminate\Support\Carbon;
 
@@ -37,6 +38,10 @@ class TripDutyFlightContext
             return false;
         }
 
+        if (! in_array(DutyEventType::fromEvent($event), [DutyEventType::GeneralDuty, DutyEventType::FlightDuty], true)) {
+            return false;
+        }
+
         $rawLines = data_get($event, 'metadata.raw_lines');
 
         if (! is_array($rawLines) || $rawLines === []) {
@@ -58,7 +63,7 @@ class TripDutyFlightContext
         $dutyEnd = Carbon::parse($dutyEvent['end']);
 
         foreach ($events as $index => $event) {
-            if (! ScheduleEventType::fromEvent($event)->isFlightLike()) {
+            if (! ScheduleEventType::isFlightEvent($event)) {
                 continue;
             }
 

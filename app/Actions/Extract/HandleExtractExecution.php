@@ -81,11 +81,10 @@ class HandleExtractExecution
 
         foreach ($events as $event) {
             $eventCount++;
-            $type = $event instanceof ExtractedEventDTO
-                ? ScheduleEventType::fromValue($event->type)
-                : (is_array($event) ? ScheduleEventType::fromEvent($event) : ScheduleEventType::Unknown);
+            $eventData = $event instanceof ExtractedEventDTO ? $event->toArray() : (is_array($event) ? $event : []);
+            $type = ScheduleEventType::fromEvent($eventData);
 
-            if ($type->isFlightLike()) {
+            if (ScheduleEventType::isFlightEvent($eventData)) {
                 $flightCount++;
             }
 

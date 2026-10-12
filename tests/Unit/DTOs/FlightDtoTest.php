@@ -96,7 +96,7 @@ class FlightDtoTest extends TestCase
         ]);
 
         $this->assertNotNull($dto);
-        $this->assertSame('deadhead', $dto->type);
+        $this->assertSame('duty', $dto->type);
         $this->assertTrue($dto->isDeadhead);
         $this->assertSame('CKS 240', $dto->flightNumber);
     }
@@ -137,7 +137,7 @@ class FlightDtoTest extends TestCase
             ],
         ]);
 
-        $this->assertSame('Flight', $dto->typeLabel);
+        $this->assertSame('Deadhead', $dto->typeLabel);
         $this->assertTrue($dto->isDeadhead);
         $this->assertSame('CKS 206', $dto->flightNumber);
         $this->assertSame('13:50h', $dto->schedule->blockDuration);

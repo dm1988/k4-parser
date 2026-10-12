@@ -28,85 +28,31 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Schedule: R2 status determine
-Currently: Duty types are not distingushed. $activityCode is mapped to $flightNumber. Training is an event type and no duty types are established. 
-ScheduleEventTypes include:
-- Flight
-- Duty
-- Deadhead
-- Layover
-- Off
-- Training
-- 1in7
-- Unknown
+## [x] Completed: Schedule: R2 status determine
 
-Goals: 
-1. Consolidate event classifications so Duty acts as the umbrella event type for operational duties (including Deadhead, Training, and Reserve assignments).
+### Goal
 
-2. Implement context-aware text extraction in TripInformationParser to classify specific DutyEventType options (e.g., R1, R2, R4, Training, Deadhead, FlightDuty).
+Use Duty as the umbrella event type for reserve, training, and deadhead assignments, classify specific duties from assignment context, and replace generic Duty badges with R1, R2, R4, or Training where supported.
 
-3. Display context-specific UI badges (R1, R2, R4, Training) on duty cards instead of the generic Duty badge.
+### Current implementation
 
-Implementation:
-1. ScheduleEventTypes to migrate to Duty Event Type:
-- Deadhead
-- Training
+- `DutyEventType` represents FlightDuty, Deadhead, Training, ReserveR1, ReserveR2, ReserveR4, and GeneralDuty. `ScheduleEventType` retains Flight, Duty, Layover, Off, 1in7, and Unknown; legacy deadhead/training values normalize to Duty.
+- `DutyTypeResolver` recognizes reserve codes, training keywords, deadhead markers, and flight-duty context. `TripInformationParser` applies it to both tabular and date-range formats, keeps assignment activity codes out of flight-number metadata, and produces `R2 LAX` from the supplied noisy R2 text with LAX station context. Published-roster reserve assignments use the same resolver.
+- Duty cards show subtype labels and colors with light/dark variants: amber R1, indigo R2, purple R4, blue Training, slate Deadhead/GeneralDuty, and green FlightDuty. Duty subtype metadata and typed duty DTOs survive serialization and download updates.
+- Route-bearing deadheads retain their flight-card route, flight number, airline, timing, and calendar download details. Assignment classification excludes crew-list context; an operating flight remains a flight when a crew member is deadheading. Reserve and training duties remain separate from overlapping flights.
+- Extraction and calendar filters include reserve, training, and deadheads under **Duties only**. **Flights only** includes operating flights. Existing legacy deadhead and training payloads still load; saved results missing assignment evidence require re-extraction to obtain newly supported classifications.
 
+### Problem
 
-2. Introduce DutyEventType Enum
-Create a dedicated enum to represent granular duty classifications:
+R2 had only a generic Duty badge, while other reserve/training assignments could be parsed as flights. Activity codes were stored as flight numbers, and deadhead/training classifications were separate event types rather than duty subtypes.
 
-```php
-enum DutyEventType: string
-{
-    case FlightDuty = 'flight_duty';
-    case Deadhead = 'deadhead';
-    case Training = 'training';
-    case ReserveR1 = 'R1';
-    case ReserveR2 = 'R2';
-    case ReserveR4 = 'R4';
-    case GeneralDuty = 'duty';
-```
+### Validation outcome (2026-10-12)
 
-ScheduleEventType that are currently classified as deadhead and training will be encompassed within duty. 
+Through Sail, all 161 focused resolver, parser, DTO, view-model, card-rendering, calendar-export, Livewire schedule, and extraction-logging tests passed with 1,050 assertions. Coverage includes the supplied noisy R2 text, training/reserve assignments in both trip-information formats, legacy payloads, serialization, overlapping duties, and extraction/export filtering. Pint completed successfully; one application-wide Larastan run passed with zero errors. Boost's version-specific documentation search succeeded.
 
-3. Create DutyTypeResolver Service
-Create a dedicated service to encapsulate pattern matching so TripInformationParser remains clean and testable.
+The production Vite build passed after `npm ci --ignore-scripts --no-audit --no-fund` restored the existing lockfile's packages; installed Tailwind 3 had conflicted with the declared Tailwind 4 version. Dependency manifests and lockfiles were unchanged. Badge markup and light/dark classes were verified programmatically; no manual browser review was performed. `duty_extracted_example.json` was unavailable, so its quoted noisy text was covered by a regression fixture in the parser test. Other TODO sections were preserved.
 
-Class: App\Services\Schedule\DutyTypeResolver
-
-Input: Raw text block / $activityCode string
-
-Matching Rules:
-
-Regex matching for R1, R2, R4 (e.g., /\b(R1|R2|R4)\b/i).
-
-Keywords matching Training (e.g., SIM, RECURRING, GROUND, CLASS, TRNG).
-
-Keywords matching Deadhead (e.g., DH, DEADHEAD).
-
-Create user facing badges for R2, R4, and training. The duty type badge will replace the more generic `Duty`` badge. Deadhead badges are existing, incorporate it into the structure
-
-4. Refactor TripInformationParser.php
-Update text extraction to pass activity code or raw line context to DutyTypeResolver::resolve($text)
-
-5. Update UI & Badge Components
-* Duty Event Type,Badge Text,Suggested Styling
-ReserveR1,R1,Amber / Warning
-ReserveR2,R2,Indigo / Primary
-ReserveR4,R4,Purple
-Training,Training,Blue / Info
-Deadhead,Deadhead,Slate / Muted
-GeneralDuty,Duty,Neutral
-
-Example extracted text:
-`5 6 7 \u00ae \u00b0 10 #311 \u00a9 R2 Stn Vv"`
-
-Event title: `R2 LAX`
-
-References:
-app/Services/Schedule/Extractor/TripInformationParser.php
-duty_extracted_example.json
+Commit message: `feat: classify schedule duty subtypes and display reserve badges`
 
 ## Schedule: Cleanup Schedule Notes
 Goal: Improve the data structure and presentation of an exported flight ical notes by grouping data, omitting data, and reducing repeating words. 

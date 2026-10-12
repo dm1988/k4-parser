@@ -3,6 +3,7 @@
 namespace App\Services\Calendar;
 
 use App\DTOs\Flight;
+use App\Enums\DutyEventType;
 use App\Enums\MetadataKey;
 use App\Enums\ScheduleEventType;
 use App\Mappers\FlightMapper;
@@ -22,7 +23,7 @@ final class FlightDutyEvent
     {
         $event = $this->normalizeEvent($event);
 
-        if ($event === null || ! ScheduleEventType::fromEvent($event)->isFlightLike()) {
+        if ($event === null || ! ScheduleEventType::isFlightEvent($event)) {
             return null;
         }
 
@@ -67,6 +68,7 @@ final class FlightDutyEvent
             'end' => $dutyEndUtc->toIso8601String(),
             'timezone' => 'UTC',
             'metadata' => [
+                MetadataKey::DutyType->value => DutyEventType::FlightDuty->value,
                 MetadataKey::FlightNumber->value => $this->eventValue($event, $metadata, 'flightNumber', MetadataKey::FlightNumber->value),
                 MetadataKey::Origin->value => $this->eventValue($event, $metadata, 'origin'),
                 MetadataKey::Destination->value => $this->eventValue($event, $metadata, 'destination'),

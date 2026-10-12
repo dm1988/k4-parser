@@ -63,7 +63,7 @@
                 </div>
                 @endif
 
-                @if ($event->tailNumber)
+                @if (filled($event->tailNumber ?? null))
                 <div class="inline-flex items-center gap-1.5 pt-1">
                     <span class="text-xs font-semibold uppercase tracking-wider text-[#4A5568]/70 dark:text-slate-500">Tail:</span>
                     <span class="rounded border border-[#1B365D]/10 bg-[#F8FAFD] px-2 py-0.5 font-mono text-xs font-semibold text-[#1B365D] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">

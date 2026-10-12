@@ -52,12 +52,13 @@ TEXT;
 
         $this->assertGreaterThanOrEqual(10, count($events));
 
-        $this->assertSame('flight', $events[0]['type']);
+        $this->assertSame('duty', $events[0]['type']);
         $this->assertSame('G4 368', $events[0]['metadata']['flight_number']);
         $this->assertSame('Allegiant Air', $events[0]['metadata']['airline_name']);
         $this->assertSame('AUS', $events[0]['metadata']['origin']);
         $this->assertSame('CVG', $events[0]['metadata']['destination']);
         $this->assertTrue($events[0]['metadata']['deadhead']);
+        $this->assertSame('deadhead', $events[0]['metadata']['duty_type']);
         $this->assertSame('13131', $events[0]['metadata']['trip_id']);
         $this->assertSame('2026-06-12T22:44:00+00:00', $events[0]['start']);
         $this->assertSame('2026-06-13T01:17:00+00:00', $events[0]['end']);
@@ -74,6 +75,12 @@ TEXT;
         $this->assertSame('77X', $cks206['metadata']['aircraft']);
         $this->assertSame('2026-06-13T10:38:00+00:00', $cks206['start']);
         $this->assertSame('2026-06-13T23:31:00+00:00', $cks206['end']);
+
+        $reserve = collect($events)->firstWhere('metadata.activity_code', 'R2');
+        $this->assertNotNull($reserve);
+        $this->assertSame('duty', $reserve['type']);
+        $this->assertSame('R2 NRT', $reserve['title']);
+        $this->assertSame('R2', $reserve['metadata']['duty_type']);
 
         $hkgAnc = collect($events)->firstWhere('metadata.flight_number', 'CKS 243');
         $this->assertNotNull($hkgAnc);

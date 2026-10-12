@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Enums\DutyEventType;
 use App\Enums\ScheduleEventType;
 use App\Models\Airline;
 use App\Models\User;
@@ -12,10 +13,69 @@ use Illuminate\Database\ConnectionResolverInterface;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Exceptions;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class TripInformationParserTest extends TestCase
 {
+    #[DataProvider('dutyAssignments')]
+    public function test_it_classifies_operational_duties_without_using_activity_codes_as_flight_numbers(string $activity, DutyEventType $expected): void
+    {
+        $text = "July 2026\nDetails\nDuty start 07:00\nFri {$activity} LAX-LAX 07:00 15:00 07:00 15:00 -\n24Jul Duty end 15:00";
+        $event = app(TripInformationParser::class)->parse($text)['calendar_events'][0];
+
+        $this->assertSame('duty', $event['type']);
+        $this->assertSame($expected->value, $event['metadata']['duty_type']);
+        $this->assertSame($expected->label().' LAX', $event['title']);
+        $this->assertArrayNotHasKey('flight_number', $event['metadata']);
+        $this->assertSame($activity, $event['metadata']['activity_code']);
+    }
+
+    public static function dutyAssignments(): array
+    {
+        return [
+            ['R1', DutyEventType::ReserveR1],
+            ['R2', DutyEventType::ReserveR2],
+            ['R4', DutyEventType::ReserveR4],
+            ['SIM', DutyEventType::Training],
+            ['TRNG', DutyEventType::Training],
+            ['GROUND', DutyEventType::Training],
+        ];
+    }
+
+    public function test_it_classifies_noisy_r2_date_range_context_and_keeps_it_separate_from_an_overlapping_flight(): void
+    {
+        $text = <<<'TEXT'
+October 2026
+Details
+Oct 10 07:00 - Oct 10 15:00
+5 6 7 ® ° 10 #311 © R2 Stn Vv"
+LAX LAX .
+Duty LT Oct 10 07:00 - Oct 10 15:00
+Oct 10 09:00 - Oct 10 11:00
+K4 240
+LAX - AUS | FO 77X 2:00h
+TEXT;
+        $events = app(TripInformationParser::class)->parse($text)['calendar_events'];
+
+        $this->assertCount(2, $events);
+        $this->assertSame('R2 LAX', $events[0]['title']);
+        $this->assertSame('R2', $events[0]['metadata']['duty_type']);
+        $this->assertArrayNotHasKey('flight_number', $events[0]['metadata']);
+        $this->assertSame('flight', $events[1]['type']);
+    }
+
+    #[DataProvider('dutyAssignments')]
+    public function test_it_classifies_duty_assignments_with_a_route_in_date_range_format(string $activity, DutyEventType $expected): void
+    {
+        $event = app(TripInformationParser::class)->parse("October 2026\nDetails\nOct 10 07:00 - Oct 10 15:00\n{$activity}\nLAX - LAX")['calendar_events'][0];
+
+        $this->assertSame('duty', $event['type']);
+        $this->assertSame($expected->value, $event['metadata']['duty_type']);
+        $this->assertSame($expected->label().' LAX', $event['title']);
+        $this->assertArrayNotHasKey('flight_number', $event['metadata']);
+    }
+
     public function test_missing_local_times_are_omitted_from_duty_context(): void
     {
         $context = new TripDutyFlightContext;
@@ -116,7 +176,7 @@ TEXT;
         $parsed = app(TripInformationParser::class)->parse($text);
         $event = $parsed['calendar_events'][0];
 
-        $this->assertSame('deadhead', $event['type']);
+        $this->assertSame('duty', $event['type']);
         $this->assertSame('AUS - CVG (G4 368)', $event['title']);
         $this->assertSame('G4 368', $event['metadata']['flight_number']);
         $this->assertSame('Allegiant Air', $event['metadata']['airline_name']);
@@ -180,7 +240,7 @@ TEXT;
         $lastEvent = $events[array_key_last($events)];
 
         $this->assertCount(3, $events);
-        $this->assertSame('deadhead', $lastEvent['type']);
+        $this->assertSame('duty', $lastEvent['type']);
         $this->assertSame('ANC - CVG (CKS 253)', $lastEvent['title']);
         $this->assertSame('2026-08-03T03:10:00+00:00', $lastEvent['start']);
         $this->assertSame('2026-08-03T13:25:00+00:00', $lastEvent['end']);
@@ -267,7 +327,7 @@ TEXT;
 
         $event = app(TripInformationParser::class)->parse($text)['calendar_events'][0];
 
-        $this->assertSame(ScheduleEventType::Deadhead->value, $event['type']);
+        $this->assertSame(ScheduleEventType::Duty->value, $event['type']);
         $this->assertSame('CX 413', $event['metadata']['flight_number']);
         $this->assertSame('Cathay Pacific', $event['metadata']['airline_name']);
         $this->assertArrayNotHasKey('tail_number', $event['metadata']);
@@ -302,7 +362,7 @@ TEXT;
 
         $event = app(TripInformationParser::class)->parse($text)['calendar_events'][0];
 
-        $this->assertSame(ScheduleEventType::Deadhead->value, $event['type']);
+        $this->assertSame(ScheduleEventType::Duty->value, $event['type']);
         $this->assertSame('NRT - HKG (CKS 208)', $event['title']);
         $this->assertSame('CKS 208', $event['metadata']['flight_number']);
         $this->assertSame('208', $event['metadata']['activity_code']);
@@ -375,7 +435,7 @@ TEXT;
         $parsed = app(TripInformationParser::class)->parse($text);
         $event = $parsed['calendar_events'][0];
 
-        $this->assertSame('deadhead', $event['type']);
+        $this->assertSame('duty', $event['type']);
         $this->assertSame('DH', $event['metadata']['position']);
         $this->assertTrue($event['metadata']['deadhead']);
     }
