@@ -6,6 +6,7 @@ use App\DTOs\ExtractedEventDTO;
 use App\DTOs\Flight;
 use App\Enums\MetadataKey;
 use App\Mappers\FlightMapper;
+use App\Services\Schedule\FlightTrackerUrlGenerator;
 use Illuminate\Support\Carbon;
 use Spatie\IcalendarGenerator\Components\Calendar;
 use Spatie\IcalendarGenerator\Components\Event;
@@ -16,6 +17,7 @@ class IcsGenerator
     public function __construct(
         private readonly FlightMapper $flightMapper,
         private readonly IcsDescriptionFormatter $descriptionFormatter,
+        private readonly FlightTrackerUrlGenerator $flightTrackerUrlGenerator,
     ) {}
 
     public function serialize(array $events, array $trip = []): string
@@ -43,7 +45,7 @@ class IcsGenerator
             $event['metadata'][MetadataKey::UtcStart->value] = $start->format('m-d H:i').' Z';
             $event['metadata'][MetadataKey::UtcEnd->value] = $end->format('m-d H:i').' Z';
 
-            $flightAwareUrl = $event['metadata'][MetadataKey::FlightawareUrl->value] ?? null;
+            $trackerUrl = $this->flightTrackerUrlGenerator->forEvent($event);
             $description = $this->descriptionFormatter->format($event);
             $uid = sha1($event['title'].$event['start'].$event['end']);
 
@@ -54,8 +56,8 @@ class IcsGenerator
                 ->endsAt($end)
                 ->description($description);
 
-            if (is_string($flightAwareUrl) && $flightAwareUrl !== '') {
-                $calendarEvent->url($flightAwareUrl);
+            if ($trackerUrl !== null) {
+                $calendarEvent->url($trackerUrl);
             }
 
             $calendar->event($calendarEvent);

@@ -4,11 +4,49 @@ namespace Tests\Unit;
 
 use App\DTOs\DutyEvent;
 use App\DTOs\Flight;
+use App\Models\User;
 use App\Services\Calendar\IcsGenerator;
 use Tests\TestCase;
 
 class IcsGeneratorTest extends TestCase
 {
+    public function test_tracker_links_use_current_preferences_instead_of_cached_download_urls(): void
+    {
+        $user = User::factory()->make(['flight_tracker_preference' => 'flightradar24']);
+        $this->actingAs($user);
+        $flight = Flight::fromArray([
+            'type' => 'flight', 'title' => 'CKS 240 ICN-HKG', 'start' => '2026-10-12T01:00:00Z', 'end' => '2026-10-12T05:00:00Z',
+            'tailNumber' => 'N772CK', 'flightNumber' => 'CKS 240', 'origin' => 'ICN', 'destination' => 'HKG',
+            'downloadUrl' => route('parse.export.event', ['eventId' => 'event-id', 'parse_key' => 'parse-id']),
+            'metadata' => ['flightaware_url' => 'https://www.flightaware.com/live/flight/N772CK'],
+        ]);
+        $generator = app(IcsGenerator::class);
+
+        $ics = $this->unfold($generator->serialize([$flight]));
+        $this->assertStringContainsString('URL:https://www.flightradar24.com/data/aircraft/n772ck', $ics);
+        $this->assertStringNotContainsString('URL:http://localhost/parse', $ics);
+
+        $user->flight_tracker_preference = 'flightaware';
+        $ics = $this->unfold($generator->serialize([$flight]));
+        $this->assertStringContainsString('URL:https://www.flightaware.com/live/flight/N772CK', $ics);
+        $this->assertStringNotContainsString('flightradar24', $ics);
+    }
+
+    public function test_deadheads_without_tails_use_flight_numbers_and_non_flight_events_have_no_tracker_url(): void
+    {
+        $this->actingAs(User::factory()->make(['flight_tracker_preference' => 'flightradar24']));
+        $ics = $this->unfold(app(IcsGenerator::class)->serialize([
+            ['type' => 'duty', 'title' => 'UA 123 LAX-AUS', 'start' => '2026-10-12T01:00:00Z', 'end' => '2026-10-12T03:00:00Z',
+                'metadata' => ['duty_type' => 'deadhead', 'origin' => 'LAX', 'destination' => 'AUS', 'flight_number' => 'UA 123']],
+            ['type' => 'duty', 'title' => 'R2 LAX', 'start' => '2026-10-13T01:00:00Z', 'end' => '2026-10-13T09:00:00Z',
+                'metadata' => ['duty_type' => 'R2', 'flightaware_url' => 'https://example.test/stale']],
+        ]));
+
+        $this->assertStringContainsString('URL:https://www.flightradar24.com/data/flights/ua123', $ics);
+        $this->assertSame(1, substr_count($ics, 'URL:'));
+        $this->assertStringNotContainsString('https://example.test/stale', $ics);
+    }
+
     public function test_it_preserves_calendar_and_event_export_contracts(): void
     {
         $this->travelTo('2026-07-18 15:30:00 UTC');
@@ -16,7 +54,7 @@ class IcsGeneratorTest extends TestCase
         $start = '2026-06-15T19:45:00-04:00';
         $end = '2026-06-16T00:45:00-03:00';
         $title = 'CKS 240, ICN; HKG\\Cargo';
-        $flightAwareUrl = 'https://flightaware.com/live/flight/CKS240';
+        $flightAwareUrl = 'https://www.flightaware.com/live/flight/CKS240';
 
         $ics = app(IcsGenerator::class)->serialize([
             new \stdClass,
@@ -29,6 +67,7 @@ class IcsGeneratorTest extends TestCase
                     'origin' => 'ICN',
                     'destination' => 'HKG',
                     'flightaware_url' => $flightAwareUrl,
+                    'flight_number' => 'CKS 240',
                     'local_start' => '06-16 08:45',
                     'local_end' => '06-16 11:45',
                     'notes' => "Gate A, then B; bring paperwork\\passport\nSecond line",

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class ProfileTest extends TestCase
@@ -19,6 +20,7 @@ class ProfileTest extends TestCase
             ->get('/profile');
 
         $response->assertOk();
+        $response->assertSee('Flight Tracker')->assertSee('Flightradar24')->assertSee('iCal downloads');
     }
 
     public function test_profile_information_can_be_updated(): void
@@ -95,6 +97,57 @@ class ProfileTest extends TestCase
             ])
             ->assertSessionHasErrors(['airline_iata_code', 'airline_icao_code'])
             ->assertRedirect('/profile');
+    }
+
+    #[DataProvider('trackers')]
+    public function test_users_can_save_their_flight_tracker_preference(string $tracker): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user)->patch('/profile', [
+            'name' => $user->name, 'email' => $user->email, 'flight_tracker_preference' => $tracker,
+        ])->assertSessionHasNoErrors()->assertRedirect('/profile');
+
+        $this->assertSame($tracker, $user->refresh()->flight_tracker_preference);
+        $this->get('/profile')->assertSee('value="'.$tracker.'" selected', false);
+    }
+
+    public static function trackers(): array
+    {
+        return [['flightaware'], ['flightradar24']];
+    }
+
+    #[DataProvider('invalidTrackers')]
+    public function test_invalid_tracker_preferences_are_rejected(mixed $value): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user)->from('/profile')->patch('/profile', [
+            'name' => $user->name, 'email' => $user->email, 'flight_tracker_preference' => $value,
+        ])->assertSessionHasErrors('flight_tracker_preference')->assertRedirect('/profile');
+
+        $this->assertSame('flightaware', $user->refresh()->flight_tracker_preference);
+    }
+
+    public static function invalidTrackers(): array
+    {
+        return [['invalid'], [''], [null], [['flightaware']]];
+    }
+
+    public function test_updating_other_profile_fields_preserves_the_tracker_preference(): void
+    {
+        $user = User::factory()->create(['flight_tracker_preference' => 'flightradar24']);
+        $this->actingAs($user)->patch('/profile', ['name' => 'Updated Name', 'email' => $user->email])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('flightradar24', $user->refresh()->flight_tracker_preference);
+    }
+
+    public function test_database_default_applies_when_the_preference_is_not_inserted(): void
+    {
+        $user = User::factory()->make();
+        unset($user->flight_tracker_preference);
+        $user->save();
+
+        $this->assertSame('flightaware', $user->refresh()->flight_tracker_preference);
     }
 
     public function test_user_can_delete_their_account(): void

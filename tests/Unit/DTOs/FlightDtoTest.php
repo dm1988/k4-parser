@@ -47,7 +47,7 @@ class FlightDtoTest extends TestCase
         $this->assertSame('FO', $dto->position);
         $this->assertSame('77X', $dto->aircraft);
         $this->assertSame('N772CK', $dto->tailNumber);
-        $this->assertSame('https://www.flightaware.com/live/flight/N772CK', $dto->downloadUrl);
+        $this->assertSame('', $dto->downloadUrl);
         $this->assertSame('Jun 15, 11:45 PM -> Jun 16, 3:45 AM', $dto->scheduleLabel);
         $this->assertSame('4:00h', $dto->durationLabel);
         $this->assertSame(4, $dto->crewCount);
@@ -196,5 +196,16 @@ class FlightDtoTest extends TestCase
         $this->assertSame('Jun 13 08:35', $event['metadata']['leg_local_start']);
         $this->assertSame('Jun 13 23:10', $event['metadata']['duty_local_end']);
         $this->assertSame('13:50h', $event['metadata']['block_time']);
+        $this->assertArrayNotHasKey('flightaware_url', $event['metadata']);
+    }
+
+    public function test_aircraft_types_are_not_used_as_tail_numbers(): void
+    {
+        $dto = app(FlightMapper::class)->fromCalendarEvent([
+            'type' => 'flight', 'metadata' => ['aircraft' => '77X', 'flight_number' => 'CKS 240'],
+        ]);
+
+        $this->assertNotNull($dto);
+        $this->assertNull($dto->tailNumber);
     }
 }

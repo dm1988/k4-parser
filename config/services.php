@@ -17,6 +17,14 @@ return [
         'url' => env('AIRPORT_PROVIDER_URL', 'http://localhost/api/v1'),
     ],
 
+    'flightaware' => [
+        'url' => env('FLIGHTAWARE_URL', 'https://www.flightaware.com/live/flight'),
+    ],
+
+    'flightradar24' => [
+        'url' => env('FLIGHTRADAR24_URL', 'https://www.flightradar24.com/data'),
+    ],
+
     'buy_me_a_coffee' => [
         'url' => env('BUY_ME_A_COFFEE_URL', 'https://buymeacoffee.com/crewcompass'),
         'prompt_after_extractions' => (int) env('BUY_ME_A_COFFEE_PROMPT_AFTER_EXTRACTIONS', 7),

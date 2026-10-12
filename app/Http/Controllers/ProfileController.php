@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\FlightTracker;
 use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,8 @@ class ProfileController extends Controller
     {
         return view('profile.edit', [
             'user' => $request->user(),
+            'flightTrackers' => FlightTracker::cases(),
+            'selectedFlightTracker' => FlightTracker::fromValue($request->user()?->flight_tracker_preference)->value,
         ]);
     }
 

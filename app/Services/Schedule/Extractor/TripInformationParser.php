@@ -9,6 +9,7 @@ use App\Enums\ScheduleEventType;
 use App\Mappers\FlightMapper;
 use App\Services\Clients\AirlineCodeLookupClient;
 use App\Services\Schedule\DutyTypeResolver;
+use App\Services\Schedule\FlightTrackerUrlGenerator;
 use App\Services\Schedule\ScheduleAirlineCodes;
 use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Support\Carbon;
@@ -25,6 +26,7 @@ class TripInformationParser
         private readonly TripInformationSections $sections,
         private readonly TripDutyFlightContext $dutyFlightContext,
         private readonly DutyTypeResolver $dutyTypeResolver,
+        private readonly FlightTrackerUrlGenerator $flightTrackerUrlGenerator,
     ) {}
 
     public function parse(string $text): array
@@ -294,9 +296,7 @@ class TripInformationParser
         $position = $this->extractFlightPosition($body);
         $aircraft = $this->detectAircraft($body);
         $tailNumber = $this->detectTailNumber($body);
-        $flightAwareUrl = $tailNumber
-            ? 'https://www.flightaware.com/live/flight/'.rawurlencode($tailNumber)
-            : null;
+        $flightAwareUrl = $this->flightTrackerUrlGenerator->flightAwareUrl($tailNumber);
         $blockTime = $this->extractBlockTime($body);
         $dutyStation = $this->dutyFlightContext->extractDutyStationFromLines($body);
         $dutyRawLines = $this->extractDutyRawLines($body);

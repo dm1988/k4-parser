@@ -45,7 +45,7 @@ final class FlightMapper
             scheduleLabel: $scheduleLabel,
             durationLabel: $durationLabel,
             tailNumber: $this->normalizeTailNumber(
-                $this->nullableString($metadata, MetadataKey::TailNumber->value) ?? $this->nullableString($metadata, MetadataKey::Aircraft->value)
+                $this->nullableString($metadata, MetadataKey::TailNumber->value)
             ),
             schedule: new ScheduleData(
                 etdUtc: $start,
@@ -62,7 +62,7 @@ final class FlightMapper
             ),
             isDeadhead: $badgeType === DutyEventType::Deadhead,
             badgeColor: $badgeType->badgeColor(),
-            downloadUrl: (string) ($metadata[MetadataKey::FlightawareUrl->value] ?? $metadata[MetadataKey::DownloadUrl->value] ?? $event['download_url'] ?? ''),
+            downloadUrl: (string) ($metadata[MetadataKey::DownloadUrl->value] ?? $event['download_url'] ?? ''),
             downloadId: $downloadId ?? $this->nullableString($event, MetadataKey::DownloadId->value),
             flightNumber: $this->nullableString($metadata, MetadataKey::FlightNumber->value),
             position: $this->nullableString($metadata, MetadataKey::Position->value),
@@ -110,7 +110,6 @@ final class FlightMapper
         $metadata[MetadataKey::SlotTimesUtc->value] = $flight->schedule->slotTimesUtc;
         $metadata[MetadataKey::SlotTimesLocal->value] = $flight->schedule->slotTimesLocal;
         $metadata[MetadataKey::Deadhead->value] = $flight->isDeadhead;
-        $metadata[MetadataKey::FlightawareUrl->value] = $flight->downloadUrl !== '' ? $flight->downloadUrl : ($metadata[MetadataKey::FlightawareUrl->value] ?? null);
         $metadata[MetadataKey::RawLines->value] = $flight->rawLines;
         $metadata[MetadataKey::DutyRawLines->value] = $flight->dutyRawLines;
 

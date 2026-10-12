@@ -65,6 +65,20 @@
             </p>
         </div>
 
+        <div>
+            <x-input-label for="flight_tracker_preference" :value="__('Flight Tracker')" />
+            <select id="flight_tracker_preference" name="flight_tracker_preference" aria-describedby="flight-tracker-help"
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:focus:border-indigo-600 dark:focus:ring-indigo-600">
+                @foreach ($flightTrackers as $tracker)
+                    <option value="{{ $tracker->value }}" @selected(old('flight_tracker_preference', $selectedFlightTracker) === $tracker->value)>{{ $tracker->label() }}</option>
+                @endforeach
+            </select>
+            <p id="flight-tracker-help" class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                {{ __('Used for schedule flight links and iCal downloads, including previously parsed schedules. Tracks the tail number when available, otherwise the flight number.') }}
+            </p>
+            <x-input-error class="mt-2" :messages="$errors->get('flight_tracker_preference')" />
+        </div>
+
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 

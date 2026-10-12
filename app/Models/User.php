@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\FlightTracker;
 use App\Notifications\VerifyEmailWithOtp;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
@@ -17,7 +18,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 
 /** @property Carbon|null $email_verification_otp_expires_at */
-#[Fillable(['name', 'email', 'airline_iata_code', 'airline_icao_code', 'email_verified_at', 'password', 'remember_token', 'role', 'is_active', 'has_bought_coffee', 'last_admin_login_at', 'stripe_id', 'pm_type', 'pm_last_four', 'trial_ends_at'])]
+#[Fillable(['name', 'email', 'airline_iata_code', 'airline_icao_code', 'flight_tracker_preference', 'email_verified_at', 'password', 'remember_token', 'role', 'is_active', 'has_bought_coffee', 'last_admin_login_at', 'stripe_id', 'pm_type', 'pm_last_four', 'trial_ends_at'])]
 #[Hidden(['password', 'remember_token', 'email_verification_otp_hash'])]
 class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 {
@@ -29,6 +30,7 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
     protected $attributes = [
         'airline_iata_code' => null,
         'airline_icao_code' => null,
+        'flight_tracker_preference' => FlightTracker::FlightAware->value,
         'has_bought_coffee' => false,
     ];
 

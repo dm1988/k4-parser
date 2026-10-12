@@ -28,141 +28,47 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## [x] Completed: Schedule: Cleanup Schedule Notes
+## [x] Completed: Schedule: Flight radar option
 
 ### Goal
 
-Group exported flight iCalendar notes into compact flight details, flight times, duty times, and crew sections, with less repetition and airport enrichment clutter.
+Centralize flight-tracker URL generation and let users choose FlightAware or Flightradar24 for schedule links and iCalendar exports.
+
+### Confirmed choices
+
+- Apply the preference to both schedule flight cards and iCal exports.
+- Prefer the tail number; use the flight number when the tail is unavailable, including commercial deadheads.
+- Use the current user preference when viewing or downloading previously parsed schedules. Already imported calendar files require a new export to change their links.
 
 ### Current implementation
 
-`IcsDescriptionFormatter` renders flight number, tail/aircraft, and position on one line, followed by the route with available IATA/ICAO codes. UTC flight times come from the actual event boundaries; local flight and duty times retain their source values. Same-day ranges abbreviate the end date; UTC ranges crossing a year include both years. Missing fields are omitted or shown as unavailable for partial ranges/counts, while explicit zero counts remain valid.
-
-Crew names and roles use Unicode-aware column padding, optional bases are omitted when absent, and employee IDs remain unchanged. Existing crew extraction from raw lines remains supported. Airport names, cities, states, countries, resolution status, raw evidence, download metadata, and redundant counters are omitted from flight notes. Custom notes, airline context, and labeled slot times remain in an additional Notes section. Non-flight events retain their existing note layout, and calendar timestamps, URLs, escaping, and line folding remain covered by export tests.
+- `FlightTracker` defines the two supported choices, labels, and FlightAware fallback for unset/invalid stored preferences. Profile validation rejects unsupported, empty, or malformed submitted choices and preserves the preference when another profile field is updated.
+- A new reversible migration adds `users.flight_tracker_preference` with the database default `flightaware`; the User model mirrors this default and includes the preference in its fillable attributes. The profile form includes a labeled select, helper text, validation errors, and light/dark styling.
+- `FlightTrackerUrlGenerator` is the shared source for extraction's legacy FlightAware URL, current flight-card links, and the iCalendar URL property. Configured roots live in `services.flightaware.url` and `services.flightradar24.url`, exposed as `FLIGHTAWARE_URL` and `FLIGHTRADAR24_URL` in `.env.example`. Defaults work without editing a local `.env`.
+- Tail identifiers preserve registration hyphens and use each provider's expected case. Flight-number links use ICAO airline prefixes for FlightAware and IATA prefixes for Flightradar24. Company codes use existing schedule preferences; commercial conversions reuse the bundled airline-code data through `AirlineCodeLookupClient`, with no database queries during tracker URL generation. The service is scoped per request to reuse its lookup data.
+- Unknown ICAO-to-IATA mappings fall back to a FlightAware flight-number URL and label. Missing or invalid identifiers produce no tracker link. Generic duties and layovers have no tracker URL.
+- Tracker links are separate from calendar download URLs. `FlightMapper` no longer overwrites tracker metadata with a per-event iCal download URL, and aircraft types such as `77X` are no longer treated as tail registrations. Existing cached schedules use their structured identifiers and current preference instead of trusting an old stored URL.
 
 ### Problem
 
-The previous formatter emitted almost every metadata item separately, repeated flight/time/crew labels, and mixed airport enrichment details into operational notes.
-
-Previous extracted flight iCal note:
-```
-✈️ FLIGHT DETAILS
-• ICN - HKG
-• Destination iata: HKG
-• Destination icao: VHHH
-• Destination name: Hong Kong International Airport
-• Destination city: Hong Kong
-• Destination state: NT
-• Destination country: HK
-• Origin iata: ICN
-• Origin icao: RKSI
-• Origin name: Incheon International Airport
-• Origin city: Seoul
-• Origin state: 28
-• Origin country: KR
-• Flight number: CKS 256
-• Position: AFO
-• Aircraft: 77X
-• Tail number: N774CK
-• Block time: 4:00h
-• Leg local start: Oct 08 01:00
-• Leg local end: Oct 08 04:00
-• Duty local start: Oct 07 23:00
-• Duty local end: Oct 08 04:30
-• Origin airport status: found
-• Destination airport status: found
-
-👥 CREW LOGISTICS
-• Crew count: 4
-• Operating crew count: 4
-• Deadheading crew count: 0
-• Crew Members:
-  └─ Paolo Falco Beccalli (CP • PVD • #70978)
-  └─ Ali Guner (FO • SRQ • #72446)
-  └─ Eduardo Nunez Duarte (AFO • #72311)
-  └─ David Gonzalez (AFO • #72860)
-
-⏰ TIMES
-• UTC start: 10-07 16:00 Z
-• UTC end: 10-07 20:00 Z
-```
-
-Implemented layout (illustrative crew IDs):
-```
-✈️ FLIGHT DETAILS
-Flight: CKS 256  |  Tail: N774CK (77X)  |  Pos: AFO
-Route: ICN (RKSI) ➔ HKG (VHHH)
-
-⏰ TIMES
-UTC:   Oct 07 16:00z ➔ 20:00z  (Block: 4:00h)
-Local: Oct 08 01:00  ➔ 04:00
-
-👨‍✈️ DUTY TIMES
-Local: Oct 07 23:00  ➔ Oct 08 04:30
-
-👥 CREW (4 Ops / 0 DH)
-• Paolo Falco Beccalli  │ CP  │ PVD │ #70999
-• Ali Guner             │ FO  │ SRQ │ #72999
-• Eduardo Nunez Duarte  │ AFO │ #72999
-• David Gonzalez        │ AFO │ #72999
-```
+FlightAware URLs were repeated in extraction and Blade, users could not select another tracker, and flight DTOs reused `downloadUrl` for both tracker links and calendar downloads. That could place an application download URL in the iCalendar URL property. Flights without tails also lacked a tracking link.
 
 ### Validation outcome (2026-10-12)
 
-All 34 focused formatter, ICS serializer, roster export, and flight-duty export tests passed through Sail. New formatter coverage verifies the compact layout, omitted airport enrichment, explicit UTC/local labels, timezone offsets, day/year rollovers, partial and invalid dates, missing fields, zero/unknown crew counts, source employee IDs, Unicode alignment, deadheads, and retained custom/slot notes. Pint passed for this task's PHP files; one application-wide Larastan run passed with zero errors. Boost's version-specific documentation search succeeded. Existing staged and unrelated changes were preserved. Existing parsed results use the new layout on their next calendar download; already imported calendars need the newly exported file.
+Through Sail, all 123 focused URL-generator, profile, User/Flight DTO, parser, view-model, flight-card, cached roster export, ICS serialization, and flight-duty export tests passed with 705 assertions. Coverage includes both providers, company/commercial flight numbers, hyphenated tails, configured URL roots, invalid/unset preferences, missing identifiers, unknown airline fallback, saved preference changes affecting cached exports, and distinct calendar download links. Pint completed successfully; one application-wide Larastan run passed with zero errors; the production Vite build passed. Profile/card markup was verified programmatically; no manual browser review was performed.
 
-Commit message: `feat: compact schedule calendar notes into operational sections`
+Boost's version-specific documentation and users-schema checks succeeded. The migration is recorded as applied in local Sail, and a read-only aggregate confirmed both existing development users have the FlightAware default. Other deployment databases must run the new migration before using the profile setting. Dependency files and unrelated TODO edits were preserved.
 
-## Schedule: Flight radar option
-### Implementation:
-### Unify flight aware URLs
-Goal: Have 1 source of truth for a flight aware URL. 
-Currently, valid URLs are repeated throughout the codebase.
-1. Create .env URL path settings for flight aware and flight radar 24.
-2. Create config URL service settings for the 2 flight tracking options
-3. Create a didicated URL generator helper method for existing flight aware links
+The provider URL formats were checked against [Flightradar24 aircraft history](https://www.flightradar24.com/data/aircraft/n772ck), [Flightradar24 flight history](https://www.flightradar24.com/data/flights/k4240), and [FlightAware flight tracking](https://www.flightaware.com/live/flight/CKS240).
 
-### Database and Model Updates
-1. Add a flight_tracker_preference column to the users table migration defaulting to flightaware
-2. Update User model fillable attributes and validation rules to allow valid tracker options like flightaware and flightradar24
-3. Ensure existing users have a default fallback value assigned
-
-### User Settings Interface
-* Add a Flight Tracker setting select input or radio group to the user preferences view
-* Connect the preference input to user profile update actions or Livewire component
-* Display clear helper text explaining that this setting affects generated iCal links
-
-### URL Generation Logic
-1. Create a dedicated URL generator helper method for FlightRadar24 using flight or tail parameters
-2. Refactor existing FlightAware URL generator into a strategy or utility class
-3. Route URL creation based on the authenticated user flight tracker preference setting
-4. Fallback gracefully to standard FlightAware URL if preferences are unset or invalid
-
-### iCal Export Updates
-* Update the iCal event generator service to fetch the dynamic tracker URL instead of hardcoding FlightAware
-* Ensure the iCal URL property renders correctly across target calendar clients
-
-### Testing and Verification
-* Write unit tests for the tracker URL generator covering both FlightAware and FlightRadar24 outputs
-* Write feature tests verifying user preference saving and persistence
-* Verify that exported iCal files contain the expected URL based on user settings
-
-References:
-valid flight radar url: https://www.flightradar24.com/data/aircraft/n772ck
-app/Services/Schedule/Extractor/TripInformationParser.php
-resources/views/extract/partials/flight-card/flight-details.blade.php
-tests/Feature/RosterParserTest.php
-tests/Unit/IcsGeneratorTest.php
-tests/Unit/TripInformationParserTest.php
-tests/Unit/DTOs/FlightDtoTest.php
-tests/Unit/View/Models/ExtractPageViewModelTest.php
+Commit message: `feat: add flight tracker preferences for schedule links and calendar exports`
 
 ## FP: Maintenance: Include flight date in task
 - Format: 10/1/2026
 - After trip number
 - Label `Date`
 
-- Inreleated: Swap order: Tail number and aircraft type
+- Unreleated task: Swap order: Tail number and aircraft type
 
 ## FP: Prelim flight plans
 Goal:
@@ -384,3 +290,88 @@ Reproduced Pint's broken SHA512 PHAR signature inside Sail and reinstalled only 
 The repaired executable reports Pint 1.30.5. The existing pre-commit hook passed its focused staged-file Pint check and one staged-file Larastan run with zero errors. No application tests were needed for this vendor-only repair. Existing working-tree changes were preserved; no commit was created.
 
 Commit message: `docs: record Pint installation repair and successful hook checks`
+
+## [x] Completed: Schedule: Cleanup Schedule Notes
+
+### Goal
+
+Group exported flight iCalendar notes into compact flight details, flight times, duty times, and crew sections, with less repetition and airport enrichment clutter.
+
+### Current implementation
+
+`IcsDescriptionFormatter` renders flight number, tail/aircraft, and position on one line, followed by the route with available IATA/ICAO codes. UTC flight times come from the actual event boundaries; local flight and duty times retain their source values. Same-day ranges abbreviate the end date; UTC ranges crossing a year include both years. Missing fields are omitted or shown as unavailable for partial ranges/counts, while explicit zero counts remain valid.
+
+Crew names and roles use Unicode-aware column padding, optional bases are omitted when absent, and employee IDs remain unchanged. Existing crew extraction from raw lines remains supported. Airport names, cities, states, countries, resolution status, raw evidence, download metadata, and redundant counters are omitted from flight notes. Custom notes, airline context, and labeled slot times remain in an additional Notes section. Non-flight events retain their existing note layout, and calendar timestamps, URLs, escaping, and line folding remain covered by export tests.
+
+### Problem
+
+The previous formatter emitted almost every metadata item separately, repeated flight/time/crew labels, and mixed airport enrichment details into operational notes.
+
+Previous extracted flight iCal note:
+```
+✈️ FLIGHT DETAILS
+• ICN - HKG
+• Destination iata: HKG
+• Destination icao: VHHH
+• Destination name: Hong Kong International Airport
+• Destination city: Hong Kong
+• Destination state: NT
+• Destination country: HK
+• Origin iata: ICN
+• Origin icao: RKSI
+• Origin name: Incheon International Airport
+• Origin city: Seoul
+• Origin state: 28
+• Origin country: KR
+• Flight number: CKS 256
+• Position: AFO
+• Aircraft: 77X
+• Tail number: N774CK
+• Block time: 4:00h
+• Leg local start: Oct 08 01:00
+• Leg local end: Oct 08 04:00
+• Duty local start: Oct 07 23:00
+• Duty local end: Oct 08 04:30
+• Origin airport status: found
+• Destination airport status: found
+
+👥 CREW LOGISTICS
+• Crew count: 4
+• Operating crew count: 4
+• Deadheading crew count: 0
+• Crew Members:
+  └─ Paolo Falco Beccalli (CP • PVD • #70978)
+  └─ Ali Guner (FO • SRQ • #72446)
+  └─ Eduardo Nunez Duarte (AFO • #72311)
+  └─ David Gonzalez (AFO • #72860)
+
+⏰ TIMES
+• UTC start: 10-07 16:00 Z
+• UTC end: 10-07 20:00 Z
+```
+
+Implemented layout (illustrative crew IDs):
+```
+✈️ FLIGHT DETAILS
+Flight: CKS 256  |  Tail: N774CK (77X)  |  Pos: AFO
+Route: ICN (RKSI) ➔ HKG (VHHH)
+
+⏰ TIMES
+UTC:   Oct 07 16:00z ➔ 20:00z  (Block: 4:00h)
+Local: Oct 08 01:00  ➔ 04:00
+
+👨‍✈️ DUTY TIMES
+Local: Oct 07 23:00  ➔ Oct 08 04:30
+
+👥 CREW (4 Ops / 0 DH)
+• Paolo Falco Beccalli  │ CP  │ PVD │ #70999
+• Ali Guner             │ FO  │ SRQ │ #72999
+• Eduardo Nunez Duarte  │ AFO │ #72999
+• David Gonzalez        │ AFO │ #72999
+```
+
+### Validation outcome (2026-10-12)
+
+All 34 focused formatter, ICS serializer, roster export, and flight-duty export tests passed through Sail. New formatter coverage verifies the compact layout, omitted airport enrichment, explicit UTC/local labels, timezone offsets, day/year rollovers, partial and invalid dates, missing fields, zero/unknown crew counts, source employee IDs, Unicode alignment, deadheads, and retained custom/slot notes. Pint passed for this task's PHP files; one application-wide Larastan run passed with zero errors. Boost's version-specific documentation search succeeded. Existing staged and unrelated changes were preserved. Existing parsed results use the new layout on their next calendar download; already imported calendars need the newly exported file.
+
+Commit message: `feat: compact schedule calendar notes into operational sections`

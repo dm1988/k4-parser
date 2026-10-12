@@ -11,6 +11,46 @@ use Tests\TestCase;
 
 class FlightCardComponentTest extends TestCase
 {
+    public function test_tracker_link_uses_current_preference_for_existing_flight_cards(): void
+    {
+        $user = User::factory()->make(['flight_tracker_preference' => 'flightradar24']);
+        $this->actingAs($user);
+        $html = $this->renderFlightCard();
+
+        $this->assertStringContainsString('href="https://www.flightradar24.com/data/aircraft/n772ck"', $html);
+        $this->assertStringContainsString('Flightradar24', $html);
+        $this->assertStringContainsString('title="Download .ics"', $html);
+        $this->assertStringContainsString('focus-visible:outline', $html);
+
+        $user->flight_tracker_preference = 'flightaware';
+        $html = $this->renderFlightCard();
+        $this->assertStringContainsString('href="https://www.flightaware.com/live/flight/N772CK"', $html);
+        $this->assertStringContainsString('FlightAware', $html);
+        $this->assertStringNotContainsString('flightradar24', $html);
+    }
+
+    public function test_tracker_link_uses_flight_number_when_a_tail_is_unavailable(): void
+    {
+        $this->actingAs(User::factory()->make(['flight_tracker_preference' => 'flightradar24']));
+        $html = Blade::render('<x-extract.flight-card :model="$model" />', [
+            'model' => FlightCardViewModel::fromFlight(Flight::fromArray([
+                'type' => 'deadhead', 'flightNumber' => 'UA 123', 'origin' => 'LAX', 'destination' => 'AUS',
+            ])),
+        ]);
+
+        $this->assertStringContainsString('href="https://www.flightradar24.com/data/flights/ua123"', $html);
+        $this->assertStringContainsString('Flightradar24', $html);
+    }
+
+    public function test_tracker_link_is_omitted_without_a_tail_or_flight_number(): void
+    {
+        $html = Blade::render('<x-extract.flight-card :model="$model" />', [
+            'model' => FlightCardViewModel::fromFlight(Flight::fromArray(['type' => 'flight', 'typeIcon' => 'heroicon-o-paper-airplane'])),
+        ]);
+
+        $this->assertStringNotContainsString('Flight Tracking', $html);
+    }
+
     public function test_admins_can_see_the_duty_calendar_download_button(): void
     {
         $admin = User::factory()->make([

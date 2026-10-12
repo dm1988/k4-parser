@@ -64,6 +64,37 @@ TEXT;
         $this->actingAs(User::factory()->make());
     }
 
+    public function test_cached_schedule_exports_use_the_latest_saved_tracker_preference(): void
+    {
+        $user = User::factory()->create(['flight_tracker_preference' => 'flightaware']);
+        $this->actingAs($user);
+        $this->extractRoster(<<<'TEXT'
+October 2026
+Details
+Oct 12 07:00 - Oct 12 09:00
+K4 240
+ICN - HKG | FO 77X 2:00h
+Tail id N772CK
+TEXT);
+        $parseKey = session('latest_parse_key');
+        $this->assertIsString($parseKey);
+        $result = Cache::get($this->cacheKeyForSession($parseKey));
+        $eventId = $result['parsed']['calendar_events'][0]['download_id'];
+
+        $this->get(route('parse.export', ['parse_key' => $parseKey]))
+            ->assertOk()->assertSee('URL:https://www.flightaware.com/live/flight/N772CK');
+
+        $user->update(['flight_tracker_preference' => 'flightradar24']);
+
+        $this->get(route('parse.export', ['parse_key' => $parseKey]))
+            ->assertOk()->assertSee('URL:https://www.flightradar24.com/data/aircraft/n772ck')
+            ->assertDontSee('URL:https://www.flightaware.com');
+
+        $this->get(route('parse.export.event', ['parse_key' => $parseKey, 'eventId' => $eventId]))
+            ->assertOk()->assertSee('URL:https://www.flightradar24.com/data/aircraft/n772ck')
+            ->assertDontSee('URL:http://localhost/parse');
+    }
+
     public function test_roster_text_is_parsed_into_calendar_events(): void
     {
         Airline::query()->create([

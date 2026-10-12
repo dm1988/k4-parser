@@ -19,6 +19,7 @@ class UserModelTest extends TestCase
             'email',
             'airline_iata_code',
             'airline_icao_code',
+            'flight_tracker_preference',
             'email_verified_at',
             'password',
             'remember_token',

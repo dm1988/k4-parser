@@ -12,6 +12,26 @@ class AirlineCodeLookupClient
      */
     private ?array $airlinesByIataCode = null;
 
+    /** @var array<string, string> */
+    private array $icaoCodesByIata = [];
+
+    /** @var array<string, string> */
+    private array $iataCodesByIcao = [];
+
+    public function icaoCodeForIataCode(string $code): ?string
+    {
+        $this->airlinesByIataCode();
+
+        return $this->icaoCodesByIata[strtoupper(trim($code))] ?? null;
+    }
+
+    public function iataCodeForIcaoCode(string $code): ?string
+    {
+        $this->airlinesByIataCode();
+
+        return $this->iataCodesByIcao[strtoupper(trim($code))] ?? null;
+    }
+
     public function airlineNameForIataCode(string $code): ?string
     {
         $normalizedCode = strtoupper(trim($code));
@@ -62,6 +82,12 @@ class AirlineCodeLookupClient
         while (($row = fgetcsv($handle)) !== false) {
             $iataCode = $this->normalizeValue($row[3] ?? null);
             $name = $this->normalizeValue($row[1] ?? null);
+            $icaoCode = $this->normalizeValue($row[4] ?? null);
+
+            if ($iataCode !== null && $icaoCode !== null) {
+                $this->icaoCodesByIata[$iataCode] ??= $icaoCode;
+                $this->iataCodesByIcao[$icaoCode] ??= $iataCode;
+            }
 
             if ($iataCode === null || $name === null || isset($airlines[$iataCode])) {
                 continue;

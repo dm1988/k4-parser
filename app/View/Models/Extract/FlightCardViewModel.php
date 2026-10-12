@@ -5,17 +5,26 @@ namespace App\View\Models\Extract;
 use App\DTOs\Flight;
 use App\Enums\AirportResolutionStatus;
 use App\Enums\ScheduleEventType;
+use App\Services\Schedule\FlightTrackerUrlGenerator;
 use Carbon\CarbonImmutable;
 
 readonly class FlightCardViewModel
 {
     public function __construct(
         public Flight $flight,
+        public ?string $trackerUrl = null,
+        public string $trackerLabel = 'FlightAware',
     ) {}
 
     public static function fromFlight(Flight $flight): self
     {
-        return new self($flight);
+        $generator = app(FlightTrackerUrlGenerator::class);
+
+        return new self(
+            $flight,
+            $generator->url($flight->tailNumber, $flight->flightNumber),
+            $generator->labelFor($flight->tailNumber, $flight->flightNumber),
+        );
     }
 
     public function heading(): string

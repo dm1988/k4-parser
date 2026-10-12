@@ -61,17 +61,16 @@
             {{ $model->flight->tailNumber ?? '—' }}
         </x-extract.detail-card>
     </div>
-    @if ( $model->flight->tailNumber )
+    @if ($model->trackerUrl !== null)
     <div>
         <div class="flex items-center justify-between gap-3 rounded-lg border border-[#1B365D]/10 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
             <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4A5568] dark:text-slate-400">
                 Flight Tracking
             </p>
-            <a href="https://flightaware.com/live/flight/{{ $model->flight->tailNumber }}" target="_blank"
+            <a href="{{ $model->trackerUrl }}" target="_blank"
                 rel="noopener noreferrer"
-                class="group inline-flex min-w-0 items-center gap-1 font-mono text-sm font-semibold text-[#1B365D] transition-colors hover:text-[#C5A059] dark:text-slate-200">
-                <span class="underline decoration-transparent transition-all group-hover:decoration-[#C5A059]">Flight
-                    Aware</span>
+                class="group inline-flex min-w-0 items-center gap-1 rounded-sm font-mono text-sm font-semibold text-[#1B365D] transition-colors hover:text-[#C5A059] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C5A059] dark:text-slate-200">
+                <span class="underline decoration-transparent transition-all group-hover:decoration-[#C5A059]">{{ $model->trackerLabel }}</span>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
                     class="size-3.5 text-[#4A5568] transition-colors group-hover:text-[#C5A059]">
                     <path fill-rule="evenodd"

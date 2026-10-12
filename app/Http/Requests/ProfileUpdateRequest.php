@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\FlightTracker;
 use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -36,6 +37,7 @@ class ProfileUpdateRequest extends FormRequest
             ],
             'airline_iata_code' => ['nullable', 'string', 'size:2', 'regex:/^[A-Z0-9]{2}$/'],
             'airline_icao_code' => ['nullable', 'string', 'size:3', 'regex:/^[A-Z]{3}$/'],
+            'flight_tracker_preference' => ['sometimes', 'required', Rule::enum(FlightTracker::class)],
         ];
     }
 
