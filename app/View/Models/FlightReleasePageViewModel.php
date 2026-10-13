@@ -151,6 +151,11 @@ readonly class FlightReleasePageViewModel
         return $this->pageData?->flightPlan->identity->flightDate?->format('M j, Y');
     }
 
+    public function envelopeDate(): ?string
+    {
+        return $this->pageData?->flightPlan->identity->flightDate?->format('n/j/Y');
+    }
+
     public function aircraftType(): ?string
     {
         return $this->pageData?->flightPlan->identity->aircraftType;

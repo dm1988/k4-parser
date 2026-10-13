@@ -12,9 +12,9 @@
 
         <dl class="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
             <x-flight-release.metric label="Trip number" :value="$model->tripNumber()" empty-text="Not confirmed" />
-            <x-flight-release.metric label="Flight number" :value="$model->flightNumber()" empty-text="Not confirmed" />
-            <x-flight-release.metric label="Aircraft type" :value="$model->aircraftType()" empty-text="Not confirmed" />
+            <x-flight-release.metric label="Date" :value="$model->envelopeDate()" empty-text="Not confirmed" />
             <x-flight-release.metric label="Tail number" :value="$model->tailNumber()" empty-text="Not confirmed" />
+            <x-flight-release.metric label="Aircraft type" :value="$model->aircraftType()" empty-text="Not confirmed" />
             <x-flight-release.metric label="Departure" :value="$model->departure()" empty-text="Not confirmed" />
             <x-flight-release.metric label="Destination" :value="$model->destination()" empty-text="Not confirmed" />
         </dl>

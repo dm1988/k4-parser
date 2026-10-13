@@ -28,7 +28,7 @@ class EnvelopeTest extends FlightPlanBriefTestCase
                         'recall_number' => null,
                         'aircraft_type' => 'B777-200F',
                         'tail_number' => 'N774CK',
-                        'flight_date' => '2026-05-25',
+                        'flight_date' => '2026-10-01',
                         'release_revision' => null,
                     ],
                     crewMembers: [
@@ -73,7 +73,12 @@ class EnvelopeTest extends FlightPlanBriefTestCase
             ->assertSeeHtml('wire:key="flight-plan-task-panel-envelope"')
             ->assertSeeText('Flight details')
             ->assertSeeText('109546')
-            ->assertSeeText('CKS256')
+            ->assertDontSeeText('Flight number')
+            ->assertSeeHtmlInOrder([
+                'Trip number', '109546', 'Date', '10/1/2026',
+                'Tail number', 'N774CK', 'Aircraft type', 'B777-200F',
+                'Departure', 'PANC', 'Destination', 'KMIA',
+            ])
             ->assertSeeText('B777-200F')
             ->assertSeeText('N774CK')
             ->assertSeeText('MORGAN A')
@@ -124,6 +129,7 @@ class EnvelopeTest extends FlightPlanBriefTestCase
         $component
             ->call('$refresh')
             ->assertSet('activeTask', FlightPlanTask::Envelope->value)
+            ->assertSeeText('10/1/2026')
             ->assertSeeText('MORGAN A')
             ->assertDontSeeText('612,400 LB');
 
@@ -145,6 +151,8 @@ class EnvelopeTest extends FlightPlanBriefTestCase
             ->assertSet('activeTask', FlightPlanTask::Envelope->value)
             ->assertSeeHtml('wire:key="flight-plan-task-panel-envelope"')
             ->assertSeeText('Flight details')
+            ->assertSeeHtmlInOrder(['Trip number', 'Date', 'Not confirmed', 'Tail number', 'Aircraft type'])
+            ->assertDontSeeText('Flight number')
             ->assertSeeText('PANC')
             ->assertSeeText('KMIA')
             ->assertDontSeeText('Not supported yet')

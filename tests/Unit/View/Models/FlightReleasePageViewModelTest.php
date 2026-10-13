@@ -34,6 +34,7 @@ class FlightReleasePageViewModelTest extends TestCase
         $this->assertSame([], $viewModel->taskAvailability());
         $this->assertNull($viewModel->flightNumber());
         $this->assertNull($viewModel->flightDate());
+        $this->assertNull($viewModel->envelopeDate());
         $this->assertSame(OperationsSpecification::Unknown, $viewModel->operationsSpecification());
         $this->assertNull($viewModel->b44BadgeLabel());
         $this->assertNull($viewModel->aircraftType());
@@ -391,6 +392,7 @@ class FlightReleasePageViewModelTest extends TestCase
 
         $this->assertSame('CKS241', $viewModel->flightNumber());
         $this->assertSame('May 25, 2026', $viewModel->flightDate());
+        $this->assertSame('5/25/2026', $viewModel->envelopeDate());
         $this->assertSame('B777-200F', $viewModel->aircraftType());
         $this->assertSame('N774CK', $viewModel->tailNumber());
         $this->assertSame('2026-05-25 18:30', $viewModel->etdUtc());

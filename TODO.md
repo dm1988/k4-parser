@@ -28,47 +28,17 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## [x] Completed: Schedule: Flight radar option
+## [x] Completed: FP: Envelope: Include flight date in task
 
-### Goal
+Completed (2026-10-13): Envelope Flight details now shows the confirmed flight date immediately after Trip number, labeled `Date`, formatted as `10/1/2026`. Missing dates show `Not confirmed`. Removed the Flight number metric from Envelope and moved Tail number before Aircraft type. The field order is Trip number, Date, Tail number, Aircraft type, Departure, Destination.
 
-Centralize flight-tracker URL generation and let users choose FlightAware or Flightradar24 for schedule links and iCalendar exports.
+Reused the flight identity date and metric component with Envelope-specific formatting. Shared header and Maintenance date presentation remain unchanged.
 
-### Confirmed choices
+Validation: All 68 focused Envelope feature and flight-release view-model tests passed through Sail (731 assertions), covering field/value order, unpadded dates, missing dates, and refresh persistence. Pint passed; one application-wide Larastan run passed with zero errors. No manual browser review was performed.
 
-- Apply the preference to both schedule flight cards and iCal exports.
-- Prefer the tail number; use the flight number when the tail is unavailable, including commercial deadheads.
-- Use the current user preference when viewing or downloading previously parsed schedules. Already imported calendar files require a new export to change their links.
+Sail was started using temporary `APP_PORT=8080` and `VITE_PORT=5174` overrides because ports 80 and 5173 were occupied; environment files were not changed. Boost documentation access failed with a closed transport, so the official Livewire 4 testing documentation was used as fallback.
 
-### Current implementation
-
-- `FlightTracker` defines the two supported choices, labels, and FlightAware fallback for unset/invalid stored preferences. Profile validation rejects unsupported, empty, or malformed submitted choices and preserves the preference when another profile field is updated.
-- A new reversible migration adds `users.flight_tracker_preference` with the database default `flightaware`; the User model mirrors this default and includes the preference in its fillable attributes. The profile form includes a labeled select, helper text, validation errors, and light/dark styling.
-- `FlightTrackerUrlGenerator` is the shared source for extraction's legacy FlightAware URL, current flight-card links, and the iCalendar URL property. Configured roots live in `services.flightaware.url` and `services.flightradar24.url`, exposed as `FLIGHTAWARE_URL` and `FLIGHTRADAR24_URL` in `.env.example`. Defaults work without editing a local `.env`.
-- Tail identifiers preserve registration hyphens and use each provider's expected case. Flight-number links use ICAO airline prefixes for FlightAware and IATA prefixes for Flightradar24. Company codes use existing schedule preferences; commercial conversions reuse the bundled airline-code data through `AirlineCodeLookupClient`, with no database queries during tracker URL generation. The service is scoped per request to reuse its lookup data.
-- Unknown ICAO-to-IATA mappings fall back to a FlightAware flight-number URL and label. Missing or invalid identifiers produce no tracker link. Generic duties and layovers have no tracker URL.
-- Tracker links are separate from calendar download URLs. `FlightMapper` no longer overwrites tracker metadata with a per-event iCal download URL, and aircraft types such as `77X` are no longer treated as tail registrations. Existing cached schedules use their structured identifiers and current preference instead of trusting an old stored URL.
-
-### Problem
-
-FlightAware URLs were repeated in extraction and Blade, users could not select another tracker, and flight DTOs reused `downloadUrl` for both tracker links and calendar downloads. That could place an application download URL in the iCalendar URL property. Flights without tails also lacked a tracking link.
-
-### Validation outcome (2026-10-12)
-
-Through Sail, all 123 focused URL-generator, profile, User/Flight DTO, parser, view-model, flight-card, cached roster export, ICS serialization, and flight-duty export tests passed with 705 assertions. Coverage includes both providers, company/commercial flight numbers, hyphenated tails, configured URL roots, invalid/unset preferences, missing identifiers, unknown airline fallback, saved preference changes affecting cached exports, and distinct calendar download links. Pint completed successfully; one application-wide Larastan run passed with zero errors; the production Vite build passed. Profile/card markup was verified programmatically; no manual browser review was performed.
-
-Boost's version-specific documentation and users-schema checks succeeded. The migration is recorded as applied in local Sail, and a read-only aggregate confirmed both existing development users have the FlightAware default. Other deployment databases must run the new migration before using the profile setting. Dependency files and unrelated TODO edits were preserved.
-
-The provider URL formats were checked against [Flightradar24 aircraft history](https://www.flightradar24.com/data/aircraft/n772ck), [Flightradar24 flight history](https://www.flightradar24.com/data/flights/k4240), and [FlightAware flight tracking](https://www.flightaware.com/live/flight/CKS240).
-
-Commit message: `feat: add flight tracker preferences for schedule links and calendar exports`
-
-## FP: Maintenance: Include flight date in task
-- Format: 10/1/2026
-- After trip number
-- Label `Date`
-
-- Unreleated task: Swap order: Tail number and aircraft type
+Commit message: `feat: add flight date and reorder aircraft fields in envelope task`
 
 ## FP: Prelim flight plans
 Goal:
@@ -375,3 +345,38 @@ Local: Oct 07 23:00  ➔ Oct 08 04:30
 All 34 focused formatter, ICS serializer, roster export, and flight-duty export tests passed through Sail. New formatter coverage verifies the compact layout, omitted airport enrichment, explicit UTC/local labels, timezone offsets, day/year rollovers, partial and invalid dates, missing fields, zero/unknown crew counts, source employee IDs, Unicode alignment, deadheads, and retained custom/slot notes. Pint passed for this task's PHP files; one application-wide Larastan run passed with zero errors. Boost's version-specific documentation search succeeded. Existing staged and unrelated changes were preserved. Existing parsed results use the new layout on their next calendar download; already imported calendars need the newly exported file.
 
 Commit message: `feat: compact schedule calendar notes into operational sections`
+
+## [x] Completed: Schedule: Flight radar option
+
+### Goal
+
+Centralize flight-tracker URL generation and let users choose FlightAware or Flightradar24 for schedule links and iCalendar exports.
+
+### Confirmed choices
+
+- Apply the preference to both schedule flight cards and iCal exports.
+- Prefer the tail number; use the flight number when the tail is unavailable, including commercial deadheads.
+- Use the current user preference when viewing or downloading previously parsed schedules. Already imported calendar files require a new export to change their links.
+
+### Current implementation
+
+- `FlightTracker` defines the two supported choices, labels, and FlightAware fallback for unset/invalid stored preferences. Profile validation rejects unsupported, empty, or malformed submitted choices and preserves the preference when another profile field is updated.
+- A new reversible migration adds `users.flight_tracker_preference` with the database default `flightaware`; the User model mirrors this default and includes the preference in its fillable attributes. The profile form includes a labeled select, helper text, validation errors, and light/dark styling.
+- `FlightTrackerUrlGenerator` is the shared source for extraction's legacy FlightAware URL, current flight-card links, and the iCalendar URL property. Configured roots live in `services.flightaware.url` and `services.flightradar24.url`, exposed as `FLIGHTAWARE_URL` and `FLIGHTRADAR24_URL` in `.env.example`. Defaults work without editing a local `.env`.
+- Tail identifiers preserve registration hyphens and use each provider's expected case. Flight-number links use ICAO airline prefixes for FlightAware and IATA prefixes for Flightradar24. Company codes use existing schedule preferences; commercial conversions reuse the bundled airline-code data through `AirlineCodeLookupClient`, with no database queries during tracker URL generation. The service is scoped per request to reuse its lookup data.
+- Unknown ICAO-to-IATA mappings fall back to a FlightAware flight-number URL and label. Missing or invalid identifiers produce no tracker link. Generic duties and layovers have no tracker URL.
+- Tracker links are separate from calendar download URLs. `FlightMapper` no longer overwrites tracker metadata with a per-event iCal download URL, and aircraft types such as `77X` are no longer treated as tail registrations. Existing cached schedules use their structured identifiers and current preference instead of trusting an old stored URL.
+
+### Problem
+
+FlightAware URLs were repeated in extraction and Blade, users could not select another tracker, and flight DTOs reused `downloadUrl` for both tracker links and calendar downloads. That could place an application download URL in the iCalendar URL property. Flights without tails also lacked a tracking link.
+
+### Validation outcome (2026-10-12)
+
+Through Sail, all 123 focused URL-generator, profile, User/Flight DTO, parser, view-model, flight-card, cached roster export, ICS serialization, and flight-duty export tests passed with 705 assertions. Coverage includes both providers, company/commercial flight numbers, hyphenated tails, configured URL roots, invalid/unset preferences, missing identifiers, unknown airline fallback, saved preference changes affecting cached exports, and distinct calendar download links. Pint completed successfully; one application-wide Larastan run passed with zero errors; the production Vite build passed. Profile/card markup was verified programmatically; no manual browser review was performed.
+
+Boost's version-specific documentation and users-schema checks succeeded. The migration is recorded as applied in local Sail, and a read-only aggregate confirmed both existing development users have the FlightAware default. Other deployment databases must run the new migration before using the profile setting. Dependency files and unrelated TODO edits were preserved.
+
+The provider URL formats were checked against [Flightradar24 aircraft history](https://www.flightradar24.com/data/aircraft/n772ck), [Flightradar24 flight history](https://www.flightradar24.com/data/flights/k4240), and [FlightAware flight tracking](https://www.flightaware.com/live/flight/CKS240).
+
+Commit message: `feat: add flight tracker preferences for schedule links and calendar exports`
