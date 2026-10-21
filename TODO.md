@@ -28,6 +28,52 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## Include bug email if an error occurs on upload
+On error, provide the dev email offering to report a bug
+
+## Fix Imagick resource cleanup
+There's a subtle issue here:
+$image = new Imagick;
+
+try {
+    $image->setResolution(200, 200);
+    $image->readImage($pdfPath.'['.$pageIndex.']');
+    $image->setImageBackgroundColor('white');
+
+    $image = $image->mergeImageLayers(
+        Imagick::LAYERMETHOD_FLATTEN
+    );
+
+    $image->setImageFormat('png');
+    $image->writeImage($imagePath);
+} finally {
+    $image->clear();
+}
+
+
+mergeImageLayers() returns a new Imagick object, and you overwrite the original $image variable.
+Your finally block therefore clears the merged image, not explicitly the original object.
+I'd preserve both references and clean up both resources.
+
+## B. Make OCR resolution configurable
+You're currently rendering at 200 DPI.
+That's reasonable for many documents, but flight schedules can contain small text, especially aircraft registrations, flight numbers, and timestamps.
+I would make DPI configurable, with 300 as an option for difficult documents.
+
+## Don't force PSM 6 for every document
+Your current command:
+[
+    $tesseract,
+    $imagePath,
+    'stdout',
+    '--psm', '6',
+]
+
+
+PSM 6 assumes a single uniform block of text.
+That can be effective for flight plan sections, but schedules with multiple columns or complex layouts may benefit from PSM 3 or 4.
+I'd make page segmentation mode configurable per extraction call.
+
 ## [x] Completed: FP: Envelope: Include flight date in task
 
 Completed (2026-10-13): Envelope Flight details now shows the confirmed flight date immediately after Trip number, labeled `Date`, formatted as `10/1/2026`. Missing dates show `Not confirmed`. Removed the Flight number metric from Envelope and moved Tail number before Aircraft type. The field order is Trip number, Date, Tail number, Aircraft type, Departure, Destination.
