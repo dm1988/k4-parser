@@ -60,6 +60,7 @@ return [
 
     'ocr' => [
         'tesseract_path' => env('TESSERACT_PATH', '/usr/bin/tesseract'),
+        'pdftoppm_path' => env('PDFTOPPM_PATH', '/usr/bin/pdftoppm'),
     ],
 
 ];

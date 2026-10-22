@@ -4,7 +4,6 @@ namespace App\Services\FlightPlan\Extractor;
 
 use App\Exceptions\FlightRouteNotFoundException;
 use Illuminate\Support\Facades\File;
-use Imagick;
 use Symfony\Component\Process\Process;
 use Throwable;
 
@@ -13,25 +12,34 @@ class PdfImagePageTextExtractor
     public function extract(string $pdfPath, int $pageIndex): string
     {
         $tesseract = config('services.ocr.tesseract_path', '/usr/bin/tesseract');
+        $pdftoppm = config('services.ocr.pdftoppm_path', '/usr/bin/pdftoppm');
 
-        if (! class_exists(Imagick::class) || ! is_string($tesseract) || ! is_executable($tesseract)) {
+        if (! is_string($tesseract) || ! is_executable($tesseract)
+            || ! is_string($pdftoppm) || ! is_executable($pdftoppm)) {
             throw FlightRouteNotFoundException::ocrUnavailable();
         }
 
-        $imagePath = tempnam(storage_path('app'), 'flight-plan-ocr-');
-
-        if ($imagePath === false) {
+        if ($pageIndex < 0) {
             throw FlightRouteNotFoundException::ocrFailed();
         }
 
+        $temporaryFile = tempnam(storage_path('app'), 'flight-plan-ocr-');
+
+        if ($temporaryFile === false) {
+            throw FlightRouteNotFoundException::ocrFailed();
+        }
+
+        $imagePath = $temporaryFile.'.png';
+
         try {
-            $this->renderPage($pdfPath, $pageIndex, $imagePath);
+            $this->renderPage($pdftoppm, $pdfPath, $pageIndex, $temporaryFile);
 
             $process = new Process([
                 $tesseract,
                 $imagePath,
                 'stdout',
-                '--psm', '6',
+                '--psm',
+                '6',
             ]);
             $process->setTimeout(30);
             $process->mustRun();
@@ -42,23 +50,32 @@ class PdfImagePageTextExtractor
 
             throw FlightRouteNotFoundException::ocrFailed();
         } finally {
-            File::delete($imagePath);
+            File::delete([$temporaryFile, $imagePath]);
         }
     }
 
-    private function renderPage(string $pdfPath, int $pageIndex, string $imagePath): void
+    private function renderPage(string $pdftoppm, string $pdfPath, int $pageIndex, string $outputPrefix): void
     {
-        $image = new Imagick;
+        $pageNumber = $pageIndex + 1;
 
-        try {
-            $image->setResolution(200, 200);
-            $image->readImage($pdfPath.'['.$pageIndex.']');
-            $image->setImageBackgroundColor('white');
-            $image = $image->mergeImageLayers(Imagick::LAYERMETHOD_FLATTEN);
-            $image->setImageFormat('png');
-            $image->writeImage($imagePath);
-        } finally {
-            $image->clear();
+        $process = new Process([
+            $pdftoppm,
+            '-f',
+            (string) $pageNumber,
+            '-l',
+            (string) $pageNumber,
+            '-singlefile',
+            '-r',
+            '200',
+            '-png',
+            $pdfPath,
+            $outputPrefix,
+        ]);
+        $process->setTimeout(60);
+        $process->mustRun();
+
+        if (! is_file($outputPrefix.'.png')) {
+            throw FlightRouteNotFoundException::ocrFailed();
         }
     }
 }

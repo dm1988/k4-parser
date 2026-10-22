@@ -55,6 +55,7 @@ RUN apt-get update && apt-get upgrade -y \
         php8.4-pcov \
         php8.4-imagick \
         php8.4-xdebug \
+        poppler-utils \
         tesseract-ocr \
         tesseract-ocr-eng \
         tesseract-ocr-spa \
