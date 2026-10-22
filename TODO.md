@@ -68,29 +68,12 @@ Commit message: `feat: add security update email and guarded send command`
 ## Include bug email if an error occurs on upload
 On error, provide the dev email offering to report a bug
 
-## Fix Imagick resource cleanup
-There's a subtle issue here:
-$image = new Imagick;
+## [x] Completed: Replace Imagick PDF page rendering with Poppler
+Outcome: `PdfImagePageTextExtractor` now renders one selected page to PNG with Poppler's `pdftoppm`, then reads that PNG with Tesseract. This removes the Imagick/Ghostscript rendering and its resource-cleanup issue. It validates both executables, converts zero-based page indexes to Poppler's one-based pages, and deletes both temporary files on success or failure. `PDFTOPPM_PATH` is configurable, and the Sail Dockerfile installs `poppler-utils`.
 
-try {
-    $image->setResolution(200, 200);
-    $image->readImage($pdfPath.'['.$pageIndex.']');
-    $image->setImageBackgroundColor('white');
+Verification: Five new extractor tests passed; the existing flight-plan text extractor tests passed against a local container with Poppler installed (12 passing tests, one skipped across the two files; 71 assertions). Pint passed; Larastan passed with zero errors. The full Sail image rebuild was not completed, so production must have `pdftoppm` installed at the configured path before deploying this change.
 
-    $image = $image->mergeImageLayers(
-        Imagick::LAYERMETHOD_FLATTEN
-    );
-
-    $image->setImageFormat('png');
-    $image->writeImage($imagePath);
-} finally {
-    $image->clear();
-}
-
-
-mergeImageLayers() returns a new Imagick object, and you overwrite the original $image variable.
-Your finally block therefore clears the merged image, not explicitly the original object.
-I'd preserve both references and clean up both resources.
+Commit message: `fix(ocr): replace Imagick PDF rendering with Poppler` (`669c59b`).
 
 ## B. Make OCR resolution configurable
 You're currently rendering at 200 DPI.
