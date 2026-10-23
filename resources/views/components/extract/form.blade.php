@@ -1,4 +1,4 @@
-@props(['eventTypes', 'files' => [], 'filterOptions'])
+@props(['eventTypes', 'files' => [], 'filterOptions', 'bugReportAddress'])
 
 <form wire:submit="extractRoster" id="extractForm" class="space-y-6">
 
@@ -67,6 +67,9 @@
                 @error('files.*')
                 <p class="mt-2 text-sm font-medium text-red-700 dark:text-red-400">{{ $message }}</p>
                 @enderror
+                @if ($errors->has('files') || $errors->has('files.*'))
+                    <x-upload-bug-report :address="$bugReportAddress" class="mt-1" />
+                @endif
             </div>
 
             <button

@@ -28,45 +28,14 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Current focus: Security email
-Goal: Send a clear update about the reported eight-and-a-half-hour outage associated with a php2shell remote code execution vulnerability, then introduce the Flight Plan Brief and other meaningful changes since the previous user email.
+## [x] Completed: Include bug email if an error occurs on upload
+Outcome: Flight Plan Brief and Schedule Extractor now offer a mailto link to report a possible bug beside upload errors. The schedule's partial extraction failure dialog offers the same link. The address comes from `MAIL_ADMIN_ADDRESS` through `config('mail.admin_address')`, and the link stays hidden when there is no error or no configured address.
 
-Current implementation: The previous user announcement is `VersionOneAnnouncement` and its `mail:version-one` command. That email described Schedule Extractor v1. Git history shows the announcement code was added on 2026-08-03, but does not establish when the full email was sent. The command's recipient rule is active users with nonempty email addresses, including unverified users; it queues individual messages and guards against a duplicate full send.
+Verification: Six focused PHPUnit tests passed (103 assertions), covering clean upload screens, invalid files, a processing exception, and partial schedule failures. Pint passed; Larastan passed once with zero errors.
 
-Problem: The incident details and approximate previous-send time are recorded below. The corrected 08:00–16:30 window spans eight and a half hours. The incident date, impact assessment, production patch status, and delivery record still need confirmation. Do not imply that user data was or was not accessed without evidence.
+Follow-up verification: Added explicit unexpected-fixture cases to three schedule test matches after the staged Larastan check flagged them. The two affected tests passed (33 assertions); Pint and Larastan passed with zero errors.
 
-Plan:
-1. Confirm the incident record before writing final copy: affected service and time window with timezone, actual downtime, the vulnerability name and how it affected this deployment, containment and remediation completed, whether any user data or accounts were affected, and any action users need to take. Record what remains unknown and give a follow-up date or channel if the investigation is still open.
-   * From 08:00 to 16:30 Central time (eight and a half hours); confirm the incident date and whether daylight saving time applied before using a CST/CDT abbreviation.
-   * CVE-2026-109618 and CVE-2026-109619
-   * Upload-progress unserializer use-after-free
-   * Remote process-memory disclosure
-   * Fatal-error backtrace use-after-free
-   * OPcache type confusion
-   * Only affect was downtime, no server compromises, no unauthorized access
-   * Patches and updates in place
-   * No user data or accounts affected
-   * No user action needed
-   * Verify the technical descriptions against the PHP security advisories before using them in public copy; verify the deployment and incident records separately for the claims about this service.
-2. Find the actual send date and content of the last user email from delivery or queue records. Use that date as the start of the feature audit; the 2026-08-03 source commit is only a provisional lower bound. Compare deployed releases and user-visible behavior, not just commit titles.
-    * Version one announcement sent around Mon, Aug 3, 3:51 PM
-
-3. Build a short, verified change list. Lead with the new Flight Plan Brief and what a user can do with it. Candidate changes to check: saved latest flight release, overview and task navigation, weight and balance and ETOPS summaries, offline waypoint fuel calculator, dispatcher notes, and schedule flight-tracker preferences, calendar notes, and reserve badges. Omit anything not live for recipients or already announced.
-4. Draft one email with this order: incident and apology; restoration and current status; impact and required user action (or an explicit statement that the investigation is ongoing); concise Flight Plan Brief introduction; up to three additional changes; support contact and expected follow-up. Keep the security subject and opening factual; do not let the feature announcement obscure the incident.
-5. Review the draft against the incident record and deployed features. Preview the rendered email and links, confirm the intended recipients and mail configuration, and use a guarded, one-time send with delivery monitoring. Record the send date, audience, final copy, and any follow-up needed in this section.
-
-Completion criteria: Incident claims are approved against evidence, the feature list is verified from the last actual send, recipients and links are checked, and the email is sent once with a recorded outcome.
-
-Implementation outcome: Added a queued security update mailable and Markdown email, plus `mail:security-update` with a single-address review option, confirmed full-audience send, staggered broadcast delivery, and a duplicate-send guard. The copy leads with the incident, states the supplied impact assessment and the corrected eight-and-a-half-hour outage, and highlights Flight Plan Brief and selected schedule improvements. The product button leads to the public page so account-specific feature access is handled there.
-
-Verification: Five focused PHPUnit tests passed (32 assertions). Pint passed for the changed PHP files, and Larastan passed once with zero errors.
-
-Pending send: Confirm the incident date, impact assessment, production patch status, last mailing record, and which highlighted features are deployed for recipients. Review a rendered copy and the production audience before queueing the full send. This Sail checkout uses `APP_ENV=local`; run the actual send in production and record its delivery outcome here afterward.
-
-Commit message: `feat: add security update email and guarded send command`
-
-## Include bug email if an error occurs on upload
-On error, provide the dev email offering to report a bug
+Commit message: `feat: offer bug report email on upload errors`
 
 ## [x] Completed: Replace Imagick PDF page rendering with Poppler
 Outcome: `PdfImagePageTextExtractor` now renders one selected page to PNG with Poppler's `pdftoppm`, then reads that PNG with Tesseract. This removes the Imagick/Ghostscript rendering and its resource-cleanup issue. It validates both executables, converts zero-based page indexes to Poppler's one-based pages, and deletes both temporary files on success or failure. `PDFTOPPM_PATH` is configurable, and the Sail Dockerfile installs `poppler-utils`.
@@ -446,3 +415,40 @@ Boost's version-specific documentation and users-schema checks succeeded. The mi
 The provider URL formats were checked against [Flightradar24 aircraft history](https://www.flightradar24.com/data/aircraft/n772ck), [Flightradar24 flight history](https://www.flightradar24.com/data/flights/k4240), and [FlightAware flight tracking](https://www.flightaware.com/live/flight/CKS240).
 
 Commit message: `feat: add flight tracker preferences for schedule links and calendar exports`
+
+## Completed: Security email
+Goal: Send a clear update about the reported eight-and-a-half-hour outage associated with a php2shell remote code execution vulnerability, then introduce the Flight Plan Brief and other meaningful changes since the previous user email.
+
+Current implementation: The previous user announcement is `VersionOneAnnouncement` and its `mail:version-one` command. That email described Schedule Extractor v1. Git history shows the announcement code was added on 2026-08-03, but does not establish when the full email was sent. The command's recipient rule is active users with nonempty email addresses, including unverified users; it queues individual messages and guards against a duplicate full send.
+
+Problem: The incident details and approximate previous-send time are recorded below. The corrected 08:00–16:30 window spans eight and a half hours. The incident date, impact assessment, production patch status, and delivery record still need confirmation. Do not imply that user data was or was not accessed without evidence.
+
+Plan:
+1. Confirm the incident record before writing final copy: affected service and time window with timezone, actual downtime, the vulnerability name and how it affected this deployment, containment and remediation completed, whether any user data or accounts were affected, and any action users need to take. Record what remains unknown and give a follow-up date or channel if the investigation is still open.
+   * From 08:00 to 16:30 Central time (eight and a half hours); confirm the incident date and whether daylight saving time applied before using a CST/CDT abbreviation.
+   * CVE-2026-109618 and CVE-2026-109619
+   * Upload-progress unserializer use-after-free
+   * Remote process-memory disclosure
+   * Fatal-error backtrace use-after-free
+   * OPcache type confusion
+   * Only affect was downtime, no server compromises, no unauthorized access
+   * Patches and updates in place
+   * No user data or accounts affected
+   * No user action needed
+   * Verify the technical descriptions against the PHP security advisories before using them in public copy; verify the deployment and incident records separately for the claims about this service.
+2. Find the actual send date and content of the last user email from delivery or queue records. Use that date as the start of the feature audit; the 2026-08-03 source commit is only a provisional lower bound. Compare deployed releases and user-visible behavior, not just commit titles.
+    * Version one announcement sent around Mon, Aug 3, 3:51 PM
+
+3. Build a short, verified change list. Lead with the new Flight Plan Brief and what a user can do with it. Candidate changes to check: saved latest flight release, overview and task navigation, weight and balance and ETOPS summaries, offline waypoint fuel calculator, dispatcher notes, and schedule flight-tracker preferences, calendar notes, and reserve badges. Omit anything not live for recipients or already announced.
+4. Draft one email with this order: incident and apology; restoration and current status; impact and required user action (or an explicit statement that the investigation is ongoing); concise Flight Plan Brief introduction; up to three additional changes; support contact and expected follow-up. Keep the security subject and opening factual; do not let the feature announcement obscure the incident.
+5. Review the draft against the incident record and deployed features. Preview the rendered email and links, confirm the intended recipients and mail configuration, and use a guarded, one-time send with delivery monitoring. Record the send date, audience, final copy, and any follow-up needed in this section.
+
+Completion criteria: Incident claims are approved against evidence, the feature list is verified from the last actual send, recipients and links are checked, and the email is sent once with a recorded outcome.
+
+Implementation outcome: Added a queued security update mailable and Markdown email, plus `mail:security-update` with a single-address review option, confirmed full-audience send, staggered broadcast delivery, and a duplicate-send guard. The copy leads with the incident, states the supplied impact assessment and the corrected eight-and-a-half-hour outage, and highlights Flight Plan Brief and selected schedule improvements. The product button leads to the public page so account-specific feature access is handled there.
+
+Verification: Five focused PHPUnit tests passed (32 assertions). Pint passed for the changed PHP files, and Larastan passed once with zero errors.
+
+Pending send: Confirm the incident date, impact assessment, production patch status, last mailing record, and which highlighted features are deployed for recipients. Review a rendered copy and the production audience before queueing the full send. This Sail checkout uses `APP_ENV=local`; run the actual send in production and record its delivery outcome here afterward.
+
+Commit message: `feat: add security update email and guarded send command`

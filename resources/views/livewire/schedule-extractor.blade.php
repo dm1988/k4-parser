@@ -19,7 +19,7 @@
                 </p>
             </header>
 
-            <x-extract.form :event-types="$eventTypes" :files="$files" :filter-options="$filterOptions" />
+            <x-extract.form :event-types="$eventTypes" :files="$files" :filter-options="$filterOptions" :bug-report-address="$bugReportAddress" />
         </section>
     @elseif ($view === 'results' && $viewModel?->hasResult())
         <section wire:key="schedule-extractor-results-{{ $parseKey }}" class="mx-auto max-w-4xl space-y-6">
@@ -76,6 +76,8 @@
                             </li>
                         @endforeach
                     </ul>
+
+                    <x-upload-bug-report :address="$bugReportAddress" />
 
                     <div class="flex justify-end">
                         <button

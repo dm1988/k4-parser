@@ -265,6 +265,8 @@ class ExtractionTest extends FlightPlanBriefTestCase
 
     public function test_unexpected_extraction_exception_is_reported_and_shown_as_a_recoverable_error(): void
     {
+        config()->set('mail.admin_address', 'bugs@example.test');
+
         Storage::fake('user_flight_releases');
         Exceptions::fake();
         $log = Log::spy();
@@ -284,6 +286,7 @@ class ExtractionTest extends FlightPlanBriefTestCase
             ->assertSet('flightPlanKey', null)
             ->assertHasErrors(['flightRelease'])
             ->assertSeeText('We could not process that flight release. Please try again.')
+            ->assertSeeHtml('mailto:bugs@example.test?subject=Upload%20bug%20report')
             ->assertSet('extractionJustCompleted', false)
             ->assertDontSeeText('Flight plan brief ready.')
             ->assertSeeHtml('wire:loading.remove.flex')

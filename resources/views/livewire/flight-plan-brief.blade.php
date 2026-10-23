@@ -100,6 +100,7 @@
                 <div class="mt-2 min-h-5 text-center" aria-live="polite">
                     @error('flightRelease')
                         <p class="text-sm font-medium text-red-700 dark:text-red-400">{{ $message }}</p>
+                        <x-upload-bug-report :address="$bugReportAddress" class="mt-1" />
                     @enderror
 
                 </div>

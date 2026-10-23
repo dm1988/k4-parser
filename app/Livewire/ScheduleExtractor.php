@@ -159,6 +159,7 @@ class ScheduleExtractor extends Component
         return view('livewire.schedule-extractor', [
             'available' => auth()->user()?->canUseScheduleExtractor() ?? false,
             'filterOptions' => ScheduleEventType::filterable(),
+            'bugReportAddress' => (string) config('mail.admin_address', ''),
             'viewModel' => $this->view === self::VIEW_RESULTS
                 ? ExtractPageViewModel::fromResult($this->currentResult())
                 : null,

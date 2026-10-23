@@ -237,6 +237,7 @@ class FlightPlanBrief extends Component
             'fuelCalculatorUrl' => $this->flightPlanKey === null
                 ? null
                 : route('flight-release.fuel-score', ['flightPlanKey' => $this->flightPlanKey]),
+            'bugReportAddress' => (string) config('mail.admin_address', ''),
         ]);
     }
 

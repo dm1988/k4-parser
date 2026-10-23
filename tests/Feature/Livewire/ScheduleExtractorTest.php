@@ -31,6 +31,8 @@ class ScheduleExtractorTest extends TestCase
 
     public function test_it_starts_on_the_upload_view_without_a_cached_result(): void
     {
+        config()->set('mail.admin_address', 'bugs@example.test');
+
         $component = Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
             ->assertSet('view', 'upload')
@@ -39,6 +41,7 @@ class ScheduleExtractorTest extends TestCase
             ->assertSee('Schedule Extractor')
             ->assertSee('Drop your schedule here')
             ->assertSee('System online: Ready to process')
+            ->assertDontSee('bugs@example.test')
             ->assertSee('Flights only')
             ->assertDontSee('Extracted Schedule');
 
@@ -197,11 +200,14 @@ class ScheduleExtractorTest extends TestCase
 
     public function test_it_rejects_an_unsupported_upload(): void
     {
+        config()->set('mail.admin_address', 'bugs@example.test');
+
         Livewire::actingAs(User::factory()->create())
             ->test(ScheduleExtractor::class)
             ->set('files', [UploadedFile::fake()->create('roster.csv', 10, 'text/csv')])
             ->call('extractRoster')
             ->assertHasErrors(['files.0' => 'mimes'])
+            ->assertSeeHtml('mailto:bugs@example.test?subject=Upload%20bug%20report')
             ->assertSet('view', 'upload');
 
         $this->assertSame(0, ExtractRequest::query()->count());
@@ -367,6 +373,8 @@ class ScheduleExtractorTest extends TestCase
 
     public function test_it_shows_successful_results_and_a_modal_for_images_that_failed_extraction(): void
     {
+        config()->set('mail.admin_address', 'bugs@example.test');
+
         $files = [
             UploadedFile::fake()->image('parse-failure.png', 300, 200),
             UploadedFile::fake()->image('successful-page.png', 300, 200),
@@ -383,6 +391,7 @@ class ScheduleExtractorTest extends TestCase
                         'parse-failure.png' => $this->resolvedImageSource('Invalid parser text'),
                         'successful-page.png' => $this->resolvedImageSource('Successful OCR text'),
                         'ocr-failure.png' => throw new RuntimeException('OCR could not read this image.'),
+                        default => throw new LogicException('Unexpected schedule fixture.'),
                     };
                 });
         });
@@ -395,6 +404,7 @@ class ScheduleExtractorTest extends TestCase
                         'trip' => [],
                         'calendar_events' => [$this->event('Recovered duty')],
                     ],
+                    default => throw new LogicException('Unexpected schedule text.'),
                 });
         });
 
@@ -420,6 +430,7 @@ class ScheduleExtractorTest extends TestCase
             ->assertSee('The schedule format was not recognized.')
             ->assertSee('ocr-failure.png')
             ->assertSee('OCR could not read this image.')
+            ->assertSeeHtml('mailto:bugs@example.test?subject=Upload%20bug%20report')
             ->assertSee('View extracted results')
             ->assertDispatched('open-modal', name: 'schedule-extraction-errors')
             ->assertNotDispatched('open-modal', name: 'buy-me-a-coffee');
@@ -486,6 +497,7 @@ class ScheduleExtractorTest extends TestCase
                 ->andReturnUsing(fn (UploadedFile $file): array => match ($file->getClientOriginalName()) {
                     'ocr-failure.png' => throw new RuntimeException('OCR could not read this image.'),
                     'parse-failure.png' => $this->resolvedImageSource('Invalid parser text'),
+                    default => throw new LogicException('Unexpected schedule fixture.'),
                 });
         });
         $this->mock(ScheduleFormatParser::class, function (MockInterface $mock): void {

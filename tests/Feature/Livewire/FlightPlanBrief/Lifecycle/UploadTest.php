@@ -13,6 +13,8 @@ class UploadTest extends FlightPlanBriefTestCase
 {
     public function test_it_starts_on_the_upload_view_with_accessible_loading_states(): void
     {
+        config()->set('mail.admin_address', 'bugs@example.test');
+
         $component = Livewire::actingAs(User::factory()->admin()->create())
             ->test(FlightPlanBrief::class)
             ->assertSet('flightRelease', null)
@@ -45,6 +47,7 @@ class UploadTest extends FlightPlanBriefTestCase
             ->assertSeeText('Confirming upload…')
             ->assertSeeText('Upload sent. Waiting for confirmation…')
             ->assertSeeText('Large documents and scanned pages may take longer. Keep this page open.')
+            ->assertDontSee('bugs@example.test')
             ->assertDontSeeText('Extract route')
             ->assertDontSeeText('Extracted flight plan');
 
@@ -53,6 +56,8 @@ class UploadTest extends FlightPlanBriefTestCase
 
     public function test_it_validates_pdf_uploads_and_clears_the_error_when_the_file_changes(): void
     {
+        config()->set('mail.admin_address', 'bugs@example.test');
+
         $this->assertSame(
             ['required', 'file', 'max:25600'],
             config('livewire.temporary_file_upload.rules'),
@@ -63,6 +68,8 @@ class UploadTest extends FlightPlanBriefTestCase
             ->call('extractFlightPlan')
             ->assertHasErrors(['flightRelease' => 'required'])
             ->assertSee('Upload a flight release PDF to extract the route.')
+            ->assertSeeHtml('mailto:bugs@example.test?subject=Upload%20bug%20report')
+            ->assertSee('bugs@example.test')
             ->set('flightRelease', UploadedFile::fake()->create('flight-release.txt', 8, 'text/plain'))
             ->assertHasErrors(['flightRelease' => 'mimes'])
             ->assertSee('Only PDF flight release uploads are supported.');
