@@ -28,6 +28,13 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Diagnose PDF OCR failures reported after the server migration
+Outcome: The checkout already uses Poppler `pdftoppm` for page rendering; the reported Imagick/Ghostscript stack belongs to the earlier implementation. The historical cause remains unconfirmed because the failing PDF and Ghostscript stderr from the migrated worker are unavailable. Current OCR failures stop extraction without caching partial text. Renderer failure logs now record stage, one-based page, exception type, and exit code without recording the private PDF path or subprocess stderr.
+
+Verification: The two focused extractor test files passed in Sail (13 passed, one skipped, 86 assertions); the skipped private ETOPS fixture is unavailable. The available private image-only fixture passed. A new regression verifies that a rasterization failure prevents partial text from being cached. A production smoke test on the actual failing PDF remains required.
+
+Commit message: `fix(ocr): log safe page context for rasterization failures`
+
 ## [x] Completed: Include bug email if an error occurs on upload
 Outcome: Flight Plan Brief and Schedule Extractor now offer a mailto link to report a possible bug beside upload errors. The schedule's partial extraction failure dialog offers the same link. The address comes from `MAIL_ADMIN_ADDRESS` through `config('mail.admin_address')`, and the link stays hidden when there is no error or no configured address.
 

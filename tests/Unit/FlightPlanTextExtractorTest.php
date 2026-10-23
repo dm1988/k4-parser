@@ -170,6 +170,48 @@ class FlightPlanTextExtractorTest extends TestCase
         }
     }
 
+    public function test_rasterization_failure_stops_extraction_without_caching_partial_text(): void
+    {
+        $path = tempnam('/tmp', 'flight-plan-text-');
+        $this->assertIsString($path);
+        file_put_contents($path, 'pdf bytes');
+
+        $textPage = $this->createMock(Page::class);
+        $textPage->expects($this->exactly(2))->method('getText')->willReturn('FLIGHT PLAN');
+        $imagePage = $this->createMock(Page::class);
+        $imagePage->expects($this->exactly(2))->method('getText')->willReturn('');
+        $document = $this->createMock(Document::class);
+        $document->expects($this->exactly(2))->method('getPages')->willReturn([$textPage, $imagePage]);
+        $parser = $this->createMock(Parser::class);
+        $parser->expects($this->exactly(2))->method('parseFile')->with($path)->willReturn($document);
+        $imagePageTextExtractor = $this->createMock(PdfImagePageTextExtractor::class);
+        $imagePageTextExtractor->expects($this->exactly(2))
+            ->method('extract')
+            ->with($path, 1)
+            ->willThrowException(FlightRouteNotFoundException::ocrFailed());
+        $extractor = new FlightPlanTextExtractor(
+            $parser,
+            new Repository(new ArrayStore),
+            $imagePageTextExtractor,
+        );
+
+        try {
+            foreach (range(1, 2) as $attempt) {
+                try {
+                    $extractor->extract($path);
+                    $this->fail("OCR attempt {$attempt} should fail.");
+                } catch (FlightRouteNotFoundException $exception) {
+                    $this->assertSame(
+                        'An image-only page in the uploaded PDF could not be read by OCR.',
+                        $exception->getMessage(),
+                    );
+                }
+            }
+        } finally {
+            unlink($path);
+        }
+    }
+
     public function test_image_page_extraction_fails_clearly_without_ocr_dependencies(): void
     {
         config()->set('services.ocr.tesseract_path', '/missing/tesseract');

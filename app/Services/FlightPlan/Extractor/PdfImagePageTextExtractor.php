@@ -4,6 +4,8 @@ namespace App\Services\FlightPlan\Extractor;
 
 use App\Exceptions\FlightRouteNotFoundException;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 use Throwable;
 
@@ -30,9 +32,11 @@ class PdfImagePageTextExtractor
         }
 
         $imagePath = $temporaryFile.'.png';
+        $stage = 'rasterization';
 
         try {
             $this->renderPage($pdftoppm, $pdfPath, $pageIndex, $temporaryFile);
+            $stage = 'ocr';
 
             $process = new Process([
                 $tesseract,
@@ -46,7 +50,14 @@ class PdfImagePageTextExtractor
 
             return trim($process->getOutput());
         } catch (Throwable $throwable) {
-            report($throwable);
+            Log::error('Flight plan image page extraction failed', [
+                'stage' => $stage,
+                'page_number' => $pageIndex + 1,
+                'error_code' => $throwable::class,
+                'exit_code' => $throwable instanceof ProcessFailedException
+                    ? $throwable->getProcess()->getExitCode()
+                    : null,
+            ]);
 
             throw FlightRouteNotFoundException::ocrFailed();
         } finally {

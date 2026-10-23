@@ -4,6 +4,8 @@ namespace Tests\Unit;
 
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Services\FlightPlan\Extractor\PdfImagePageTextExtractor;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 use Tests\TestCase;
 
 class PdfImagePageTextExtractorTest extends TestCase
@@ -67,9 +69,11 @@ class PdfImagePageTextExtractorTest extends TestCase
 
     public function test_it_cleans_up_partial_pngs_after_rendering_fails(): void
     {
+        $log = Log::spy();
         $pdftoppm = $this->executable(
             'for argument in "$@"; do output="$argument"; done'."\n".
             'printf partial > "$output.png"'."\n".
+            'printf "PRIVATE RELEASE CONTENT /private/release.pdf" >&2'."\n".
             'exit 2'."\n",
         );
         config()->set('services.ocr.pdftoppm_path', $pdftoppm);
@@ -84,6 +88,12 @@ class PdfImagePageTextExtractorTest extends TestCase
         }
 
         $this->assertSame($before, $this->ocrTemporaryFiles());
+        $log->shouldHaveReceived('error')->once()->with('Flight plan image page extraction failed', [
+            'stage' => 'rasterization',
+            'page_number' => 1,
+            'error_code' => ProcessFailedException::class,
+            'exit_code' => 2,
+        ]);
     }
 
     public function test_it_fails_when_poppler_does_not_write_a_png(): void
