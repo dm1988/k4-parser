@@ -13,9 +13,12 @@
     ],
     "sail": true,
     "skills": [
+        "infer-conventions",
         "cashier-stripe-development",
         "laravel-best-practices",
+        "testing-best-practices",
         "tailwindcss-development",
+        "filament-development",
         "debug-using-debugbar"
     ]
 }
