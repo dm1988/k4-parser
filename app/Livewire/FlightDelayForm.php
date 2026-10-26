@@ -58,7 +58,7 @@ class FlightDelayForm extends Component
         $this->inputs = FlightDelayFields::inputs($delay);
         $this->savedInputs = $this->inputs;
         $this->revision = $delay->revision ?? 0;
-        $this->savedAt = $delay?->updated_at?->utc()->format('Y-m-d H:i:s');
+        $this->savedAt = $delay?->updated_at?->utc()->format(FlightDelayReportFormatter::UTC_FORMAT);
     }
 
     public function updatingInputs(mixed $value, ?string $key): void
@@ -178,7 +178,7 @@ class FlightDelayForm extends Component
         }
 
         $this->revision = $delay->revision ?? 0;
-        $this->savedAt = $delay?->updated_at?->utc()->format('Y-m-d H:i:s');
+        $this->savedAt = $delay?->updated_at?->utc()->format(FlightDelayReportFormatter::UTC_FORMAT);
 
         return true;
     }

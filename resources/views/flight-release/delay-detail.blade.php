@@ -4,7 +4,7 @@
             <h1 class="text-2xl font-bold text-[#1B365D] dark:text-slate-100">Saved delay report</h1>
             <a href="{{ route('flight-delays.index') }}" wire:navigate class="rounded text-sm font-semibold text-[#1B365D] underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-[#C5A059] dark:text-slate-200">Delay history</a>
         </header>
-        <p class="text-sm text-[#4A5568] dark:text-slate-300">Read-only history · Last saved {{ $savedAt }} UTC</p>
+        <p class="text-sm text-[#4A5568] dark:text-slate-300">Read-only history · Last saved {{ $savedAt }}</p>
         <dl class="grid grid-cols-2 gap-3 rounded-xl bg-white p-4 dark:bg-slate-900 sm:grid-cols-3">
             @foreach ($flightDetails as $label => $value)
                 <div>

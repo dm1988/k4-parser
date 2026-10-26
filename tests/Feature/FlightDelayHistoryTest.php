@@ -10,6 +10,7 @@ use App\Services\Infrastructure\FlightPlanResultStore;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class FlightDelayHistoryTest extends TestCase
@@ -86,9 +87,40 @@ class FlightDelayHistoryTest extends TestCase
             'fueling_completed_at' => '2026-10-25 23:45:00',
             'notes' => "First line\nSecond line",
         ]);
-        $expected = "Flight delay report\nAll times UTC\nFlight: CKS241\nFlight date: 2026-10-25\nTail: N774CK\nDeparture: PANC\nDestination: KMIA\nScheduled departure (UTC): 2026-10-25T23:30:00+00:00\n\nRecorded event timeline:\n2026-10-25 23:45 UTC — Logbook received\n2026-10-25 23:45 UTC — Fueling completed\n2026-10-26 00:15 UTC — New payload received\n\nDelay started: 2026-10-25 23:30 UTC\nDelay ended: 2026-10-26 00:15 UTC\nDelay duration: 45 min (entered delay start/end interval)\n\nDelay cause:\nAwaiting revised payload.\n\nActions taken:\nCoordinated with flight following.\n\nNotes:\nFirst line\nSecond line";
+        $expected = "Flight delay report\nAll times UTC\nFlight: CKS241\nFlight date: 2026-10-25\nTail: N774CK\nDeparture: PANC\nDestination: KMIA\nScheduled departure (UTC): 2026-10-25 23:30z\n\nRecorded event timeline:\n2026-10-25 23:45z — Logbook received\n2026-10-25 23:45z — Fueling completed\n2026-10-26 00:15z — New payload received\n\nDelay started: 2026-10-25 23:30z\nDelay ended: 2026-10-26 00:15z\nDelay duration: 45 min (entered delay start/end interval)\n\nDelay cause:\nAwaiting revised payload.\n\nActions taken:\nCoordinated with flight following.\n\nNotes:\nFirst line\nSecond line";
 
         $this->actingAs($user)->get(route('flight-delays.show', $delay))->assertOk()->assertViewHas('reportText', $expected);
+    }
+
+    #[DataProvider('scheduledDepartures')]
+    public function test_saved_reports_format_departure_and_saved_times_in_utc(?string $departure, string $expected): void
+    {
+        $user = User::factory()->admin()->create();
+        $delay = FlightDelay::factory()->for($user)->create([
+            'flight_context' => ['scheduled_departure_utc' => $departure],
+            'updated_at' => '2026-10-26 03:47:59',
+        ]);
+
+        $this->actingAs($user)->get(route('flight-delays.show', $delay))->assertOk()
+            ->assertSeeText($expected)
+            ->assertSeeText('Last saved 2026-10-26 03:47z')
+            ->assertViewHas('flightDetails', fn (array $details): bool => $details['Scheduled departure (UTC)'] === $expected);
+        $this->get(route('flight-delays.index'))->assertOk()
+            ->assertSeeText('Saved 2026-10-26 03:47z');
+        $this->assertSame($departure, $delay->fresh()->flight_context['scheduled_departure_utc']);
+    }
+
+    /** @return array<string, array{?string, string}> */
+    public static function scheduledDepartures(): array
+    {
+        return [
+            'UTC' => ['2026-10-26T03:47:59+00:00', '2026-10-26 03:47z'],
+            'offset crosses midnight' => ['2026-10-26T01:47:59+09:00', '2026-10-25 16:47z'],
+            'missing' => [null, 'Not recorded'],
+            'empty' => ['', 'Not recorded'],
+            'whitespace' => ['   ', 'Not recorded'],
+            'unreadable' => ['invalid timestamp', 'Not recorded'],
+        ];
     }
 
     public function test_partial_reports_handle_missing_identity_and_escape_free_text(): void

@@ -3,9 +3,13 @@
 namespace App\Services\FlightPlan;
 
 use App\Models\FlightDelay;
+use Carbon\CarbonImmutable;
+use Carbon\Exceptions\InvalidFormatException;
 
 class FlightDelayReportFormatter
 {
+    public const string UTC_FORMAT = 'Y-m-d H:i\\z';
+
     /** @return array<string, string> */
     public function context(FlightDelay $delay): array
     {
@@ -23,6 +27,10 @@ class FlightDelayReportFormatter
         foreach ($fields as $label => $field) {
             $value = $snapshot[$field] ?? null;
             $details[$label] = is_string($value) && $value !== '' ? $value : 'Not recorded';
+
+            if ($field === 'scheduled_departure_utc') {
+                $details[$label] = $this->scheduledDeparture($value);
+            }
         }
 
         return $details;
@@ -45,7 +53,7 @@ class FlightDelayReportFormatter
                 $eventLabel = $field === 'other_at' && $delay->other_label !== null
                     ? 'Other: '.$delay->other_label
                     : $label;
-                $events[] = ['time' => $time->utc()->format('Y-m-d H:i'), 'order' => count($events), 'label' => $eventLabel];
+                $events[] = ['time' => $time->utc()->format(self::UTC_FORMAT), 'order' => count($events), 'label' => $eventLabel];
             }
         }
 
@@ -58,13 +66,13 @@ class FlightDelayReportFormatter
         }
 
         foreach ($events as $event) {
-            $lines[] = $event['time'].' UTC — '.$event['label'];
+            $lines[] = $event['time'].' — '.$event['label'];
         }
 
         $lines[] = '';
 
         foreach (FlightDelayFields::DURATION as $field => $label) {
-            $lines[] = $label.': '.($delay->getAttribute($field)?->utc()->format('Y-m-d H:i').' UTC');
+            $lines[] = $label.': '.$delay->getAttribute($field)?->utc()->format(self::UTC_FORMAT);
 
             if ($delay->getAttribute($field) === null) {
                 $lines[array_key_last($lines)] = $label.': Not recorded';
@@ -89,5 +97,18 @@ class FlightDelayReportFormatter
         }
 
         return implode("\n", $lines);
+    }
+
+    private function scheduledDeparture(mixed $value): string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return 'Not recorded';
+        }
+
+        try {
+            return CarbonImmutable::parse($value, 'UTC')->utc()->format(self::UTC_FORMAT);
+        } catch (InvalidFormatException) {
+            return 'Not recorded';
+        }
     }
 }

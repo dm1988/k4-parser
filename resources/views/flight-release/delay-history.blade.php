@@ -11,7 +11,7 @@
                     <a href="{{ route('flight-delays.show', $delay) }}" wire:navigate class="flex flex-col gap-2 rounded-xl border border-[#1B365D]/15 bg-white p-4 focus-visible:ring-2 focus-visible:ring-[#C5A059] dark:border-slate-700 dark:bg-slate-900">
                         <span class="font-mono font-bold text-[#1B365D] dark:text-slate-100">{{ $summaries[$delay->id]['Flight'] }} · {{ $summaries[$delay->id]['Flight date'] }}</span>
                         <span class="font-mono text-sm text-[#4A5568] dark:text-slate-300">{{ $summaries[$delay->id]['Departure'] }} → {{ $summaries[$delay->id]['Destination'] }} · {{ $summaries[$delay->id]['Tail'] }}</span>
-                        <span class="text-xs text-[#4A5568] dark:text-slate-400">Saved {{ $summaries[$delay->id]['Saved at (UTC)'] }} UTC · View report</span>
+                        <span class="text-xs text-[#4A5568] dark:text-slate-400">Saved {{ $summaries[$delay->id]['Saved at (UTC)'] }} · View report</span>
                     </a>
                 </li>
             @empty

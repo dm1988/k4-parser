@@ -21,7 +21,7 @@ class FlightDelayController extends Controller
             'summaries' => $delays->getCollection()->mapWithKeys(
                 fn (FlightDelay $delay): array => [$delay->getKey() => [
                     ...$formatter->context($delay),
-                    'Saved at (UTC)' => $delay->updated_at?->utc()->format('Y-m-d H:i:s'),
+                    'Saved at (UTC)' => $delay->updated_at?->utc()->format(FlightDelayReportFormatter::UTC_FORMAT),
                 ]],
             ),
         ]);
@@ -34,7 +34,7 @@ class FlightDelayController extends Controller
         return view('flight-release.delay-detail', [
             'flightDetails' => $formatter->context($flightDelay),
             'reportText' => $formatter->format($flightDelay),
-            'savedAt' => $flightDelay->updated_at?->utc()->format('Y-m-d H:i:s'),
+            'savedAt' => $flightDelay->updated_at?->utc()->format(FlightDelayReportFormatter::UTC_FORMAT),
         ]);
     }
 }

@@ -52,7 +52,7 @@
             <p wire:loading role="status" class="text-sm text-[#4A5568] dark:text-slate-300">Saving…</p>
             <p wire:loading.remove class="text-sm text-[#4A5568] dark:text-slate-300">
                 <span x-show="dirty">Unsaved changes</span>
-                <span x-show="!dirty">@if ($savedAt) Saved at {{ $savedAt }} UTC @else No observations recorded yet @endif</span>
+                <span x-show="!dirty">@if ($savedAt) Saved at {{ $savedAt }} @else No observations recorded yet @endif</span>
             </p>
         </div>
 

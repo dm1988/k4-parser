@@ -30,6 +30,8 @@ class FlightDelayFormTest extends TestCase
         Livewire::actingAs($user)->test(FlightDelayForm::class, ['flightPlanKey' => $brief->result_key])
             ->assertSeeText('Record a flight delay')
             ->assertSeeText('All dates and times are UTC.')
+            ->assertSeeText('2026-10-25 23:30z')
+            ->assertDontSeeText('2026-10-25T23:30:00+00:00')
             ->assertSeeHtml('wire:model.live.debounce.500ms="inputs.notes"')
             ->assertSeeHtml('aria-label="Set logbook received to now in UTC"')
             ->assertSeeText('No observations recorded yet');
@@ -103,11 +105,13 @@ class FlightDelayFormTest extends TestCase
             ->set('inputs.new_payload_received_at', '2026-10-26T00:15')
             ->assertHasNoErrors()
             ->call('generateReport')
-            ->assertSeeTextInOrder(['2026-10-25 23:58 UTC', '2026-10-26 00:15 UTC']);
+            ->assertSeeTextInOrder(['2026-10-25 23:58z', '2026-10-26 00:15z'])
+            ->assertSeeText('Saved at 2026-10-25 23:58z');
 
         $this->assertDatabaseHas('flight_delays', ['user_id' => $user->id, 'logbook_received_at' => '2026-10-25 23:58:00']);
         Livewire::actingAs($user)->test(FlightDelayForm::class, ['flightPlanKey' => $brief->result_key])
-            ->assertSet('inputs.new_payload_received_at', '2026-10-26T00:15');
+            ->assertSet('inputs.new_payload_received_at', '2026-10-26T00:15')
+            ->assertSeeText('Saved at 2026-10-25 23:58z');
     }
 
     public function test_duration_rejects_negative_intervals_and_accepts_zero_without_ordering_milestones(): void
