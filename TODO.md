@@ -48,7 +48,7 @@ Validation: Sail focused tests passed (38 tests, 217 assertions), Pint passed, a
 
 Commit message: `fix: standardize delay reporting UTC timestamps`
 
-## Crew bidding
+## [x] Completed: Crew bidding
 
 ### Goal
 
@@ -56,15 +56,17 @@ Organize K4 Bids within the app and define a clean user-facing workspace for mon
 
 ### Current implementation
 
-Planning completed (2026-10-26): Reorganized `CREW_BIDS.md` into an app placement, access, import, workspace, preferences, ranking/autosave, pay-preview, and delivery specification. Proposed a separate K4 Bids navigation item after Flight Plan Brief, using existing feature-policy conventions; a two-column browsing/bid-list workspace; progressive filters; mobile and keyboard behavior; and explicit missing-data/save states. Preserved the original feature scope while separating initial delivery from enhancements requiring verified definitions or source rules.
+Implemented the initial K4 Bids workflow (2026-10-26). Added protected desktop/mobile navigation after Flight Plan Brief, enabled/admin-only feature settings, admin import preview/publication, encrypted shared package payloads, and owner-scoped encrypted preferences/lists. B747/B777 and CA/FO selection follow imported crew complements. Admins can import supported Lines/Trips PDFs and Overview .xlsx files without adding dependencies; temporary source uploads are deleted after preview, while normalized drafts/revisions are retained privately.
 
-Inspected existing navigation, routes, feature configuration, access methods, and private sample filenames. Samples include multiple document types, fleets, and months; document contents and parsing compatibility remain unverified. The plan records package revision/owner isolation, import failure handling, and unresolved pay/export/source decisions. No application behavior or configuration changed; feature implementation remains pending.
+Added compact expandable timeline rows, guided/skippable preferences, strict goal priorities, UTC date/range and start-city exclusions, and basic credit/days-off/selected filters. Incomplete dates retain their warning; selected conflicts remain in the list. Flying and reserve choices share accessible manual/drag ordering, autosave with optimistic revisions, save-error recovery, numbered review/copy, and revision-change review before carrying choices forward. Desktop uses a drawer; mobile uses a full-screen list. Reserve identifiers/occupied markers are orange; flying occupancy is blue; unknown dates show `?`. Source times and blank Overview dates were confirmed as UTC and days off respectively.
 
 ### Problem addressed
 
-The original notes mixed interface requests, example data, compensation assumptions, and advanced features without a clear user flow or implementation boundary. `CREW_BIDS.md` now provides the single implementation reference instead of duplicating its plan here.
+The app previously had no workspace for turning monthly bid packages into private ranked choices. `CREW_BIDS.md` records the agreed workflow, decluttered information hierarchy, and deferred enhancements. The implementation handles null-padded PDF text, multi-page trips, and the Overview reserve sections' shifted date columns.
 
-Validation: Documentation reviewed against the existing app structure and original feature notes. No tests, Pint, or Larastan were run for this documentation-only task.
+### Planning history
+
+The following notes record the earlier documentation-only decisions; implementation and validation outcomes are recorded below.
 
 Planning clarification (2026-10-26): Confirmed admin-imported shared packages with private user preferences/bid lists; B747 and B777 Captain/FO support in the first usable release; and automatic exclusion of available lines conflicting with selected days off. Already selected choices stay in place with conflict flags and user-controlled removal. Users order several goals by strict priority, with lower goals only breaking ties. All work intervals are converted to UTC calendar dates; any work on a selected UTC date, including reserve, training, deadheads, and carry-in/out, counts as a conflict. A long work block means grouping duty days together with fewer separate blocks. Updated `CREW_BIDS.md` accordingly; source time bases and exact block-counting boundaries still need discovery. Documentation-only; no runtime checks required.
 
@@ -86,7 +88,14 @@ Decluttering review completed (2026-10-26): Reduced the planned default row to L
 
 User workflow expanded (2026-10-26): Added a dedicated five-stage workflow in `CREW_BIDS.md`, defining admin import/publication, crew package selection, skippable preference setup, compact comparison and shortlist building, manual ranking, and saved review/copy. Each stage describes actions and its outcome, with return visits, revision confirmation, warnings, and save recovery included. Kept the stages as a user journey rather than extra permanent UI navigation. Documentation-only; diff checks passed and no runtime checks were required.
 
-Commit message: `docs: define the K4 Bids user workflow from import to copy`
+### Integration outcome
+
+- Sail access verified using elevated Docker access. Both new migrations are installed locally; migration status confirmed. No source package was automatically published for users.
+- Focused integration: 31 tests passed (139 assertions), covering Crew bidding and existing route-access behavior. After the final revision-preview/import-recovery refinement, its two focused tests passed (16 assertions), including one additional test. Private B747 October/B777 November package imports passed; synthetic coverage checks reserve-column alignment, FO-only complements, midnight/year boundaries, layover occupancy, strict goals, work blocks, ownership, conflicts, revision migration, save recovery, and failed imports.
+- Three focused JavaScript tests passed for exact clipboard content, manual-copy fallback, and navigation warnings. Production Vite build passed, including the requested reserve colors. Pint passed after PHP edits. One application-wide Larastan run found eight issues in three new files; corrected null handling and redundant checks, then rechecked those files with zero errors. `git diff --check` passed.
+- No manual browser review was performed. Responsive appearance, actual drag/touch interaction, focus restoration, and real clipboard permissions remain to be checked in a browser. Native-text PDFs are supported; OCR/scanned PDFs, extended secondary filters, personal training/vacation imports, pay estimates, and spreadsheet exports remain deferred. No dependencies changed; unrelated TODO edits and `.nvmrc` were preserved.
+
+Commit message: `feat: add crew bidding imports and private ranked bid workspace`
 
 ## Unified upload
 Currently: 2 tabs have 2 different upload points, user has to choose 

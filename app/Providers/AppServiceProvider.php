@@ -28,5 +28,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('use-schedule-extractor', fn (User $user): bool => $user->canUseScheduleExtractor());
         Gate::define('export-schedule-extractor-duty', fn (User $user): bool => $user->canExportScheduleExtractorDuty());
         Gate::define('use-flight-release', fn (User $user): bool => $user->canUseFlightRelease());
+        Gate::define('use-crew-bids', fn (User $user): bool => $user->canUseCrewBids());
+        Gate::define('manage-crew-bids', fn (User $user): bool => $user->canUseCrewBids() && $user->isAdmin());
     }
 }

@@ -7,6 +7,7 @@ use App\Http\Controllers\FlightReleaseController;
 use App\Http\Controllers\OfflineFuelScoreController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WelcomeController;
+use App\Livewire\CrewBids;
 use App\Livewire\FlightPlanBrief;
 use Illuminate\Support\Facades\Route;
 
@@ -17,6 +18,9 @@ Route::get('/privacy-policy', function () {
 })->name('privacy.policy');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::livewire('/crew-bids', CrewBids::class)
+        ->middleware(['feature:crew_bids', 'can:use-crew-bids'])
+        ->name('crew-bids.index');
     Route::get('/dashboard', [ExtractController::class, 'dashboard'])->name('dashboard');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

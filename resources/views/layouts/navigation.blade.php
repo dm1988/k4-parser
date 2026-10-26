@@ -18,6 +18,9 @@
                         </span>
                     </x-nav-link>
                     @endif
+                    @if (Auth::user()?->canUseCrewBids())
+                    <x-nav-link :href="route('crew-bids.index')" :active="request()->routeIs('crew-bids.*')">{{ __('K4 Bids') }}</x-nav-link>
+                    @endif
                     @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
                     <x-nav-link :href="route('filament.admin.pages.dashboard')"
                         :active="request()->routeIs('filament.admin.*')">
@@ -111,6 +114,9 @@
                     <x-demo-badge data-demo-badge />
                 </span>
             </x-responsive-nav-link>
+            @endif
+            @if (Auth::user()?->canUseCrewBids())
+            <x-responsive-nav-link :href="route('crew-bids.index')" :active="request()->routeIs('crew-bids.*')">{{ __('K4 Bids') }}</x-responsive-nav-link>
             @endif
             @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
             <x-responsive-nav-link :href="route('filament.admin.pages.dashboard')"

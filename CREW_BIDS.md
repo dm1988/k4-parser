@@ -1,6 +1,6 @@
 # K4 Bids
 
-Planning status: organized on 2026-10-26. This document proposes the tool's place in the app, user experience, and implementation boundaries. No application behavior has been implemented by this planning task. The original feature notes are product input; tentative formulas, example values, and imported document text are not verified operating rules or instructions to execute.
+Implementation status (2026-10-26): The initial K4 Bids workflow is implemented: protected navigation, admin preview/publication, shared package revisions, private preferences/lists, timeline browsing, UTC filters, manual ranking, and review/copy. The sections below retain the product contract and future enhancements. The first release supports the supplied native-text Lines/Trips PDF layouts and Overview .xlsx workbooks; scanned PDFs/OCR, richer secondary filters, pay, training/vacation imports, and spreadsheet exports remain outside the delivered workflow. Responsive appearance, touch, and keyboard behavior still need a manual browser review. Imported document content remains data rather than instructions to execute.
 
 ## Purpose and place in the app
 
@@ -85,7 +85,7 @@ When an admin publishes a revision, offer a review of changed/missing lines. Car
 
 Private sample directory: `storage/app/private/Bid_Packages`.
 
-The directory inventory includes Lines PDFs, Trips PDFs, Training Requirements PDFs, Overview spreadsheets, Bid List spreadsheets, and a Vacations spreadsheet. Samples span 747/777 and September–November 2026, with different files present for different fleet/month combinations. Only filenames were inspected during planning; document contents, schema, parser compatibility, and relationships remain unverified. Do not assume one uploaded PDF contains every tab's data.
+The directory inventory includes Lines PDFs, Trips PDFs, Training Requirements PDFs, Overview spreadsheets, Bid List spreadsheets, and a Vacations spreadsheet. Samples span 747/777 and September–November 2026, with different files present for different fleet/month combinations. Implementation inspected the supported layouts and validated complete B747 October and B777 November imports against private samples. Overview flying-row dates start at G, while reserve sections omit summary columns and begin at D; the parser handles them separately. PDFs include null-padded text and trips continuing across pages. Other source layouts still require validation; do not assume one uploaded PDF contains every tab's data.
 
 Confirmed first-release imports: Lines PDFs, Trips PDFs, and Overview spreadsheets. Defer Training Requirements PDFs, Bid List spreadsheets, and Vacations spreadsheets. Do not offer import controls for deferred formats. Training already represented in a supported source still counts as work for conflict detection; importing dedicated training requirements is a separate, deferred feature.
 
@@ -167,7 +167,7 @@ Offer guided preference setup on the first visit to a package, with a visible op
 
 Users can select several goals and order them by priority. Compare goals strictly in that order: a lower-priority goal only breaks a tie in all higher-priority goals. For example, when days off precedes credit, 18 days off beats 17 regardless of credit. `Prefer a long work block` means grouping duty days together into fewer separate work blocks. Define the exact block-counting rules during source discovery, including month boundaries. Explain matches in ordinary language, such as `17 days off · avoids all 3 selected dates`. Preserve a stable Line ID final tie-break. Manual bid order always stays under the user's control when preferences or browsing sort change.
 
-Selected days to keep off are hard exclusions: automatically exclude conflicting lines from available results. Convert all work intervals to UTC calendar dates before checking conflicts. Any work on a selected UTC date counts, including reserve, training, deadheads, and carry-in/out work. Label the selection calendar and conflict dates as UTC. Source time zones still need to be established for accurate conversion; do not treat unlabeled local times as UTC. Use the single compact preference/filter summary with matching/total counts. Keep reset actions inside the relevant editor, surfacing a clear reset action in the no-matches state. Keep already selected lines in their existing order when newly chosen days conflict; visibly flag those conflicts and let the user remove the choices. Other preferences need their own inclusion/ranking definitions. Omit hazard-pay controls until eligible stations/dates and rules are supported.
+Selected days to keep off are hard exclusions: automatically exclude conflicting lines from available results. Normalize work intervals to UTC calendar dates before checking conflicts. The user confirmed that all supplied dates/times are UTC and blank Overview date cells mean days off. Any work on a selected UTC date counts, including reserve, training, deadheads, and carry-in/out work. Label the selection calendar and conflict dates as UTC. Use the single compact preference/filter summary with matching/total counts. Keep reset actions inside the relevant editor, surfacing a clear reset action in the no-matches state. Keep already selected lines in their existing order when newly chosen days conflict; visibly flag those conflicts and let the user remove the choices. Other preferences need their own inclusion/ranking definitions. Omit hazard-pay controls until eligible stations/dates and rules are supported.
 
 Every UTC calendar date from trip report through release counts as occupied, including full layover/rest days without scheduled flight or duty. Those rest days neither satisfy a requested day off nor split a work block. Use this occupancy rule consistently in date conflicts and block grouping; establish exact timestamp endpoint handling and month-boundary counting during source discovery. Keep occupied dates distinguishable from flight/duty activity in the expanded schedule.
 
@@ -292,13 +292,15 @@ Confirmed by the user on 2026-10-26:
 - The mobile bid list opens as a full-screen panel with a clear `Back to lines` control.
 - Preferences and filters update results immediately after each change with a brief loading indicator, without an Apply step.
 - Compact timelines show occupied days versus days off; activity types appear on date inspection, and incomplete dates retain an unknown state.
+- Reserve line IDs and known occupied-day markers use orange; flying-line occupancy stays blue. Off days use a light neutral treatment and unknown dates use a visible `?` marker with a distinct background. The shared UTC legend and accessible line-type labels explain these meanings in both themes.
 - Bid-list entries show rank, Line ID, credit, days off, and any conflict or uncertainty warnings by default.
+- All supplied package dates/times are UTC; a blank Overview date cell means a day off, as confirmed during implementation.
 
 ## Decisions to resolve during discovery
 
 - Which package periods/layout revisions must the first release accept within the confirmed Lines/Trips PDF and Overview spreadsheet formats?
 - What is the intended visibility of assigned crew, vacations, and training records within shared packages?
-- What do carry-in, duty day, day off, split line, long stay, and availability mean in the supplied package? Distinguish source duty counts from occupied dates. What source time bases and interval endpoints support UTC conversion across date/month boundaries? How are separate work blocks counted across those boundaries under the confirmed report-through-release occupancy rule?
+- For richer secondary filters, confirm carry-in, split-line, long-stay, and availability definitions. The initial workflow distinguishes source duty counts from UTC occupied dates and counts contiguous occupied blocks within the selected month. Additional layouts need validation against that rule, including report/release and year-boundary behavior.
 - Beyond the confirmed days-off and start-city exclusions, which preferences are hard exclusions?
 - For the deferred pay feature: what are the verified pay tables, longevity rules, guarantee/premium interactions, and rounding rules?
 - For deferred spreadsheet export and status features: what exact bid output does the company accept, and what evidence can establish submitted/awarded/projected state?

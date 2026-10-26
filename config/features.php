@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'crew_bids' => [
+        'enabled' => env('FEATURES_CREW_BIDS_ENABLED', true),
+        'for_all_users' => env('FEATURES_CREW_BIDS_FOR_ALL_USERS', false),
+    ],
     'flight_release' => [
         'enabled' => env('FEATURES_FLIGHT_RELEASE_ENABLED', true),
         'for_all_users' => env('FEATURES_FLIGHT_RELEASE_FOR_ALL_USERS', false),

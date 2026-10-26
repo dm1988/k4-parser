@@ -96,6 +96,14 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         return $this->hasMany(FlightDelay::class);
     }
 
+    public function canUseCrewBids(): bool
+    {
+        return $this->hasVerifiedEmail() && $this->canUseConfiguredFeature(
+            enabled: (bool) config('features.crew_bids.enabled', true),
+            forAllUsers: (bool) config('features.crew_bids.for_all_users', false),
+        );
+    }
+
     public function canUseFlightRelease(): bool
     {
         if (! $this->hasVerifiedEmail()) {
