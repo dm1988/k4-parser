@@ -28,61 +28,98 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## [x] Completed: Diagnose PDF OCR failures reported after the server migration
-Outcome: The checkout already uses Poppler `pdftoppm` for page rendering; the reported Imagick/Ghostscript stack belongs to the earlier implementation. The historical cause remains unconfirmed because the failing PDF and Ghostscript stderr from the migrated worker are unavailable. Current OCR failures stop extraction without caching partial text. Renderer failure logs now record stage, one-based page, exception type, and exit code without recording the private PDF path or subprocess stderr.
+## FP: New task: Delay reporting
 
-Verification: The two focused extractor test files passed in Sail (13 passed, one skipped, 86 assertions); the skipped private ETOPS fixture is unavailable. The available private image-only fixture passed. A new regression verifies that a rasterization failure prevents partial text from being cached. A production smoke test on the actual failing PDF remains required.
+### Goal
 
-Commit message: `fix(ocr): log safe page context for rasterization failures`
+Allow captains to record conditions leading to a flight delay in an autosaving Livewire form and produce a factual, copyable plain-text report for use in a company email. Provide only the report text: no recipient, subject, greeting, signature, email draft, or sending action. All entered, stored, and reported dates/times use UTC.
 
-## [x] Completed: Include bug email if an error occurs on upload
-Outcome: Flight Plan Brief and Schedule Extractor now offer a mailto link to report a possible bug beside upload errors. The schedule's partial extraction failure dialog offers the same link. The address comes from `MAIL_ADMIN_ADDRESS` through `config('mail.admin_address')`, and the link stays hidden when there is no error or no configured address.
+### Current implementation
 
-Verification: Six focused PHPUnit tests passed (103 assertions), covering clean upload screens, invalid files, a processing exception, and partial schedule failures. Pint passed; Larastan passed once with zero errors.
+- Flight Plan Brief uses `app/Livewire/FlightPlanBrief.php`, `FlightPlanTask`, and the existing workspace/navigation components. The task route accepts slugs from the enum; adding a task also affects view-model status/count matches and navigation labels.
+- `FlightPlanResultStore` persists one encrypted `FlightPlanResult` per user. A successful upload updates that row and assigns a new `result_key`; clearing results or choosing another flight deletes it. The result row ID is therefore not a stable flight identity.
+- Existing component actions enforce authentication, verified email, the flight-release feature flag, and `use-flight-release`. Result queries are scoped to the owner, and the component locks the result key against client updates.
+- No delay-report model, migration, factory, form, or report formatter exists in the reviewed paths. `composer.lock` records Laravel 13.34.0 and Livewire 4.4.8; installed versions must be confirmed through Sail before implementation.
 
-Follow-up verification: Added explicit unexpected-fixture cases to three schedule test matches after the staged Larastan check flagged them. The two affected tests passed (33 assertions); Pint and Larastan passed with zero errors.
+### Problem
 
-Commit message: `feat: offer bug report email on upload errors`
+Captains cannot persist an operational delay timeline or turn their observations into consistent report text. Linking reports only to the replaceable saved-result row could associate an old delay with a new flight or delete it unexpectedly. UTC handling, incomplete autosaves, and the meaning of delay duration need explicit contracts before implementation.
 
-## [x] Completed: Replace Imagick PDF page rendering with Poppler
-Outcome: `PdfImagePageTextExtractor` now renders one selected page to PNG with Poppler's `pdftoppm`, then reads that PNG with Tesseract. This removes the Imagick/Ghostscript rendering and its resource-cleanup issue. It validates both executables, converts zero-based page indexes to Poppler's one-based pages, and deletes both temporary files on success or failure. `PDFTOPPM_PATH` is configurable, and the Sail Dockerfile installs `poppler-utils`.
+### Proposed data contract
 
-Verification: Five new extractor tests passed; the existing flight-plan text extractor tests passed against a local container with Poppler installed (12 passing tests, one skipped across the two files; 71 assertions). Pint passed; Larastan passed with zero errors. The full Sail image rebuild was not completed, so production must have `pdftoppm` installed at the configured path before deploying this change.
+Use the conventional `App\Models\FlightDelay`, `flight_delays` table, and `FlightDelayFactory`. Create a record on the first valid, non-empty change, rather than on page viewing. Proposed scope is one report per user and saved-release key; a database unique constraint on `(user_id, flight_plan_key)` prevents duplicate drafts.
 
-Commit message: `fix(ocr): replace Imagick PDF rendering with Poppler` (`669c59b`).
+| Data | Proposed representation and behavior |
+| --- | --- |
+| Ownership and flight context | Required `user_id` foreign key, original `flight_plan_key` ULID, timestamps, and an encrypted flight-context snapshot containing available flight number, flight date, tail, departure/destination, and scheduled departure UTC. Derive ownership and source context on the server. Do not use the replaceable result row as a cascading parent. |
+| Logbook received | Nullable `logbook_received_at` UTC datetime. |
+| Flight following brief | Nullable `flight_following_brief_at` UTC datetime. |
+| Fueling completed | Nullable `fueling_completed_at` UTC datetime. |
+| Loading completed | Nullable `loading_completed_at` UTC datetime. |
+| Load master briefing | Nullable `load_master_briefing_at` UTC datetime. |
+| New payload received | Nullable `new_payload_received_at` UTC datetime. |
+| New recall / flight plan | Nullable `new_recall_flight_plan_at` UTC datetime; retain the requested wording pending clarification of “recall.” |
+| New TLR | Nullable `new_tlr_at` UTC datetime. |
+| Other | Optional label/details and nullable `other_at` UTC datetime; initially one entry, with repeatable entries subject to the decision below. |
+| Narrative | Separate nullable text fields: `notes`, `delay_cause`, `delay_timeline`, `actions_taken`, and `additional_facts`. Preserve the captain's wording and line breaks. Encrypt free text and omit it from incidental model serialization/logging, following the saved-result privacy pattern. |
+| Delay duration | Proposed nullable `delay_started_at` / `delay_ended_at` UTC datetimes. Derive elapsed minutes only when both valid endpoints exist; label the basis. Never infer a delay interval or cause from milestone timestamps alone. |
 
-## B. Make OCR resolution configurable
-You're currently rendering at 200 DPI.
-That's reasonable for many documents, but flight schedules can contain small text, especially aircraft registrations, flight numbers, and timestamps.
-I would make DPI configurable, with 300 as an option for difficult documents.
+Missing observations remain null and display as `Not recorded`; they do not mean an event did not occur. Explicit clearing persists null. Use UTC datetime casts and sufficient text column capacity for encryption; inspect the database schema before generating the migration. Account deletion should remove the owner's delay data. Retain reports independently of release replacement/clearing so historical delays remain available.
 
-## Don't force PSM 6 for every document
-Your current command:
-[
-    $tesseract,
-    $imagePath,
-    'stdout',
-    '--psm', '6',
-]
+### Form and report behavior
 
+- Add a `Delay reporting` task to the existing Flight Plan Brief workspace. Keep extraction/read-only presentation separate from the new persistence logic; use a dedicated Livewire component within the task and follow the existing validation/action structure. Key its state by owner and original release key so changing flights cannot reuse the previous form.
+- Show full date and time with an explicit `UTC` label, including dates across midnight. A browser `datetime-local` value must be interpreted as UTC explicitly, independent of device timezone. Permit manual correction and clearing. Do not impose milestone ordering: loading, fueling, and briefing can overlap.
+- Give every timestamp a keyboard-accessible `Now` button with a field-specific accessible name. Use server UTC time and persist the change immediately through the same validation/save path. Proposed interpretation for narrative entries: a separate optional `Recorded at (UTC)` timestamp with its own `Now`, preserving the prose. Confirm this interpretation before building those extra timestamp fields.
+- Use explicit `wire:model.live.debounce.500ms` bindings as the initial typing delay, with a validated update handler that actually saves changes. Save only valid changed fields so an incomplete datetime does not erase its last persisted value or prevent unrelated valid notes from saving. Bound text lengths and allowlist fields that `Now` may target. [Livewire 4 input binding](https://livewire.laravel.com/docs/4.x/wire-model).
+- Display `Unsaved changes`, `Saving…`, `Saved at … UTC`, validation errors, and a retryable save-failure state. Preserve current input on failure. Before report generation or in-app navigation, flush pending edits and await acknowledgement; do not claim unsent edits survive closing the browser. Offline persistence is outside the initial scope.
+- Resolve and authorize the owner, report, and original release context on every load, autosave, `Now`, and report-generation action. Locked identifiers supplement server authorization. For the active form, reject stale requests after release replacement/clearing instead of applying them to the new flight; historical viewing/copying uses the retained report and its snapshot without requiring a current brief. Use a record revision check to reject conflicting edits from another tab without overwriting either tab's input. [Livewire 4 action authorization](https://livewire.laravel.com/docs/4.x/actions).
+- Build report text in a dedicated formatter outside Blade. Include available flight identity, an explicit `All times UTC` line, recorded milestones sorted by complete timestamp with a stable tie-breaker, then cause, supplied timeline, duration/basis, actions, notes, and additional facts. Distinguish the event timeline from the captain's explanation; do not invent causal connections or missing facts.
+- Generate from the latest validated, acknowledged state. If an input is invalid or saving fails, explain the issue and do not label an older report as current. Partial reports are allowed; explicitly label an unavailable duration and omit empty narrative sections. Preserve an explicit zero-minute interval as zero.
+- Show a read-only selectable report with `Copy report text`, success/failure feedback, and manual selection as fallback. Escape user input in the preview. Copying does not mark a report sent. Reuse the current palette, light/dark themes, compact UTC typography, and accessible form components.
 
-PSM 6 assumes a single uniform block of text.
-That can be effective for flight plan sections, but schedules with multiple columns or complex layouts may benefit from PSM 3 or 4.
-I'd make page segmentation mode configurable per extraction call.
+### Historical delay access
 
-## [x] Completed: FP: Envelope: Include flight date in task
+Create a link to allow users to view historical delays, with and without a flight plan loaded. With no flight plan loaded and no delays for a user, do not render a link.
 
-Completed (2026-10-13): Envelope Flight details now shows the confirmed flight date immediately after Trip number, labeled `Date`, formatted as `10/1/2026`. Missing dates show `Not confirmed`. Removed the Flight number metric from Envelope and moved Tail number before Aircraft type. The field order is Trip number, Date, Tail number, Aircraft type, Departure, Destination.
+- Add named history list/detail routes within the existing authenticated, verified, flight-release feature/gate boundaries, independent of the current brief's task route and result key. Scope all history queries and detail/report actions to the owner.
+- Render `Delay history` from both the loaded workspace and upload state when the owner has reports. Resolve the existence check before rendering Blade; another user's reports must not cause the link to appear. Provide a useful empty state for direct visits when the owner has no reports.
+- List reports by most recently updated first with an ID tie-breaker and pagination. Show the snapshotted flight identity/date and last-saved UTC time. Opening a historical report must not replace the currently loaded brief or trigger parsing.
+- Initial proposal is read-only historical details and copyable report text, including partial reports. Preserve the flight snapshot after result deletion/replacement. Editing historical reports is a separate decision below.
 
-Reused the flight identity date and metric component with Envelope-specific formatting. Shared header and Maintenance date presentation remain unchanged.
+### Decisions to confirm before implementation
 
-Validation: All 68 focused Envelope feature and flight-release view-model tests passed through Sail (731 assertions), covering field/value order, unpadded dates, missing dates, and refresh persistence. Pint passed; one application-wide Larastan run passed with zero errors. No manual browser review was performed.
+1. **Report lifecycle:** history requires retention independently of the current brief. Confirm whether historical reports also need editing and whether another upload of the same flight resumes an existing report or starts a new release-specific report; the proposal is read-only history and a new report for each release key. Confirm any retention period beyond explicit owner/account deletion requirements.
+2. **Duration basis:** confirm whether duration means a manually declared delay interval, scheduled-to-actual off-block delay, or another company definition. The proposed start/end fields are a recommendation, not an approved operational definition. If manual minutes are preferred, retain that declared basis and avoid conflicting calculated totals.
+3. **Entry shape:** confirm whether `Other`, revised payloads, recalls/flight plans, and TLRs need multiple occurrences. The initial proposal stores one timestamp for each named milestone and one `Other`. Confirm what “recall” denotes and whether narrative fields need their own recorded-at/`Now` controls as proposed.
+4. **Notes included in report:** default to including all populated requested narrative fields, including Notes. Confirm whether Notes should instead remain private working notes and whether the company requires particular report labels/order. Do not infer company delay codes or mandatory wording.
 
-Sail was started using temporary `APP_PORT=8080` and `VITE_PORT=5174` overrides because ports 80 and 5173 were occupied; environment files were not changed. Boost documentation access failed with a closed transport, so the official Livewire 4 testing documentation was used as fallback.
+### Implementation sequence
 
-Commit message: `feat: add flight date and reorder aircraft fields in envelope task`
+1. Resolve the decisions above, confirm Sail and installed versions, inspect schema, and consult version-matched documentation. Generate the model, migration, factory, component, and tests using the applicable Sail Artisan generators. No package changes are needed. Use factories for deterministic empty, partial, and completed reports; no production sample-report seeder is needed.
+2. Implement storage, ownership checks, UTC normalization, validated autosave, and conflicting/stale-request handling. Snapshot flight context when creating the report. Add owner-only history list/detail access and conditional links in both loaded and upload states; verify reports survive replacement/clearing before exposing the form.
+3. Integrate the task enum, route slug, workspace, view-model status/counts, and navigation labels. Wire the dedicated form, `Now` controls, save feedback, formatter, and copy preview. Keep form querying, authorization, and report formatting out of Blade. Merely opening the task must not imply that a delay occurred or that a report is complete/sent.
+4. Verify the behavior below and update this same entry with actual implementation outcomes. Keep this task uncompleted until the feature is implemented and verified.
 
-## FP: Prelim flight plans
+### Acceptance and focused validation for implementation
+
+- Add focused PHPUnit/Livewire feature coverage for first-save creation, repeated saves without duplicate records, refresh restoration, field clearing, partial datetime validation, correction, `Now` with frozen time, UTC round trips across midnight, and accurate save/error states. Cover duration basis, missing endpoints, negative intervals, explicit zero, and independent milestone ordering.
+- Cover guest/unverified/feature-disabled/unauthorized access, another user's identifiers, direct action calls, report-text escaping, stale release requests, conflicting tabs, and the agreed replace/clear/account-deletion behavior. Assert saved field values and ownership through observable behavior, not just cast or schema declarations.
+- Cover history access with and without a loaded flight plan, link absence when the owner has no reports, another user's reports not affecting link visibility, direct empty-history visits, deterministic ordering/pagination, and viewing/copying retained reports after the source result is replaced/deleted without changing the active brief.
+- Cover exact report content/order for partial and populated records, missing identity, multiline prose, equal event times, null duration, and generation immediately after an edit. A formatter unit test is appropriate only if it stays independent of Laravel/database behavior.
+- Run only the new delay-specific test files plus affected `tests/Feature/Livewire/FlightPlanBrief/Workspace/NavigationTest.php`, `Lifecycle/SavedResultTest.php`, and `Security/AccessTest.php`, and affected task/view-model tests through `vendor/bin/sail artisan test --compact <paths>`. Do not run the full suite at this checkpoint.
+- Manually verify debounce timing, immediate `Now`, pending-edit navigation/generation, clipboard fallback, keyboard/focus access, both themes, and a device timezone other than UTC. Component tests alone do not prove browser debounce/clipboard behavior. Run the production Vite build if frontend assets change.
+- After PHP changes, run `vendor/bin/sail bin pint --dirty --format agent`, then Larastan once at the final integration checkpoint. Record commands/results here when implemented.
+
+### Planning outcome (2026-10-26)
+
+Documented the proposed data model, all requested observations, UTC/`Now` behavior, autosave and recovery states, report generation, owner-only historical access with conditional links, integration points, and focused acceptance coverage. Identified the replaceable saved-result key as a lifecycle constraint and recorded the remaining product decisions. Only this task entry was edited; concurrent history requirements and unrelated TODO changes were preserved. Sail is stopped, so installed-version/runtime validation was not performed. This documentation-only task does not require starting services, tests, Pint, or Larastan.
+
+Planning commit message: `docs: plan flight delay reporting and UTC autosave workflow`
+
+Implementation commit message: `feat: add UTC flight delay reporting with autosaved observations`
+
+## Plan: FP: Prelim flight plans
 Goal:
 1. Determine if an uploaded flight plan is preliminary
 2. Tag non finalized data
@@ -90,6 +127,13 @@ Goal:
    2. Fuel
    3. Route
    4. ETOPS
+Confirmed prelim flight plan includes `PRELIMINARY FLIGHT PLAN - PAYLOAD ESTIMATED - DO NOT FUEL AIRCRAFT` in the page 1 header surrounded by asteriks.
+
+References:
+storage/app/private/prelim_flight_release/CKS052425KORD.pdf
+
+## Crew bidding
+See CREW_BIDS.md
 
 ## Unified upload
 Currently: 2 tabs have 2 different upload points, user has to choose 
@@ -459,3 +503,57 @@ Verification: Five focused PHPUnit tests passed (32 assertions). Pint passed for
 Pending send: Confirm the incident date, impact assessment, production patch status, last mailing record, and which highlighted features are deployed for recipients. Review a rendered copy and the production audience before queueing the full send. This Sail checkout uses `APP_ENV=local`; run the actual send in production and record its delivery outcome here afterward.
 
 Commit message: `feat: add security update email and guarded send command`
+
+## [x] Completed: Diagnose PDF OCR failures reported after the server migration
+Outcome: The checkout already uses Poppler `pdftoppm` for page rendering; the reported Imagick/Ghostscript stack belongs to the earlier implementation. The historical cause remains unconfirmed because the failing PDF and Ghostscript stderr from the migrated worker are unavailable. Current OCR failures stop extraction without caching partial text. Renderer failure logs now record stage, one-based page, exception type, and exit code without recording the private PDF path or subprocess stderr.
+
+Verification: The two focused extractor test files passed in Sail (13 passed, one skipped, 86 assertions); the skipped private ETOPS fixture is unavailable. The available private image-only fixture passed. A new regression verifies that a rasterization failure prevents partial text from being cached. A production smoke test on the actual failing PDF remains required.
+
+Commit message: `fix(ocr): log safe page context for rasterization failures`
+
+## [x] Completed: Include bug email if an error occurs on upload
+Outcome: Flight Plan Brief and Schedule Extractor now offer a mailto link to report a possible bug beside upload errors. The schedule's partial extraction failure dialog offers the same link. The address comes from `MAIL_ADMIN_ADDRESS` through `config('mail.admin_address')`, and the link stays hidden when there is no error or no configured address.
+
+Verification: Six focused PHPUnit tests passed (103 assertions), covering clean upload screens, invalid files, a processing exception, and partial schedule failures. Pint passed; Larastan passed once with zero errors.
+
+Follow-up verification: Added explicit unexpected-fixture cases to three schedule test matches after the staged Larastan check flagged them. The two affected tests passed (33 assertions); Pint and Larastan passed with zero errors.
+
+Commit message: `feat: offer bug report email on upload errors`
+
+## [x] Completed: Replace Imagick PDF page rendering with Poppler
+Outcome: `PdfImagePageTextExtractor` now renders one selected page to PNG with Poppler's `pdftoppm`, then reads that PNG with Tesseract. This removes the Imagick/Ghostscript rendering and its resource-cleanup issue. It validates both executables, converts zero-based page indexes to Poppler's one-based pages, and deletes both temporary files on success or failure. `PDFTOPPM_PATH` is configurable, and the Sail Dockerfile installs `poppler-utils`.
+
+Verification: Five new extractor tests passed; the existing flight-plan text extractor tests passed against a local container with Poppler installed (12 passing tests, one skipped across the two files; 71 assertions). Pint passed; Larastan passed with zero errors. The full Sail image rebuild was not completed, so production must have `pdftoppm` installed at the configured path before deploying this change.
+
+Commit message: `fix(ocr): replace Imagick PDF rendering with Poppler` (`669c59b`).
+
+## B. Make OCR resolution configurable
+You're currently rendering at 200 DPI.
+That's reasonable for many documents, but flight schedules can contain small text, especially aircraft registrations, flight numbers, and timestamps.
+I would make DPI configurable, with 300 as an option for difficult documents.
+
+## Don't force PSM 6 for every document
+Your current command:
+[
+    $tesseract,
+    $imagePath,
+    'stdout',
+    '--psm', '6',
+]
+
+
+PSM 6 assumes a single uniform block of text.
+That can be effective for flight plan sections, but schedules with multiple columns or complex layouts may benefit from PSM 3 or 4.
+I'd make page segmentation mode configurable per extraction call.
+
+## [x] Completed: FP: Envelope: Include flight date in task
+
+Completed (2026-10-13): Envelope Flight details now shows the confirmed flight date immediately after Trip number, labeled `Date`, formatted as `10/1/2026`. Missing dates show `Not confirmed`. Removed the Flight number metric from Envelope and moved Tail number before Aircraft type. The field order is Trip number, Date, Tail number, Aircraft type, Departure, Destination.
+
+Reused the flight identity date and metric component with Envelope-specific formatting. Shared header and Maintenance date presentation remain unchanged.
+
+Validation: All 68 focused Envelope feature and flight-release view-model tests passed through Sail (731 assertions), covering field/value order, unpadded dates, missing dates, and refresh persistence. Pint passed; one application-wide Larastan run passed with zero errors. No manual browser review was performed.
+
+Sail was started using temporary `APP_PORT=8080` and `VITE_PORT=5174` overrides because ports 80 and 5173 were occupied; environment files were not changed. Boost documentation access failed with a closed transport, so the official Livewire 4 testing documentation was used as fallback.
+
+Commit message: `feat: add flight date and reorder aircraft fields in envelope task`
