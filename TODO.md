@@ -28,109 +28,113 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## FP: New task: Delay reporting
+## [x] Completed: FP: Delay reporting
 
 ### Goal
 
-Allow captains to record conditions leading to a flight delay in an autosaving Livewire form and produce a factual, copyable plain-text report for use in a company email. Provide only the report text: no recipient, subject, greeting, signature, email draft, or sending action. All entered, stored, and reported dates/times use UTC.
+Allow captains to record delay observations in an autosaving UTC form and generate a copyable, factual report text block for company use. Preserve owner-only history independently of the currently loaded flight plan.
 
 ### Current implementation
 
-- Flight Plan Brief uses `app/Livewire/FlightPlanBrief.php`, `FlightPlanTask`, and the existing workspace/navigation components. The task route accepts slugs from the enum; adding a task also affects view-model status/count matches and navigation labels.
-- `FlightPlanResultStore` persists one encrypted `FlightPlanResult` per user. A successful upload updates that row and assigns a new `result_key`; clearing results or choosing another flight deletes it. The result row ID is therefore not a stable flight identity.
-- Existing component actions enforce authentication, verified email, the flight-release feature flag, and `use-flight-release`. Result queries are scoped to the owner, and the component locks the result key against client updates.
-- No delay-report model, migration, factory, form, or report formatter exists in the reviewed paths. `composer.lock` records Laravel 13.34.0 and Livewire 4.4.8; installed versions must be confirmed through Sail before implementation.
+- Added the FlightDelay model, migration, factory states, and user relationship. One report per owner/release key is enforced by a unique constraint. Flight identity is snapshotted server-side; the snapshot and narrative fields are encrypted and hidden from incidental model serialization. Clearing/replacing a brief retains its reports; deleting the owner removes them.
+- Added the Delay reporting task and a dedicated Livewire form for logbook receipt, flight following brief, fueling/loading completion, load master briefing, new payload, new recall/flight plan, new TLR, Other, delay start/end, cause, supplied timeline, actions, notes, and additional facts.
+- Inputs autosave after a 500 ms pause. Timestamp fields have immediate server-UTC Now controls; manual timestamps use explicit UTC with minute precision. Invalid/incomplete dates preserve their saved values while unrelated valid changes can save. Retry feedback, field errors, and saved/unsaved indicators preserve input after failure.
+- Pending edits are flushed before report generation, task switching, clearing/replacing a brief, or in-app navigation. Incomplete browser datetime inputs are prevented from becoming accidental clears. Closing with unsaved input triggers the browser's unsaved-change warning; offline persistence is not provided.
+- Save actions recheck authentication, verification, feature/gate access, owner/release context, and revision inside a transaction. Stale briefs and conflicting tabs cannot overwrite reports. Changed/conflicting inputs invalidate the report preview.
+- Added a formatter with chronological event ordering, stable ties, complete UTC dates, honest missing-data labels, multiline narrative preservation, and explicitly labeled delay-interval duration. Reports are escaped, selectable, and copyable with success/failure feedback and manual-copy fallback. No email is drafted or sent.
+- Added paginated, read-only history and detail routes under the existing flight-release access controls. History is reachable with or without a loaded brief when the owner has reports; another owner's reports do not expose the link. Direct empty-history visits show an empty state. Historical reports use their snapshot without replacing or reparsing the current brief.
+- Moved field rules, messages, attributes, and validation into app/Validation/FlightDelayValidationRules.php, as requested. FlightDelayFields retains field definitions, saved-input presentation, UTC normalization, and flight-context mapping.
+
+### Problem addressed
+
+The brief previously offered no persistent delay timeline or consistent report text. Its saved-result row is replaced on upload and removed on clearing, so reports now have independent ownership and a release-key snapshot rather than a cascading dependency on that row.
+
+### Confirmed behavior (2026-10-26)
+
+The user confirmed one timestamp per milestone, read-only history, all populated notes included in report text, and duration calculated only from explicitly entered delay start/end times. Now applies to event/delay timestamps only; narrative fields have no separate recorded-at timestamp. Missing endpoints yield an unavailable duration; zero minutes is valid, and negative intervals are rejected. A new release key starts a separate report.
+
+### Validation outcome (2026-10-26)
+
+- Sail: 32 delay form/history feature tests passed (171 assertions). Coverage includes UTC/midnight, creation/reload/clearing, empty-history prevention, independent validation, failed-save retry, duration, report content/escaping, owner isolation, access gates, identifier tampering, conflicting tabs, stale briefs, history retention, pagination, and account deletion.
+- Existing integration checks covered task enums, page-data availability, task routes, navigation, saved-result lifecycle, access, and view models. The corrected integration subset passed 87 tests (902 assertions); the other 24 affected tests passed in the initial focused run. No full suite was run.
+- Sail: seven new JavaScript tests passed for pending-save navigation, invalid datetime preservation, generation, recovery, close warnings, and listener cleanup. Both existing delegated-copy tests also passed.
+- Production Vite build passed. The local delay schema and named history routes were verified. git diff --check passed.
+- Pint passed after PHP changes. One application-wide Larastan run identified model-cast inference/nullsafe-access issues; accurate cast return types and null-coalescing access resolved them. The subsequent focused static recheck of the six implicated files passed with zero errors.
+- No manual browser/visual review was performed; actual clipboard permissions, native datetime editing behavior, and light/dark/mobile appearance were not manually exercised. Automated component and JavaScript tests cover their implemented contracts.
+
+Unrelated TODO content, working-tree changes, and concurrent staging were preserved. No dependencies changed.
+
+Commit message: `feat: add UTC flight delay reporting with autosaved observations`
+
+## Plan: FP: Prelim flight plans
+
+### Goal
+
+Detect an explicitly preliminary uploaded flight plan. Hide weights and fuel from the Overview task; visibly tag them as preliminary in their dedicated tasks, along with route and ETOPS planning data. Keep the brief useful for review, preserve extracted values and units, and retain the document's warning with the saved result. Absence of the preliminary marker must not be presented as proof of a final or operationally approved release.
+
+### Current implementation and supplied evidence
+
+- Reference: `storage/app/private/prelim_flight_release/CKS052425KORD.pdf`. Read page one through Sail using the installed Smalot PDF parser. Its header contains `PRELIMINARY FLIGHT PLAN - PAYLOAD ESTIMATED - DO NOT FUEL AIRCRAFT` surrounded by asterisks. The parser joins the asterisks, warning, and following flight header without dependable line breaks; detection cannot require a standalone line or space after the closing asterisks.
+- The same page contains ordinary flight identity, initial/final destination sections, ETOPS 207 planning information, and `RELEASED IAW OPS SPEC B044`. Those fields coexist with the preliminary warning. Neither “FINAL DEST” nor the B044 authorization text establishes document finality.
+- `FlightPlanTextExtractor` reads native text and falls back to OCR for text-empty pages. It caches extracted text by PDF content hash. Native page text is joined first and OCR text appended afterward, so an OCR page-one warning is not guaranteed to be at the beginning of the combined string.
+- `ExtractFlightPlanData` delegates to focused extractors and returns `ParsedFlightPlanData`, including private `sourceFragments`. `BuildFlightPlanData` builds typed `FlightPlanData`; `FlightPlanResultSerializer` serializes that object; `FlightPlanResultStore` saves an encrypted payload. `BuildFlightPlanPageData` reconstructs it for fresh mounts and saved-result loading. No preliminary status currently passes through this chain.
+- Existing weight statuses such as `Confirmed` describe source-value agreement; task `Available` means data can be displayed. ETOPS applicability and B43/B44 authorization are separate concepts. None records whether the release is preliminary. Some FMS headings currently say `Confirmed release values`.
+- The standalone Fuel Score controller/view rebuilds the saved flight plan and serves a page that can be cached offline. It needs the same preliminary context as the Livewire workspace.
 
 ### Problem
 
-Captains cannot persist an operational delay timeline or turn their observations into consistent report text. Linking reports only to the replaceable saved-result row could associate an old delay with a new flight or delete it unexpectedly. UTC handling, incomplete autosaves, and the meaning of delay duration need explicit contracts before implementation.
+A preliminary document currently produces the same presentation as another successfully parsed release. Estimated payload, planning fuel, route, and ETOPS values can appear confirmed without the header warning. A flag kept only in temporary extraction state would disappear on refresh; a generic search for `PRELIMINARY`, `FINAL`, or a filename could misclassify unrelated content.
 
-### Proposed data contract
+### Detection and persistence contract
 
-Use the conventional `App\Models\FlightDelay`, `flight_delays` table, and `FlightDelayFactory`. Create a record on the first valid, non-empty change, rather than on page viewing. Proposed scope is one report per user and saved-release key; a database unique constraint on `(user_id, flight_plan_key)` prevents duplicate drafts.
+1. Add a focused `ReleaseStatusExtractor` in the existing flight-plan extractor directory. Match the supplied header's complete phrase in normalized text, tolerating case, repeated whitespace/line wrapping, surrounding asterisks, and ordinary hyphen/dash variations. Preserve the original matched fragment separately. Do not broadly remove punctuation or use fuzzy word substitutions that could turn unrelated text into a match.
+2. Detect the marker as a bounded header warning, including the fixture's fused asterisk/header layout. Search the existing combined text so OCR-appended content is covered; do not assume the first characters represent page one. Do not claim a page number unless page provenance is actually available. A filename, directory name, dispatcher note containing only “preliminary,” `FINAL DEST`, release revision, or B043/B044 text is insufficient evidence.
+3. Use an independent release-status enum/DTO, following existing naming and serialization conventions. Proposed states: `Preliminary` for a supported explicit marker; `NotMarkedPreliminary` when the current detector ran and found no supported marker; `Unknown` for legacy/missing/invalid status metadata. The latter two do not mean `Final`. Explicit preliminary evidence takes precedence over generic final-destination/authorization text.
+4. Carry status plus the minimal warning evidence through `ParsedFlightPlanData`, `BuildFlightPlanData`, `FlightPlanData::toArray()`, the serializer, encrypted saved payload, and `BuildFlightPlanPageData`. Use a dedicated release-status value rather than overloading `releaseAuthorization`, source-value statuses, or task availability. Preserve evidence internally without adding the full document or raw evidence to public Livewire properties, logs, or client calculator data.
+5. Older saved payloads load with `Unknown`; do not reinterpret them as non-preliminary. The uploaded release file is deleted after extraction, so old payloads cannot be reliably reclassified from the PDF: offer re-upload to determine status. No database migration, backfill, package installation, or additional persistent model is expected for this metadata.
+6. On successful replacement upload, replace status and values together using the existing saved-result flow; never retain the old preliminary flag on a new result. Preserve the existing result and its status after a failed upload. Keep status detection within the extraction boundary, outside Blade, presenters, and database queries.
 
-| Data | Proposed representation and behavior |
+### Presentation and affected data
+
+Show one clear `Preliminary flight plan` badge and a compact warning near the shared release header on every task route. Display the source warning text, including `Payload estimated` and `Do not fuel aircraft`, as document content. The PDF warning supplies evidence for the UI; it is not an instruction to execute an action. Use the existing warning palette and text labels, with accessible contrast in both themes; avoid relying on color or adding a badge to every route token.
+
+| Area | Preliminary treatment |
 | --- | --- |
-| Ownership and flight context | Required `user_id` foreign key, original `flight_plan_key` ULID, timestamps, and an encrypted flight-context snapshot containing available flight number, flight date, tail, departure/destination, and scheduled departure UTC. Derive ownership and source context on the server. Do not use the replaceable result row as a cascading parent. |
-| Logbook received | Nullable `logbook_received_at` UTC datetime. |
-| Flight following brief | Nullable `flight_following_brief_at` UTC datetime. |
-| Fueling completed | Nullable `fueling_completed_at` UTC datetime. |
-| Loading completed | Nullable `loading_completed_at` UTC datetime. |
-| Load master briefing | Nullable `load_master_briefing_at` UTC datetime. |
-| New payload received | Nullable `new_payload_received_at` UTC datetime. |
-| New recall / flight plan | Nullable `new_recall_flight_plan_at` UTC datetime; retain the requested wording pending clarification of “recall.” |
-| New TLR | Nullable `new_tlr_at` UTC datetime. |
-| Other | Optional label/details and nullable `other_at` UTC datetime; initially one entry, with repeatable entries subject to the decision below. |
-| Narrative | Separate nullable text fields: `notes`, `delay_cause`, `delay_timeline`, `actions_taken`, and `additional_facts`. Preserve the captain's wording and line breaks. Encrypt free text and omit it from incidental model serialization/logging, following the saved-result privacy pattern. |
-| Delay duration | Proposed nullable `delay_started_at` / `delay_ended_at` UTC datetimes. Derive elapsed minutes only when both valid endpoints exist; label the basis. Never infer a delay interval or cause from milestone timestamps alone. |
+| Overview | Do not render weight or fuel information, including the entire Ramp Fuel card, Weight & Balance alert card, and any weight/fuel summaries or support-status indicators. Omit these server-side, including their values and accessible labels; do not hide them with CSS or replace them with missing-data placeholders. Keep the preliminary warning and qualified route/ETOPS summaries. |
+| Weights | Label planned payload, zero-fuel/takeoff/landing weights, and derived comparisons in Weight & Balance; include release-derived planned weights shown in Envelope/TLR. Preserve source conflicts, missing values, and structural-limit alerts. Aircraft database limits remain reference limits and must not be relabeled as estimated release values. |
+| Fuel | Omit fuel from Overview. Label FMS fuel fields, Fuel Score source quantities, and calculations based on those quantities as preliminary. A manually entered actual FOB remains an actual observation; comparisons against the preliminary plan retain the planning qualifier. |
+| Route | Label the shared route summary, FMS route/runways/procedures, and route-dependent planning fields at section level. Keep airport codes prominent and route tokens uncluttered. Static airport lookup details are reference information. |
+| ETOPS | Label present ETOPS planning data, including rating/alternates/boundaries/ETPs and related fuel values, as preliminary. Keep applicability and source availability distinct; preliminary status must not manufacture missing ETOPS information or turn unknown applicability into confirmed ETOPS/non-ETOPS. |
+| Offline Fuel Score | Pass a derived status/warning display value from saved page data to the standalone view. Keep it visible after offline preparation/reload, including calculations based on preliminary inputs. Do not expose raw detection evidence in JavaScript state. |
 
-Missing observations remain null and display as `Not recorded`; they do not mean an event did not occur. Explicit clearing persists null. Use UTC datetime casts and sufficient text column capacity for encryption; inspect the database schema before generating the migration. Account deletion should remove the owner's delay data. Retain reports independently of release replacement/clearing so historical delays remain available.
+Use view-model/presenter methods and a small reusable warning/badge component. Derive Overview weight/fuel visibility from the persisted release status; suppress these only for `Preliminary`, preserving the existing Overview behavior for `NotMarkedPreliminary` and `Unknown`. Add compact `Preliminary` labels beside affected section titles and the remaining route/ETOPS overview summaries so the qualifier remains visible when the shared header scrolls away. Replace ambiguous “confirmed” presentation copy where it implies finality; preserve precise source-conflict and availability messages. In dedicated tasks, a preliminary qualifier must not hide missing data, change numeric values, or suppress an exceeded-limit warning. Overview omits the entire weight/fuel presentation even when preliminary weights exceed a limit. Do not show a green/final badge merely because no marker was found. For `Unknown`, use a neutral `Release status not determined` message and explain that re-upload can determine it.
 
-### Form and report behavior
-
-- Add a `Delay reporting` task to the existing Flight Plan Brief workspace. Keep extraction/read-only presentation separate from the new persistence logic; use a dedicated Livewire component within the task and follow the existing validation/action structure. Key its state by owner and original release key so changing flights cannot reuse the previous form.
-- Show full date and time with an explicit `UTC` label, including dates across midnight. A browser `datetime-local` value must be interpreted as UTC explicitly, independent of device timezone. Permit manual correction and clearing. Do not impose milestone ordering: loading, fueling, and briefing can overlap.
-- Give every timestamp a keyboard-accessible `Now` button with a field-specific accessible name. Use server UTC time and persist the change immediately through the same validation/save path. Proposed interpretation for narrative entries: a separate optional `Recorded at (UTC)` timestamp with its own `Now`, preserving the prose. Confirm this interpretation before building those extra timestamp fields.
-- Use explicit `wire:model.live.debounce.500ms` bindings as the initial typing delay, with a validated update handler that actually saves changes. Save only valid changed fields so an incomplete datetime does not erase its last persisted value or prevent unrelated valid notes from saving. Bound text lengths and allowlist fields that `Now` may target. [Livewire 4 input binding](https://livewire.laravel.com/docs/4.x/wire-model).
-- Display `Unsaved changes`, `Saving…`, `Saved at … UTC`, validation errors, and a retryable save-failure state. Preserve current input on failure. Before report generation or in-app navigation, flush pending edits and await acknowledgement; do not claim unsent edits survive closing the browser. Offline persistence is outside the initial scope.
-- Resolve and authorize the owner, report, and original release context on every load, autosave, `Now`, and report-generation action. Locked identifiers supplement server authorization. For the active form, reject stale requests after release replacement/clearing instead of applying them to the new flight; historical viewing/copying uses the retained report and its snapshot without requiring a current brief. Use a record revision check to reject conflicting edits from another tab without overwriting either tab's input. [Livewire 4 action authorization](https://livewire.laravel.com/docs/4.x/actions).
-- Build report text in a dedicated formatter outside Blade. Include available flight identity, an explicit `All times UTC` line, recorded milestones sorted by complete timestamp with a stable tie-breaker, then cause, supplied timeline, duration/basis, actions, notes, and additional facts. Distinguish the event timeline from the captain's explanation; do not invent causal connections or missing facts.
-- Generate from the latest validated, acknowledged state. If an input is invalid or saving fails, explain the issue and do not label an older report as current. Partial reports are allowed; explicitly label an unavailable duration and omit empty narrative sections. Preserve an explicit zero-minute interval as zero.
-- Show a read-only selectable report with `Copy report text`, success/failure feedback, and manual selection as fallback. Escape user input in the preview. Copying does not mark a report sent. Reuse the current palette, light/dark themes, compact UTC typography, and accessible form components.
-
-### Historical delay access
-
-Create a link to allow users to view historical delays, with and without a flight plan loaded. With no flight plan loaded and no delays for a user, do not render a link.
-
-- Add named history list/detail routes within the existing authenticated, verified, flight-release feature/gate boundaries, independent of the current brief's task route and result key. Scope all history queries and detail/report actions to the owner.
-- Render `Delay history` from both the loaded workspace and upload state when the owner has reports. Resolve the existence check before rendering Blade; another user's reports must not cause the link to appear. Provide a useful empty state for direct visits when the owner has no reports.
-- List reports by most recently updated first with an ID tie-breaker and pagination. Show the snapshotted flight identity/date and last-saved UTC time. Opening a historical report must not replace the currently loaded brief or trigger parsing.
-- Initial proposal is read-only historical details and copyable report text, including partial reports. Preserve the flight snapshot after result deletion/replacement. Editing historical reports is a separate decision below.
-
-### Decisions to confirm before implementation
-
-1. **Report lifecycle:** history requires retention independently of the current brief. Confirm whether historical reports also need editing and whether another upload of the same flight resumes an existing report or starts a new release-specific report; the proposal is read-only history and a new report for each release key. Confirm any retention period beyond explicit owner/account deletion requirements.
-2. **Duration basis:** confirm whether duration means a manually declared delay interval, scheduled-to-actual off-block delay, or another company definition. The proposed start/end fields are a recommendation, not an approved operational definition. If manual minutes are preferred, retain that declared basis and avoid conflicting calculated totals.
-3. **Entry shape:** confirm whether `Other`, revised payloads, recalls/flight plans, and TLRs need multiple occurrences. The initial proposal stores one timestamp for each named milestone and one `Other`. Confirm what “recall” denotes and whether narrative fields need their own recorded-at/`Now` controls as proposed.
-4. **Notes included in report:** default to including all populated requested narrative fields, including Notes. Confirm whether Notes should instead remain private working notes and whether the company requires particular report labels/order. Do not infer company delay codes or mandatory wording.
+This task adds identification, tagging, and Overview weight/fuel suppression for preliminary releases. Keep existing parsing, copying, and calculator behavior in the dedicated tasks; any future action-blocking or acknowledgement workflow needs an explicit product requirement. Do not automatically promote a preliminary brief based on elapsed time, revised numbers, or a user dismissing the warning.
 
 ### Implementation sequence
 
-1. Resolve the decisions above, confirm Sail and installed versions, inspect schema, and consult version-matched documentation. Generate the model, migration, factory, component, and tests using the applicable Sail Artisan generators. No package changes are needed. Use factories for deterministic empty, partial, and completed reports; no production sample-report seeder is needed.
-2. Implement storage, ownership checks, UTC normalization, validated autosave, and conflicting/stale-request handling. Snapshot flight context when creating the report. Add owner-only history list/detail access and conditional links in both loaded and upload states; verify reports survive replacement/clearing before exposing the form.
-3. Integrate the task enum, route slug, workspace, view-model status/counts, and navigation labels. Wire the dedicated form, `Now` controls, save feedback, formatter, and copy preview. Keep form querying, authorization, and report formatting out of Blade. Merely opening the task must not imply that a delay occurred or that a report is complete/sent.
-4. Verify the behavior below and update this same entry with actual implementation outcomes. Keep this task uncompleted until the feature is implemented and verified.
+1. Confirm Sail, installed versions, applicable rules, and existing enum/DTO/extractor/test conventions. Add the focused status extractor and typed metadata; use Sail Artisan generators for new PHP classes. Add deterministic synthetic text coverage based on the supplied header without committing the private PDF or its crew information.
+2. Integrate extraction, serialization, saved-result rebuilding, and backward compatibility. Preserve the marker evidence inside the encrypted payload and test that the status survives a complete extraction-to-save-to-reload round trip. The existing text cache stores text rather than parsed status, so new uploads can classify cached text without a text-cache version change.
+3. Add shared header and section qualifiers across the areas above. Gate Overview weight/fuel cards and indicators through the view model, omitting their markup entirely for preliminary releases. Pass derived display state into the standalone Fuel Score response. Review offline page-cache versioning/invalidation so a previously prepared page cannot indefinitely mask the new warning; cached pages prepared before this feature may need online re-preparation. Preserve existing owner/result-key isolation and input drafts.
+4. Run the focused checks below, review both themes and mobile layouts, and record actual implementation outcomes in this entry. Leave the feature uncompleted until implemented and verified.
 
 ### Acceptance and focused validation for implementation
 
-- Add focused PHPUnit/Livewire feature coverage for first-save creation, repeated saves without duplicate records, refresh restoration, field clearing, partial datetime validation, correction, `Now` with frozen time, UTC round trips across midnight, and accurate save/error states. Cover duration basis, missing endpoints, negative intervals, explicit zero, and independent milestone ordering.
-- Cover guest/unverified/feature-disabled/unauthorized access, another user's identifiers, direct action calls, report-text escaping, stale release requests, conflicting tabs, and the agreed replace/clear/account-deletion behavior. Assert saved field values and ownership through observable behavior, not just cast or schema declarations.
-- Cover history access with and without a loaded flight plan, link absence when the owner has no reports, another user's reports not affecting link visibility, direct empty-history visits, deterministic ordering/pagination, and viewing/copying retained reports after the source result is replaced/deleted without changing the active brief.
-- Cover exact report content/order for partial and populated records, missing identity, multiline prose, equal event times, null duration, and generation immediately after an edit. A formatter unit test is appropriate only if it stays independent of Laravel/database behavior.
-- Run only the new delay-specific test files plus affected `tests/Feature/Livewire/FlightPlanBrief/Workspace/NavigationTest.php`, `Lifecycle/SavedResultTest.php`, and `Security/AccessTest.php`, and affected task/view-model tests through `vendor/bin/sail artisan test --compact <paths>`. Do not run the full suite at this checkpoint.
-- Manually verify debounce timing, immediate `Now`, pending-edit navigation/generation, clipboard fallback, keyboard/focus access, both themes, and a device timezone other than UTC. Component tests alone do not prove browser debounce/clipboard behavior. Run the production Vite build if frontend assets change.
-- After PHP changes, run `vendor/bin/sail bin pint --dirty --format agent`, then Larastan once at the final integration checkpoint. Record commands/results here when implemented.
+- Detector cases: the supplied full phrase with/without decorative asterisks; the actual joined-header layout; case/spacing/wrapped-line/dash variants; duplicate matching headers; and marker text arriving after native pages through the OCR path. Add negatives for a bare “preliminary” in unrelated prose, an incomplete warning, `FINAL DEST`, B043/B044, revision numbers, and a misleading filename. No supported marker yields `NotMarkedPreliminary`, never `Final`.
+- Cover metadata construction, JSON serialization/rebuilding, absent/invalid legacy metadata mapping to `Unknown`, minimal retained evidence, and unchanged weights/fuel/route/ETOPS values. Cover preliminary and unmarked successful replacement uploads, failed replacement preservation, and refresh restoration.
+- Use the supplied private PDF for a local extraction regression using the existing private-fixture conventions and stubbed airport lookups. Assert preliminary classification and the marker, without broad unrelated parser assertions. Keep synthetic detection tests available in CI so a skipped private-PDF case does not remove core regression coverage. Exercise the OCR path with a test double; a real OCR fixture is needed before claiming the actual scanner recognizes this header.
+- Add focused Livewire/view tests for shared warning visibility on direct task visits and all four affected data areas, null/missing source data, source conflicts, persistent exceeded-limit alerts, neutral unknown status, and absence of a misleading final badge. Verify server-side evidence does not appear in the Livewire snapshot. Test standalone Fuel Score warning rendering and offline preservation/invalidation using existing feature/JavaScript coverage where applicable.
+- In `tests/Feature/Livewire/FlightPlanBrief/Workspace/OverviewTest.php`, verify preliminary releases omit the Ramp Fuel and Weight & Balance alert cards, weight/fuel values, and related accessible labels/indicators from rendered markup, including populated and exceeded-limit cases. Verify the warning and route/ETOPS content remain, refresh preserves suppression, successful replacement with an unmarked release restores existing Overview behavior, and dedicated tasks still show qualified values and applicable alerts. Cover `Unknown` retaining existing Overview behavior.
+- Run only the new status-specific tests and affected `ExtractFlightPlanDataTest`, DTO/builders/serializer tests, `FlightPlanResultStoreTest`, Livewire saved-result/extraction and affected task/view-model tests, and `OfflineFuelScoreTest` through `vendor/bin/sail artisan test --compact <paths>`. Narrow further to changed cases/files; do not run the full suite. Run relevant existing offline JavaScript tests only if their behavior changes.
+- Manually check full warning text, uncluttered route presentation, labels after scrolling, light/dark themes, mobile layout, and the prepared offline page. After PHP changes, run `vendor/bin/sail bin pint --dirty --format agent`; run Larastan once at final integration. Build frontend assets through Sail if assets change. Record commands and results here.
 
 ### Planning outcome (2026-10-26)
 
-Documented the proposed data model, all requested observations, UTC/`Now` behavior, autosave and recovery states, report generation, owner-only historical access with conditional links, integration points, and focused acceptance coverage. Identified the replaceable saved-result key as a lifecycle constraint and recorded the remaining product decisions. Only this task entry was edited; concurrent history requirements and unrelated TODO changes were preserved. Sail is stopped, so installed-version/runtime validation was not performed. This documentation-only task does not require starting services, tests, Pint, or Larastan.
+Verified the supplied page-one preliminary marker using the project's installed PDF parser and traced extraction, saved-result reconstruction, source-status semantics, affected display surfaces, and offline Fuel Score. Documented detection boundaries, typed persisted status/evidence, preliminary tagging, legacy behavior, implementation order, and focused validation. Updated the plan to omit all weight/fuel presentation from Overview for preliminary releases while retaining qualified values and alerts in dedicated tasks. Sail was started for read-only document inspection; installed Laravel 13.34.0, Livewire 4.4.8, and Smalot PDF Parser 2.12.5 were confirmed. Only this TODO task entry changed; unrelated working-tree edits were preserved. No application code, dependencies, or tests changed, so tests, Pint, and Larastan were not run for this documentation-only task.
 
-Planning commit message: `docs: plan flight delay reporting and UTC autosave workflow`
+Planning commit message: `docs: plan preliminary flight plan detection and data qualifiers`
 
-Implementation commit message: `feat: add UTC flight delay reporting with autosaved observations`
-
-## Plan: FP: Prelim flight plans
-Goal:
-1. Determine if an uploaded flight plan is preliminary
-2. Tag non finalized data
-   1. Weights
-   2. Fuel
-   3. Route
-   4. ETOPS
-Confirmed prelim flight plan includes `PRELIMINARY FLIGHT PLAN - PAYLOAD ESTIMATED - DO NOT FUEL AIRCRAFT` in the page 1 header surrounded by asteriks.
-
-References:
-storage/app/private/prelim_flight_release/CKS052425KORD.pdf
+Implementation commit message: `feat: identify preliminary flight plans and label planning data`
 
 ## Crew bidding
 See CREW_BIDS.md

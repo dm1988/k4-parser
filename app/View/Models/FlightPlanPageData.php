@@ -32,6 +32,7 @@ final readonly class FlightPlanPageData
             FlightPlanTask::JeppPdPro,
             FlightPlanTask::MaintenanceLog,
             FlightPlanTask::Envelope,
+            FlightPlanTask::DelayReporting,
             FlightPlanTask::Fms => FlightPlanTaskAvailability::Available,
             FlightPlanTask::ReviewMelCdl => ($this->flightPlan->maintenanceLog->items ?? []) === []
                 ? FlightPlanTaskAvailability::NotPresent

@@ -90,6 +90,12 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         return $this->hasOne(FlightPlanResult::class);
     }
 
+    /** @return HasMany<FlightDelay, $this> */
+    public function flightDelays(): HasMany
+    {
+        return $this->hasMany(FlightDelay::class);
+    }
+
     public function canUseFlightRelease(): bool
     {
         if (! $this->hasVerifiedEmail()) {

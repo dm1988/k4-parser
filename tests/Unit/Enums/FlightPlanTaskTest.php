@@ -59,6 +59,7 @@ class FlightPlanTaskTest extends TestCase
             'etops' => FlightPlanTask::Etops,
             'weather' => FlightPlanTask::Weather,
             'weight-and-balance' => FlightPlanTask::WeightAndBalance,
+            'delay-reporting' => FlightPlanTask::DelayReporting,
             'notes' => FlightPlanTask::Notes,
         ];
 

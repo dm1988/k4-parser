@@ -18,6 +18,7 @@ enum FlightPlanTask: string
     case Etops = 'etops';
     case Weather = 'weather';
     case WeightAndBalance = 'weight_and_balance';
+    case DelayReporting = 'delay_reporting';
     case Notes = 'notes';
 
     public function label(): string
@@ -35,6 +36,7 @@ enum FlightPlanTask: string
             self::Etops => 'ETOPS',
             self::Weather => 'Weather',
             self::WeightAndBalance => 'Weight & Balance',
+            self::DelayReporting => 'Delay reporting',
             self::Notes => 'Notes',
         };
     }
@@ -54,6 +56,7 @@ enum FlightPlanTask: string
             self::Etops => 'Review ETOPS',
             self::Weather => 'Check Weather Briefing',
             self::WeightAndBalance => 'Verify Weight & Balance',
+            self::DelayReporting => 'Record delay',
             self::Notes => 'Review notes',
         };
     }
@@ -73,6 +76,7 @@ enum FlightPlanTask: string
             self::Etops => 'globe-alt',
             self::Weather => 'cloud',
             self::WeightAndBalance => 'scale',
+            self::DelayReporting => 'clock',
             self::Notes => 'document-text',
         };
     }
@@ -97,6 +101,7 @@ enum FlightPlanTask: string
             self::Etops => 'etops',
             self::Weather => 'weather',
             self::WeightAndBalance => 'weight-and-balance',
+            self::DelayReporting => 'delay-reporting',
             self::Notes => 'notes',
         };
     }

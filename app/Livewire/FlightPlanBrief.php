@@ -228,12 +228,15 @@ class FlightPlanBrief extends Component
     public function render(): View
     {
         $viewModel = $this->currentViewModel();
+        $user = auth()->user();
 
         return view('livewire.flight-plan-brief', [
             'activeTaskCase' => FlightPlanTask::from($this->activeTask),
             'model' => $viewModel,
             'isResultsView' => $viewModel->hasFlightPlan(),
             'tasks' => $viewModel->tasks(),
+            'hasDelayHistory' => $user instanceof User && $this->canAccessFlightRelease($user)
+                && $user->flightDelays()->exists(),
             'fuelCalculatorUrl' => $this->flightPlanKey === null
                 ? null
                 : route('flight-release.fuel-score', ['flightPlanKey' => $this->flightPlanKey]),

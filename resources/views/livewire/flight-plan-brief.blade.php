@@ -10,6 +10,10 @@
                     </p>
                 </div>
 
+                @if ($hasDelayHistory)
+                    <a href="{{ route('flight-delays.index') }}" wire:navigate class="rounded-md px-3 py-2 text-sm font-semibold text-[#F8F9FA] underline decoration-[#C5A059] underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C5A059]">Delay history</a>
+                @endif
+
                 @if ($isResultsView)
                     <div class="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0" role="group" aria-label="Flight plan actions">
                         <button
@@ -113,6 +117,7 @@
                 :active-task="$activeTaskCase"
                 :model="$model"
                 :fuel-calculator-url="$fuelCalculatorUrl"
+                :flight-plan-key="$flightPlanKey"
             />
         </section>
             @endif

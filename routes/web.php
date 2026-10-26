@@ -2,6 +2,7 @@
 
 use App\Enums\FlightPlanTask;
 use App\Http\Controllers\ExtractController;
+use App\Http\Controllers\FlightDelayController;
 use App\Http\Controllers\FlightReleaseController;
 use App\Http\Controllers\OfflineFuelScoreController;
 use App\Http\Controllers\ProfileController;
@@ -37,6 +38,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware(['feature:schedule_extractor', 'can:export-schedule-extractor-duty']);
 
     Route::middleware(['feature:flight_release', 'can:use-flight-release'])->group(function () {
+        Route::get('/flight-plan-brief/delays', [FlightDelayController::class, 'index'])
+            ->name('flight-delays.index');
+        Route::get('/flight-plan-brief/delays/{flightDelay}', [FlightDelayController::class, 'show'])
+            ->whereNumber('flightDelay')
+            ->name('flight-delays.show');
         Route::livewire('/flight-plan-brief', FlightPlanBrief::class)
             ->name('flight-release.index');
         Route::get('/flight-plan-brief/fuel-score/{flightPlanKey}', OfflineFuelScoreController::class)

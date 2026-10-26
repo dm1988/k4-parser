@@ -3,6 +3,7 @@
     'activeTask',
     'model',
     'fuelCalculatorUrl' => null,
+    'flightPlanKey' => null,
 ])
 
 @php($availability = $model->availabilityFor($activeTask))
@@ -33,6 +34,10 @@
             />
 
             @switch(true)
+                @case($activeTask === \App\Enums\FlightPlanTask::DelayReporting)
+                    <x-flight-release.delay-reporting :flight-plan-key="$flightPlanKey" />
+                    @break
+
                 @case($availability === \App\Enums\FlightPlanTaskAvailability::NotPresent)
                     <x-flight-release.empty-state
                         title="Not present in this release"
