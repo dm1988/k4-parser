@@ -4,8 +4,8 @@
     <section aria-labelledby="fuel-score-summary-heading" class="flex min-w-0 flex-col gap-3">
         <div class="flex flex-wrap items-end justify-between gap-2">
             <div>
-                <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568] dark:text-slate-400">Confirmed release fields</p>
-                <h3 id="fuel-score-summary-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">Fuel summary</h3>
+                <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568] dark:text-slate-400">Source release fields</p>
+                <h3 id="fuel-score-summary-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">Fuel summary <x-flight-release.planning-qualifier :show="$model->isPreliminary()" /></h3>
             </div>
             <p class="text-xs font-semibold text-[#4A5568] dark:text-slate-400">No score or status inferred</p>
         </div>
@@ -38,7 +38,7 @@
         <section aria-labelledby="fuel-waypoint-heading" class="flex min-w-0 flex-col gap-3">
             <div>
                 <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568] dark:text-slate-400">Source-backed monitoring</p>
-                <h3 id="fuel-waypoint-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">Waypoint fuel</h3>
+                <h3 id="fuel-waypoint-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">Waypoint fuel <x-flight-release.planning-qualifier :show="$model->isPreliminary()" /></h3>
             </div>
 
             <div class="overflow-x-auto rounded-lg border border-[#1B365D]/10 bg-white dark:border-slate-700 dark:bg-slate-900">
@@ -71,7 +71,7 @@
             <x-heroicon-o-exclamation-triangle class="h-5 w-5 shrink-0" />
             <div class="flex min-w-0 flex-col gap-1">
                 <p class="font-bold">Source values only</p>
-                <p class="leading-5">This view repeats confirmed release fuel quantities. It does not calculate a fuel score, determine compliance, or assess dispatchability.</p>
+                <p class="leading-5">This view repeats source release fuel quantities. It does not calculate a fuel score, determine compliance, or assess dispatchability.</p>
             </div>
         </div>
     </aside>

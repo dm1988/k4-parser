@@ -6,6 +6,7 @@ use App\DTOs\AirportData;
 use App\DTOs\CrewManifestInputData;
 use App\DTOs\Maintenance\MaintenanceInputData;
 use App\DTOs\ParsedFlightPlanData;
+use App\DTOs\ReleaseStatusData;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery\Expectation;
 use Mockery\ExpectationInterface;
@@ -88,6 +89,7 @@ abstract class FlightPlanBriefTestCase extends TestCase
         ?array $releaseAuthorization = null,
         ?array $dispatcherNotes = null,
         array $sourceFragments = [],
+        ReleaseStatusData $releaseStatus = new ReleaseStatusData,
     ): ParsedFlightPlanData {
         $extractedRouteData ??= $this->flightPlan();
 
@@ -160,6 +162,7 @@ abstract class FlightPlanBriefTestCase extends TestCase
             dispatcherNotes: $dispatcherNotes ?? [],
             waypoints: $waypoints ?? [],
             sourceFragments: $sourceFragments,
+            releaseStatus: $releaseStatus,
         );
     }
 

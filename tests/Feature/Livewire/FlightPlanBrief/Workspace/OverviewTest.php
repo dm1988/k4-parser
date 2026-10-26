@@ -2,11 +2,19 @@
 
 namespace Tests\Feature\Livewire\FlightPlanBrief\Workspace;
 
+use App\Actions\FlightPlan\BuildFlightPlanData;
+use App\DTOs\ReleaseStatusData;
+use App\DTOs\WeightBalance\AircraftWeightLimits;
 use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
+use App\Enums\ReleaseStatus;
 use App\Livewire\FlightPlanBrief;
+use App\Models\Aircraft;
 use App\Models\User;
 use App\Services\FlightPlan\Extractor\ExtractFlightPlanData;
+use App\Services\FlightPlan\FlightPlanResultSerializer;
+use App\Services\Infrastructure\FlightPlanResultStore;
+use App\ValueObjects\WeightQuantity;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -15,6 +23,100 @@ use Tests\Feature\Livewire\FlightPlanBrief\FlightPlanBriefTestCase;
 
 class OverviewTest extends FlightPlanBriefTestCase
 {
+    public function test_preliminary_overview_omits_fuel_and_weight_alert_markup_but_dedicated_tasks_retain_qualified_values(): void
+    {
+        Storage::fake('user_flight_releases');
+        $user = User::factory()->admin()->create();
+        Aircraft::factory()->create([
+            'tail_number' => 'N774CK', 'max_landing_weight' => 370000,
+        ]);
+        $this->mock(ExtractFlightPlanData::class, function (MockInterface $mock): void {
+            $this->expectOnce($mock, 'extractFile')->andReturn($this->parsedFlightPlan(
+                identity: ['tail_number' => 'N774CK'],
+                releaseAuthorization: ['operations_specification' => 'b44'],
+                fuel: [
+                    'ramp' => ['amount' => 225500.0, 'unit' => 'lb'],
+                    'takeoff' => ['amount' => 223489.0, 'unit' => 'lb'],
+                ],
+                weightBalance: [
+                    'planned_payload' => ['amount' => null, 'unit' => 'lb', 'status' => 'conflict'],
+                    'planned_estimated_landing_weight' => ['amount' => 371893, 'unit' => 'lb', 'status' => 'confirmed'],
+                ],
+                releaseStatus: new ReleaseStatusData(
+                    ReleaseStatus::Preliminary,
+                    'PRELIMINARY FLIGHT PLAN - PAYLOAD ESTIMATED - DO NOT FUEL AIRCRAFT',
+                ),
+            ));
+        });
+
+        $component = Livewire::actingAs($user)->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('flight-release.pdf', 120, 'application/pdf'))
+            ->assertHasNoErrors()
+            ->assertSeeText('Preliminary flight plan')
+            ->assertSeeText('Route')
+            ->assertSeeText('ETOPS evidence')
+            ->assertDontSeeHtml('flight-plan-overview-card-fuel_score')
+            ->assertDontSeeHtml('flight-plan-overview-card-weight_and_balance')
+            ->assertDontSeeHtml('aria-label="Ramp fuel:')
+            ->assertDontSeeText('Ramp Fuel')
+            ->assertDontSeeText('225,500')
+            ->assertDontSeeText('371,893')
+            ->assertDontSee('operational weight alert', escape: false)
+            ->assertDontSeeHtml('fuel_score-b44')
+            ->assertDontSeeHtml('title="OpSpec B44 Authorized"');
+
+        Livewire::test(FlightPlanBrief::class)
+            ->assertSeeText('Preliminary flight plan')
+            ->assertDontSeeHtml('flight-plan-overview-card-fuel_score')
+            ->assertDontSeeHtml('flight-plan-overview-card-weight_and_balance');
+
+        $component->call('selectTask', FlightPlanTask::WeightAndBalance->value)
+            ->assertSeeText('Preliminary planning data')
+            ->assertSee('operational weight alert', escape: false)
+            ->assertSeeHtml('fuel_score-b44')
+            ->assertSeeText('371,893')
+            ->assertSeeText('Max limit: 370,000 LB')
+            ->assertSeeText('Structural limit exceeded')
+            ->assertSeeText('Conflict')
+            ->assertSeeText('Not present')
+            ->assertSeeText('Aircraft structural limits remain reference values.');
+        $component->call('selectTask', FlightPlanTask::FuelScore->value)
+            ->assertSeeText('Preliminary planning data')
+            ->assertSeeText('223.5')
+            ->assertSeeText('k lbs')
+            ->assertSeeText('Fuel summary');
+        $component->call('selectTask', FlightPlanTask::Fms->value)
+            ->assertSeeText('Preliminary planning data')
+            ->assertSeeText('Source release values')
+            ->assertSeeText('Planned runways and procedures')
+            ->assertSeeText('DCT');
+        $component->call('selectTask', FlightPlanTask::Etops->value)
+            ->assertSeeText('Preliminary planning data')
+            ->assertSeeText('Equal-time points')
+            ->assertSeeText('KSFO');
+    }
+
+    public function test_unknown_release_status_keeps_overview_fuel_and_weight_alerts(): void
+    {
+        $user = User::factory()->admin()->create();
+        $parsed = $this->parsedFlightPlan(
+            fuel: ['ramp' => ['amount' => 225500.0, 'unit' => 'lb']],
+            weightBalance: ['planned_estimated_landing_weight' => ['amount' => 371893, 'unit' => 'lb', 'status' => 'confirmed']],
+        );
+        $plan = app(BuildFlightPlanData::class)->handle($parsed,
+            new AircraftWeightLimits(landing: new WeightQuantity(370000, 'lb')),
+        );
+        $payload = app(FlightPlanResultSerializer::class)->serialize($plan);
+        unset($payload['flight_plan_data']['releaseStatus']);
+        app(FlightPlanResultStore::class)->save($user, $payload);
+
+        Livewire::actingAs($user)->test(FlightPlanBrief::class)
+            ->assertSeeText('Release status not determined')
+            ->assertSeeText('Ramp Fuel')
+            ->assertSeeHtml('flight-plan-overview-card-weight_and_balance')
+            ->assertSeeHtml('aria-label="Ramp fuel: 225,500 pounds"');
+    }
+
     public function test_overview_card_full_card_action_is_opt_out(): void
     {
         $componentData = [

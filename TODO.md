@@ -66,78 +66,86 @@ Unrelated TODO content, working-tree changes, and concurrent staging were preser
 
 Commit message: `feat: add UTC flight delay reporting with autosaved observations`
 
-## Plan: FP: Prelim flight plans
+## [x] Completed: FP: Prelim flight plans
 
 ### Goal
 
-Detect an explicitly preliminary uploaded flight plan. Hide weights and fuel from the Overview task; visibly tag them as preliminary in their dedicated tasks, along with route and ETOPS planning data. Keep the brief useful for review, preserve extracted values and units, and retain the document's warning with the saved result. Absence of the preliminary marker must not be presented as proof of a final or operationally approved release.
+Detect explicitly preliminary flight plans, omit their weight/fuel presentation from Overview, and qualify planning values in dedicated tasks while preserving source values, units, and the document warning. An absent marker does not establish finality or operational approval.
 
-### Current implementation and supplied evidence
+### Current implementation
 
-- Reference: `storage/app/private/prelim_flight_release/CKS052425KORD.pdf`. Read page one through Sail using the installed Smalot PDF parser. Its header contains `PRELIMINARY FLIGHT PLAN - PAYLOAD ESTIMATED - DO NOT FUEL AIRCRAFT` surrounded by asterisks. The parser joins the asterisks, warning, and following flight header without dependable line breaks; detection cannot require a standalone line or space after the closing asterisks.
-- The same page contains ordinary flight identity, initial/final destination sections, ETOPS 207 planning information, and `RELEASED IAW OPS SPEC B044`. Those fields coexist with the preliminary warning. Neither “FINAL DEST” nor the B044 authorization text establishes document finality.
-- `FlightPlanTextExtractor` reads native text and falls back to OCR for text-empty pages. It caches extracted text by PDF content hash. Native page text is joined first and OCR text appended afterward, so an OCR page-one warning is not guaranteed to be at the beginning of the combined string.
-- `ExtractFlightPlanData` delegates to focused extractors and returns `ParsedFlightPlanData`, including private `sourceFragments`. `BuildFlightPlanData` builds typed `FlightPlanData`; `FlightPlanResultSerializer` serializes that object; `FlightPlanResultStore` saves an encrypted payload. `BuildFlightPlanPageData` reconstructs it for fresh mounts and saved-result loading. No preliminary status currently passes through this chain.
-- Existing weight statuses such as `Confirmed` describe source-value agreement; task `Available` means data can be displayed. ETOPS applicability and B43/B44 authorization are separate concepts. None records whether the release is preliminary. Some FMS headings currently say `Confirmed release values`.
-- The standalone Fuel Score controller/view rebuilds the saved flight plan and serves a page that can be cached offline. It needs the same preliminary context as the Livewire workspace.
+- Added the focused `ReleaseStatusExtractor`, `ReleaseStatus` enum, and readonly `ReleaseStatusData`. Detection requires the complete supported header warning at a line/asterisk boundary, tolerating case, whitespace/wrapping, and ordinary dash variants, including the supplied PDF's fused asterisk/header layout. The combined native/OCR text is searched; no page provenance is invented. Incidental preliminary prose, partial warnings, filenames, revisions, final-destination headings, and B043/B044 text do not establish preliminary/final status.
+- The first matched warning fragment and status pass through parsed/normalized DTOs, builders, serialization, encrypted result storage, and saved-result rebuilding under `flight_plan_data.releaseStatus`. Duplicate headers do not accumulate document text. Missing/malformed metadata and preliminary metadata without a nonempty string warning load as `Unknown` without losing the brief. A completed detection without the supported marker yields `NotMarkedPreliminary`, with no final/green status badge.
+- Added a shared `Preliminary flight plan` warning with `Payload estimated — Do not fuel aircraft` and compact section qualifiers for route, FMS, ETOPS, fuel, planned weights, and release context. Unknown results show a neutral message recommending re-upload. Display copy is derived separately; raw matched evidence stays out of Livewire properties, snapshots, and calculator JSON.
+- Preliminary Overview omits Ramp Fuel and Weight & Balance alert cards, their values and accessible labels, and fuel/weight navigator indicators in both desktop and mobile markup. Task links remain available. Route and present ETOPS summaries retain preliminary labels. Unknown and unmarked results preserve existing Overview behavior.
+- Dedicated tasks retain source values/units, missing-data labels, conflicts, applicability/availability, copying, and structural-limit alerts. Weight comparisons are qualified as preliminary while aircraft structural limits remain reference values. Ambiguous release-value headings now use source wording. Actual FOB inputs remain actual observations.
+- Offline Fuel Score receives only derived status/warning display data. Its prepared HTML retains the warning; the page cache is now `pages-v2`, and activation removes obsolete prepared pages. Updated pages require online re-preparation. Existing owner/result-key isolation, calculator arithmetic, draft version, and draft source identity remain unchanged. An already offline browser receives the worker update only after reconnecting.
+- Successful replacement uploads replace status and values together; failed replacements retain the previous result/status. Legacy results require re-upload for classification because their source PDF is no longer retained. No dependency, migration, backfill, or additional persistent model was added. The private PDF and crew details were not committed.
 
-### Problem
+### Problem addressed
 
-A preliminary document currently produces the same presentation as another successfully parsed release. Estimated payload, planning fuel, route, and ETOPS values can appear confirmed without the header warning. A flag kept only in temporary extraction state would disappear on refresh; a generic search for `PRELIMINARY`, `FINAL`, or a filename could misclassify unrelated content.
+Previously preliminary planning figures could appear with the same presentation as another parsed release, and no preliminary metadata survived refresh. Explicit document evidence now persists independently of source-value agreement, task availability, ETOPS applicability, and B44 authorization.
 
-### Detection and persistence contract
+### Validation outcome (2026-10-26)
 
-1. Add a focused `ReleaseStatusExtractor` in the existing flight-plan extractor directory. Match the supplied header's complete phrase in normalized text, tolerating case, repeated whitespace/line wrapping, surrounding asterisks, and ordinary hyphen/dash variations. Preserve the original matched fragment separately. Do not broadly remove punctuation or use fuzzy word substitutions that could turn unrelated text into a match.
-2. Detect the marker as a bounded header warning, including the fixture's fused asterisk/header layout. Search the existing combined text so OCR-appended content is covered; do not assume the first characters represent page one. Do not claim a page number unless page provenance is actually available. A filename, directory name, dispatcher note containing only “preliminary,” `FINAL DEST`, release revision, or B043/B044 text is insufficient evidence.
-3. Use an independent release-status enum/DTO, following existing naming and serialization conventions. Proposed states: `Preliminary` for a supported explicit marker; `NotMarkedPreliminary` when the current detector ran and found no supported marker; `Unknown` for legacy/missing/invalid status metadata. The latter two do not mean `Final`. Explicit preliminary evidence takes precedence over generic final-destination/authorization text.
-4. Carry status plus the minimal warning evidence through `ParsedFlightPlanData`, `BuildFlightPlanData`, `FlightPlanData::toArray()`, the serializer, encrypted saved payload, and `BuildFlightPlanPageData`. Use a dedicated release-status value rather than overloading `releaseAuthorization`, source-value statuses, or task availability. Preserve evidence internally without adding the full document or raw evidence to public Livewire properties, logs, or client calculator data.
-5. Older saved payloads load with `Unknown`; do not reinterpret them as non-preliminary. The uploaded release file is deleted after extraction, so old payloads cannot be reliably reclassified from the PDF: offer re-upload to determine status. No database migration, backfill, package installation, or additional persistent model is expected for this metadata.
-6. On successful replacement upload, replace status and values together using the existing saved-result flow; never retain the old preliminary flag on a new result. Preserve the existing result and its status after a failed upload. Keep status detection within the extraction boundary, outside Blade, presenters, and database queries.
+- Elevated Sail access confirmed running application, MySQL, and Redis services. Installed versions included Laravel 13.34.0, Livewire 4.4.8, PHPUnit 12.5.37, and Smalot PDF Parser 2.12.5. Boost documentation transport closed; official Laravel/Livewire testing and Blade documentation were used as fallback. `.ai/rules` is absent.
+- Main focused integration run: **199 passed, 2 skipped, 2,214 assertions**. The supplied private preliminary PDF regression passed; the two skips were existing unavailable private fixtures. Coverage includes header variants/negatives, appended and cached OCR text, encrypted extraction/save/reload, raw-evidence privacy, every direct task route, failed/successful replacement, pounds/kilograms, legacy metadata, preserved missing/conflicting values, and exceeded-limit alerts. The full suite was not run.
+- Visual review found the remaining sidebar weight count on preliminary Overview. After suppressing fuel/weight navigator indicators, the preliminary feature and navigation tests passed in the follow-up run. The corrected final `OverviewTest` run passed **5 tests, 199 assertions**, checking the full rendered markup and accessible labels rather than visible text alone. Dedicated tasks retain their counters and B44 badge.
+- `vendor/bin/sail node --test tests/JavaScript/offline-fuel-worker.test.js tests/JavaScript/offline-fuel-draft.test.js`: **27 passed**, including obsolete-cache removal, reconnect fallback, warning recovery after preparation/restart, and actual-input draft recovery.
+- `vendor/bin/sail bin pint --dirty --format agent`: passed after PHP/test changes. One `vendor/bin/sail bin phpstan analyse --memory-limit=1G --no-progress` application run passed with zero errors. `vendor/bin/sail npm run build` passed. Task-scoped staged/unstaged `git diff --check` passed; unrelated concurrent CREW_BIDS.md whitespace was left untouched.
+- Reviewed actual Blade components and production CSS in headless Chrome using synthetic, nonpersistent data: light/narrow Overview, dark/desktop Overview, dark/narrow Weight & Balance, and the corrected desktop navigator. Warning text and section qualifiers were readable, cards/indicators were omitted on Overview, and the dedicated exceeded-limit warning/reference limit remained visible. Reviewed widths were 500 and 1,440 pixels. Live authenticated interaction, physical-device offline reload, and actual scanner OCR were not manually exercised; offline/OCR contracts have deterministic automated coverage.
+- Initial concurrent feature processes collided on the existing file-backed SQLite test database. Subsequent integration runs used one sequential process with an isolated in-memory database. The malformed disposable test file was preserved under `/tmp`, reset, and restored by `vendor/bin/sail artisan test --compact tests/Feature/FlightPlanResultStoreTest.php --filter=test_it_persists_an_encrypted_result_with_an_opaque_key` (1 passed, 4 assertions); SQLite integrity_check then returned `ok`. The application database was not migrated.
 
-### Presentation and affected data
+The main integration command was:
 
-Show one clear `Preliminary flight plan` badge and a compact warning near the shared release header on every task route. Display the source warning text, including `Payload estimated` and `Do not fuel aircraft`, as document content. The PDF warning supplies evidence for the UI; it is not an instruction to execute an action. Use the existing warning palette and text labels, with accessible contrast in both themes; avoid relying on color or adding a badge to every route token.
+```bash
+vendor/bin/sail exec -T -e DB_DATABASE=:memory: -e DB_CONNECTION=sqlite laravel.test php artisan test --compact \
+  tests/Unit/ReleaseStatusExtractorTest.php \
+  tests/Unit/DTOs/ReleaseStatusDataTest.php \
+  tests/Unit/ExtractFlightPlanDataTest.php \
+  tests/Unit/FlightPlanTextExtractorTest.php \
+  tests/Unit/DTOs/FlightPlanDataTest.php \
+  tests/Unit/Actions/FlightPlan/BuildFlightPlanDataTest.php \
+  tests/Unit/Actions/FlightPlan/BuildFlightPlanPageDataTest.php \
+  tests/Unit/FlightPlanResultSerializerTest.php \
+  tests/Unit/View/Models/FlightReleasePageViewModelTest.php \
+  tests/Feature/PreliminaryFlightPlanTest.php \
+  tests/Feature/FlightPlanResultStoreTest.php \
+  tests/Feature/Livewire/FlightPlanBrief/Lifecycle/ExtractionTest.php \
+  tests/Feature/Livewire/FlightPlanBrief/Lifecycle/SavedResultTest.php \
+  tests/Feature/Livewire/FlightPlanBrief/Workspace/OverviewTest.php \
+  tests/Feature/Livewire/FlightPlanBrief/Tasks/FmsTest.php \
+  tests/Feature/Livewire/FlightPlanBrief/Tasks/EtopsTest.php \
+  tests/Feature/Livewire/FlightPlanBrief/Tasks/WeightAndBalanceTest.php \
+  tests/Feature/Livewire/FlightPlanBrief/Tasks/EnvelopeTest.php \
+  tests/Feature/Livewire/FlightPlanBrief/Tasks/FlightInitTest.php \
+  tests/Feature/Livewire/FlightPlanBrief/Tasks/MaintenanceLogTest.php \
+  tests/Feature/OfflineFuelScoreTest.php
+```
 
-| Area | Preliminary treatment |
-| --- | --- |
-| Overview | Do not render weight or fuel information, including the entire Ramp Fuel card, Weight & Balance alert card, and any weight/fuel summaries or support-status indicators. Omit these server-side, including their values and accessible labels; do not hide them with CSS or replace them with missing-data placeholders. Keep the preliminary warning and qualified route/ETOPS summaries. |
-| Weights | Label planned payload, zero-fuel/takeoff/landing weights, and derived comparisons in Weight & Balance; include release-derived planned weights shown in Envelope/TLR. Preserve source conflicts, missing values, and structural-limit alerts. Aircraft database limits remain reference limits and must not be relabeled as estimated release values. |
-| Fuel | Omit fuel from Overview. Label FMS fuel fields, Fuel Score source quantities, and calculations based on those quantities as preliminary. A manually entered actual FOB remains an actual observation; comparisons against the preliminary plan retain the planning qualifier. |
-| Route | Label the shared route summary, FMS route/runways/procedures, and route-dependent planning fields at section level. Keep airport codes prominent and route tokens uncluttered. Static airport lookup details are reference information. |
-| ETOPS | Label present ETOPS planning data, including rating/alternates/boundaries/ETPs and related fuel values, as preliminary. Keep applicability and source availability distinct; preliminary status must not manufacture missing ETOPS information or turn unknown applicability into confirmed ETOPS/non-ETOPS. |
-| Offline Fuel Score | Pass a derived status/warning display value from saved page data to the standalone view. Keep it visible after offline preparation/reload, including calculations based on preliminary inputs. Do not expose raw detection evidence in JavaScript state. |
+Unrelated working-tree changes and concurrent staging were preserved.
 
-Use view-model/presenter methods and a small reusable warning/badge component. Derive Overview weight/fuel visibility from the persisted release status; suppress these only for `Preliminary`, preserving the existing Overview behavior for `NotMarkedPreliminary` and `Unknown`. Add compact `Preliminary` labels beside affected section titles and the remaining route/ETOPS overview summaries so the qualifier remains visible when the shared header scrolls away. Replace ambiguous “confirmed” presentation copy where it implies finality; preserve precise source-conflict and availability messages. In dedicated tasks, a preliminary qualifier must not hide missing data, change numeric values, or suppress an exceeded-limit warning. Overview omits the entire weight/fuel presentation even when preliminary weights exceed a limit. Do not show a green/final badge merely because no marker was found. For `Unknown`, use a neutral `Release status not determined` message and explain that re-upload can determine it.
-
-This task adds identification, tagging, and Overview weight/fuel suppression for preliminary releases. Keep existing parsing, copying, and calculator behavior in the dedicated tasks; any future action-blocking or acknowledgement workflow needs an explicit product requirement. Do not automatically promote a preliminary brief based on elapsed time, revised numbers, or a user dismissing the warning.
-
-### Implementation sequence
-
-1. Confirm Sail, installed versions, applicable rules, and existing enum/DTO/extractor/test conventions. Add the focused status extractor and typed metadata; use Sail Artisan generators for new PHP classes. Add deterministic synthetic text coverage based on the supplied header without committing the private PDF or its crew information.
-2. Integrate extraction, serialization, saved-result rebuilding, and backward compatibility. Preserve the marker evidence inside the encrypted payload and test that the status survives a complete extraction-to-save-to-reload round trip. The existing text cache stores text rather than parsed status, so new uploads can classify cached text without a text-cache version change.
-3. Add shared header and section qualifiers across the areas above. Gate Overview weight/fuel cards and indicators through the view model, omitting their markup entirely for preliminary releases. Pass derived display state into the standalone Fuel Score response. Review offline page-cache versioning/invalidation so a previously prepared page cannot indefinitely mask the new warning; cached pages prepared before this feature may need online re-preparation. Preserve existing owner/result-key isolation and input drafts.
-4. Run the focused checks below, review both themes and mobile layouts, and record actual implementation outcomes in this entry. Leave the feature uncompleted until implemented and verified.
-
-### Acceptance and focused validation for implementation
-
-- Detector cases: the supplied full phrase with/without decorative asterisks; the actual joined-header layout; case/spacing/wrapped-line/dash variants; duplicate matching headers; and marker text arriving after native pages through the OCR path. Add negatives for a bare “preliminary” in unrelated prose, an incomplete warning, `FINAL DEST`, B043/B044, revision numbers, and a misleading filename. No supported marker yields `NotMarkedPreliminary`, never `Final`.
-- Cover metadata construction, JSON serialization/rebuilding, absent/invalid legacy metadata mapping to `Unknown`, minimal retained evidence, and unchanged weights/fuel/route/ETOPS values. Cover preliminary and unmarked successful replacement uploads, failed replacement preservation, and refresh restoration.
-- Use the supplied private PDF for a local extraction regression using the existing private-fixture conventions and stubbed airport lookups. Assert preliminary classification and the marker, without broad unrelated parser assertions. Keep synthetic detection tests available in CI so a skipped private-PDF case does not remove core regression coverage. Exercise the OCR path with a test double; a real OCR fixture is needed before claiming the actual scanner recognizes this header.
-- Add focused Livewire/view tests for shared warning visibility on direct task visits and all four affected data areas, null/missing source data, source conflicts, persistent exceeded-limit alerts, neutral unknown status, and absence of a misleading final badge. Verify server-side evidence does not appear in the Livewire snapshot. Test standalone Fuel Score warning rendering and offline preservation/invalidation using existing feature/JavaScript coverage where applicable.
-- In `tests/Feature/Livewire/FlightPlanBrief/Workspace/OverviewTest.php`, verify preliminary releases omit the Ramp Fuel and Weight & Balance alert cards, weight/fuel values, and related accessible labels/indicators from rendered markup, including populated and exceeded-limit cases. Verify the warning and route/ETOPS content remain, refresh preserves suppression, successful replacement with an unmarked release restores existing Overview behavior, and dedicated tasks still show qualified values and applicable alerts. Cover `Unknown` retaining existing Overview behavior.
-- Run only the new status-specific tests and affected `ExtractFlightPlanDataTest`, DTO/builders/serializer tests, `FlightPlanResultStoreTest`, Livewire saved-result/extraction and affected task/view-model tests, and `OfflineFuelScoreTest` through `vendor/bin/sail artisan test --compact <paths>`. Narrow further to changed cases/files; do not run the full suite. Run relevant existing offline JavaScript tests only if their behavior changes.
-- Manually check full warning text, uncluttered route presentation, labels after scrolling, light/dark themes, mobile layout, and the prepared offline page. After PHP changes, run `vendor/bin/sail bin pint --dirty --format agent`; run Larastan once at final integration. Build frontend assets through Sail if assets change. Record commands and results here.
-
-### Planning outcome (2026-10-26)
-
-Verified the supplied page-one preliminary marker using the project's installed PDF parser and traced extraction, saved-result reconstruction, source-status semantics, affected display surfaces, and offline Fuel Score. Documented detection boundaries, typed persisted status/evidence, preliminary tagging, legacy behavior, implementation order, and focused validation. Updated the plan to omit all weight/fuel presentation from Overview for preliminary releases while retaining qualified values and alerts in dedicated tasks. Sail was started for read-only document inspection; installed Laravel 13.34.0, Livewire 4.4.8, and Smalot PDF Parser 2.12.5 were confirmed. Only this TODO task entry changed; unrelated working-tree edits were preserved. No application code, dependencies, or tests changed, so tests, Pint, and Larastan were not run for this documentation-only task.
-
-Planning commit message: `docs: plan preliminary flight plan detection and data qualifiers`
-
-Implementation commit message: `feat: identify preliminary flight plans and label planning data`
+Commit message: `feat: identify preliminary flight plans and label planning data`
 
 ## Crew bidding
-See CREW_BIDS.md
+
+### Goal
+
+Organize K4 Bids within the app and define a clean user-facing workspace for monthly package comparison and bid ranking.
+
+### Current implementation
+
+Planning completed (2026-10-26): Reorganized `CREW_BIDS.md` into an app placement, access, import, workspace, preferences, ranking/autosave, pay-preview, and delivery specification. Proposed a separate K4 Bids navigation item after Flight Plan Brief, using existing feature-policy conventions; a two-column browsing/bid-list workspace; progressive filters; mobile and keyboard behavior; and explicit missing-data/save states. Preserved the original feature scope while separating initial delivery from enhancements requiring verified definitions or source rules.
+
+Inspected existing navigation, routes, feature configuration, access methods, and private sample filenames. Samples include multiple document types, fleets, and months; document contents and parsing compatibility remain unverified. The plan records package revision/owner isolation, import failure handling, and unresolved pay/export/source decisions. No application behavior or configuration changed; feature implementation remains pending.
+
+### Problem addressed
+
+The original notes mixed interface requests, example data, compensation assumptions, and advanced features without a clear user flow or implementation boundary. `CREW_BIDS.md` now provides the single implementation reference instead of duplicating its plan here.
+
+Validation: Documentation reviewed against the existing app structure and original feature notes. No tests, Pint, or Larastan were run for this documentation-only task.
+
+Commit message: `docs: organize K4 Bids app integration and user workflow`
 
 ## Unified upload
 Currently: 2 tabs have 2 different upload points, user has to choose 

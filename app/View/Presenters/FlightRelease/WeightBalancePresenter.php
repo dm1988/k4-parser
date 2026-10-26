@@ -56,7 +56,7 @@ final readonly class WeightBalancePresenter
             ],
             [
                 'label' => 'Arrival',
-                'description' => 'Estimated landing mass from the confirmed release source.',
+                'description' => 'Estimated landing mass from the release source.',
                 'fields' => [
                     $this->field(
                         'Estimated landing weight',

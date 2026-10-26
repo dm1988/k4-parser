@@ -10,6 +10,7 @@ use App\DTOs\FlightPlanData;
 use App\DTOs\FuelPlanData;
 use App\DTOs\GeneralDeclarationData;
 use App\DTOs\ReleaseAuthorizationData;
+use App\DTOs\ReleaseStatusData;
 use App\DTOs\RouteData;
 use App\DTOs\ScheduleData;
 use App\Enums\AltitudeUnit;
@@ -102,6 +103,7 @@ class BuildFlightPlanPageData
                     : null,
             ),
             fuelPlan: is_array($fuelPlan) ? $this->fuelPlan($fuelPlan) : null,
+            releaseStatus: ReleaseStatusData::fromArray($data['releaseStatus'] ?? null),
             maintenanceLog: $this->maintenanceLogDataBuilder->fromSerialized($data['maintenanceLog'] ?? null),
             takeoffLandingReport: $this->takeoffLandingReportDataBuilder->fromSerialized(
                 $data['takeoffLandingReport'] ?? $data['envelope'] ?? null,

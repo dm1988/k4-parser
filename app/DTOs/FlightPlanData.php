@@ -31,6 +31,7 @@ final readonly class FlightPlanData implements JsonSerializable
         public array $dispatcherNotes = [],
         public array $crewMembers = [],
         public array $waypoints = [],
+        public ReleaseStatusData $releaseStatus = new ReleaseStatusData,
     ) {}
 
     /** @return array<string, mixed> */
@@ -50,6 +51,7 @@ final readonly class FlightPlanData implements JsonSerializable
             'weightBalance' => $this->weightBalance?->toArray(),
             'generalDeclaration' => $this->generalDeclaration->toArray(),
             'releaseAuthorization' => $this->releaseAuthorization->toArray(),
+            'releaseStatus' => $this->releaseStatus->toArray(),
             'dispatcherNotes' => array_map(
                 static fn (DispatcherNoteData $note): array => $note->toArray(),
                 $this->dispatcherNotes,

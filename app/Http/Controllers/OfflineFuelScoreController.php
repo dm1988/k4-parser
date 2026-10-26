@@ -29,6 +29,7 @@ class OfflineFuelScoreController extends Controller
         return response()->view('flight-release.offline-fuel-score', [
             'flightNumber' => $pageData->flightPlan->identity->flightNumber,
             'flightDate' => $pageData->flightPlan->identity->flightDate?->format('M j, Y'),
+            'releaseStatus' => $pageData->flightPlan->releaseStatus->display(),
             'calculator' => (new FuelPresenter($pageData))->calculatorData(),
             'draftScope' => [
                 'ownerId' => (string) $user->getKey(),

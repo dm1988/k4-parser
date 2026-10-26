@@ -3,10 +3,11 @@
     'isActive',
     'model',
     'mobile' => false,
+    'showIndicators' => true,
 ])
 
 @php
-    $taskCounter = $model->taskCounter($task);
+    $taskCounter = $showIndicators ? $model->taskCounter($task) : null;
     $wireKeyPrefix = $mobile ? 'flight-plan-task-nav-mobile-' : 'flight-plan-task-nav-';
 @endphp
 
@@ -43,41 +44,43 @@
 
     <span class="min-w-0 flex-1 break-words">{{ $task->label() }}</span>
 
-    <span class="ms-auto flex shrink-0 items-center justify-end gap-1.5">
-        @if ($task === \App\Enums\FlightPlanTask::FuelScore)
-            <x-flight-release.b44-badge
-                :label="$model->b44BadgeLabel()"
-                wire:key="{{ $wireKeyPrefix }}fuel_score-b44"
-            />
-        @endif
+    @if ($showIndicators)
+        <span class="ms-auto flex shrink-0 items-center justify-end gap-1.5">
+            @if ($task === \App\Enums\FlightPlanTask::FuelScore)
+                <x-flight-release.b44-badge
+                    :label="$model->b44BadgeLabel()"
+                    wire:key="{{ $wireKeyPrefix }}fuel_score-b44"
+                />
+            @endif
 
-        @if ($taskCounter !== null)
-            <x-flight-release.counter-badge
-                :count="$taskCounter"
-                :label="$task->label()"
-                :noun="match ($task) {
-                    \App\Enums\FlightPlanTask::SlotTimes => 'approved slot',
-                    \App\Enums\FlightPlanTask::Etops => 'equal-time point',
-                    \App\Enums\FlightPlanTask::WeightAndBalance => 'operational weight alert',
-                    \App\Enums\FlightPlanTask::Notes => 'note',
-                    default => 'item',
-                }"
-                :tone="$task === \App\Enums\FlightPlanTask::ReviewMelCdl && $taskCounter === 0 ? 'success' : 'warning'"
-                :color-classes="$model->taskCounterColorClasses($task)"
-            />
-        @endif
+            @if ($taskCounter !== null)
+                <x-flight-release.counter-badge
+                    :count="$taskCounter"
+                    :label="$task->label()"
+                    :noun="match ($task) {
+                        \App\Enums\FlightPlanTask::SlotTimes => 'approved slot',
+                        \App\Enums\FlightPlanTask::Etops => 'equal-time point',
+                        \App\Enums\FlightPlanTask::WeightAndBalance => 'operational weight alert',
+                        \App\Enums\FlightPlanTask::Notes => 'note',
+                        default => 'item',
+                    }"
+                    :tone="$task === \App\Enums\FlightPlanTask::ReviewMelCdl && $taskCounter === 0 ? 'success' : 'warning'"
+                    :color-classes="$model->taskCounterColorClasses($task)"
+                />
+            @endif
 
-        @unless ($task === \App\Enums\FlightPlanTask::ReviewMelCdl)
-            <x-flight-release.status
-                :availability="$model->availabilityFor($task)"
-                :absence-is-good="$task->absenceIsGood()"
-                dot
-            />
-        @endunless
+            @unless ($task === \App\Enums\FlightPlanTask::ReviewMelCdl)
+                <x-flight-release.status
+                    :availability="$model->availabilityFor($task)"
+                    :absence-is-good="$task->absenceIsGood()"
+                    dot
+                />
+            @endunless
 
-        @if ($mobile && $isActive)
-            <span class="sr-only">Current task</span>
-            <x-heroicon-o-check class="h-4 w-4 shrink-0 text-[#C5A059]" aria-hidden="true" />
-        @endif
-    </span>
+            @if ($mobile && $isActive)
+                <span class="sr-only">Current task</span>
+                <x-heroicon-o-check class="h-4 w-4 shrink-0 text-[#C5A059]" aria-hidden="true" />
+            @endif
+        </span>
+    @endif
 </button>

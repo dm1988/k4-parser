@@ -2,11 +2,13 @@
 
 namespace Tests\Unit;
 
+use App\Enums\ReleaseStatus;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Services\FlightPlan\Extractor\Etops\EtopsRouteExtractor;
 use App\Services\FlightPlan\Extractor\FlightPlanTextExtractor;
 use App\Services\FlightPlan\Extractor\GeneralDeclarationExtractor;
 use App\Services\FlightPlan\Extractor\PdfImagePageTextExtractor;
+use App\Services\FlightPlan\Extractor\ReleaseStatusExtractor;
 use Fruitcake\LaravelDebugbar\LaravelDebugbar;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository;
@@ -20,6 +22,38 @@ use Tests\TestCase;
 
 class FlightPlanTextExtractorTest extends TestCase
 {
+    public function test_preliminary_status_is_detected_when_page_one_ocr_is_appended_after_native_pages_and_when_text_is_cached(): void
+    {
+        $path = tempnam('/tmp', 'preliminary-ocr-');
+        $this->assertIsString($path);
+        file_put_contents($path, 'pdf bytes');
+        $warning = 'PRELIMINARY FLIGHT PLAN - PAYLOAD ESTIMATED - DO NOT FUEL AIRCRAFT';
+        $imagePage = $this->createMock(Page::class);
+        $imagePage->expects($this->once())->method('getText')->willReturn('');
+        $nativePage = $this->createMock(Page::class);
+        $nativePage->expects($this->once())->method('getText')->willReturn('FINAL DEST KORD RELEASED IAW OPS SPEC B044');
+        $document = $this->createMock(Document::class);
+        $document->expects($this->once())->method('getPages')->willReturn([$imagePage, $nativePage]);
+        $parser = $this->createMock(Parser::class);
+        $parser->expects($this->once())->method('parseFile')->with($path)->willReturn($document);
+        $ocr = $this->createMock(PdfImagePageTextExtractor::class);
+        $ocr->expects($this->once())->method('extract')->with($path, 0)->willReturn('***'.$warning.'***KALITTA AIR');
+        $extractor = new FlightPlanTextExtractor($parser, new Repository(new ArrayStore), $ocr);
+        $statusExtractor = new ReleaseStatusExtractor;
+
+        try {
+            $first = $extractor->extract($path);
+            $cached = $extractor->extract($path);
+
+            $this->assertStringStartsWith('FINAL DEST', $first);
+            $this->assertSame($first, $cached);
+            $this->assertSame(ReleaseStatus::Preliminary, $statusExtractor->extract($first)->status);
+            $this->assertSame($warning, $statusExtractor->extract($cached)->sourceWarning);
+        } finally {
+            unlink($path);
+        }
+    }
+
     public function test_it_reads_sanitizes_and_caches_pdf_text_by_content(): void
     {
         $path = tempnam('/tmp', 'flight-plan-text-');

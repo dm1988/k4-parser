@@ -20,6 +20,7 @@ use App\Services\FlightPlan\Extractor\GeneralDeclarationExtractor;
 use App\Services\FlightPlan\Extractor\MaintenanceLogExtractor;
 use App\Services\FlightPlan\Extractor\PdfImagePageTextExtractor;
 use App\Services\FlightPlan\Extractor\ReleaseAuthorizationExtractor;
+use App\Services\FlightPlan\Extractor\ReleaseStatusExtractor;
 use App\Services\FlightPlan\Extractor\TakeoffLandingReportExtractor;
 use App\Services\FlightPlan\Extractor\WaypointExtractor;
 use App\Services\FlightPlan\Extractor\WeatherExtractor;
@@ -171,6 +172,7 @@ class ExtractFlightPlanDataTest extends TestCase
             $generalDeclarationExtractor,
             $releaseAuthorizationExtractor,
             $dispatcherNotesExtractor,
+            new ReleaseStatusExtractor,
         ))->extractFile('/tmp/release.pdf');
 
         $this->assertInstanceOf(ParsedFlightPlanData::class, $parsed);
@@ -244,6 +246,7 @@ class ExtractFlightPlanDataTest extends TestCase
             new GeneralDeclarationExtractor,
             new ReleaseAuthorizationExtractor,
             new DispatcherNotesExtractor,
+            new ReleaseStatusExtractor,
         );
 
         $parsed = $extractor->extractFile($samplePath);

@@ -42,6 +42,7 @@
             </div>
 
             <div class="flex min-w-12 flex-1 flex-col items-center gap-1.5">
+                <x-flight-release.planning-qualifier :show="$model->isPreliminary()" label="Preliminary route" />
                 <p class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[#4A5568] dark:text-slate-400">
                     {{ $model->duration() !== '' ? $model->duration() : 'Duration not present' }}
                 </p>
@@ -82,4 +83,5 @@
             </div>
         @endif
     </div>
+    <x-flight-release.release-status :status="$model->releaseStatusDisplay()" class="mx-4 mb-4 sm:mx-5" />
 </section>

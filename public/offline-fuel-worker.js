@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'k4-offline-fuel-';
-const PAGE_CACHE = `${CACHE_PREFIX}pages-v1`;
+const PAGE_CACHE = `${CACHE_PREFIX}pages-v2`;
 const ASSET_CACHE = `${CACHE_PREFIX}assets-v1`;
 const calculatorPath = /^\/flight-plan-brief\/fuel-score\/[0-9A-HJKMNP-TV-Z]{26}$/i;
 let revision = 0;

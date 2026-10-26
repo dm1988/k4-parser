@@ -2,6 +2,7 @@
     'tasks',
     'activeTask',
     'model',
+    'showPlanningIndicators' => true,
 ])
 
 <div {{ $attributes->merge(['class' => 'min-w-0']) }}>
@@ -24,6 +25,7 @@
                     :task="$task"
                     :is-active="$task === $activeTask"
                     :model="$model"
+                    :show-indicators="$showPlanningIndicators || ! in_array($task, [\App\Enums\FlightPlanTask::FuelScore, \App\Enums\FlightPlanTask::WeightAndBalance], true)"
                 />
             @endforeach
         </div>
@@ -100,6 +102,7 @@
                             :task="$task"
                             :is-active="$task === $activeTask"
                             :model="$model"
+                            :show-indicators="$showPlanningIndicators || ! in_array($task, [\App\Enums\FlightPlanTask::FuelScore, \App\Enums\FlightPlanTask::WeightAndBalance], true)"
                             mobile
                         />
                     @endforeach

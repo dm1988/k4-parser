@@ -8,8 +8,8 @@
 <div {{ $attributes->merge(['class' => 'flex min-w-0 flex-col gap-5 p-3 sm:p-5']) }}>
     <section aria-labelledby="fms-fields-heading" class="flex min-w-0 flex-col gap-3">
         <div>
-            <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568] dark:text-slate-400">Confirmed release values</p>
-            <h3 id="fms-fields-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">FMS route setup</h3>
+            <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568] dark:text-slate-400">Source release values</p>
+            <h3 id="fms-fields-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">FMS route setup <x-flight-release.planning-qualifier :show="$model->isPreliminary()" /></h3>
         </div>
 
         <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -24,7 +24,7 @@
     </section>
 
     <section aria-labelledby="fms-procedures-heading" class="flex min-w-0 flex-col gap-3">
-        <h3 id="fms-procedures-heading" class="text-xs font-bold uppercase tracking-[0.16em] text-[#1B365D] dark:text-slate-200">Planned runways and procedures</h3>
+        <h3 id="fms-procedures-heading" class="text-xs font-bold uppercase tracking-[0.16em] text-[#1B365D] dark:text-slate-200">Planned runways and procedures <x-flight-release.planning-qualifier :show="$model->isPreliminary()" /></h3>
 
         <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <x-flight-release.metric label="Departure runway" :value="$model->departureRunway()" empty-text="Not present in this release" />
@@ -71,7 +71,7 @@
 
     <section aria-labelledby="fms-route-heading" class="overflow-hidden rounded-xl border border-[#1B365D]/10 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div class="border-b border-[#1B365D]/10 bg-[#F8F9FA] px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
-            <h3 id="fms-route-heading" class="text-xs font-bold uppercase tracking-[0.16em] text-[#1B365D] dark:text-slate-200">Route</h3>
+            <h3 id="fms-route-heading" class="text-xs font-bold uppercase tracking-[0.16em] text-[#1B365D] dark:text-slate-200">Route <x-flight-release.planning-qualifier :show="$model->isPreliminary()" /></h3>
         </div>
 
         <div class="overflow-x-auto px-4 py-3">

@@ -63,6 +63,11 @@ const worker = (caches = cacheStorage()) => {
 
     return {
         caches, network, notifications,
+        async activate() {
+            let pending;
+            listeners.get('activate')({ waitUntil: (promise) => { pending = promise; } });
+            await pending;
+        },
         async reconcile(ownerId, flightPlanKey) {
             let pending;
             listeners.get('message')({
@@ -95,6 +100,26 @@ const worker = (caches = cacheStorage()) => {
 };
 
 const offline = () => { throw new TypeError('Failed to fetch'); };
+
+test('activation removes old prepared pages and requires preparation before recovering a preliminary warning', async () => {
+    const caches = cacheStorage();
+    await (await caches.open('k4-offline-fuel-pages-v1')).put(pageUrl, page());
+    const instance = worker(caches);
+    await instance.activate();
+    assert.equal((await caches.keys()).includes('k4-offline-fuel-pages-v1'), false);
+    instance.network.handler = offline;
+    assert.equal((await instance.request()).status, 503);
+
+    const preliminary = page();
+    const warning = 'Preliminary flight plan · Payload estimated — Do not fuel aircraft';
+    instance.network.handler = (url) => url === pageUrl
+        ? new Response(`<main>${warning}</main>`, { headers: preliminary.headers })
+        : new Response('asset');
+    assert.equal((await instance.prepare()).ready, true);
+    const restarted = worker(caches);
+    restarted.network.handler = offline;
+    assert.match(await (await restarted.request()).text(), /Preliminary flight plan · Payload estimated — Do not fuel aircraft/);
+});
 
 test('a restarted worker recovers the release page and every asset after an offline tab reload', async () => {
     const first = worker();

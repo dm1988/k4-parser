@@ -17,10 +17,12 @@
                 <p role="status" class="mt-2 text-sm font-semibold text-[#C5A059]" x-text="offlineMessage">Preparing offline recovery…</p>
             </header>
 
+            <x-flight-release.release-status :status="$releaseStatus" />
+
             <section aria-labelledby="calculator-inputs-heading" class="rounded-xl border border-[#1B365D]/10 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-6">
-                <h2 id="calculator-inputs-heading" class="text-lg font-bold text-[#1B365D] dark:text-slate-100">Inputs</h2>
-                <p class="mt-1 text-sm text-[#4A5568] dark:text-slate-400">Confirmed release takeoff fuel: <span class="font-mono font-semibold" x-text="sourceFuelLabel(takeoffFuel)">Not present in this release</span></p>
-                <p class="mt-1 text-sm text-[#4A5568] dark:text-slate-400">Confirmed estimated landing fuel: <span class="font-mono font-semibold" x-text="sourceFuelLabel(estimatedLandingFuel)">Not present in this release</span></p>
+                <h2 id="calculator-inputs-heading" class="text-lg font-bold text-[#1B365D] dark:text-slate-100">Inputs <x-flight-release.planning-qualifier :show="$releaseStatus['preliminary']" label="Preliminary plan comparisons" /></h2>
+                <p class="mt-1 text-sm text-[#4A5568] dark:text-slate-400">Source release takeoff fuel: <span class="font-mono font-semibold" x-text="sourceFuelLabel(takeoffFuel)">Not present in this release</span></p>
+                <p class="mt-1 text-sm text-[#4A5568] dark:text-slate-400">Source estimated landing fuel: <span class="font-mono font-semibold" x-text="sourceFuelLabel(estimatedLandingFuel)">Not present in this release</span></p>
                 <div class="mt-4 flex flex-wrap items-end gap-4">
                     <label for="fuel-score-off-time" class="flex min-w-40 flex-col gap-1 text-sm font-semibold text-[#1B365D] dark:text-slate-200">
                         Off time (UTC, HHMM)
@@ -40,7 +42,7 @@
 
             <section aria-labelledby="calculator-waypoints-heading" class="min-w-0 rounded-xl border border-[#1B365D]/10 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
                 <div class="px-4 py-4 sm:px-6">
-                    <h2 id="calculator-waypoints-heading" class="text-lg font-bold text-[#1B365D] dark:text-slate-100">Waypoint estimates</h2>
+                    <h2 id="calculator-waypoints-heading" class="text-lg font-bold text-[#1B365D] dark:text-slate-100">Waypoint estimates <x-flight-release.planning-qualifier :show="$releaseStatus['preliminary']" label="Preliminary plan comparisons" /></h2>
                     <p class="text-sm text-[#4A5568] dark:text-slate-400">Times are UTC; T/TME is cumulative time. Collapsed rows show planned FOB from the release. Expand a waypoint for ATA, AFOB, and burn comparisons. Positive fuel difference means above plan; positive cumulative burn difference means below TBO.</p>
                 </div>
                 <div class="overflow-x-auto">

@@ -8,6 +8,9 @@
             icon="calculator"
             :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::Fms)"
         >
+            <x-slot:badge>
+                <x-flight-release.planning-qualifier :show="$model->isPreliminary()" />
+            </x-slot:badge>
             <dl class="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <x-flight-release.metric label="Alternate" :value="$model->alternate()" empty-text="Not present in this release" />
                 <x-flight-release.metric label="Initial altitude" :value="$model->overviewInitialAltitude()" empty-text="Not present in this release" />
@@ -44,7 +47,7 @@
             @endif
         </x-flight-release.overview-card>
 
-        @if ($model->hasOverviewWeightBalanceAlerts())
+        @if ($model->showOverviewWeightAndFuel() && $model->hasOverviewWeightBalanceAlerts())
             <x-flight-release.overview-card
                 :task="\App\Enums\FlightPlanTask::WeightAndBalance"
                 title="Weight & Balance"
@@ -86,27 +89,29 @@
             </x-flight-release.overview-card>
         @endif
 
-        <x-flight-release.overview-card
-            :task="\App\Enums\FlightPlanTask::FuelScore"
-            title="Ramp Fuel"
-            icon="chart-bar-square"
-            :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::FuelScore)"
-        >
-            <x-slot:badge>
-                <x-flight-release.b44-badge :label="$model->b44BadgeLabel()" />
-            </x-slot:badge>
+        @if ($model->showOverviewWeightAndFuel())
+            <x-flight-release.overview-card
+                :task="\App\Enums\FlightPlanTask::FuelScore"
+                title="Ramp Fuel"
+                icon="chart-bar-square"
+                :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::FuelScore)"
+            >
+                <x-slot:badge>
+                    <x-flight-release.b44-badge :label="$model->b44BadgeLabel()" />
+                </x-slot:badge>
 
-            @if ($rampFuel = $model->overviewRampFuel())
-                <x-flight-release.overview-stat
-                    :value="$rampFuel['value']"
-                    :unit="$rampFuel['unit']"
-                    :label="$rampFuel['taxiLabel']"
-                    :accessible-label="$rampFuel['accessibleLabel']"
-                />
-            @else
-                <p class="text-sm text-[#4A5568] dark:text-slate-300">Not present in this release</p>
-            @endif
-        </x-flight-release.overview-card>
+                @if ($rampFuel = $model->overviewRampFuel())
+                    <x-flight-release.overview-stat
+                        :value="$rampFuel['value']"
+                        :unit="$rampFuel['unit']"
+                        :label="$rampFuel['taxiLabel']"
+                        :accessible-label="$rampFuel['accessibleLabel']"
+                    />
+                @else
+                    <p class="text-sm text-[#4A5568] dark:text-slate-300">Not present in this release</p>
+                @endif
+            </x-flight-release.overview-card>
+        @endif
 
         <x-flight-release.overview-card
             :task="\App\Enums\FlightPlanTask::Overview"
@@ -139,6 +144,9 @@
                 icon="globe-alt"
                 :availability="$model->availabilityFor(\App\Enums\FlightPlanTask::Etops)"
             >
+                <x-slot:badge>
+                    <x-flight-release.planning-qualifier :show="$model->isPreliminary()" />
+                </x-slot:badge>
                 @if (($etopsRatingMinutes = $model->overviewEtopsRatingMinutes()) !== null)
                     <x-flight-release.overview-stat
                         :value="$etopsRatingMinutes"

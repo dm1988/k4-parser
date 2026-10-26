@@ -4,8 +4,8 @@
     <section aria-labelledby="etops-source-heading" class="flex min-w-0 flex-col gap-3">
         <div class="flex flex-wrap items-end justify-between gap-2">
             <div>
-                <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568] dark:text-slate-400">Confirmed release fields</p>
-                <h3 id="etops-source-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">ETOPS source data</h3>
+                <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568] dark:text-slate-400">Source release fields</p>
+                <h3 id="etops-source-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">ETOPS source data <x-flight-release.planning-qualifier :show="$model->isPreliminary()" /></h3>
             </div>
             <p class="text-xs font-semibold text-[#4A5568] dark:text-slate-400">No operational status inferred</p>
         </div>
@@ -19,7 +19,7 @@
     <section aria-labelledby="etops-boundary-heading" class="flex min-w-0 flex-col gap-3">
         <div>
             <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568] dark:text-slate-400">Route boundary</p>
-            <h3 id="etops-boundary-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">Boundary points</h3>
+            <h3 id="etops-boundary-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">Boundary points <x-flight-release.planning-qualifier :show="$model->isPreliminary()" /></h3>
         </div>
 
         @if ($model->etopsBoundaryPoints() === [])
@@ -40,7 +40,7 @@
     <section aria-labelledby="etops-critical-points-heading" class="flex min-w-0 flex-col gap-3">
         <div>
             <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568] dark:text-slate-400">Source sequence</p>
-            <h3 id="etops-critical-points-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">Equal-time points</h3>
+            <h3 id="etops-critical-points-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">Equal-time points <x-flight-release.planning-qualifier :show="$model->isPreliminary()" /></h3>
         </div>
 
         @if ($model->etps() === [])
@@ -74,7 +74,7 @@
     <section aria-labelledby="etops-alternates-heading" class="flex min-w-0 flex-col gap-3">
         <div>
             <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568] dark:text-slate-400">Point pairings</p>
-            <h3 id="etops-alternates-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">ETOPS alternates</h3>
+            <h3 id="etops-alternates-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">ETOPS alternates <x-flight-release.planning-qualifier :show="$model->isPreliminary()" /></h3>
         </div>
 
         @if ($model->etopsAlternates() === [])
@@ -91,7 +91,7 @@
     <section aria-labelledby="etops-scenarios-heading" class="flex min-w-0 flex-col gap-3">
         <div>
             <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568] dark:text-slate-400">Confirmed scenario text</p>
-            <h3 id="etops-scenarios-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">Source scenarios</h3>
+            <h3 id="etops-scenarios-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">Source scenarios <x-flight-release.planning-qualifier :show="$model->isPreliminary()" /></h3>
         </div>
 
         @if ($model->etopsScenarios() === [])

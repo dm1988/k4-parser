@@ -39,5 +39,6 @@ final readonly class ParsedFlightPlanData
         public array $dispatcherNotes = [],
         public array $sourceFragments = [],
         public array $waypoints = [],
+        public ReleaseStatusData $releaseStatus = new ReleaseStatusData,
     ) {}
 }

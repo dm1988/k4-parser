@@ -17,6 +17,35 @@ class OfflineFuelScoreTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_preliminary_context_is_rendered_in_the_cacheable_page_without_leaking_evidence_into_calculator_state(): void
+    {
+        $owner = User::factory()->admin()->create();
+        $result = $this->flightPlanResult();
+        $result['flight_plan_data']['releaseStatus'] = [
+            'status' => 'preliminary',
+            'sourceWarning' => 'PRELIMINARY\nPRIVATE-MATCHED-EVIDENCE',
+        ];
+        $key = app(FlightPlanResultStore::class)->save($owner, $result);
+
+        $response = $this->actingAs($owner)
+            ->get(route('flight-release.fuel-score', ['flightPlanKey' => $key]))
+            ->assertOk()
+            ->assertSeeText('Preliminary flight plan')
+            ->assertSeeText('Payload estimated — Do not fuel aircraft')
+            ->assertSeeText('Preliminary plan comparisons')
+            ->assertSeeText('Starting FOB at takeoff')
+            ->assertSeeText('Starting FOB is the actual fuel at takeoff')
+            ->assertDontSee('PRIVATE-MATCHED-EVIDENCE')
+            ->assertViewHas('calculator', function (array $calculator): bool {
+                return $calculator['takeoffFuel'] === ['amount' => 150000.0, 'unit' => 'lb']
+                    && ! array_key_exists('releaseStatus', $calculator)
+                    && ! array_key_exists('sourceWarning', $calculator);
+            })
+            ->assertHeader('X-Offline-Fuel-Page', '1');
+
+        $this->assertSame(1, substr_count($response->getContent(), 'Preliminary flight plan'));
+    }
+
     public function test_owner_can_open_a_source_backed_calculator_page(): void
     {
         $owner = User::factory()->admin()->create();

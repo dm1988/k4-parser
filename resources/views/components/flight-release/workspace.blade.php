@@ -16,6 +16,7 @@
             :tasks="$tasks"
             :active-task="$activeTask"
             :model="$model"
+            :show-planning-indicators="$activeTask !== \App\Enums\FlightPlanTask::Overview || $model->showOverviewWeightAndFuel()"
         />
 
         <section
@@ -30,6 +31,7 @@
                 :icon="$activeTask->icon()"
                 :availability="$availability"
                 :absence-is-good="$activeTask->absenceIsGood()"
+                :preliminary="$model->hasPreliminaryPlanningData($activeTask)"
                 hide-title-on-mobile
             />
 

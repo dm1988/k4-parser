@@ -8,6 +8,7 @@ use App\Enums\FlightPlanTask;
 use App\Enums\FlightPlanTaskAvailability;
 use App\Enums\FlightType;
 use App\Enums\OperationsSpecification;
+use App\Enums\ReleaseStatus;
 use App\Enums\RouteTokenType;
 use App\Enums\TaskTone;
 use App\View\Models\FlightRelease\WeightBalanceFieldViewModel;
@@ -42,6 +43,36 @@ readonly class FlightReleasePageViewModel
     public function hasFlightPlan(): bool
     {
         return $this->pageData !== null;
+    }
+
+    public function isPreliminary(): bool
+    {
+        return $this->pageData?->flightPlan->releaseStatus->status === ReleaseStatus::Preliminary;
+    }
+
+    /** @return array{preliminary: bool, label: ?string, warning: ?string} */
+    public function releaseStatusDisplay(): array
+    {
+        return $this->pageData?->flightPlan->releaseStatus->display()
+            ?? ['preliminary' => false, 'label' => null, 'warning' => null];
+    }
+
+    public function showOverviewWeightAndFuel(): bool
+    {
+        return ! $this->isPreliminary();
+    }
+
+    public function hasPreliminaryPlanningData(FlightPlanTask $task): bool
+    {
+        return $this->isPreliminary() && in_array($task, [
+            FlightPlanTask::Fms,
+            FlightPlanTask::FlightInit,
+            FlightPlanTask::Envelope,
+            FlightPlanTask::MaintenanceLog,
+            FlightPlanTask::FuelScore,
+            FlightPlanTask::WeightAndBalance,
+            FlightPlanTask::Etops,
+        ], true);
     }
 
     public function flightType(): FlightType

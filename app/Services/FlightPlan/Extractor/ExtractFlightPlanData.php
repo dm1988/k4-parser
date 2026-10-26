@@ -29,6 +29,7 @@ class ExtractFlightPlanData
         private readonly GeneralDeclarationExtractor $generalDeclarationExtractor,
         private readonly ReleaseAuthorizationExtractor $releaseAuthorizationExtractor,
         private readonly DispatcherNotesExtractor $dispatcherNotesExtractor,
+        private readonly ReleaseStatusExtractor $releaseStatusExtractor,
     ) {}
 
     /** @param  (Closure(string): void)|null  $onProgress */
@@ -65,6 +66,7 @@ class ExtractFlightPlanData
         $dispatcherNotes = $this->dispatcherNotesExtractor->extract($text);
 
         return new ParsedFlightPlanData(
+            releaseStatus: $this->releaseStatusExtractor->extract($text),
             identity: $identity['data'],
             schedule: $schedule['data'],
             route: [

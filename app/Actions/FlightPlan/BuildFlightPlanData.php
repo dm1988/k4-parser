@@ -89,6 +89,7 @@ class BuildFlightPlanData
                 distanceNauticalMiles: $parsed->route['distance_nautical_miles'] ?? null,
             ),
             fuelPlan: $fuelPlan,
+            releaseStatus: $parsed->releaseStatus,
             maintenanceLog: $this->maintenanceLogDataBuilder->fromExtracted($parsed->maintenance),
             takeoffLandingReport: $this->takeoffLandingReportDataBuilder->fromExtracted($parsed->takeoffLandingReport),
             flightInit: $this->flightInit($parsed),

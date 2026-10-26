@@ -5,7 +5,7 @@
         <div class="flex flex-wrap items-end justify-between gap-2">
             <div>
                 <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#4A5568] dark:text-slate-400">ACARS reference</p>
-                <h3 id="flight-init-fields-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">Initialization fields</h3>
+                <h3 id="flight-init-fields-heading" class="text-base font-bold text-[#1B365D] dark:text-slate-100">Initialization fields <x-flight-release.planning-qualifier :show="$model->isPreliminary()" /></h3>
             </div>
             <p class="text-xs font-semibold text-[#4A5568] dark:text-slate-400">Confirmed values only</p>
         </div>
