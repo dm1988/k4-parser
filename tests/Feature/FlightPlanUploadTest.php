@@ -122,6 +122,39 @@ class FlightPlanUploadTest extends TestCase
         Storage::disk('user_flight_releases')->assertDirectoryEmpty('/');
     }
 
+    public function test_the_supplied_release_with_a_page_break_in_the_flight_plan_finishes_processing(): void
+    {
+        $path = storage_path('app/private/flight_releases/CKS020426RKSI.pdf');
+
+        if (! is_file($path)) {
+            $this->markTestSkipped('The private flight-release fixture is not available.');
+        }
+
+        Storage::fake('user_flight_releases');
+        Http::preventStrayRequests();
+        $airportLookup = $this->createMock(AirportLookupClient::class);
+        $airportLookup->method('lookupByIcao')->willReturn(null);
+        $this->app->instance(AirportLookupClient::class, $airportLookup);
+
+        ob_start(static fn (string $output): string => '');
+
+        try {
+            Livewire::actingAs(User::factory()->admin()->create())
+                ->test(FlightPlanBrief::class)
+                ->set('flightRelease', UploadedFile::fake()->createWithContent('flight-release.pdf', file_get_contents($path)))
+                ->assertHasNoErrors()
+                ->assertSet('flightRelease', null)
+                ->assertSet('extractionJustCompleted', true)
+                ->assertSee('RKSI')
+                ->assertSee('VHHH');
+        } finally {
+            ob_end_clean();
+        }
+
+        $this->assertSame('success', ExtractRequest::query()->sole()->status);
+        Storage::disk('user_flight_releases')->assertDirectoryEmpty('/');
+    }
+
     private function uploadUrl(): string
     {
         return URL::temporarySignedRoute('livewire.upload-file', now()->addMinutes(5), absolute: false);

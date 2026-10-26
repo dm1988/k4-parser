@@ -203,7 +203,11 @@ class FlightRouteExtractor
             throw FlightRouteNotFoundException::flightPlanBlockMissing();
         }
 
-        return $matches[0];
+        return preg_replace(
+            '/\b(?:KALITTA\s+BRIEF\s+)?PAGE\s+\d+\s+OF\s+\d+\b/i',
+            ' ',
+            $matches[0],
+        ) ?? $matches[0];
     }
 
     public function extractDistanceNauticalMiles(string $text): ?int
@@ -229,12 +233,6 @@ class FlightRouteExtractor
      */
     private function normalizeExtractedRoute(string $routeText): string
     {
-        $routeText = preg_replace(
-            '/\b(?:KALITTA\s+BRIEF\s+)?PAGE\s+\d+\s+OF\s+\d+\b/i',
-            ' ',
-            $routeText,
-        ) ?? $routeText;
-
         $lines = preg_split('/\R/', trim($routeText));
 
         if ($lines === false) {

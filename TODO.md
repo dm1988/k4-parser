@@ -28,6 +28,24 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## Completed: FP: Flight-plan block split across PDF pages
+
+### Goal
+
+Allow `CKS020426RKSI.pdf` to upload and extract its route successfully.
+
+### Current implementation
+
+Page labels are removed from the complete ICAO flight-plan block before matching its fields. Added a portable text regression and an upload test using the private supplied PDF when available.
+
+### Problem addressed
+
+The equipment field ends on page 2 and departure starts on page 3. Intervening page labels caused full flight-plan matching to fail before the existing route-only cleanup could run.
+
+Validation (2026-10-26): The new text test reproduced the reported error before the fix. Focused Sail route tests and the supplied-PDF upload test passed: 33 passed, one unavailable private fixture skipped, 129 assertions. The supplied release completed processing and displayed RKSI/VHHH. Pint passed for changed PHP files; one Larastan run passed with zero errors. No full suite was run.
+
+Commit message: `fix: parse flight-plan blocks split across PDF pages`
+
 ## Completed: FP: Delay reporting: Departure UTC time format
 
 - [x] Format delay reporting UTC timestamps as `2026-10-26 03:47z`.

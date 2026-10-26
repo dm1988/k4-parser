@@ -99,6 +99,26 @@ TEXT;
         );
     }
 
+    public function test_extracts_flight_plan_details_when_equipment_and_departure_are_on_different_pages(): void
+    {
+        $extractor = $this->makeExtractor();
+        $text = <<<'TEXT'
+(FPL-CKS204-IS-B77W/H-SDE2E3GHIJ1J4J7M3P2RWXYZ/LB1D1G1
+KALITTA BRIEF PAGE 2 OF 100
+PAGE 2 OF 100
+
+-RKSI1505-N0487F400 BOPTA2A BOPTA Z51 BEDES Y711 MUGUS Y742 SALMI Q11 DRAKE A1 ELATO V522 MAGOG/N0486F260 V522 ABBEY-VHHH0306 ZGSZ-PBN/A1L1B1C1D1O1S2)
+TEXT;
+
+        $flightPlan = $extractor->extractFlightPlanDataFromText($text);
+
+        $this->assertSame('RKSI', $flightPlan['departure']);
+        $this->assertSame('VHHH', $flightPlan['destination']);
+        $this->assertSame('ZGSZ', $flightPlan['alternate']);
+        $this->assertSame('BOPTA2A BOPTA Z51 BEDES Y711 MUGUS Y742 SALMI Q11 DRAKE A1 ELATO V522 MAGOG/N0486F260 V522 ABBEY', $flightPlan['route']);
+        $this->assertSame($flightPlan['route'], $extractor->extractRouteFromText($text));
+    }
+
     public function test_extract_flight_plan_data_from_text_returns_route_and_enriched_airports(): void
     {
         $departureAirport = new AirportData('PANC', 'ANC', 'Ted Stevens Anchorage International Airport', 'Anchorage', 'Alaska', 'United States');
