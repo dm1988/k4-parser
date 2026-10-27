@@ -306,3 +306,78 @@ Confirmed by the user on 2026-10-26:
 - For deferred spreadsheet export and status features: what exact bid output does the company accept, and what evidence can establish submitted/awarded/projected state?
 
 These decisions constrain dependent implementation. The proposed layout and delivery sequence remain reviewable without inventing their answers.
+
+## Follow up #1
+### [x] Render carry in days. 
+These are days that extend past the calendar month. Add a box to the right with a count of carry in days preceded with a +. I.e. `+3`
+
+### [x] Integrate trip details into lines
+Provide trip info along with the line. Display start and end airports and layover airports. Render below calendar date. Display full trip details when the `details` accordion is expanded
+
+### Live Matching & Scoring Breakdown
+What's missing: You have a sorting filter for "Best match" and preferences like Maximize credit and 3 dates off.
+
+Improvement: Add a subtle "Why this matched" score tooltip or badge (e.g., displaying a percentage or point breakdown) next to the line ID (like F38). Showing how closely a line aligns with the user's specific priorities (credit vs. days off vs. preferred start city) gives pilots more confidence in automated rankings.
+
+## Follow up #2
+### [x] Sticky header
+Make sticky:
+K4 Bids
+Bid package
+2026-11 · B777 · LINES_4 / 94.PUBLISH
+Seat
+First Officer
+My bid list (1)
+Manage package
+
+### [x] `Why this matched` move to right
+Display order:
+1. Line number F83· Flying line
+2. Credit 90:15
+3. Days off 16
+4. Why this matched
+
+### [x] Surface Missing Flight Leg Metrics (Block Times & Layovers)
+The Gap: The trip breakdown currently shows generic placeholder text ("Block (h:mm): Not present in imported trip data", "Layover airports: Not present...").
+
+The Improvement:
+
+Parse and display individual Block Times per leg (e.g., 11:50 block) so pilots can instantly gauge heavy-leg distribution.
+
+Clearly compute and list Layover Durations between connecting flights (e.g., CVG Layover: 28h 15m) rather than just showing the airport sequence. Knowing exact rest lengths at stops like NRT or ANC is critical for pairing evaluation.
+
+### Introduce a Visual "Leg Timeline" Graphic
+The Gap: The route string (MIA–CVG–NRT–YHM...) and text blocks are dense to read sequentially.
+
+The Improvement: Replace or supplement the text-heavy leg list with a horizontal Gantt-style timeline or flight chevron across the days of the trip. Color-code active flying legs (solid blue), deadheads (striped/grey, like the NGO → CVG · Deadhead seen in other trips), and layover rest periods to make multi-leg rotations scannable at a glance.
+
+### Compact Card Header with Quick-Glance Flags
+The Gap: The main card headers (F38 · Flying line) give credit and total days off, but require expanding the trip to see major operational constraints.
+
+The Improvement: Add compact badges directly to the main line card header for:
+
+Start/End Hub Consistency: (e.g., MIA Base).
+
+Deadhead Indicator: A subtle icon if the trip contains deadheads.
+
+Time-Zone / Fatigue Index: A quick tag for heavy circumnavigations (e.g., Westbound vs. Eastbound around-the-world pairings) to help pilots filter out brutal body-clock shifts instantly.
+
+### Sticky Action Bar on Expanded Trips
+The Gap: When viewing an expansive 15-leg trip like Trip 749, the [Selected #1] or [Add] button sits at the top of the card. If a pilot scrolls down to inspect the final legs of the trip, the action button goes out of view.
+
+The Improvement: Make the line's action bar (or a floating mini-header) sticky when a card is expanded, allowing the pilot to quickly click [Add] or assign a bid preference rank the moment they finish reviewing the itinerary details.
+
+## Follow up #3
+### Consolodate details
+
+## Follow up #4
+### Conflict and Rest Rule Warnings
+What's missing: The interface shows carry-in trips and UTC day blocks, but doesn't explicitly flag potential rest-period crunches or FAA/company duty-time margin alerts at a glance.
+
+Improvement: Introduce automated warning badges (e.g., a small indicator for tight legal rest or back-to-back heavy time-zone shifts) so pilots can instantly weed out lines that technically fit the minimum days off but carry high fatigue risks.
+
+### Custom Line Tagging & Notes
+What's missing: Pilots often want to categorize lines into tiers (e.g., "Top Pick", "Backup", "Avoid due to layover") before finalizing their official bid list.
+
+Improvement: Add a quick-tagging or color-coding system (or custom notes per line) alongside the [Add] / [Selected #1] buttons, making it easier to curate and sort through the 44 matching lines before export.
+

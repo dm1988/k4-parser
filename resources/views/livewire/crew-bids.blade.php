@@ -1,5 +1,5 @@
 <div class="mx-auto max-w-7xl px-3 py-6 sm:px-6" data-crew-bids data-dirty="{{ $dirty ? 'true' : 'false' }}" x-data @keydown.escape.window="if ($wire.showList) { $wire.showList = false; $refs.listTrigger?.focus() }">
-    <header class="flex flex-wrap items-center gap-3">
+    <header class="sticky top-0 z-30 -mx-3 flex flex-wrap items-center gap-3 border-b border-slate-200 bg-gray-100 px-3 py-3 shadow-sm dark:border-slate-800 dark:bg-gray-950 sm:-mx-6 sm:px-6">
         <h1 class="text-2xl font-bold text-[#1B365D] dark:text-amber-200">K4 Bids</h1>
         @if ($packages->isNotEmpty())
             <label class="sr-only" for="bid-package">Bid package</label>
@@ -82,7 +82,7 @@
                 @empty<p class="rounded-xl border border-slate-200 p-5 dark:border-slate-700">Trips file not imported or no supported trip details were found. @can('manage-crew-bids')Use Manage package to import Trips.@else An admin can update this package.@endcan</p>@endforelse
             </section>
         @else
-            <div class="sticky top-0 z-10 my-3 flex flex-wrap items-center gap-3 bg-gray-100 py-2 text-sm dark:bg-gray-950">
+            <div class="relative z-10 my-3 flex flex-wrap items-center gap-3 bg-gray-100 py-2 text-sm dark:bg-gray-950">
                 <span>{{ count($lines) }} matching / {{ $total }}</span><label for="bid-sort" class="sr-only">Sort lines</label><select id="bid-sort" wire:model.live="sort" class="rounded-lg text-sm dark:bg-slate-900"><option value="best">{{ $goals === [] ? 'Line ID (no goals set)' : 'Best match' }}</option><option value="credit">Highest credit</option><option value="days_off">Most days off</option><option value="id">Line ID</option></select>
                 <details><summary class="cursor-pointer px-2 py-3 underline">Filters</summary><div class="absolute start-0 z-20 flex max-w-full flex-wrap gap-3 rounded-xl border border-slate-300 bg-white p-4 shadow-lg dark:border-slate-600 dark:bg-slate-900"><label>Minimum credit (hours)<input type="number" min="0" max="300" wire:model.live.debounce.400ms="minimumCredit" class="block w-28 rounded-lg dark:bg-slate-800"></label><label>Minimum days off<input type="number" min="0" max="31" wire:model.live.debounce.400ms="minimumDaysOff" class="block w-28 rounded-lg dark:bg-slate-800"></label><label class="flex items-center gap-2"><input type="checkbox" wire:model.live="selectedOnly">Selected only</label><button type="button" wire:click="resetFilters" class="min-h-11 underline">Reset filters</button></div></details>
                 <span wire:loading class="text-slate-500">Updating results…</span>

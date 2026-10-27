@@ -78,7 +78,7 @@ class BidPackageImportTest extends TestCase
     public function test_trip_report_spanning_pages_and_midnight_keeps_layover_dates_occupied(): void
     {
         $document = \Mockery::mock(Document::class);
-        $text = "Trip Report\nPlan: 202611 / 777 / LINES_4 / 94.PUBLISH\nTrip Id: 700\nShow Time 23:00\n01Nov Su K4 1ANC-LAX23:3001:003:00\nDebriefing 01:30\nPrinted page\nTrip Report\nPlan: 202611 / 777 / LINES_4 / 94.PUBLISH\nShow Time 20:00\n03Nov Tu DH K4 2LAX-ANC22:0002:003:00\nDebriefing 02:30\n";
+        $text = "Trip Report\nPlan: 202611 / 777 / LINES_4 / 94.PUBLISH\nTrip Id: 700\nShow Time 23:00\n01Nov Su K4 1ANC-LAX23:3001:00\t3:00 77X\nDebriefing 01:30\tRest27:00\nPrinted page\nTrip Report\nPlan: 202611 / 777 / LINES_4 / 94.PUBLISH\nShow Time 20:00\n03Nov Tu DH K4 2LAX-ANC22:0002:00 - 74Y\nDebriefing 02:30\tRest  - \n";
         $document->shouldReceive('getText')->once()->andReturn(implode("\0", str_split($text)));
         $this->mock(Parser::class)->shouldReceive('parseFile')->once()->andReturn($document);
         $result = app(ParseBidDocuments::class)->parse([$this->overview(), UploadedFile::fake()->create('Trips.pdf', 1, 'application/pdf')]);
@@ -86,6 +86,11 @@ class BidPackageImportTest extends TestCase
         $this->assertSame('occupied', $result['payload']['lines']['F1']['calendar']['2026-11-02']['status']);
         $this->assertSame('Trip 700 (includes layover/rest)', $result['payload']['lines']['F1']['calendar']['2026-11-02']['activity']);
         $this->assertTrue($result['payload']['trips'][700]['legs'][1]['deadhead']);
+        $this->assertSame('K4 1', $result['payload']['trips'][700]['legs'][0]['flight']);
+        $this->assertSame('3:00', $result['payload']['trips'][700]['legs'][0]['block']);
+        $this->assertSame('27:00', $result['payload']['trips'][700]['legs'][0]['rest_after']);
+        $this->assertNull($result['payload']['trips'][700]['legs'][1]['block']);
+        $this->assertNull($result['payload']['trips'][700]['legs'][1]['rest_after']);
     }
 
     public function test_trip_dates_roll_into_the_next_year_with_utc_arrival_and_release(): void

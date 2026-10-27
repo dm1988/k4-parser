@@ -97,6 +97,38 @@ User workflow expanded (2026-10-26): Added a dedicated five-stage workflow in `C
 
 Commit message: `feat: add crew bidding imports and private ranked bid workspace`
 
+### Follow up #1 outcome (2026-10-27)
+
+Line calendars now have a compact `+N` box for occupied UTC dates after month-end. Linked trip dates determine the count, with duplicate/overlapping dates counted once and the source carry count retained when trip details are unavailable. Monthly days-off and work-block calculations retain their existing scope.
+
+Trip badges below each calendar show start/end airports, source-backed layover airports, and minimum recorded rest. Each badge expands an inline preview with the route, dated UTC legs, overnight arrivals, report/release, deadheads, block times, and rest durations. The line's Details accordion also includes these trip details. Imports now retain per-leg flight identifiers, block times, and rest; previously published packages need reimporting to populate those new fields. Missing trip/hotel information is explicit; the supplied Trips layout contains no hotel details.
+
+Added a keyboard-accessible `Why this matched` disclosure beside line IDs when preferences apply. It explains strict goal priority, actual credit/days-off/block values, and hard-filter results without inventing a percentage score. Follow up #2 remains outside this task.
+
+Validation: Focused Crew Bids feature tests passed (21 tests, 107 assertions), and import tests passed (8 tests, 62 assertions), including private B747 October/B777 November samples, page-spanning trips, missing blocks/rest, duplicate pairings, overlapping carry days, and year boundaries. Production Vite build and Pint passed. One full Larastan run identified an unhandled goal in the new explanation; corrected its fallback, reran the affected priority test (one test, seven assertions), and passed a focused static-analysis recheck with zero errors. No manual browser review was performed. Preserved the user's edits to CREW_BIDS.md.
+
+Commit message: `feat: add carry-day counts and inline crew bid trip previews`
+
+### Follow up #2: Sticky header outcome (2026-10-27)
+
+Made the K4 Bids title, package selector, seat selector, My bid list, and admin Manage package control sticky at the top while scrolling. The wrapping header uses opaque light/dark backgrounds, a subtle divider/shadow, and stays below the bid-list dialog. Sorting/filter controls now scroll normally so they do not overlap the sticky header. Other Follow up #2 items remain pending.
+
+Validation: The focused saved-order/reload feature test passed (one test, nine assertions), production Vite build and Pint passed, and one Larastan run passed with zero errors. No new tests were added for this layout-only change. Manual browser review remains pending. Existing Follow up #1 changes and the user's CREW_BIDS.md edits were preserved.
+
+Commit message: `style: keep crew bidding header visible while scrolling`
+
+### Follow up #2: Flight metrics and match placement outcome (2026-10-27)
+
+Moved `Why this matched` after Credit and Days off, matching the requested card-header order. Its disclosure anchors within the card on narrow screens and aligns to its trigger's right edge on larger screens.
+
+The Trips parser now accepts whitespace between arrival and per-leg block values. Trip previews preserve source blocks and label calculated scheduled blocks when an operating leg has only dated UTC times. Deadhead/identified ground transport retain separate scheduled elapsed durations without inventing an operating block. Existing published trips can show calculated durations without reimporting; reimport is needed to recover original source-only values.
+
+Added airport-specific layover durations from arrival to the next departure, including overnight and year-boundary connections. Source rest remains separate. Zero-length connections remain explicit; overlapping times and airport changes show unavailable layovers with the reason. These changes address missing metrics in line-card trip previews and expanded Details; visual timelines and other Follow up #2 enhancements remain pending.
+
+Validation: 33 focused Crew Bids/import tests passed (190 assertions), including private sample packages, spaced source blocks, legacy payloads, source-value precedence, midnight/year boundaries, zero gaps, invalid connections, transport legs, and card-header order. Production Vite build, Pint, and one Larastan run passed with zero errors. Changed-file diff checks passed. Manual browser review remains pending. Prior work and user edits were preserved.
+
+Commit message: `feat: show crew bid block and layover durations beside clearer match controls`
+
 ## Unified upload
 Currently: 2 tabs have 2 different upload points, user has to choose 
 Goal: Have one unified upload path. Service will determine if a schedule or flight plan has been uploaded. 

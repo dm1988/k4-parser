@@ -445,7 +445,7 @@ class CrewBids extends Component
         $all = [];
         foreach ($package?->payload['lines'] ?? [] as $line) {
             if ($line[$this->seat === 'CA' ? 'captains' : 'first_officers'] > 0) {
-                $all[$line['id']] = $matcher->present($line, $package->period, $this->preferences());
+                $all[$line['id']] = $matcher->present($line, $package->period, $this->preferences(), $package->payload['trips'] ?? []);
             }
         }
         $lines = array_values(array_filter($all, fn (array $line): bool => $line['type'] === $this->tab

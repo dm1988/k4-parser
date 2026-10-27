@@ -122,12 +122,13 @@ class ParseBidDocuments
             if (! preg_match('/Trip Id:\s*(\d+)/', $chunk, $id)) {
                 continue;
             }
-            preg_match_all('/^(\d{2}[A-Za-z]{3})\s+[A-Za-z]{2}\s+([^\n]*?)([A-Z]{3})-([A-Z]{3})(\d{2}:\d{2})(\d{2}:\d{2})/m', $chunk, $legs, PREG_SET_ORDER);
+            preg_match_all('/^(\d{2}[A-Za-z]{3})\s+[A-Za-z]{2}\s+([^\n]*?)([A-Z]{3})-([A-Z]{3})(\d{2}:\d{2})(\d{2}:\d{2})\h*(\d{1,3}:\d{2})?[^\n]*/m', $chunk, $legs, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
             if ($legs === []) {
                 continue;
             }
             $normalized = [];
-            foreach ($legs as $leg) {
+            foreach ($legs as $index => $capturedLeg) {
+                $leg = array_column($capturedLeg, 0);
                 $date = CarbonImmutable::createFromFormat('!dMY', $leg[1].substr($period, 0, 4), 'UTC');
                 if ($date === null) {
                     continue;
@@ -138,7 +139,10 @@ class ParseBidDocuments
                 } elseif ($date->greaterThan($month->addMonths(2))) {
                     $date = $date->subYear();
                 }
-                $normalized[] = ['date' => $date->format('Y-m-d'), 'origin' => $leg[3], 'destination' => $leg[4], 'departure' => $leg[5], 'arrival' => $leg[6], 'deadhead' => str_contains($leg[2], 'DH')];
+                $segmentEnd = $legs[$index + 1][0][1] ?? strlen($chunk);
+                $segment = substr($chunk, $capturedLeg[0][1], $segmentEnd - $capturedLeg[0][1]);
+                preg_match('/\bRest\h*(\d{1,3}:\d{2})/', $segment, $rest);
+                $normalized[] = ['date' => $date->format('Y-m-d'), 'origin' => $leg[3], 'destination' => $leg[4], 'departure' => $leg[5], 'arrival' => $leg[6], 'deadhead' => str_contains($leg[2], 'DH'), 'flight' => trim($leg[2]), 'block' => ($leg[7] ?? '') !== '' ? $leg[7] : null, 'rest_after' => $rest[1] ?? null];
             }
             if ($normalized === []) {
                 continue;
