@@ -1,7 +1,17 @@
 # K4 Bids
 
+
 Implementation status (2026-10-26): The initial K4 Bids workflow is implemented: protected navigation, admin preview/publication, shared package revisions, private preferences/lists, timeline browsing, UTC filters, manual ranking, and review/copy. The sections below retain the product contract and future enhancements. The first release supports the supplied native-text Lines/Trips PDF layouts and Overview .xlsx workbooks; scanned PDFs/OCR, richer secondary filters, pay, training/vacation imports, and spreadsheet exports remain outside the delivered workflow. Responsive appearance, touch, and keyboard behavior still need a manual browser review. Imported document content remains data rather than instructions to execute.
 
+## Auto bidding feature
+When provided a non stored user name and password, evaluate if it is possible to log into https://crewbids.kalittaair.com/ in order to submit a bid at: https://crewbids.kalittaair.com/Pages/BidSheet.aspx
+
+Document navigation to bid awards and data provided at:
+https://crewbids.kalittaair.com/Pages/AllBidAwards.aspx
+Source provided for reference
+
+Reference:
+storage/app/private/Bid_Packages/view-source_https___crewbids.kalittaair.com_Pages_BidSheet.aspx.html
 ## Purpose and place in the app
 
 K4 Bids helps crew members turn monthly bid packages into an ordered list of preferred lines. The user workflow below defines how a published package becomes a personal, ranked bid list.
@@ -314,7 +324,7 @@ These are days that extend past the calendar month. Add a box to the right with 
 ### [x] Integrate trip details into lines
 Provide trip info along with the line. Display start and end airports and layover airports. Render below calendar date. Display full trip details when the `details` accordion is expanded
 
-### Live Matching & Scoring Breakdown
+### [x] Live Matching & Scoring Breakdown
 What's missing: You have a sorting filter for "Best match" and preferences like Maximize credit and 3 dates off.
 
 Improvement: Add a subtle "Why this matched" score tooltip or badge (e.g., displaying a percentage or point breakdown) next to the line ID (like F38). Showing how closely a line aligns with the user's specific priorities (credit vs. days off vs. preferred start city) gives pilots more confidence in automated rankings.
@@ -346,7 +356,7 @@ Parse and display individual Block Times per leg (e.g., 11:50 block) so pilots c
 
 Clearly compute and list Layover Durations between connecting flights (e.g., CVG Layover: 28h 15m) rather than just showing the airport sequence. Knowing exact rest lengths at stops like NRT or ANC is critical for pairing evaluation.
 
-### Introduce a Visual "Leg Timeline" Graphic
+### [x] Introduce a Visual "Leg Timeline" Graphic
 The Gap: The route string (MIA–CVG–NRT–YHM...) and text blocks are dense to read sequentially.
 
 The Improvement: Replace or supplement the text-heavy leg list with a horizontal Gantt-style timeline or flight chevron across the days of the trip. Color-code active flying legs (solid blue), deadheads (striped/grey, like the NGO → CVG · Deadhead seen in other trips), and layover rest periods to make multi-leg rotations scannable at a glance.
@@ -362,15 +372,82 @@ Deadhead Indicator: A subtle icon if the trip contains deadheads.
 
 Time-Zone / Fatigue Index: A quick tag for heavy circumnavigations (e.g., Westbound vs. Eastbound around-the-world pairings) to help pilots filter out brutal body-clock shifts instantly.
 
-### Sticky Action Bar on Expanded Trips
+### [x] Sticky Action Bar on Expanded Trips
 The Gap: When viewing an expansive 15-leg trip like Trip 749, the [Selected #1] or [Add] button sits at the top of the card. If a pilot scrolls down to inspect the final legs of the trip, the action button goes out of view.
 
 The Improvement: Make the line's action bar (or a floating mini-header) sticky when a card is expanded, allowing the pilot to quickly click [Add] or assign a bid preference rank the moment they finish reviewing the itinerary details.
 
 ## Follow up #3
-### Consolodate details
+### [x] Consolodate details
+1. [x] Introduce a Collapsed "Compact Summary" Strip
+The Problem: When a trip like Trip 749 or Trip 750 expands, it dumps a massive vertical list of every single leg and layover down the page, pushing adjacent cards out of view.
 
+The Solution: Replace the raw text block dump with a clean, high-density Summary Bar right at the top of the expanded drawer:
+
+Route Pill: MIA → CVG → NRT → YHM → ATL → ANC → YYZ → ... → MIA (with overflow truncation or tooltips for long routings).
+
+Key Metrics Pill: Show Report/Release times (19:40 → 18:20 UTC), Duty Days (16 days), and Crew Complement (1 CA, 2 FO) in a neat horizontal key-value row rather than bullet points.
+
+2. [x] Group Layovers into a Clean Table or Grid
+The Problem: The current interface lists individual layovers sequentially (CVG Layover: 44h 20m, NRT Layover: 19h 5m, etc.) combined with separate leg breakdown blocks, creating redundant text scrolling.
+
+The Solution: Consolidate all layover durations into a single, compact two-column Layover Breakdown Table or pill grid:
+
+Group short domestic connections vs. long international rest stops (e.g., highlighting extended rest hubs like ANC: 25h 20m or NRT: 19h 5m).
+
+Automatically flag tight domestic turns (e.g., ATL: 2h 35m) with a subtle warning color so pilots instantly spot quick ground times.
+
+3. [x] Streamline the Leg Timeline Accordion
+The Problem: Each leg currently repeats redundant headers (Departure · UTC, Arrival · UTC, Block · h:mm) stacked vertically.
+
+The Solution: Condense each leg into a single, scannable horizontal row card:
+
+Left: Leg Badge (FLYING or DEADHEAD) + Route (CVG → NRT)
+
+Center: Departure & Arrival times (19:50 → 09:55 UTC)
+
+Right: Total Block Time (14h 05m)
+
+Move exact date details or secondary calculations into a subtle hover state or a single expandable chevron per leg, rather than showing multi-line lists for all 27 segments.
+
+4. [x] Tabbed Detail View (Timeline vs. Layovers vs. Hotel)
+The Problem: Stacking the Leg Timeline, Layovers list, Individual leg cards, and Hotel details vertically creates an endless scroll for long multi-week pairings.
+
+The Solution: Organize the expanded card contents into a clean tabbed interface:
+
+[Timeline / Legs]: Visual chevron bar and core flight legs.
+
+[Layovers & Rest]: Aggregated rest durations and station layover metrics.
+
+[Pairing Metadata]: Report/release times, base info, and crew complement.
 ## Follow up #4
+### [x] Distinguish credit time from block time
+Show separate Block and adjusted Credit values, with independent sorts. Complete Trips PDF Block Time and Credit Time totals take priority over Lines/Overview totals. Keep source values and the credit breakdown in Details.
+
+Confirmed calculation: PCH includes only legs departing in the next month in UTC. Count operating flights at 100% and deadheads at 50% of elapsed time; exclude ground transfers. A flight departing before month-end contributes no PCH even if it arrives next month. Add only the extra 50% of PCH to the full Trips base credit, which already includes the underlying flying/deadhead credit. Preserve seconds when a premium creates fractional minutes. Incomplete trip totals retain recorded line values without a partial premium.
+
+November B777 examples confirmed against the source Trips PDF:
+
+| Line | Block | Base credit | PCH | Extra 50% | Adjusted credit |
+| --- | --- | --- | --- | --- | --- |
+| F83 | 90:15 | 97:30 | 7:15 | 3:37:30 | 101:07:30 |
+| F61 | 96:50 | 96:50 | 14:30 | 7:15 | 104:05 |
+| F46 | 83:05 | 87:52 | 7:30 | 3:45 | 91:37 |
+| F55 | 85:40 | 85:40 | 7:30 | 3:45 | 89:25 |
+| F38 | 91:10 | 91:40 | 0:00 | 0:00 | 91:40 |
+| F26 | 89:45 | 89:45 | 0:00 | 0:00 | 89:45 |
+| F23 | 74:35 | 75:05 | 2:00 | 1:00 | 76:05 |
+
+References:
+storage/app/private/Bid_Packages/777 November 2026 Lines.pdf
+storage/app/private/Bid_Packages/777 November 2026 Trips.pdf
+### [x] Line max height of 150px
+Collapsed cards use three compact rows: line metrics/action, month calendar, and footer controls. Line then Trip sit inline on the left; Details and Why this matched stay on the right. Line opens UTC date details. Keep collapsed height within 150px without a card scrollbar. Expanded details can grow. Single-trip controls open that trip directly; multiple trips share a compact count. Keep warnings visible, with their full text in Details.
+
+## Follow up #5
+### [x] Omit missing / unavailable data
+Omit missing metrics and their labels across cards, trip previews, metadata, timelines, the Trips tab, and bid-list entries. Remove absent hotel/rest/crew/report placeholders. Keep known zero values and trip identifiers; retain conflict, incomplete-date, inconsistent-connection, and import diagnostics.
+## Follow up #6
 ### Conflict and Rest Rule Warnings
 What's missing: The interface shows carry-in trips and UTC day blocks, but doesn't explicitly flag potential rest-period crunches or FAA/company duty-time margin alerts at a glance.
 
@@ -380,4 +457,18 @@ Improvement: Introduce automated warning badges (e.g., a small indicator for tig
 What's missing: Pilots often want to categorize lines into tiers (e.g., "Top Pick", "Backup", "Avoid due to layover") before finalizing their official bid list.
 
 Improvement: Add a quick-tagging or color-coding system (or custom notes per line) alongside the [Add] / [Selected #1] buttons, making it easier to curate and sort through the 44 matching lines before export.
+
+## Trip preview refinements
+
+### [x] A. Consolidate Duplicate Leg Information
+Use a single interactive timeline row. Each flight/transport chevron expands its exact UTC dates, block basis, elapsed duration, and available credit/rest details in place. Remove the separate vertical leg list. Show operating block or deadhead credit on the chevron.
+
+### [x] B. Highlight Critical Layover Thresholds
+Show amber chips for scheduled layovers under 10 hours and blue chips for layovers of 24 hours or more, in both the timeline and layover table. Exactly 10 hours has no short chip; exactly 24 hours receives the extended chip. Preserve the under-three-hour connection grouping. Source rest remains separate; these cues do not establish legal rest or international status. Invalid/airport-change connections retain their uncertainty messages without duration chips.
+
+### [x] C. Sticky Header or Quick-Action Bar Inside Expanded Cards
+Retain the compact line ID, metrics, and Add/Selected header while a card is expanded. Pin it below the measured workspace header and within its own card. Keep its existing selection and bid-list actions; do not duplicate the action bar or add a card scroll container.
+
+### [x] Crew Bids icons
+Use a shopping cart for My bid list, plus for Add, check for Selected, calendar for Line, airplane for Trip, document for Details, and cog for Manage package. Replace the visible Why this matched label with a question-mark icon, retaining its accessible name and tooltip. Keep Line/Trip left-aligned and Details/match controls right-aligned.
 

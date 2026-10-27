@@ -115,7 +115,7 @@ class CrewBids extends Component
             $this->validate([
                 'minimumCredit' => ['nullable', 'integer', 'between:0,300'],
                 'minimumDaysOff' => ['nullable', 'integer', 'between:0,31'],
-                'sort' => ['required', Rule::in(['best', 'credit', 'days_off', 'id'])],
+                'sort' => ['required', Rule::in(['best', 'credit', 'block', 'days_off', 'id'])],
                 'tab' => ['required', Rule::in(['flying', 'reserve', 'trips'])],
             ]);
         }
@@ -451,12 +451,12 @@ class CrewBids extends Component
         $lines = array_values(array_filter($all, fn (array $line): bool => $line['type'] === $this->tab
             && $line['matches']
             && (! $this->selectedOnly || in_array($line['id'], $this->selections, true))
-            && ($this->minimumCredit === null || ($line['credit'] !== null && $line['credit'] >= $this->minimumCredit * 60))
+            && ($this->minimumCredit === null || ($line['credit'] !== null && ($line['credit_seconds'] ?? $line['credit'] * 60) >= $this->minimumCredit * 3600))
             && ($this->minimumDaysOff === null || ($line['days_off'] !== null && $line['days_off'] >= $this->minimumDaysOff))));
         $lines = $matcher->sort($lines, $this->goals, $this->sort);
         $selected = [];
         foreach ($this->selections as $id) {
-            $selected[] = $all[$id] ?? ['id' => $id, 'credit_label' => 'Not available', 'days_off' => null, 'warnings' => ['Unavailable in this revision']];
+            $selected[] = $all[$id] ?? ['id' => $id, 'credit_label' => 'Not available', 'block_label' => 'Not available', 'days_off' => null, 'warnings' => ['Unavailable in this revision']];
         }
         $cities = array_values(array_unique(array_filter(array_column($all, 'start_city'))));
         sort($cities);

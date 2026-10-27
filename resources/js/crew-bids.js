@@ -13,7 +13,64 @@ export async function copyBidText(field, status, clipboard) {
     }
 }
 
+export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeObserver } = {}) {
+    let observer;
+    let destroyed = false;
+
+    return {
+        init() {
+            this.$nextTick(() => {
+                if (destroyed) return;
+                const header = this.$refs.workspaceHeader;
+                const updateHeight = () => {
+                    if (destroyed) return;
+                    this.$el.style.setProperty('--crew-bids-header-height', `${Math.ceil(header.getBoundingClientRect().height)}px`);
+                };
+                updateHeight();
+                observer = new ResizeObserverClass(updateHeight);
+                observer.observe(header);
+            });
+        },
+        destroy() {
+            destroyed = true;
+            observer?.disconnect();
+        },
+    };
+}
+
+export function createBidTripDetails() {
+    const tabs = ['timeline', 'layovers', 'metadata'];
+
+    return {
+        tab: 'timeline',
+        handleTabKey(event) {
+            if (event.altKey || event.ctrlKey || event.metaKey) return;
+            const current = tabs.indexOf(this.tab);
+            let next;
+            switch (event.key) {
+                case 'ArrowRight': next = (current + 1) % tabs.length; break;
+                case 'ArrowLeft': next = (current + tabs.length - 1) % tabs.length; break;
+                case 'Home': next = 0; break;
+                case 'End': next = tabs.length - 1; break;
+                default: return;
+            }
+            event.preventDefault();
+            this.tab = tabs[next];
+            this.$nextTick(() => this.$refs[`${this.tab}Tab`].focus());
+        },
+    };
+}
+
 export default function initializeCrewBids() {
+    const registerComponents = () => {
+        window.Alpine.data('crewBidsHeader', () => createCrewBidsHeader());
+        window.Alpine.data('bidTripDetails', createBidTripDetails);
+    };
+    if (window.Alpine) {
+        registerComponents();
+    } else {
+        document.addEventListener('alpine:init', registerComponents, { once: true });
+    }
     let pending = 0;
     let failed = false;
     document.addEventListener('livewire:init', () => {

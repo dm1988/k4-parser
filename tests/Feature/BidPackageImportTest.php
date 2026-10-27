@@ -55,6 +55,26 @@ class BidPackageImportTest extends TestCase
         $this->assertDatabaseCount('bid_packages', 1);
     }
 
+    public function test_reimporting_a_legacy_package_creates_a_new_draft_and_reuses_current_parser_drafts(): void
+    {
+        $file = $this->overview();
+        $content = file_get_contents($file->getPathname());
+        $legacyFingerprint = hash('sha256', hash_file('sha256', $file->getPathname()));
+        $prior = BidPackage::factory()->create(['fingerprint' => $legacyFingerprint]);
+        $originalPayload = $prior->payload;
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->set('files', [$file])->call('previewImport')->assertHasNoErrors()->assertSet('packageId', $prior->id);
+
+        $draft = BidPackage::query()->whereKeyNot($prior->id)->sole();
+        $this->assertNull($draft->published_at);
+        $page->assertSet('draftId', $draft->id)
+            ->set('files', [UploadedFile::fake()->createWithContent('777 Overview.xlsx', $content)])
+            ->call('previewImport')->assertHasNoErrors()->assertSet('draftId', $draft->id);
+        $this->assertDatabaseCount('bid_packages', 2);
+        $this->assertSame($originalPayload, $prior->fresh()->payload);
+    }
+
     public function test_mismatched_pdf_and_overview_are_rejected(): void
     {
         $document = \Mockery::mock(Document::class);
@@ -78,7 +98,7 @@ class BidPackageImportTest extends TestCase
     public function test_trip_report_spanning_pages_and_midnight_keeps_layover_dates_occupied(): void
     {
         $document = \Mockery::mock(Document::class);
-        $text = "Trip Report\nPlan: 202611 / 777 / LINES_4 / 94.PUBLISH\nTrip Id: 700\nShow Time 23:00\n01Nov Su K4 1ANC-LAX23:3001:00\t3:00 77X\nDebriefing 01:30\tRest27:00\nPrinted page\nTrip Report\nPlan: 202611 / 777 / LINES_4 / 94.PUBLISH\nShow Time 20:00\n03Nov Tu DH K4 2LAX-ANC22:0002:00 - 74Y\nDebriefing 02:30\tRest  - \n";
+        $text = "Trip Report\nPlan: 202611 / 777 / LINES_4 / 94.PUBLISH\nTrip Id: 700\nShow Time 23:00\tCrew: 1/2\n01Nov Su K4 1ANC-LAX23:3001:00\t3:00 77X\nDebriefing 01:30\tRest27:00\nPrinted page\nTrip Report\nPlan: 202611 / 777 / LINES_4 / 94.PUBLISH\nShow Time 20:00\tDuty Days:3\n03Nov Tu DH K4 2LAX-ANC22:0002:00 - 74Y\nDebriefing 02:30\tRest  - \n";
         $document->shouldReceive('getText')->once()->andReturn(implode("\0", str_split($text)));
         $this->mock(Parser::class)->shouldReceive('parseFile')->once()->andReturn($document);
         $result = app(ParseBidDocuments::class)->parse([$this->overview(), UploadedFile::fake()->create('Trips.pdf', 1, 'application/pdf')]);
@@ -89,6 +109,11 @@ class BidPackageImportTest extends TestCase
         $this->assertSame('K4 1', $result['payload']['trips'][700]['legs'][0]['flight']);
         $this->assertSame('3:00', $result['payload']['trips'][700]['legs'][0]['block']);
         $this->assertSame('27:00', $result['payload']['trips'][700]['legs'][0]['rest_after']);
+        $this->assertSame(3, $result['payload']['trips'][700]['duty_days']);
+        $this->assertSame('1 CA, 2 FO', $result['payload']['trips'][700]['crew_label']);
+        $this->assertSame('line_source', $result['payload']['lines']['F1']['credit_basis']);
+        $this->assertNull($result['payload']['lines']['F1']['carry_premium_seconds']);
+        $this->assertNull($result['payload']['lines']['F1']['block']);
         $this->assertNull($result['payload']['trips'][700]['legs'][1]['block']);
         $this->assertNull($result['payload']['trips'][700]['legs'][1]['rest_after']);
     }
@@ -103,6 +128,8 @@ class BidPackageImportTest extends TestCase
         $parsed = app(ParseBidDocuments::class)->parse([UploadedFile::fake()->create('Lines.pdf', 1, 'application/pdf'), UploadedFile::fake()->create('Trips.pdf', 1, 'application/pdf')]);
         $this->assertSame('2026-12-31', $parsed['payload']['trips'][700]['start_date']);
         $this->assertSame('2027-01-02', $parsed['payload']['trips'][700]['end_date']);
+        $this->assertNull($parsed['payload']['trips'][700]['duty_days']);
+        $this->assertNull($parsed['payload']['trips'][700]['crew_label']);
         $this->assertSame('unknown', $parsed['payload']['lines']['F1']['calendar']['2026-12-01']['status']);
     }
 
@@ -125,6 +152,86 @@ class BidPackageImportTest extends TestCase
             $this->assertGreaterThan(0, $parsed['payload']['lines']['F1']['credit']);
             $this->assertSame('off', $parsed['payload']['lines']['F1']['calendar'][$fleet === '747' ? '2026-10-01' : '2026-11-30']['status']);
         }
+    }
+
+    public function test_private_november_trip_totals_take_priority_and_match_confirmed_pch_examples(): void
+    {
+        $files = [];
+        foreach (['Lines.pdf', 'Trips.pdf'] as $suffix) {
+            $name = '777 November 2026 '.$suffix;
+            $path = storage_path('app/private/Bid_Packages/'.$name);
+            if (! is_file($path)) {
+                $this->markTestSkipped('The private November B777 package is unavailable.');
+            }
+            $files[] = new UploadedFile($path, $name, null, null, true);
+        }
+
+        $parsed = app(ParseBidDocuments::class)->parse($files);
+
+        foreach ([
+            'F83' => [5415, 5850, 364050, 26100],
+            'F38' => [5470, 5500, 330000, 0],
+            'F26' => [5385, 5385, 323100, 0],
+            'F23' => [4475, 4505, 273900, 7200],
+            'F61' => [5810, 5810, 374700, 52200],
+            'F46' => [4985, 5272, 329820, 27000],
+            'F55' => [5140, 5140, 321900, 27000],
+        ] as $id => [$block, $baseCredit, $adjustedSeconds, $pchSeconds]) {
+            $line = $parsed['payload']['lines'][$id];
+            $this->assertSame($block, $line['block'], $id.' block');
+            $this->assertSame($baseCredit, $line['base_credit'], $id.' base credit');
+            $this->assertSame($adjustedSeconds, $line['credit_seconds'], $id.' adjusted credit');
+            $this->assertSame($pchSeconds, $line['pch_seconds'], $id.' PCH');
+            $this->assertSame(intdiv($pchSeconds, 2), $line['carry_premium_seconds'], $id.' carry premium');
+            $this->assertSame('trip_totals', $line['credit_basis']);
+        }
+        $this->assertSame(5415, $parsed['payload']['lines']['F83']['source_credit']);
+        $this->assertSame(26100, $parsed['payload']['lines']['F83']['deadhead_credit_seconds']);
+        $this->assertCount(1, $parsed['payload']['lines']['F83']['pairings']);
+        $this->assertSame(4385, $parsed['payload']['lines']['F23']['source_credit']);
+    }
+
+    public function test_pch_uses_next_month_departures_with_half_credit_deadheads_and_exact_premiums(): void
+    {
+        $lines = \Mockery::mock(Document::class);
+        $lines->shouldReceive('getText')->once()->andReturn("Lines\nPlan: 202612 / 777 / LINES_4 / 94.PUBLISH\nF1 - 1/2\nBlock time: 0:01\nCredit time: 0:01\n700\nThu\n31Dec\n700\n");
+        $trips = \Mockery::mock(Document::class);
+        $trips->shouldReceive('getText')->once()->andReturn("Trip Report\nPlan: 202612 / 777 / LINES_4 / 94.PUBLISH\nTrip Id: 700\nShow Time 23:50\n31Dec Th K4 1MIA-CVG23:5900:010:02 77X\n01Jan Fr K4 2CVG-ANC00:3000:310:01 77X\n01Jan Fr DH K4 3ANC-LAX01:0001:01 - 77X\n01Jan Fr GT BUS LAX-ONT01:0501:07 - BUS Block Time:0:03\nDebriefing 01:30 Credit Time:0:04\n");
+        $this->mock(Parser::class)->shouldReceive('parseFile')->twice()->andReturn($lines, $trips);
+
+        $parsed = app(ParseBidDocuments::class)->parse([UploadedFile::fake()->create('Lines.pdf', 1, 'application/pdf'), UploadedFile::fake()->create('Trips.pdf', 1, 'application/pdf')]);
+
+        $line = $parsed['payload']['lines']['F1'];
+        $this->assertCount(1, $line['pairings']);
+        $this->assertSame(3, $line['block']);
+        $this->assertSame(60, $line['carry_flying_seconds']);
+        $this->assertSame(30, $line['carry_deadhead_credit_seconds']);
+        $this->assertSame(90, $line['pch_seconds']);
+        $this->assertSame(45, $line['carry_premium_seconds']);
+        $this->assertSame(285, $line['credit_seconds']);
+        BidPackage::factory()->create(['period' => '2026-12', 'payload' => $parsed['payload']]);
+        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['credit_label'] === '0:04:45' && $lines[0]['block_label'] === '0:03' && $lines[0]['pch_label'] === '0:01:30')
+            ->assertSee('0:04:45')->assertSee('0:00:45');
+    }
+
+    public function test_missing_linked_trip_totals_preserve_line_values_without_a_partial_premium(): void
+    {
+        $lines = \Mockery::mock(Document::class);
+        $lines->shouldReceive('getText')->once()->andReturn("Lines\nPlan: 202611 / 777 / LINES_4 / 94.PUBLISH\nF1 - 1/2\nBlock time: 4:00\nCredit time: 5:00\n700\nSun\n701\n");
+        $trips = \Mockery::mock(Document::class);
+        $trips->shouldReceive('getText')->once()->andReturn("Trip Report\nPlan: 202611 / 777 / LINES_4 / 94.PUBLISH\nTrip Id: 700\nShow Time 18:00\n01Dec Tu K4 1MIA-CVG19:0021:002:00 77X Block Time:2:00\nDebriefing 21:30 Credit Time:3:00\n");
+        $this->mock(Parser::class)->shouldReceive('parseFile')->twice()->andReturn($lines, $trips);
+
+        $parsed = app(ParseBidDocuments::class)->parse([UploadedFile::fake()->create('Lines.pdf', 1, 'application/pdf'), UploadedFile::fake()->create('Trips.pdf', 1, 'application/pdf')]);
+
+        $line = $parsed['payload']['lines']['F1'];
+        $this->assertCount(2, $line['pairings']);
+        $this->assertSame(240, $line['block']);
+        $this->assertSame(300, $line['credit']);
+        $this->assertSame('line_source', $line['credit_basis']);
+        $this->assertSame('line_source', $line['block_basis']);
+        $this->assertNull($line['carry_premium_seconds']);
     }
 
     private function overview(): UploadedFile

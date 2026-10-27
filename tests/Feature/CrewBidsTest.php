@@ -100,6 +100,29 @@ class CrewBidsTest extends TestCase
             ->assertSee('Required start city ANC: Matches');
     }
 
+    public function test_credit_and_block_sorts_are_independent_and_keep_manual_bid_order(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['credit'] = 5850;
+        $payload['lines']['F1']['block'] = 5415;
+        $payload['lines']['F3'] = array_replace($payload['lines']['F1'], ['id' => 'F3', 'credit' => 5700, 'block' => 5520]);
+        $payload['lines']['F4'] = array_replace($payload['lines']['F1'], ['id' => 'F4', 'credit' => null, 'block' => null]);
+        $payload['lines']['F5'] = array_replace($payload['lines']['F1'], ['id' => 'F5', 'credit_seconds' => 351030, 'block' => 5414]);
+        $package->update(['payload' => $payload]);
+
+        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->assertSee('Highest block time')->assertSee('97:30')->assertSee('97:30:30')->assertSee('90:15')
+            ->call('add', 'F1')->call('add', 'F3')
+            ->set('sort', 'credit')->assertHasNoErrors()
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F5', 'F1', 'F3', 'F4'])
+            ->set('sort', 'block')->assertHasNoErrors()
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F3', 'F1', 'F5', 'F4'])
+            ->assertSet('selections', ['F1', 'F3'])
+            ->set('minimumCredit', 96)
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F1', 'F5']);
+    }
+
     public function test_private_lists_are_isolated_and_zero_seat_lines_cannot_be_selected(): void
     {
         $package = BidPackage::factory()->create();
@@ -230,16 +253,19 @@ class CrewBidsTest extends TestCase
         $payload['trips']['999'] = array_replace($payload['trips']['749'], ['id' => '999']);
         $package->update(['payload' => $payload]);
 
-        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
             ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['carry_days'] === 3 && count($lines[0]['month']) === 30 && count($lines[0]['trip_details']) === 1 && $lines[0]['trip_details'][0]['minimum_rest'] === '17:30')
             ->assertSeeHtml('aria-label="3 carry-in days after month-end for F1"')
             ->assertSee('+3')->assertSee('Trip 749')->assertDontSee('Trip 999')
             ->assertSee('MIA–LUX–ANC–MIA')->assertSee('LUX, ANC')->assertSee('Minimum source rest')
             ->assertSeeHtml('aria-label="Leg timeline for trip 749, UTC"')
             ->assertSee('Leg timeline · UTC')->assertSee('Segment widths are illustrative.')
+            ->assertSeeHtml('role="tablist"')->assertSee('Timeline / Legs')->assertSee('Layovers &amp; Rest', false)->assertSee('Pairing Metadata')
             ->assertSee('2026-11-30 07:00')->assertSee('2026-11-29 21:00')->assertSee('2026-12-03 13:30')
             ->assertSee('50h 0m')->assertSee('17h 30m')->assertSee('arrival to next departure')
-            ->assertSee('8:00')->assertSee('100:00')->assertSee('Deadhead')->assertSee('Hotel details: Not present');
+            ->assertSee('8:00')->assertSee('100:00')->assertSee('Deadhead')->assertDontSee('Hotel details');
+
+        $this->assertSame(1, substr_count($page->html(), 'K4 749'));
     }
 
     public function test_legacy_trip_data_calculates_block_and_overnight_layovers_across_the_year_boundary(): void
@@ -290,8 +316,9 @@ class CrewBidsTest extends TestCase
         $package->update(['payload' => $payload]);
 
         Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
-            ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['trip_details'][0]['layovers'] === [] && $lines[0]['trip_details'][0]['legs'][0]['connection_status'] === $status)
-            ->assertSee($message)->assertSee('Connection uncertain');
+            ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['trip_details'][0]['layovers'] === [] && $lines[0]['trip_details'][0]['legs'][0]['connection_status'] === $status && $lines[0]['trip_details'][0]['legs'][0]['layover_highlight'] === null)
+            ->assertSee($message)->assertSee('Connection uncertain')
+            ->assertDontSee('Short layover · under 10h')->assertDontSee('Extended layover · 24h+');
     }
 
     /** @return array<string, array{string, string, string, string}> */
@@ -328,8 +355,98 @@ class CrewBidsTest extends TestCase
                     && array_column($legs, 'timeline_type') === ['deadhead', 'ground', 'flying']
                     && $legs[2]['block_basis'] === 'source' && $legs[2]['connection_status'] === null;
             })
-            ->assertSee('Not recorded for this transport leg')->assertSee('3h 0m')->assertSee('0h 0m')->assertSee('3:50')
+            ->assertDontSee('Not recorded for this transport leg')->assertSee('3h 0m')->assertSee('0h 0m')->assertSee('3:50')
             ->assertSee('Ground transfer')->assertSee('Deadhead');
+    }
+
+    #[DataProvider('shortConnectionWindows')]
+    public function test_layover_groups_highlight_only_connections_under_three_hours(string $departure, string $expectedGroup, string $duration): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['pairings'] = [['id' => '749', 'date' => '2026-11-01']];
+        $payload['trips']['749'] = [
+            'id' => '749', 'start_date' => '2026-11-01', 'end_date' => '2026-11-01',
+            'start_city' => 'MIA', 'end_city' => 'NRT', 'report' => '06:00', 'release' => '23:00',
+            'duty_days' => 1, 'crew_label' => '1 CA, 2 FO',
+            'legs' => [
+                ['date' => '2026-11-01', 'origin' => 'MIA', 'destination' => 'CVG', 'departure' => '07:00', 'arrival' => '10:00', 'deadhead' => false, 'rest_after' => '1:00'],
+                ['date' => '2026-11-01', 'origin' => 'CVG', 'destination' => 'NRT', 'departure' => $departure, 'arrival' => '22:00', 'deadhead' => false],
+            ],
+        ];
+        $package->update(['payload' => $payload]);
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->assertViewHas('lines', function (array $lines) use ($expectedGroup, $duration): bool {
+                $groups = $lines[0]['trip_details'][0]['layover_groups'];
+
+                return count($groups[$expectedGroup]) === 1 && $groups[$expectedGroup][0]['duration'] === $duration
+                    && $groups[$expectedGroup][0]['source_rest'] === '1:00'
+                    && $groups[$expectedGroup === 'short' ? 'longer' : 'short'] === [];
+            })
+            ->assertSee($duration)->assertSee('1 CA, 2 FO')->assertSee('UTC interval');
+
+        if ($expectedGroup === 'short') {
+            $page->assertSee('Short connection · under 3h');
+        } else {
+            $page->assertDontSee('Short connection · under 3h');
+        }
+    }
+
+    /** @return array<string, array{string, string, string}> */
+    public static function shortConnectionWindows(): array
+    {
+        return [
+            'one minute below threshold' => ['12:59', 'short', '2h 59m'],
+            'exactly three hours' => ['13:00', 'longer', '3h 0m'],
+        ];
+    }
+
+    #[DataProvider('layoverHighlightBoundaries')]
+    public function test_layover_highlights_use_scheduled_duration_at_exact_thresholds(string $nextDate, string $departure, ?string $highlight): void
+    {
+        $package = BidPackage::factory()->create(['period' => '2026-12']);
+        $payload = $package->payload;
+        $payload['lines']['F1']['pairings'] = [['id' => '749', 'date' => '2026-12-31']];
+        $payload['trips']['749'] = [
+            'id' => '749', 'start_date' => '2026-12-31', 'end_date' => $nextDate,
+            'start_city' => 'MIA', 'end_city' => 'ICN', 'report' => '21:00', 'release' => '23:45',
+            'legs' => [
+                ['date' => '2026-12-31', 'origin' => 'MIA', 'destination' => 'NRT', 'departure' => '22:00', 'arrival' => '23:00', 'deadhead' => false, 'rest_after' => '8:00'],
+                ['date' => $nextDate, 'origin' => 'NRT', 'destination' => 'ICN', 'departure' => $departure, 'arrival' => '23:30', 'deadhead' => false],
+            ],
+        ];
+        $package->update(['payload' => $payload]);
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->assertViewHas('lines', function (array $lines) use ($highlight): bool {
+                $trip = $lines[0]['trip_details'][0];
+                $layover = array_merge($trip['layover_groups']['short'], $trip['layover_groups']['longer'])[0];
+
+                return $trip['legs'][0]['layover_highlight'] === $highlight && $layover['highlight'] === $highlight
+                    && $trip['legs'][1]['layover_highlight'] === null && $trip['minimum_rest'] === '8:00';
+            });
+
+        if ($highlight === 'short') {
+            $page->assertSee('Short layover · under 10h')->assertDontSee('Extended layover · 24h+');
+        } elseif ($highlight === 'extended') {
+            $page->assertSee('Extended layover · 24h+')->assertDontSee('Short layover · under 10h');
+        } else {
+            $page->assertDontSee('Short layover · under 10h')->assertDontSee('Extended layover · 24h+');
+        }
+    }
+
+    /** @return array<string, array{string, string, string|null}> */
+    public static function layoverHighlightBoundaries(): array
+    {
+        return [
+            'zero gap' => ['2026-12-31', '23:00', 'short'],
+            'one minute under ten hours' => ['2027-01-01', '08:59', 'short'],
+            'exactly ten hours' => ['2027-01-01', '09:00', null],
+            'one minute under twenty-four hours' => ['2027-01-01', '22:59', null],
+            'exactly twenty-four hours' => ['2027-01-01', '23:00', 'extended'],
+            'one minute over twenty-four hours' => ['2027-01-01', '23:01', 'extended'],
+        ];
     }
 
     public function test_carry_days_count_unique_next_year_dates_without_changing_monthly_days_off(): void
@@ -349,10 +466,50 @@ class CrewBidsTest extends TestCase
 
         Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
             ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['carry_days'] === 3 && $lines[0]['days_off'] === 31)
-            ->assertSee('A leg timeline is unavailable because no dated legs were imported.');
+            ->assertDontSee('A leg timeline is unavailable because no dated legs were imported.');
     }
 
-    public function test_missing_trip_details_preserve_source_carry_count_and_explicit_missing_data(): void
+    public function test_missing_metrics_are_omitted_and_known_zero_values_remain_visible(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines'] = ['F1' => array_replace($payload['lines']['F1'], [
+            'credit' => null, 'block' => null, 'duty_days' => null, 'start_city' => null, 'crew' => null,
+            'pairings' => [['id' => '749', 'date' => '2026-11-01']],
+        ])];
+        $payload['lines']['F1']['calendar']['2026-11-01'] = ['status' => 'unknown', 'activity' => 'Unknown'];
+        $payload['trips']['749'] = [
+            'id' => '749', 'start_date' => '2026-11-01', 'end_date' => '2026-11-01',
+            'start_city' => 'YYZ', 'end_city' => 'YHM', 'report' => null, 'release' => '11:00',
+            'legs' => [['date' => '2026-11-01', 'origin' => 'YYZ', 'destination' => 'YHM', 'departure' => '10:00', 'arrival' => '11:00', 'deadhead' => false, 'flight' => 'GT BUS']],
+        ];
+        $package->update(['payload' => $payload]);
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->set('goals', ['credit', 'days_off', 'blocks'])
+            ->call('add', 'F1')->set('showList', true)
+            ->assertSee('Dates incomplete; conflicts unknown')->assertSee('1h 0m')->assertSee('Release · UTC')
+            ->assertDontSee('Not available')->assertDontSee('Not recorded')->assertDontSee('Not present')
+            ->assertDontSee('Min rest')->assertDontSee('Hotel details')->assertDontSee('Block · h:mm')
+            ->assertDontSee('Report · UTC')->assertDontSee('Duty days (source)')->assertDontSee('Crew complement');
+
+        $payload['lines']['F1'] = array_replace($payload['lines']['F1'], ['credit' => 0, 'block' => 0, 'duty_days' => 0]);
+        foreach ($payload['lines']['F1']['calendar'] as &$entry) {
+            $entry = ['status' => 'occupied', 'activity' => 'Trip 749'];
+        }
+        unset($entry);
+        $payload['trips']['749']['report'] = '00:00';
+        $payload['trips']['749']['duty_days'] = 0;
+        $payload['trips']['749']['block_minutes'] = 0;
+        $payload['trips']['749']['credit_minutes'] = 0;
+        $payload['trips']['749']['legs'][0]['rest_after'] = '0:00';
+        $package->update(['payload' => $payload]);
+
+        $page->call('$refresh')->assertViewHas('lines', fn (array $lines): bool => $lines[0]['credit_label'] === '0:00' && $lines[0]['block_label'] === '0:00' && $lines[0]['days_off'] === 0)
+            ->assertSee('Block · h:mm')->assertSee('Min rest')->assertSee('0:00')->assertSee('Duty days (source)')->assertSee('Report · UTC');
+    }
+
+    public function test_missing_trip_details_preserve_trip_identifiers_and_carry_count_without_placeholders(): void
     {
         $package = BidPackage::factory()->create();
         $payload = $package->payload;
@@ -361,8 +518,8 @@ class CrewBidsTest extends TestCase
         $package->update(['payload' => $payload]);
 
         Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
-            ->assertSee('+2')->assertSee('Trip 749')->assertSee('Trip details not available')
-            ->assertSee('Trips file not imported or this trip was not found in the imported file.');
+            ->assertSee('+2')->assertSee('Trip 749')->assertDontSee('Trip details not available')
+            ->assertDontSee('Trips file not imported or this trip was not found in the imported file.');
 
         $payload['lines']['F1']['carry_in'] = null;
         $package->update(['payload' => $payload]);

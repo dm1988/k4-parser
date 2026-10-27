@@ -66,13 +66,16 @@ class BidLineMatcher
             }
         }
         $carryDays = $line['pairings'] !== [] && ! $missingTrips ? count($carryDates) : ($line['carry_in'] ?? null);
-        $creditLabel = $line['credit'] === null ? 'Not available' : sprintf('%d:%02d', intdiv($line['credit'], 60), $line['credit'] % 60);
+        $creditLabel = array_key_exists('credit_seconds', $line) ? $this->secondsLabel($line['credit_seconds']) : $this->timeLabel($line['credit']);
+        $blockLabel = $this->timeLabel($line['block'] ?? null);
+        $line['pch_label'] = $this->secondsLabel($line['pch_seconds'] ?? null);
+        $line['carry_deadhead_credit_label'] = $this->secondsLabel($line['carry_deadhead_credit_seconds'] ?? null);
         $matchDetails = [];
         foreach ($preferences['goals'] ?? [] as $goal) {
             $detail = match ($goal) {
-                'credit' => 'Maximize credit: '.$creditLabel,
-                'days_off' => 'Maximize days off: '.($unknown ? 'Unknown' : $off),
-                'blocks' => 'Fewer work blocks: '.($unknown ? 'Unknown' : $blocks),
+                'credit' => $line['credit'] === null ? null : 'Maximize credit: '.$creditLabel,
+                'days_off' => $unknown ? null : 'Maximize days off: '.$off,
+                'blocks' => $unknown ? null : 'Fewer work blocks: '.$blocks,
                 default => null,
             };
             if ($detail !== null) {
@@ -87,7 +90,7 @@ class BidLineMatcher
             $filterDetails[] = 'Required start city '.$preferences['start_city'].': '.($cityMismatch ? 'Does not match' : 'Matches');
         }
 
-        return $line + ['days_off' => $unknown ? null : $off, 'blocks' => $unknown ? null : $blocks, 'warnings' => $warnings, 'matches' => $conflicts === [] && ! $cityMismatch, 'credit_label' => $creditLabel, 'month' => $month, 'carry_days' => $carryDays, 'trip_details' => array_values($linkedTrips), 'match_details' => $matchDetails, 'filter_details' => $filterDetails];
+        return $line + ['days_off' => $unknown ? null : $off, 'blocks' => $unknown ? null : $blocks, 'warnings' => $warnings, 'matches' => $conflicts === [] && ! $cityMismatch, 'credit_label' => $creditLabel, 'block_label' => $blockLabel, 'base_credit_label' => $this->timeLabel($line['base_credit'] ?? $line['credit']), 'deadhead_credit_label' => $this->secondsLabel($line['deadhead_credit_seconds'] ?? null), 'carry_premium_label' => $this->secondsLabel($line['carry_premium_seconds'] ?? null), 'carry_flying_label' => $this->secondsLabel($line['carry_flying_seconds'] ?? null), 'source_credit_label' => $this->timeLabel(array_key_exists('source_credit', $line) ? $line['source_credit'] : $line['credit']), 'source_block_label' => $this->timeLabel(array_key_exists('source_block', $line) ? $line['source_block'] : ($line['block'] ?? null)), 'month' => $month, 'carry_days' => $carryDays, 'trip_details' => array_values($linkedTrips), 'match_details' => $matchDetails, 'filter_details' => $filterDetails];
     }
 
     /**
@@ -99,6 +102,7 @@ class BidLineMatcher
         $route = [];
         $layovers = [];
         $layoverDetails = [];
+        $layoverGroups = ['short' => [], 'longer' => []];
         $rests = [];
         foreach ($trip['legs'] as $index => &$leg) {
             $departure = CarbonImmutable::parse($leg['date'].' '.$leg['departure'], 'UTC');
@@ -109,6 +113,7 @@ class BidLineMatcher
             $leg['arrival_date'] = $arrival->format('Y-m-d');
             $elapsedMinutes = intdiv($arrival->getTimestamp() - $departure->getTimestamp(), 60);
             $leg['elapsed_label'] = $this->durationLabel($elapsedMinutes);
+            $leg['deadhead_credit_label'] = $leg['deadhead'] ? $this->secondsLabel(intdiv($arrival->getTimestamp() - $departure->getTimestamp(), 2)) : null;
             $leg['timeline_type'] = $leg['deadhead'] ? 'deadhead' : (str_starts_with($leg['flight'] ?? '', 'GT ') ? 'ground' : 'flying');
             $leg['timeline_label'] = match ($leg['timeline_type']) {
                 'deadhead' => 'Deadhead',
@@ -120,8 +125,14 @@ class BidLineMatcher
                 $leg['block'] = sprintf('%d:%02d', intdiv($elapsedMinutes, 60), $elapsedMinutes % 60);
                 $leg['block_basis'] = 'calculated';
             }
+            $leg['block_duration_label'] = null;
+            if (($leg['block'] ?? null) !== null) {
+                [$blockHours, $blockMinutes] = array_map('intval', explode(':', $leg['block']));
+                $leg['block_duration_label'] = $this->durationLabel($blockHours * 60 + $blockMinutes);
+            }
             $leg['connection_status'] = null;
             $leg['layover_label'] = null;
+            $leg['layover_highlight'] = null;
             $leg['connection_until'] = null;
             $nextLeg = $trip['legs'][$index + 1] ?? null;
             if ($nextLeg !== null) {
@@ -135,8 +146,19 @@ class BidLineMatcher
                 } else {
                     $leg['connection_status'] = 'layover';
                     $leg['layover_label'] = $this->durationLabel($gapMinutes);
+                    $leg['layover_highlight'] = match (true) {
+                        $gapMinutes < 600 => 'short',
+                        $gapMinutes >= 1440 => 'extended',
+                        default => null,
+                    };
                     $layovers[] = $leg['destination'];
                     $layoverDetails[] = ['airport' => $leg['destination'], 'duration' => $leg['layover_label']];
+                    $layoverGroups[$gapMinutes < 180 ? 'short' : 'longer'][] = [
+                        'airport' => $leg['destination'], 'duration' => $leg['layover_label'],
+                        'start' => $arrival->format('Y-m-d H:i'), 'end' => $leg['connection_until'],
+                        'source_rest' => $leg['rest_after'] ?? null,
+                        'highlight' => $leg['layover_highlight'],
+                    ];
                 }
             }
             if ($route === [] || $route[array_key_last($route)] !== $leg['origin']) {
@@ -156,7 +178,23 @@ class BidLineMatcher
             return ($leftHours * 60 + $leftMinutes) <=> ($rightHours * 60 + $rightMinutes);
         });
 
-        return $trip + ['available' => true, 'route_label' => implode('–', $route), 'layover_label' => $layovers === [] ? 'No connected layovers recorded' : implode(', ', array_unique($layovers)), 'layovers' => $layoverDetails, 'minimum_rest' => $rests[0] ?? null];
+        return $trip + ['available' => true, 'route_label' => implode('–', $route), 'layover_label' => $layovers === [] ? 'No connected layovers recorded' : implode(', ', array_unique($layovers)), 'layovers' => $layoverDetails, 'layover_groups' => $layoverGroups, 'minimum_rest' => $rests[0] ?? null, 'credit_time_label' => $this->timeLabel($trip['credit_minutes'] ?? null), 'block_time_label' => $this->timeLabel($trip['block_minutes'] ?? null)];
+    }
+
+    private function timeLabel(?int $minutes): string
+    {
+        return $minutes === null ? 'Not available' : sprintf('%d:%02d', intdiv($minutes, 60), $minutes % 60);
+    }
+
+    private function secondsLabel(?int $seconds): string
+    {
+        if ($seconds === null) {
+            return 'Not available';
+        }
+
+        $label = sprintf('%d:%02d', intdiv($seconds, 3600), intdiv($seconds % 3600, 60));
+
+        return $seconds % 60 === 0 ? $label : $label.sprintf(':%02d', $seconds % 60);
     }
 
     private function durationLabel(int $minutes): string
@@ -171,12 +209,16 @@ class BidLineMatcher
     public function sort(array $lines, array $goals, string $sort): array
     {
         $keys = match ($sort) {
-            'credit' => ['credit'], 'days_off' => ['days_off'], 'id' => [], default => $goals,
+            'credit' => ['credit'], 'block' => ['block'], 'days_off' => ['days_off'], 'id' => [], default => $goals,
         };
         usort($lines, function (array $left, array $right) use ($keys): int {
             foreach ($keys as $key) {
                 $a = $left[$key] ?? null;
                 $b = $right[$key] ?? null;
+                if ($key === 'credit') {
+                    $a = $left['credit_seconds'] ?? ($a === null ? null : $a * 60);
+                    $b = $right['credit_seconds'] ?? ($b === null ? null : $b * 60);
+                }
                 if ($a === null || $b === null) {
                     $comparison = ($a === null ? 1 : 0) <=> ($b === null ? 1 : 0);
                 } else {

@@ -129,6 +129,92 @@ Validation: 33 focused Crew Bids/import tests passed (190 assertions), including
 
 Commit message: `feat: show crew bid block and layover durations beside clearer match controls`
 
+### Follow up #2: Visual leg timeline outcome (2026-10-27)
+
+Trip previews and expanded line Details now include a horizontal chevron sequence with UTC dates, airport pairs, elapsed durations, and overnight arrival dates. Flying is solid blue, deadheads are striped grey, ground transfers have a separate label, and layovers use pale gold. Native expandable segments reveal exact UTC times, block values, and available source rest. The focusable strip supports horizontal scrolling on narrow screens. Widths are explicitly illustrative; source rest remains separate from layover intervals. Inconsistent connections and absent legs have explicit states. Full textual leg details remain available below the graphic.
+
+Validation: The final focused Crew Bids run passed 25 tests (137 assertions), covering transport classification, midnight/year boundaries, zero layovers, inconsistent connections, empty leg data, and timeline rendering. Production build, Pint, and one Larastan run passed with zero errors. No manual browser review was performed. Prior work and user document edits were preserved.
+
+Commit message: `feat: visualize crew bid trip legs and layovers`
+
+### Follow up #2: Sticky expanded-trip actions outcome (2026-10-27)
+
+The existing line header and Add/Selected control become sticky while a trip or the line's Details accordion is expanded. The bar stays inside its card, below the workspace header and bid-list dialog, with opaque light/dark backgrounds. A ResizeObserver measures the workspace header after initialization and wrapping/context-size changes; Alpine cleanup disconnects it when leaving the component. Native accordion state controls stickiness without duplicating actions or changing saved bid order.
+
+Validation: All five focused JavaScript tests passed, including dynamic header sizing, observer cleanup, and leaving before deferred initialization. The final 25-test Crew Bids run also covered saved-order/reload behavior. Production CSS was checked for the expanded-only sticky selector and measured top offset; build, Pint, Larastan, and changed-file diff checks passed. Manual scrolling/touch/browser review remains pending.
+
+Commit message: `style: keep expanded crew bid actions below the workspace header`
+
+### Follow up #3: Consolidated trip details outcome (2026-10-27)
+
+Replaced stacked trip-detail sections with a compact route/date/metrics summary and three independent tabs: Timeline / Legs, Layovers & Rest, and Pairing Metadata. Long routes truncate in the summary and remain readable in metadata. Leg rows show transport type, route, UTC times, and block duration; exact dates and calculation evidence expand on demand. Layover intervals and source rest now share one compact two-column breakdown rather than repeating below each leg.
+
+The user confirmed an under-three-hour browsing highlight. Connections below 180 minutes appear in the short group with an amber cue; exactly three hours and longer appear separately. Grouping uses duration because domestic/international status is not established by the imported data. Source rest remains distinct from scheduled connection intervals. Tabs support arrow keys, Home/End, roving focus, unique per-preview IDs, and independent state. Existing sticky actions and visual timeline remain available.
+
+Imports now capture source pairing duty days and crew counts for the summary/metadata. Legacy missing values remain explicit. Corrected the earlier reimport guidance: duplicate-source detection previously retained the published payload, so parser-versioned fingerprints now allow a fresh draft revision while preserving the prior published package and private bid lists. Repeated imports with the current parser still reuse the draft. No source files were published automatically.
+
+Validation: 36 focused Crew Bids/import tests passed (225 assertions), including the three-hour boundary, source/legacy metadata, page-spanning trips, and versioned reimport/draft reuse. Seven focused JavaScript tests passed for tab keyboard focus, independent previews, observer cleanup, and existing copy/navigation behavior. Production build, Pint, one Larastan run (zero errors), and changed-file diff checks passed. Manual browser review remains pending. Prior work and the user's document edits were preserved; Follow up #4 was not implemented.
+
+Commit message: `feat: consolidate crew bid trip details into compact tabs`
+
+### Follow up #4: Separate block and credit outcome (2026-10-27)
+
+Line cards, trip summaries, and selected bid entries now distinguish operating Block time from Credit. Highest block time and Highest credit sort independently, retaining manual bid order. Credit goals, filters, and sorting use exact seconds; the display adds seconds only when needed. The contiguous occupied-day metric is explicitly labeled Work blocks.
+
+Complete Trips PDF Block Time and Credit Time totals take priority over Lines/Overview values. Details retain both source values, base credit, deadhead credit, PCH components, and the extra carry-in premium. Deadheads earn 50% of elapsed time and are already included in source trip credit, so their underlying credit is not added twice. Lines-only imports now link pairing IDs directly from the Lines PDF. Duplicate pairing references count once; incomplete linked totals retain source line values and do not apply a partial premium.
+
+The user confirmed that next-month departures determine PCH, replacing the initial UTC-midnight split proposal. Operating legs contribute 100%, deadheads contribute 50%, and ground transfers contribute zero. Adjusted credit adds only 50% of PCH, including credited deadheads, to full Trips base credit. Private November B777 regressions match F83 PCH 7:15, F61 14:30, and F46/F55 7:30. F83 adjusted credit is 101:07:30; F61 104:05; F46 91:37; F55 89:25; F38 91:40; F26 89:45; F23 76:05. The source F23 base totals are Block 74:35 and Credit 75:05.
+
+Marked completed Follow up items with [x] in CREW_BIDS.md and recorded the confirmed examples there. Parser fingerprints now use v3, so reimporting the source documents creates a reviewable draft with these calculations. Existing published packages and private bid lists remain intact until the existing publication/revision-review flow is used. No package was automatically published. Later document requests, including line maximum height and omission of missing metrics, remain outside this task.
+
+Validation: 40 focused Crew Bids/import tests passed (306 assertions), including all seven source examples, next-year departures, a pre-boundary overnight flight, half-credit deadheads, ground exclusions, exact fractional-minute premiums, deduplication, missing pairing totals, independent sorts, and saved bid order. Seven focused JavaScript tests, production Vite build, Pint, one Larastan run (zero errors), and diff checks passed. Database tests ran sequentially in one process. Manual browser review remains pending. Prior work and concurrent user document edits were preserved.
+
+Commit message: `feat: separate crew bid block time and premium-adjusted credit`
+
+### Follow up #4: Compact line height outcome (2026-10-27)
+
+Reorganized collapsed line cards into metrics/action, calendar, and disclosure rows that fit within 150px without a card scrollbar. Credit, Block, and Days off have compact stacked labels; Add/Selected stays beside them. Trips, dates, source details, and match explanations share the footer. Single-trip lines open the trip immediately; multiple trips use a count. Removed duplicate trip previews from source Details. Warning text stays visible in a compact row with full messages in Details; supporting Work blocks move into Details. Date inspection opens the dates disclosure. Expanded cards grow naturally and retain sticky actions.
+
+Validation: 28 focused Crew Bids tests passed (161 assertions). Production build, Pint, one Larastan run (zero errors), and diff checks passed. No new tests were added for this layout change. Manual browser sizing/interaction review remains pending. Prior work was preserved.
+
+Commit message: `style: organize collapsed crew bid cards within 150px`
+
+### Follow up #5: Omit missing metrics outcome (2026-10-27)
+
+Cards, trip summaries/metadata, leg details, the Trips tab, and bid-list entries now omit missing values together with their labels. Removed empty hotel, source-rest, crew, report, block, credit, and carry-credit placeholders. Trip identifiers remain visible when their detailed source record is absent. Empty timelines and absent layover summaries no longer generate placeholder content. Known zeros remain visible; conflict/incomplete-date warnings, inconsistent connection evidence, missing saved choices, and source import diagnostics retain their meaning. Credit provenance appears only for available values. Match explanations omit unavailable credit/days-off/work-block metrics while preserving hard-filter uncertainty messages.
+
+Validation: Missing-data coverage passed in the final 35-test Crew Bids integration run (202 assertions), including omission in cards, match explanations and selected choices, legacy trip values, known zero credit/block/rest/duty counts, retained warnings, and source carry counts. Pint, production build, Larastan (zero errors), and diff checks passed. No parser reimport is needed for this display change. Manual browser review remains pending.
+
+Commit message: `fix: omit missing crew bid metrics and placeholder rows`
+
+### Trip preview refinements A–C outcome (2026-10-27)
+
+Removed the separate vertical leg list. One timeline chevron per leg now opens its dated UTC departure/arrival, source/calculated block basis, scheduled elapsed time, and available deadhead credit/source rest in place. The chevron shows operating block, deadhead credit, or transport elapsed time as appropriate. A rendered regression confirms the source flight identifier is shown once in its preview.
+
+Scheduled layovers below 600 minutes receive amber short-layover chips; those at or above 1,440 minutes receive blue extended-layover chips. Both the timeline and layover table share the classification. Exactly ten hours is untagged and exactly twenty-four hours is extended. Existing under-three-hour grouping remains. Source rest stays independent of these browsing cues; no legal-rest or international classification is inferred. Overlaps and airport changes retain uncertainty messages and receive no duration chip.
+
+Retained the existing compact sticky action header rather than adding another bar. Expanded cards keep their ID, metrics, and Add/Selected action below the measured workspace header, without a card scroll container. The compiled production CSS includes the expanded-only sticky positioning and measured top offset; existing ResizeObserver sizing/cleanup and saved-selection behavior remain covered.
+
+Validation: Final focused Crew Bids tests passed (35 tests, 202 assertions), including exact 10h/24h boundaries, zero gaps, year boundaries, contradictory source-rest duration, invalid connections, unique leg information, missing metrics, and saved bid order. Seven JavaScript tests passed for sticky-header resizing/cleanup, tab keyboard focus/independence, and copy/navigation behavior. Pint, production build, one final Larastan run (zero errors), and diff checks passed. Manual browser sizing/scrolling review remains pending; prior working-tree changes were preserved. CREW_BIDS.md marks A–C and missing-data omission completed.
+
+Commit message: `feat: unify trip timelines and highlight short and extended layovers`
+
+### Line footer alignment outcome (2026-10-27)
+
+Renamed the dates disclosure to Line, updated calendar instructions/accessibility text, and ordered the collapsed footer Line → Trip → Details → Why this matched. Line and Trip sit inline on the left; Details and Why this matched stay on the right. Removed Trip's first-position override and used an automatic margin before Details to separate the groups. Expanded Line/Trip summaries stay left-aligned, with Details/match summaries right-aligned and their contents in normal reading alignment.
+
+Validation: The focused inline-trip preview test passed (one test, 26 assertions). Production build, Pint, one Larastan run (zero errors), and diff checks passed. No new tests were added for this copy/layout-only change. Prior working-tree changes were preserved.
+
+Commit message: `style: rename and align crew bid line footer controls`
+
+### Crew Bids icons outcome (2026-10-27)
+
+Added shopping-cart, plus, check, calendar, airplane, document, and settings icons to the corresponding bid-list, Add/Selected, Line/Trip, Details, and Manage package controls. Why this matched now uses an icon-only question-mark disclosure with an accessible name, screen-reader text, tooltip, and keyboard focus styling. Decorative icons are hidden from assistive technology. Kept Line/Trip on the left and Details/match controls on the right, including the expanded match summary. Compact icon sizes preserve the card rows. Reused installed Blade Heroicons 2.7.0 without dependency changes.
+
+Validation: Three focused Crew Bids tests passed (43 assertions), covering inline previews, matching explanations, and saved flying/reserve selections. Production build, Pint, one Larastan run (zero errors), and diff checks passed. No new tests were added for this presentation-only change. Manual browser review remains pending; existing working-tree changes were preserved.
+
+Commit message: `style: add icons to crew bidding actions and disclosures`
+
 ## Unified upload
 Currently: 2 tabs have 2 different upload points, user has to choose 
 Goal: Have one unified upload path. Service will determine if a schedule or flight plan has been uploaded. 
