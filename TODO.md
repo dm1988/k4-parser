@@ -28,6 +28,22 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Two-tier crew bids toolbar
+
+### Goal
+
+Separate package/account setup from result navigation, preferences, sorting, and filtering.
+
+### Current implementation
+
+The sticky header now contains two distinct rows. The command bar groups the package selector, publication status, and admin-only Manage package cog in one pill, with Package details beside it and the seat selector and My bid list action on the right. The controls row places Lines/Trips/Reserve on the left, the matching count and preference summary together in the center-left, and sorting and Filters together on the right. Both rows wrap within narrow screens and retain existing theme styles, accessible names, focus treatments, Livewire bindings, and permission checks. The existing resize observer measures the full header for expanded-card action offsets.
+
+### Problem addressed
+
+Package administration and result controls previously competed for space, while the matching count and preferences were grouped with sorting toward the right. Focused Sail checks passed: 64 crew bids feature tests (357 assertions), 11 JavaScript tests, Pint, the production build, and one final Larastan run with zero errors. Diff checks passed. Browser visual review remains outstanding. No new tests were added for this layout-only change.
+
+Commit message: `refactor: split crew bids toolbar into command and control rows`
+
 ## [x] Completed: Immediate goal selection and priority ordering
 
 ### Goal

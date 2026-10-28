@@ -21,6 +21,7 @@ class ProfileTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Flight Tracker')->assertSee('Flightradar24')->assertSee('iCal downloads');
+        $response->assertSeeInOrder(['User preferences', 'Schedule Extractor', 'Flight Tracker', 'K4 Bids', 'Bid seat']);
     }
 
     public function test_profile_information_can_be_updated(): void
@@ -148,6 +149,61 @@ class ProfileTest extends TestCase
         $user->save();
 
         $this->assertSame('flightaware', $user->refresh()->flight_tracker_preference);
+    }
+
+    #[DataProvider('bidSeats')]
+    public function test_users_can_save_their_bid_seat_preference(string $seat): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+
+        $this->actingAs($user)->patch('/profile', [
+            'name' => $user->name, 'email' => $user->email, 'crew_bid_seat_preference' => $seat,
+            'user_id' => $other->id,
+        ])->assertSessionHasNoErrors()->assertRedirect('/profile');
+
+        $this->assertSame($seat, $user->refresh()->crew_bid_seat_preference);
+        $this->assertSame('FO', $other->refresh()->crew_bid_seat_preference);
+        $this->assertNotNull($user->email_verified_at);
+        $this->get('/profile')->assertOk()->assertSee('value="'.$seat.'" selected', false);
+    }
+
+    public static function bidSeats(): array
+    {
+        return ['first officer' => ['FO'], 'captain' => ['CA']];
+    }
+
+    #[DataProvider('invalidBidSeats')]
+    public function test_invalid_bid_seats_do_not_change_user_preferences(mixed $seat): void
+    {
+        $user = User::factory()->create(['crew_bid_seat_preference' => 'CA']);
+
+        $this->actingAs($user)->from('/profile')->patch('/profile', [
+            'name' => 'Unsaved Name', 'email' => $user->email, 'crew_bid_seat_preference' => $seat,
+        ])->assertSessionHasErrors('crew_bid_seat_preference')->assertRedirect('/profile');
+
+        $this->assertSame('CA', $user->refresh()->crew_bid_seat_preference);
+        $this->assertNotSame('Unsaved Name', $user->name);
+    }
+
+    public static function invalidBidSeats(): array
+    {
+        return ['unsupported' => ['FE'], 'empty' => [''], 'null' => [null], 'array' => [['FO']]];
+    }
+
+    public function test_updating_other_profile_fields_preserves_the_bid_seat(): void
+    {
+        $user = User::factory()->create(['crew_bid_seat_preference' => 'CA']);
+
+        $this->actingAs($user)->patch('/profile', ['name' => 'Updated Name', 'email' => $user->email])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('CA', $user->refresh()->crew_bid_seat_preference);
+    }
+
+    public function test_guests_cannot_save_bid_preferences(): void
+    {
+        $this->patch('/profile', ['crew_bid_seat_preference' => 'CA'])->assertRedirect('/login');
     }
 
     public function test_user_can_delete_their_account(): void

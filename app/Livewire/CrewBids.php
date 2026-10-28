@@ -56,8 +56,6 @@ class CrewBids extends Component
 
     public string $contextPackage = '';
 
-    public string $contextSeat = 'FO';
-
     public string $tab = 'flying';
 
     public string $sort = 'best';
@@ -107,11 +105,12 @@ class CrewBids extends Component
 
     public function mount(): void
     {
+        $this->seat = $this->user()->crew_bid_seat_preference;
         $last = BidWorkspace::query()->where('user_id', Auth::id())->latest('updated_at')->first();
         $package = $last === null ? null : BidPackage::query()->whereNotNull('published_at')->find($last->bid_package_id);
         $package ??= BidPackage::query()->whereNotNull('published_at')->orderByDesc('period')->orderByDesc('id')->first();
         if ($package !== null) {
-            $this->loadPackage($package, $last->seat ?? 'FO');
+            $this->loadPackage($package, $this->seat);
         }
     }
 
@@ -137,25 +136,23 @@ class CrewBids extends Component
 
     public function changeContext(): void
     {
-        $this->validate(['contextPackage' => ['required', 'integer'], 'contextSeat' => ['required', Rule::in(['CA', 'FO'])]]);
+        $this->validate(['contextPackage' => ['required', 'integer']]);
         $target = BidPackage::query()->whereNotNull('published_at')->findOrFail((int) $this->contextPackage);
         if ($this->dirty && ! $this->persist()) {
             $this->contextPackage = (string) $this->packageId;
-            $this->contextSeat = $this->seat;
 
             return;
         }
-        $prior = BidWorkspace::query()->where('user_id', Auth::id())->where('seat', $this->contextSeat)
+        $prior = BidWorkspace::query()->where('user_id', Auth::id())->where('seat', $this->seat)
             ->whereIn('bid_package_id', BidPackage::query()->where('period', $target->period)->where('fleet', $target->fleet)->whereNotNull('published_at')->select('id'))
             ->latest('updated_at')->first();
-        if ($prior !== null && $prior->bid_package_id !== $target->id && ! BidWorkspace::query()->where('user_id', Auth::id())->where('bid_package_id', $target->id)->where('seat', $this->contextSeat)->exists()) {
-            $seat = $this->contextSeat;
-            $this->loadPackage(BidPackage::query()->findOrFail($prior->bid_package_id), $seat);
+        if ($prior !== null && $prior->bid_package_id !== $target->id && ! BidWorkspace::query()->where('user_id', Auth::id())->where('bid_package_id', $target->id)->where('seat', $this->seat)->exists()) {
+            $this->loadPackage(BidPackage::query()->findOrFail($prior->bid_package_id), $this->seat);
             $this->pendingPackageId = $target->id;
 
             return;
         }
-        $this->loadPackage($target, $this->contextSeat);
+        $this->loadPackage($target, $this->seat);
     }
 
     public function reviewRevision(int $id): void
@@ -399,7 +396,6 @@ class CrewBids extends Component
         $this->packageId = $package->id;
         $this->contextPackage = (string) $package->id;
         $this->seat = $seat;
-        $this->contextSeat = $seat;
         $this->revision = $workspace->revision ?? 0;
         $this->selections = $workspace->selections ?? [];
         $this->goals = $preferences['goals'] ?? [];

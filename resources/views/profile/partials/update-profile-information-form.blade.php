@@ -47,37 +47,57 @@
             @endif
         </div>
 
-        <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-                <x-input-label for="airline_iata_code" :value="__('Airline IATA code')" />
-                <x-text-input id="airline_iata_code" name="airline_iata_code" type="text" class="mt-1 block w-full uppercase" :value="old('airline_iata_code', $user->airline_iata_code)" maxlength="2" placeholder="{{ config('schedule.airline_codes.iata') }}" autocomplete="off" />
-                <x-input-error class="mt-2" :messages="$errors->get('airline_iata_code')" />
-            </div>
+        <fieldset id="user-preferences" class="space-y-6 border-t border-gray-200 pt-6 dark:border-gray-700">
+            <legend class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ __('User preferences') }}</legend>
+            <fieldset class="space-y-4">
+                <legend class="mb-4 text-base font-semibold text-[#1B365D] dark:text-amber-200">{{ __('Schedule Extractor') }}</legend>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <x-input-label for="airline_iata_code" :value="__('Airline IATA code')" />
+                        <x-text-input id="airline_iata_code" name="airline_iata_code" type="text" class="mt-1 block w-full uppercase" :value="old('airline_iata_code', $user->airline_iata_code)" maxlength="2" placeholder="{{ config('schedule.airline_codes.iata') }}" autocomplete="off" />
+                        <x-input-error class="mt-2" :messages="$errors->get('airline_iata_code')" />
+                    </div>
 
-            <div>
-                <x-input-label for="airline_icao_code" :value="__('Airline ICAO code')" />
-                <x-text-input id="airline_icao_code" name="airline_icao_code" type="text" class="mt-1 block w-full uppercase" :value="old('airline_icao_code', $user->airline_icao_code)" maxlength="3" placeholder="{{ config('schedule.airline_codes.icao') }}" autocomplete="off" />
-                <x-input-error class="mt-2" :messages="$errors->get('airline_icao_code')" />
-            </div>
+                    <div>
+                        <x-input-label for="airline_icao_code" :value="__('Airline ICAO code')" />
+                        <x-text-input id="airline_icao_code" name="airline_icao_code" type="text" class="mt-1 block w-full uppercase" :value="old('airline_icao_code', $user->airline_icao_code)" maxlength="3" placeholder="{{ config('schedule.airline_codes.icao') }}" autocomplete="off" />
+                        <x-input-error class="mt-2" :messages="$errors->get('airline_icao_code')" />
+                    </div>
 
-            <p class="text-sm text-gray-600 dark:text-gray-400 sm:col-span-2">
-                {{ __('Leave these blank to use the configured schedule airline codes.') }}
-            </p>
-        </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 sm:col-span-2">
+                        {{ __('Leave these blank to use the configured schedule airline codes.') }}
+                    </p>
+                </div>
 
-        <div>
-            <x-input-label for="flight_tracker_preference" :value="__('Flight Tracker')" />
-            <select id="flight_tracker_preference" name="flight_tracker_preference" aria-describedby="flight-tracker-help"
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:focus:border-indigo-600 dark:focus:ring-indigo-600">
-                @foreach ($flightTrackers as $tracker)
-                    <option value="{{ $tracker->value }}" @selected(old('flight_tracker_preference', $selectedFlightTracker) === $tracker->value)>{{ $tracker->label() }}</option>
-                @endforeach
-            </select>
-            <p id="flight-tracker-help" class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                {{ __('Used for schedule flight links and iCal downloads, including previously parsed schedules. Tracks the tail number when available, otherwise the flight number.') }}
-            </p>
-            <x-input-error class="mt-2" :messages="$errors->get('flight_tracker_preference')" />
-        </div>
+                <div>
+                    <x-input-label for="flight_tracker_preference" :value="__('Flight Tracker')" />
+                    <select id="flight_tracker_preference" name="flight_tracker_preference" aria-describedby="flight-tracker-help"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:focus:border-indigo-600 dark:focus:ring-indigo-600">
+                        @foreach ($flightTrackers as $tracker)
+                            <option value="{{ $tracker->value }}" @selected(old('flight_tracker_preference', $selectedFlightTracker) === $tracker->value)>{{ $tracker->label() }}</option>
+                        @endforeach
+                    </select>
+                    <p id="flight-tracker-help" class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                        {{ __('Used for schedule flight links and iCal downloads, including previously parsed schedules. Tracks the tail number when available, otherwise the flight number.') }}
+                    </p>
+                    <x-input-error class="mt-2" :messages="$errors->get('flight_tracker_preference')" />
+                </div>
+            </fieldset>
+
+            <fieldset id="k4-bids-preferences" class="scroll-mt-6 space-y-4 border-t border-gray-200 pt-6 dark:border-gray-700">
+                <legend class="text-base font-semibold text-[#1B365D] dark:text-amber-200">{{ __('K4 Bids') }}</legend>
+                <div>
+                    <x-input-label for="crew_bid_seat_preference" :value="__('Bid seat')" />
+                    <select id="crew_bid_seat_preference" name="crew_bid_seat_preference" aria-describedby="bid-seat-help" required
+                        class="mt-1 block min-h-11 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:focus:border-indigo-600 dark:focus:ring-indigo-600">
+                        <option value="FO" @selected(old('crew_bid_seat_preference', $user->crew_bid_seat_preference) === 'FO')>{{ __('First Officer') }}</option>
+                        <option value="CA" @selected(old('crew_bid_seat_preference', $user->crew_bid_seat_preference) === 'CA')>{{ __('Captain') }}</option>
+                    </select>
+                    <p id="bid-seat-help" class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Used when opening K4 Bids. Each seat keeps its own preferences and bid list.') }}</p>
+                    <x-input-error class="mt-2" :messages="$errors->get('crew_bid_seat_preference')" />
+                </div>
+            </fieldset>
+        </fieldset>
 
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>

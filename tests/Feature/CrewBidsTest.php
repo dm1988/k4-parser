@@ -40,6 +40,44 @@ class CrewBidsTest extends TestCase
         $this->actingAs(User::factory()->unverified()->create())->get(route('crew-bids.index'))->assertRedirect(route('verification.notice'));
     }
 
+    public function test_saved_bid_seat_controls_eligibility_and_keeps_each_seats_workspace(): void
+    {
+        $package = BidPackage::factory()->create();
+        $user = User::factory()->admin()->create(['crew_bid_seat_preference' => 'CA']);
+        $payload = $package->payload;
+        $payload['lines']['R2']['captains'] = 0;
+        $package->update(['payload' => $payload]);
+        BidWorkspace::factory()->create(['user_id' => $user->id, 'bid_package_id' => $package->id, 'seat' => 'CA', 'selections' => ['F1'], 'updated_at' => now()->subMinute()]);
+        BidWorkspace::factory()->create(['user_id' => $user->id, 'bid_package_id' => $package->id, 'seat' => 'FO', 'selections' => ['R2']]);
+
+        Livewire::actingAs($user)->test(CrewBids::class)->assertSet('seat', 'CA')->assertSet('selections', ['F1'])
+            ->assertViewHas('allLines', fn (array $lines): bool => array_column($lines, 'id') === ['F1'])
+            ->assertDontSee('id="bid-seat"', false)->assertSee(route('profile.edit').'#k4-bids-preferences', false);
+
+        $this->patch(route('profile.update'), ['name' => $user->name, 'email' => $user->email, 'crew_bid_seat_preference' => 'FO'])
+            ->assertSessionHasNoErrors();
+        Livewire::actingAs($user->refresh())->test(CrewBids::class)->assertSet('seat', 'FO')->assertSet('selections', ['R2']);
+        $this->assertSame(['F1'], BidWorkspace::query()->where('user_id', $user->id)->where('seat', 'CA')->sole()->selections);
+    }
+
+    public function test_package_changes_keep_the_preferred_seat(): void
+    {
+        BidPackage::factory()->create();
+        $next = BidPackage::factory()->create(['period' => '2026-10']);
+
+        Livewire::actingAs(User::factory()->admin()->create(['crew_bid_seat_preference' => 'CA']))->test(CrewBids::class)
+            ->set('contextPackage', (string) $next->id)->call('changeContext')
+            ->assertSet('packageId', $next->id)->assertSet('seat', 'CA')->call('add', 'F1')->assertHasNoErrors();
+
+        $this->assertSame('CA', BidWorkspace::query()->sole()->seat);
+    }
+
+    public function test_saved_bid_seat_is_loaded_when_no_package_is_published(): void
+    {
+        Livewire::actingAs(User::factory()->admin()->create(['crew_bid_seat_preference' => 'CA']))->test(CrewBids::class)
+            ->assertSet('seat', 'CA')->assertSet('packageId', null)->assertSee('No bid package available yet');
+    }
+
     public function test_admin_navigation_places_bids_after_flight_plan_brief(): void
     {
         $this->actingAs(User::factory()->admin()->create())->get(route('crew-bids.index'))->assertOk()->assertSeeInOrder(['Flight Plan Brief', 'K4 Bids', 'Admin Panel']);
@@ -181,8 +219,8 @@ class CrewBidsTest extends TestCase
         $payload = $package->payload;
         $payload['lines']['F1']['captains'] = 0;
         $package->update(['payload' => $payload]);
-        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)->assertSet('selections', [])
-            ->set('contextSeat', 'CA')->call('changeContext')->call('add', 'F1')->assertNotFound();
+        Livewire::actingAs(User::factory()->admin()->create(['crew_bid_seat_preference' => 'CA']))->test(CrewBids::class)->assertSet('selections', [])
+            ->call('add', 'F1')->assertNotFound();
         $this->assertSame(['R2'], BidWorkspace::query()->where('user_id', $other->id)->sole()->selections);
     }
 
