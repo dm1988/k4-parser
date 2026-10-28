@@ -83,6 +83,39 @@ class CrewBidsTest extends TestCase
             ->call('add', 'F1')->assertSet('selections', ['F1']);
     }
 
+    public function test_calendar_updates_save_all_selected_dates_in_order_and_keep_selected_conflicts(): void
+    {
+        BidPackage::factory()->create();
+        $user = User::factory()->admin()->create();
+
+        $page = Livewire::actingAs($user)->test(CrewBids::class)->call('add', 'F1')
+            ->set('daysOff', ['2026-11-22', '2026-11-03', '2026-11-20'])
+            ->assertHasNoErrors()->assertSet('daysOff', ['2026-11-03', '2026-11-20', '2026-11-22'])
+            ->assertSet('selections', ['F1'])->assertViewHas('lines', [])
+            ->assertViewHas('selected', fn (array $lines): bool => $lines[0]['id'] === 'F1' && $lines[0]['warnings'] === ['Conflicts with requested UTC days off: 2026-11-03']);
+
+        $this->assertSame(['2026-11-03', '2026-11-20', '2026-11-22'], BidWorkspace::query()->sole()->preferences['days_off']);
+        Livewire::test(CrewBids::class)->assertSet('daysOff', ['2026-11-03', '2026-11-20', '2026-11-22']);
+
+        $page->set('daysOff', ['2026-11-22', '2026-11-20'])->assertHasNoErrors()
+            ->assertSet('daysOff', ['2026-11-20', '2026-11-22'])
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F1']);
+        $this->assertSame(['2026-11-20', '2026-11-22'], BidWorkspace::query()->sole()->preferences['days_off']);
+
+        $page->call('clearDates')->assertSet('daysOff', []);
+        $this->assertSame([], BidWorkspace::query()->sole()->preferences['days_off']);
+    }
+
+    public function test_calendar_model_updates_reject_out_of_package_dates_without_saving(): void
+    {
+        BidPackage::factory()->create();
+
+        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->set('daysOff', ['2026-12-01'])->assertHasErrors('preferences.days_off.0');
+
+        $this->assertDatabaseCount('bid_workspaces', 0);
+    }
+
     public function test_priorities_are_strict_and_start_city_is_a_hard_filter(): void
     {
         $package = BidPackage::factory()->create();
@@ -98,6 +131,23 @@ class CrewBidsTest extends TestCase
             ->call('sortGoal', 'credit', 0)->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F3', 'F1'])
             ->set('startCity', 'ANC')->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F1'])
             ->assertSee('Required start city ANC: Matches');
+    }
+
+    public function test_client_goal_order_persists_exactly_without_changing_the_bid_order(): void
+    {
+        BidPackage::factory()->create();
+        $user = User::factory()->admin()->create();
+
+        Livewire::actingAs($user)->test(CrewBids::class)
+            ->call('add', 'F1')->call('add', 'R2')
+            ->set('goals', ['credit', 'days_off', 'blocks'])
+            ->set('goals', ['blocks', 'credit', 'days_off'])
+            ->assertHasNoErrors()->assertSet('selections', ['F1', 'R2']);
+
+        $saved = BidWorkspace::query()->sole();
+        $this->assertSame(['blocks', 'credit', 'days_off'], $saved->preferences['goals']);
+        $this->assertSame(['F1', 'R2'], $saved->selections);
+        Livewire::test(CrewBids::class)->assertSet('goals', ['blocks', 'credit', 'days_off']);
     }
 
     public function test_credit_and_block_sorts_are_independent_and_keep_manual_bid_order(): void
@@ -222,6 +272,65 @@ class CrewBidsTest extends TestCase
             ->call('add', 'F1')->call('add', 'R2')->call('undoAdd')->assertSet('selections', ['F1'])
             ->set('rangeStart', '2026-11-20')->set('rangeEnd', '2026-11-22')->call('addRange')
             ->assertSet('daysOff', ['2026-11-20', '2026-11-21', '2026-11-22'])->assertSet('selections', ['F1']);
+    }
+
+    #[DataProvider('bidPackageDateBounds')]
+    public function test_date_ranges_start_at_the_package_month_with_matching_picker_bounds(string $period, string $firstDate, string $lastDate): void
+    {
+        $this->travelTo(new \DateTimeImmutable('2026-10-15T12:00:00+00:00'));
+        BidPackage::factory()->create(['period' => $period]);
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->assertSet('rangeStart', $firstDate)->assertSet('rangeEnd', $firstDate)
+            ->assertSet('daysOff', []);
+
+        $document = new \DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$page->html());
+        $pickers = (new \DOMXPath($document))->query('//input[@type="date"]');
+        $this->assertCount(2, $pickers);
+        foreach ($pickers as $picker) {
+            $this->assertSame($firstDate, $picker->getAttribute('min'));
+            $this->assertSame($lastDate, $picker->getAttribute('max'));
+        }
+        $this->assertDatabaseCount('bid_workspaces', 0);
+
+        $page->call('addRange')->assertHasNoErrors()->assertSet('daysOff', [$firstDate]);
+        $this->assertSame([$firstDate], BidWorkspace::query()->sole()->preferences['days_off']);
+    }
+
+    /** @return array<string, array{string, string, string}> */
+    public static function bidPackageDateBounds(): array
+    {
+        return [
+            'next month' => ['2026-11', '2026-11-01', '2026-11-30'],
+            'next year' => ['2027-01', '2027-01-01', '2027-01-31'],
+            'february' => ['2027-02', '2027-02-01', '2027-02-28'],
+            'leap february' => ['2028-02', '2028-02-01', '2028-02-29'],
+        ];
+    }
+
+    public function test_switching_bid_packages_resets_date_ranges_to_the_new_package_start(): void
+    {
+        BidPackage::factory()->create(['period' => '2026-11']);
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->set('rangeStart', '2026-11-20')->set('rangeEnd', '2026-11-22');
+        $next = BidPackage::factory()->create(['period' => '2026-12']);
+
+        $page->set('contextPackage', (string) $next->id)->call('changeContext')
+            ->assertSet('rangeStart', '2026-12-01')->assertSet('rangeEnd', '2026-12-01')
+            ->assertSet('daysOff', [])
+            ->assertSeeHtml('min="2026-12-01" max="2026-12-31"');
+    }
+
+    public function test_date_ranges_reject_dates_outside_the_bid_package_without_saving(): void
+    {
+        BidPackage::factory()->create();
+
+        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->set('rangeStart', '2026-11-30')->set('rangeEnd', '2026-12-01')->call('addRange')
+            ->assertHasErrors('daysOff')->assertSet('daysOff', []);
+
+        $this->assertDatabaseCount('bid_workspaces', 0);
     }
 
     public function test_fewer_blocks_goal_counts_contiguous_occupied_dates_including_rest(): void

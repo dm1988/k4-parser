@@ -1,4 +1,4 @@
-<div class="mx-auto max-w-7xl px-3 py-6 sm:px-6" data-crew-bids data-dirty="{{ $dirty ? 'true' : 'false' }}" x-data="crewBidsHeader" @keydown.escape.window="if ($wire.showList) { $wire.showList = false; $refs.listTrigger?.focus() } else if (filtersOpen) { filtersOpen = false; $refs.filtersTrigger?.focus() }">
+<div class="mx-auto max-w-7xl px-3 py-6 sm:px-6" data-crew-bids data-dirty="{{ $dirty ? 'true' : 'false' }}" x-data="crewBidsHeader" :data-preferences-dirty="$wire.$dirty(['goals', 'daysOff', 'startCity'])" @keydown.escape.window="if ($wire.showList) { $wire.showList = false; $refs.listTrigger?.focus() } else if (filtersOpen) { filtersOpen = false; $refs.filtersTrigger?.focus() }">
     <header x-ref="workspaceHeader" class="sticky top-0 z-30 -mx-3 flex flex-wrap items-center gap-3 border-b border-slate-200 bg-gray-100 px-3 py-3 shadow-sm dark:border-slate-800 dark:bg-gray-950 sm:-mx-6 sm:px-6">
         <h1 class="text-2xl font-bold text-[#1B365D] dark:text-amber-200">K4 Bids</h1>
         @if ($packages->isNotEmpty())
@@ -74,27 +74,48 @@
         </nav>
         @if ($tab !== 'trips')<span class="ms-auto whitespace-nowrap text-xs text-slate-500 dark:text-slate-400" aria-live="polite">{{ count($lines) }} matching / {{ $total }}</span>@endif
         <div @class(['flex max-w-full flex-wrap items-center justify-end gap-2 text-xs', 'ms-auto' => $tab === 'trips'])>
-            <button type="button" wire:click="$toggle('showPreferences')" aria-expanded="{{ $showPreferences ? 'true' : 'false' }}" aria-controls="bid-preferences" class="inline-flex min-h-11 max-w-40 items-center gap-1.5 rounded-full bg-slate-200/70 px-3 text-slate-700 focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-800 dark:text-slate-200 sm:max-w-64">
+            <button type="button" @click="$wire.showPreferences = ! $wire.showPreferences" :aria-expanded="$wire.showPreferences" aria-controls="bid-preferences" class="inline-flex min-h-11 max-w-40 items-center gap-1.5 rounded-full bg-slate-200/70 px-3 text-slate-700 focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-800 dark:text-slate-200 sm:max-w-64">
                 <x-heroicon-o-adjustments-horizontal class="h-4 w-4 shrink-0" aria-hidden="true" /><span class="sr-only">Edit preferences: </span><span class="truncate">@forelse ($goals as $goal){{ $goalLabels[$goal] ?? $goal }}{{ $loop->last ? '' : ' → ' }}@empty Preferences @endforelse @if ($daysOff !== []) · {{ count($daysOff) }} dates off (UTC)@endif @if ($startCity) · Start {{ $startCity }}@endif</span>
             </button>
             @if ($tab !== 'trips')
-                <label for="bid-sort" class="sr-only">Sort lines</label><select id="bid-sort" wire:model.live="sort" class="min-h-11 w-32 max-w-full rounded-lg text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900 sm:w-auto"><option value="best">{{ $goals === [] ? 'Line ID (no goals set)' : 'Best match' }}</option><option value="credit">Highest credit</option><option value="block">Highest block time</option><option value="days_off">Most days off</option><option value="id">Line ID</option></select>
+                <label for="bid-sort" class="sr-only">Sort lines</label><select id="bid-sort" wire:model.live.debounce.250ms="sort" class="min-h-11 w-32 max-w-full rounded-lg text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900 sm:w-auto"><option value="best">{{ $goals === [] ? 'Line ID (no goals set)' : 'Best match' }}</option><option value="credit">Highest credit</option><option value="block">Highest block time</option><option value="days_off">Most days off</option><option value="id">Line ID</option></select>
                 <button type="button" x-ref="filtersTrigger" @click="filtersOpen = ! filtersOpen" :aria-expanded="filtersOpen" aria-controls="bid-filters" class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-slate-300 px-3 font-semibold focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-600"><x-heroicon-o-funnel class="h-4 w-4" aria-hidden="true" /><span>Filters</span>@if ($layoverCity !== '' || $extendedLayoversOnly || $avoidShortLayovers || $minimumCredit !== null || $minimumDaysOff !== null || $selectedOnly)<span class="h-1.5 w-1.5 rounded-full bg-[#C5A059]" aria-hidden="true"></span><span class="sr-only">active</span>@endif</button>
             @endif
         </div>
         </div>
-        @if ($showPreferences)
-            <section id="bid-preferences" class="my-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900" aria-label="Set preferences">
+            <section id="bid-preferences" wire:show="showPreferences" x-cloak class="my-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900" aria-label="Set preferences">
                 <h2 class="text-lg font-semibold">Set preferences</h2>
                 <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Choose goals, then order them. Lower priorities only break ties. Days off and start city exclude nonmatching lines.</p>
-                <fieldset class="mt-3 flex flex-wrap gap-4"><legend class="mb-2 text-sm font-semibold">1. Choose goals</legend>@foreach ($goalLabels as $value => $label)<label class="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" wire:model.live="goals" value="{{ $value }}" class="rounded">{{ $label }}</label>@endforeach</fieldset>
-                <ol wire:sort="sortGoal" class="mt-2 space-y-1">@foreach ($goals as $index => $goal)<li wire:key="goal-{{ $goal }}" wire:sort:item="{{ $goal }}" class="flex items-center gap-2 text-sm"><span wire:sort:handle aria-hidden="true">⠿</span><span>{{ $index + 1 }}. {{ $goalLabels[$goal] ?? $goal }}</span>@if ($index > 0)<button type="button" wire:click="sortGoal('{{ $goal }}', {{ $index - 1 }})" class="min-h-11 px-2 underline" aria-label="Move {{ $goalLabels[$goal] ?? $goal }} up">Move up</button>@endif</li>@endforeach</ol>
-                <fieldset class="mt-4 max-w-md"><legend class="font-semibold text-sm">2. Days to keep off · UTC · {{ $monthLabel }}</legend><div class="mt-2 grid grid-cols-7 gap-1">@foreach ($dates as $date)<button type="button" wire:click="toggleDate('{{ $date['date'] }}')" aria-pressed="{{ in_array($date['date'], $daysOff, true) ? 'true' : 'false' }}" aria-label="{{ $date['date'] }} UTC, {{ $date['weekday'] }}" @class(['min-h-11 rounded-lg border text-sm focus-visible:ring-2 focus-visible:ring-amber-500', 'bg-[#1B365D] text-white border-[#1B365D]' => in_array($date['date'], $daysOff, true), 'border-slate-200 dark:border-slate-700' => ! in_array($date['date'], $daysOff, true)])><span class="block text-[10px]">{{ $date['weekday'] }}</span>{{ $date['day'] }}</button>@endforeach</div><button type="button" wire:click="clearDates" class="min-h-11 text-sm underline">Clear dates</button></fieldset>
-                <details class="mt-2 text-sm"><summary class="cursor-pointer py-2 underline">Select a date range</summary><div class="flex flex-wrap items-end gap-2"><label>From (UTC)<input type="date" wire:model="rangeStart" class="block rounded-lg dark:bg-slate-800"></label><label>Through (UTC)<input type="date" wire:model="rangeEnd" class="block rounded-lg dark:bg-slate-800"></label><button type="button" wire:click="addRange" class="min-h-11 px-3 underline">Add range</button></div></details>
-                <label class="mt-4 block text-sm font-semibold" for="bid-start-city">3. Required start city</label><select id="bid-start-city" wire:model.live="startCity" class="mt-1 rounded-lg text-sm dark:bg-slate-800"><option value="">Any start city</option>@foreach ($cities as $city)<option value="{{ $city }}">{{ $city }}</option>@endforeach</select>
-                <div class="mt-4 flex gap-3"><button type="button" wire:click="finishSetup" class="min-h-11 rounded-lg bg-[#1B365D] px-4 font-semibold text-white">{{ $initialized ? 'Done' : 'Skip setup and browse' }}</button></div>
+                <div x-data="bidGoalPreferences(@js($goalLabels))" @bid-goals-changed.debounce.250ms="$wire.$commit()">
+                    <fieldset class="mt-3 flex flex-wrap gap-4" @change="$dispatch('bid-goals-changed')"><legend class="mb-2 text-sm font-semibold">1. Choose goals</legend>@foreach ($goalLabels as $value => $label)<label class="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" wire:model="goals" value="{{ $value }}" class="rounded">{{ $label }}</label>@endforeach</fieldset>
+                    <ol wire:ignore x-sort="sortGoal($item, $el)" class="mt-2 list-decimal space-y-1 ps-6" aria-label="Goal priority order">
+                        <template x-for="(goal, index) in $wire.goals" :key="goal">
+                            <li x-sort:item="goal" :data-goal="goal">
+                                <div class="flex items-center gap-2 text-sm">
+                                    <span x-sort:handle aria-hidden="true" class="cursor-grab">⠿</span>
+                                    <span x-text="labels[goal]"></span>
+                                    <button type="button" x-show="index > 0" x-cloak @click="moveGoal(goal, index - 1)" x-sort:ignore class="min-h-11 rounded px-2 underline focus-visible:ring-2 focus-visible:ring-amber-500" :aria-label="'Move ' + labels[goal] + ' up'">Move up</button>
+                                </div>
+                            </li>
+                        </template>
+                    </ol>
+                </div>
+                <fieldset class="mt-4 max-w-md" @change.debounce.250ms="$wire.$commit()">
+                    <legend class="font-semibold text-sm">2. Days to keep off · UTC · {{ $monthLabel }}</legend>
+                    <div class="mt-2 grid grid-cols-7 gap-1">
+                        @foreach ($dates as $date)
+                            <label class="relative min-w-0 cursor-pointer" wire:key="bid-day-off-{{ $packageId }}-{{ $date['date'] }}">
+                                <input type="checkbox" wire:model="daysOff" value="{{ $date['date'] }}" aria-label="{{ $date['date'] }} UTC, {{ $date['weekday'] }}" @checked(in_array($date['date'], $daysOff, true)) class="peer sr-only">
+                                <span class="flex min-h-11 flex-col items-center justify-center rounded-lg border border-slate-200 text-sm peer-checked:border-[#1B365D] peer-checked:bg-[#1B365D] peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-amber-500 dark:border-slate-700 dark:peer-checked:border-[#1B365D]"><span class="block text-[10px]">{{ $date['weekday'] }}</span>{{ $date['day'] }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <button type="button" wire:click="clearDates" class="min-h-11 text-sm underline">Clear dates</button>
+                </fieldset>
+                <details class="mt-2 text-sm"><summary class="cursor-pointer py-2 underline">Select a date range</summary><div class="flex flex-wrap items-end gap-2"><label>From (UTC)<input type="date" min="{{ $packageStartDate }}" max="{{ $packageEndDate }}" wire:model="rangeStart" class="block rounded-lg dark:bg-slate-800"></label><label>Through (UTC)<input type="date" min="{{ $packageStartDate }}" max="{{ $packageEndDate }}" wire:model="rangeEnd" class="block rounded-lg dark:bg-slate-800"></label><button type="button" wire:click="addRange" class="min-h-11 px-3 underline">Add range</button></div></details>
+                <label class="mt-4 block text-sm font-semibold" for="bid-start-city">3. Required start city</label><select id="bid-start-city" wire:model.live.debounce.250ms="startCity" class="mt-1 rounded-lg text-sm dark:bg-slate-800"><option value="">Any start city</option>@foreach ($cities as $city)<option value="{{ $city }}">{{ $city }}</option>@endforeach</select>
+                <div class="mt-4 flex gap-3"><button type="button" wire:click.debounce.250ms="finishSetup" class="min-h-11 rounded-lg bg-[#1B365D] px-4 font-semibold text-white">{{ $initialized ? 'Done' : 'Skip setup and browse' }}</button></div>
             </section>
-        @endif
         @if ($tab === 'trips')
             <section class="mt-4 space-y-3" aria-label="Trips">
                 @forelse ($trips as $trip)
@@ -107,11 +128,11 @@
                     <span class="sr-only">Layover quick filters</span>
                     <button type="button" wire:click="$toggle('extendedLayoversOnly')" aria-pressed="{{ $extendedLayoversOnly ? 'true' : 'false' }}" @class(['min-h-11 rounded-full border px-3 font-semibold focus-visible:ring-2 focus-visible:ring-amber-500', 'border-[#C5A059] bg-[#C5A059]/15 text-[#1B365D] dark:text-amber-200' => $extendedLayoversOnly, 'border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300' => ! $extendedLayoversOnly])>24h+ layover</button>
                     <button type="button" wire:click="$toggle('avoidShortLayovers')" aria-pressed="{{ $avoidShortLayovers ? 'true' : 'false' }}" @class(['min-h-11 rounded-full border px-3 font-semibold focus-visible:ring-2 focus-visible:ring-amber-500', 'border-[#C5A059] bg-[#C5A059]/15 text-[#1B365D] dark:text-amber-200' => $avoidShortLayovers, 'border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300' => ! $avoidShortLayovers])>Avoid under 10h</button>
-                    <label class="flex items-center gap-2"><span class="sr-only">Layover airport</span><select wire:model.live="layoverCity" class="min-h-11 rounded-full font-mono text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900"><option value="">Any layover airport</option>@foreach ($layoverCities as $city)<option value="{{ $city }}">{{ $city }}</option>@endforeach</select></label>
+                    <label class="flex items-center gap-2"><span class="sr-only">Layover airport</span><select wire:model.live.debounce.250ms="layoverCity" class="min-h-11 rounded-full font-mono text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900"><option value="">Any layover airport</option>@foreach ($layoverCities as $city)<option value="{{ $city }}">{{ $city }}</option>@endforeach</select></label>
                     @if ($layoverCity !== '' || $extendedLayoversOnly || $avoidShortLayovers)<button type="button" wire:click="clearLayoverFilters" class="min-h-11 rounded-full px-2 underline focus-visible:ring-2 focus-visible:ring-amber-500">Clear layovers</button>@endif
                     <label class="flex items-center gap-2">Min credit (h)<input type="number" min="0" max="300" wire:model.live.debounce.400ms="minimumCredit" class="w-20 rounded-lg text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900"></label>
                     <label class="flex items-center gap-2">Min days off<input type="number" min="0" max="31" wire:model.live.debounce.400ms="minimumDaysOff" class="w-16 rounded-lg text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900"></label>
-                    <label class="flex min-h-11 items-center gap-2"><input type="checkbox" wire:model.live="selectedOnly" class="rounded focus-visible:ring-2 focus-visible:ring-amber-500">Selected only</label>
+                    <label class="flex min-h-11 items-center gap-2"><input type="checkbox" wire:model.live.debounce.250ms="selectedOnly" class="rounded focus-visible:ring-2 focus-visible:ring-amber-500">Selected only</label>
                     <button type="button" wire:click="resetFilters" class="min-h-11 rounded-lg px-2 underline focus-visible:ring-2 focus-visible:ring-amber-500">Reset filters</button>
                 </div>
                 @error('layoverCity')<p class="mt-1 text-xs text-amber-800 dark:text-amber-300">{{ $message }}</p>@enderror

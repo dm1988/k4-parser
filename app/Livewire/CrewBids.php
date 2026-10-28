@@ -127,6 +127,9 @@ class CrewBids extends Component
             ]);
         }
         if (in_array(explode('.', $property)[0], ['goals', 'daysOff', 'startCity'], true) && $this->packageId !== null) {
+            if (explode('.', $property)[0] === 'daysOff') {
+                sort($this->daysOff);
+            }
             $this->initialized = true;
             $this->persist();
         }
@@ -409,8 +412,8 @@ class CrewBids extends Component
         $this->notice = '';
         $this->showReview = false;
         $this->pendingPackageId = null;
-        $this->rangeStart = '';
-        $this->rangeEnd = '';
+        $this->rangeStart = $package->period.'-01';
+        $this->rangeEnd = $package->period.'-01';
         $this->minimumCredit = null;
         $this->minimumDaysOff = null;
         $this->selectedOnly = false;
@@ -529,6 +532,8 @@ class CrewBids extends Component
             'layoverCities' => $layoverCities,
             'dates' => $dates,
             'monthLabel' => $month?->format('F Y'),
+            'packageStartDate' => $month?->format('Y-m-d'),
+            'packageEndDate' => $month?->endOfMonth()->format('Y-m-d'),
             'trips' => $package?->payload['trips'] ?? [],
             'total' => count(array_filter($all, fn (array $line): bool => $line['type'] === $this->tab)),
             'draft' => $this->draftId === null ? null : BidPackage::query()->where('imported_by', Auth::id())->find($this->draftId),

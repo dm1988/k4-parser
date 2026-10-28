@@ -1,5 +1,5 @@
 export function shouldWarnBeforeLeaving(root, pending) {
-    return Boolean(root && (pending || root.dataset.dirty === 'true'));
+    return Boolean(root && (pending || root.dataset.dirty === 'true' || root.dataset.preferencesDirty === 'true'));
 }
 
 export async function copyBidText(field, status, clipboard) {
@@ -39,6 +39,32 @@ export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeOb
     };
 }
 
+export function createBidGoalPreferences(labels) {
+    return {
+        labels,
+        moveGoal(goal, position) {
+            const goals = [...this.$wire.goals];
+            const current = goals.indexOf(goal);
+            if (current === -1 || !Number.isInteger(position) || position < 0 || position >= goals.length || position === current) return;
+            goals.splice(current, 1);
+            goals.splice(position, 0, goal);
+            this.$wire.goals = goals;
+            this.$dispatch('bid-goals-changed');
+        },
+        sortGoal(goal, list) {
+            const rows = [...list.children].filter((row) => row.dataset.goal);
+            const position = rows.findIndex((row) => row.dataset.goal === goal);
+            if (position === -1 || rows.length !== this.$wire.goals.length) return;
+
+            const originalRows = this.$wire.goals.map((current) => rows.find((row) => row.dataset.goal === current));
+            if (originalRows.some((row) => !row)) return;
+            // Restore the order Alpine knows before its keyed loop applies the new order.
+            originalRows.forEach((row) => list.append(row));
+            this.moveGoal(goal, position);
+        },
+    };
+}
+
 export function createBidTripDetails() {
     const tabs = ['timeline', 'layovers', 'metadata'];
 
@@ -66,6 +92,7 @@ export default function initializeCrewBids() {
     const registerComponents = () => {
         window.Alpine.data('crewBidsHeader', () => createCrewBidsHeader());
         window.Alpine.data('bidTripDetails', createBidTripDetails);
+        window.Alpine.data('bidGoalPreferences', createBidGoalPreferences);
     };
     if (window.Alpine) {
         registerComponents();

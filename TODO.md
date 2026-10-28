@@ -28,6 +28,72 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Open crew bid preferences immediately
+
+### Goal
+
+Show or hide the preferences editor immediately when its toolbar button is clicked.
+
+### Current implementation
+
+The toolbar button now toggles the client-side Livewire property directly, with a reactive expanded state. The editor stays rendered and uses `wire:show` to toggle visibility; `x-cloak` prevents an initial flash. Opening/closing no longer waits for a debounce or server response, and hiding the editor retains its inputs and pending selection timers. Preference-save and Done debounces remain in place.
+
+### Problem addressed
+
+The opener previously waited 250ms before requesting a server-rendered editor. Four focused Sail feature tests passed (34 assertions), covering preferences initialization/reload, calendar persistence, priorities, and escaped package metadata. Pint, one final Larastan run (zero errors), and changed-file diff checks passed. No new tests were added for framework visibility internals. Existing working-tree changes were preserved.
+
+Commit message: `fix: open crew bid preferences without a server round trip`
+
+## [x] Completed: Debounce Set preferences and the days-off calendar
+
+### Goal
+
+Reduce repeated preference saves while users choose several goals or UTC days off, with immediate selection feedback.
+
+### Current implementation
+
+Preference open/Done actions now use a 250ms debounce. Goal checkboxes and the days-off calendar each share a 250ms change debounce, sending their complete deferred selection after input settles. Calendar cells retain their layout using native keyboard-accessible checkboxes and immediate checked-state styling. Server-side model updates sort selected dates before saving; existing date validation, saved bid ordering, conflict visibility, clear/range actions, and package-month range defaults are preserved. Pending preference changes participate in the existing leave-page warning before their debounced request begins.
+
+### Problem addressed
+
+Individual day clicks previously sent immediate toggle actions, while each goal checkbox had its own timer. Grouping each selector's updates preserves the final selection when multiple dates are chosen or the same date is toggled repeatedly. Twelve focused Sail feature cases passed (104 assertions), including multi-date persistence/reload, deselection, conflict retention, invalid dates, clearing, and existing range/goal/list behavior. All eight focused JavaScript tests passed, including leave-page protection during the debounce interval. Pint, production build, and changed-file diff checks passed. Browser request timing was not measured. Earlier working-tree changes were preserved.
+
+One final application-wide Larastan run passed with zero errors.
+
+Commit message: `perf: debounce preference actions and batch days-off selection`
+
+## [x] Completed: Start date ranges in the bid-package month
+
+### Goal
+
+Open range date pickers in the selected bid-package month instead of the current calendar month.
+
+### Current implementation
+
+Both From and Through default to the first day of the package month whenever a package/seat context loads. Picker minimum/maximum dates use that month's first/last UTC calendar dates, including leap years. Switching packages resets the range to the new first day. Defaults do not add requested days off or save preferences until the user adds the range; existing server-side date validation remains in place.
+
+### Problem addressed
+
+Empty range fields let the browser initially show the current month, forcing users to navigate to the bid month. Eight focused Sail tests passed (67 assertions), covering first-day defaults with a different current date, year boundaries, February/leap February, rendered picker limits, package switching, explicit range application, existing range/undo behavior, and rejection of out-of-package dates without saving. Pint, one final Larastan run (zero errors), and changed-file diff checks passed. Existing debounce and documentation changes were preserved.
+
+Commit message: `fix: initialize bid date ranges from the package month`
+
+## [x] Completed: Debounce crew bid filter updates
+
+### Goal
+
+Reduce redundant result refreshes during rapid filter and preference changes.
+
+### Current implementation
+
+Added Livewire's 250ms network debounce to sort, required start city, layover airport, goal checkboxes, and Selected only. Native input state still updates immediately. Minimum credit and minimum days off retain their existing 400ms debounce. Package/seat changes, action buttons, date selection, and local panel controls remain immediate.
+
+### Problem addressed
+
+These live controls previously sent a refresh for every change, including intermediate keyboard selections and repeated checkbox changes. Confirmed the installed Livewire 4.4.8 runtime applies explicit network debounce to selects and checkboxes. Four focused Sail feature tests passed (40 assertions), covering strict goals/start-city filtering, sorting, combined layover filters, reset/context changes, and saved order. Pint, one final Larastan run (zero errors), and changed-file diff checks passed. No new tests were added for framework debounce internals; browser request timing was not measured. Existing TODO outcomes were preserved.
+
+Commit message: `perf: debounce crew bid filter and preference updates`
+
 ## [x] Completed: Trip leg and layover quick filters
 
 ### Goal
@@ -59,6 +125,28 @@ Crew complement now appears below each line ID when present. The existing eviden
 Crew distribution was only available in Details, and narrow screens hid the DH label. Eleven focused Sail cases passed (76 assertions), including collapsed-header content, incomplete trip coverage, unlinked deadheads, duplicate pairings, and missing metrics.
 
 Commit message: `feat: surface crew complement and deadheads in bid summaries`
+
+## [x] Completed: Compact crew bid controls and package metadata
+
+### Goal
+
+Reduce the space above line results while keeping package information, preferences, sorting, and quick filters accessible.
+
+### Current implementation
+
+Moved package details into a native modal opened by the info icon beside the package selector. Saved status now sits in the header; transient notices and save recovery still appear when needed. Lines/Trips/Reserve, match count, a preferences pill, sort, and Filters share one responsive control bar. Filters expands into horizontal layover chips, the airport selector, and existing numeric/selected controls; a gold indicator identifies active filters when collapsed. Preferences still opens the existing editor. Mobile wrapping keeps the bid-list action beside the title and the match count beside the view tabs.
+
+### Problem addressed
+
+Separate status, package metadata, preferences, sorting, and bordered layover rows pushed results down the page. The default view now keeps metadata and filters closed, with keyboard focus, pressed/expanded states, light/dark styling, and existing loading/error feedback.
+
+### Final integration outcome (2026-10-28)
+
+All 55 focused Crew Bids feature cases passed (278 assertions), and all seven focused JavaScript tests passed. After the visual review's final mobile spacing refinement, the two affected rendering/saved-order cases passed again (40 assertions). Pint and the final production build passed. One application-wide Larastan run passed with zero errors; the full test suite was not run.
+
+Reviewed actual Blade markup and production CSS with synthetic, nonpersistent data in headless Chrome at 390px and 1440px, including light/dark appearance, collapsed/expanded filters, card summaries, and the package modal. Neither exact viewport had horizontal overflow. The mobile header/control bar measured 181px/105px, and desktop measured 69px/53px. Trusted Escape input closed the modal and returned focus to its info button without closing Filters; another Escape closed Filters and returned focus to its trigger. Live authenticated interaction and physical touch-device review remain untested. Existing source-document edits, pay-rate data, other working-tree changes, and concurrent staging were preserved.
+
+Commit message: `style: consolidate crew bid controls and collapse secondary metadata`
 
 ## [x] Completed: Crew bid pay rates JSON
 
