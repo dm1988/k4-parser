@@ -80,6 +80,12 @@ class CrewBids extends Component
 
     public bool $selectedOnly = false;
 
+    public string $layoverCity = '';
+
+    public bool $extendedLayoversOnly = false;
+
+    public bool $avoidShortLayovers = false;
+
     public bool $showPreferences = false;
 
     public bool $showList = false;
@@ -111,12 +117,13 @@ class CrewBids extends Component
 
     public function updated(string $property): void
     {
-        if (in_array($property, ['minimumCredit', 'minimumDaysOff', 'sort', 'tab'], true)) {
+        if (in_array($property, ['minimumCredit', 'minimumDaysOff', 'sort', 'tab', 'layoverCity'], true)) {
             $this->validate([
                 'minimumCredit' => ['nullable', 'integer', 'between:0,300'],
                 'minimumDaysOff' => ['nullable', 'integer', 'between:0,31'],
                 'sort' => ['required', Rule::in(['best', 'credit', 'block', 'days_off', 'id'])],
                 'tab' => ['required', Rule::in(['flying', 'reserve', 'trips'])],
+                'layoverCity' => ['nullable', 'regex:/\A[A-Z]{3}\z/'],
             ]);
         }
         if (in_array(explode('.', $property)[0], ['goals', 'daysOff', 'startCity'], true) && $this->packageId !== null) {
@@ -216,7 +223,16 @@ class CrewBids extends Component
         $this->minimumCredit = null;
         $this->minimumDaysOff = null;
         $this->selectedOnly = false;
+        $this->clearLayoverFilters();
         $this->persist();
+    }
+
+    public function clearLayoverFilters(): void
+    {
+        $this->layoverCity = '';
+        $this->extendedLayoversOnly = false;
+        $this->avoidShortLayovers = false;
+        $this->resetValidation('layoverCity');
     }
 
     public function clearDates(): void
@@ -398,6 +414,7 @@ class CrewBids extends Component
         $this->minimumCredit = null;
         $this->minimumDaysOff = null;
         $this->selectedOnly = false;
+        $this->clearLayoverFilters();
         $this->resetErrorBag();
     }
 
@@ -442,14 +459,18 @@ class CrewBids extends Component
     {
         $package = $this->packageId === null ? null : $this->package();
         $matcher = app(BidLineMatcher::class);
+        $layoverFilters = $this->layoverCity !== '' || $this->extendedLayoversOnly || $this->avoidShortLayovers
+            ? ['city' => $this->layoverCity, 'extended' => $this->extendedLayoversOnly, 'avoid_short' => $this->avoidShortLayovers]
+            : [];
         $all = [];
         foreach ($package?->payload['lines'] ?? [] as $line) {
             if ($line[$this->seat === 'CA' ? 'captains' : 'first_officers'] > 0) {
-                $all[$line['id']] = $matcher->present($line, $package->period, $this->preferences(), $package->payload['trips'] ?? []);
+                $all[$line['id']] = $matcher->present($line, $package->period, $this->preferences(), $package->payload['trips'] ?? [], $layoverFilters);
             }
         }
         $lines = array_values(array_filter($all, fn (array $line): bool => $line['type'] === $this->tab
             && $line['matches']
+            && $line['layover_matches']
             && (! $this->selectedOnly || in_array($line['id'], $this->selections, true))
             && ($this->minimumCredit === null || ($line['credit'] !== null && ($line['credit_seconds'] ?? $line['credit'] * 60) >= $this->minimumCredit * 3600))
             && ($this->minimumDaysOff === null || ($line['days_off'] !== null && $line['days_off'] >= $this->minimumDaysOff))));
@@ -460,6 +481,8 @@ class CrewBids extends Component
         }
         $cities = array_values(array_unique(array_filter(array_column($all, 'start_city'))));
         sort($cities);
+        $layoverCities = array_values(array_unique(array_merge(...array_column($all, 'layover_airports'))));
+        sort($layoverCities);
         $month = $package === null ? null : CarbonImmutable::parse($package->period.'-01', 'UTC');
         $dates = [];
         for ($day = 1; $month !== null && $day <= $month->daysInMonth; $day++) {
@@ -503,6 +526,7 @@ class CrewBids extends Component
             'allLines' => $all,
             'selected' => $selected,
             'cities' => $cities,
+            'layoverCities' => $layoverCities,
             'dates' => $dates,
             'monthLabel' => $month?->format('F Y'),
             'trips' => $package?->payload['trips'] ?? [],

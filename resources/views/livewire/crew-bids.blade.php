@@ -1,24 +1,37 @@
-<div class="mx-auto max-w-7xl px-3 py-6 sm:px-6" data-crew-bids data-dirty="{{ $dirty ? 'true' : 'false' }}" x-data="crewBidsHeader" @keydown.escape.window="if ($wire.showList) { $wire.showList = false; $refs.listTrigger?.focus() }">
+<div class="mx-auto max-w-7xl px-3 py-6 sm:px-6" data-crew-bids data-dirty="{{ $dirty ? 'true' : 'false' }}" x-data="crewBidsHeader" @keydown.escape.window="if ($wire.showList) { $wire.showList = false; $refs.listTrigger?.focus() } else if (filtersOpen) { filtersOpen = false; $refs.filtersTrigger?.focus() }">
     <header x-ref="workspaceHeader" class="sticky top-0 z-30 -mx-3 flex flex-wrap items-center gap-3 border-b border-slate-200 bg-gray-100 px-3 py-3 shadow-sm dark:border-slate-800 dark:bg-gray-950 sm:-mx-6 sm:px-6">
         <h1 class="text-2xl font-bold text-[#1B365D] dark:text-amber-200">K4 Bids</h1>
         @if ($packages->isNotEmpty())
+            <div class="order-2 flex w-full min-w-0 max-w-full items-center gap-1 sm:order-1 sm:w-auto">
             <label class="sr-only" for="bid-package">Bid package</label>
-            <select id="bid-package" wire:model="contextPackage" wire:change="changeContext" class="max-w-full rounded-lg border-slate-300 bg-white text-sm dark:border-slate-600 dark:bg-slate-900">
+            <select id="bid-package" wire:model="contextPackage" wire:change="changeContext" class="min-w-0 max-w-full rounded-lg border-slate-300 bg-white text-sm dark:border-slate-600 dark:bg-slate-900">
                 @foreach ($packages as $option)<option value="{{ $option->id }}">{{ $option->period }} · B{{ $option->fleet }} · {{ $option->source_revision }}</option>@endforeach
             </select>
+            @if ($package)<button type="button" x-ref="packageDetailsTrigger" @click="$refs.packageDetails.showModal()" aria-label="Open package details" aria-haspopup="dialog" aria-controls="bid-package-details" title="Package details" class="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-200 focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-slate-400 dark:hover:bg-slate-800"><x-heroicon-o-information-circle class="h-5 w-5" aria-hidden="true" /></button>@endif
+            </div>
             <label class="sr-only" for="bid-seat">Seat</label>
-            <select id="bid-seat" wire:model="contextSeat" wire:change="changeContext" class="rounded-lg border-slate-300 bg-white text-sm dark:border-slate-600 dark:bg-slate-900"><option value="FO">First Officer</option><option value="CA">Captain</option></select>
+            <select id="bid-seat" wire:model="contextSeat" wire:change="changeContext" class="order-3 rounded-lg border-slate-300 bg-white text-sm dark:border-slate-600 dark:bg-slate-900 sm:order-2"><option value="FO">First Officer</option><option value="CA">Captain</option></select>
         @endif
-        <button type="button" x-ref="listTrigger" wire:click="$set('showList', true)" class="ms-auto inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#1B365D] px-4 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500"><x-heroicon-o-shopping-cart class="h-5 w-5 shrink-0" aria-hidden="true" /><span>My bid list ({{ count($selections) }})</span></button>
-        @can('manage-crew-bids')<button type="button" wire:click="$toggle('showImport')" class="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm underline focus-visible:ring-2 focus-visible:ring-amber-500"><x-heroicon-o-cog-6-tooth class="h-4 w-4 shrink-0" aria-hidden="true" /><span>Manage package</span></button>@endcan
+        <button type="button" x-ref="listTrigger" wire:click="$set('showList', true)" class="order-1 ms-auto inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#1B365D] px-4 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500 sm:order-4"><x-heroicon-o-shopping-cart class="h-5 w-5 shrink-0" aria-hidden="true" /><span>My bid list ({{ count($selections) }})</span></button>
+        @can('manage-crew-bids')<button type="button" wire:click="$toggle('showImport')" class="order-4 inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm underline focus-visible:ring-2 focus-visible:ring-amber-500 sm:order-5"><x-heroicon-o-cog-6-tooth class="h-4 w-4 shrink-0" aria-hidden="true" /><span>Manage package</span></button>@endcan
+        <span class="order-5 text-xs text-slate-500 dark:text-slate-400 sm:order-6" role="status" aria-live="polite"><span wire:loading>Updating…</span><span wire:loading.remove>{{ $dirty ? 'Unsaved changes' : ($revision > 0 ? 'Saved' : '') }}</span></span>
     </header>
 
-    <div class="mt-3 flex min-h-6 flex-wrap gap-3 text-sm" role="status" aria-live="polite">
-        <span wire:loading>Updating…</span>
-        <span wire:loading.remove>{{ $dirty ? 'Unsaved changes' : ($revision > 0 ? 'Saved' : '') }}</span>
+    @if ($package)
+        <dialog id="bid-package-details" x-ref="packageDetails" wire:ignore.self aria-labelledby="bid-package-details-title" @keydown.escape.stop @click="if ($event.target === $el) $el.close()" @close="$refs.packageDetailsTrigger.focus()" class="fixed inset-0 m-auto max-h-[80dvh] w-[calc(100%_-_2rem)] max-w-lg overflow-y-auto rounded-xl border border-slate-200 bg-white p-0 text-slate-900 shadow-xl backdrop:bg-slate-950/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+            <section class="p-5">
+                <div class="flex items-center justify-between gap-3"><h2 id="bid-package-details-title" class="text-lg font-semibold">Package details</h2><button type="button" autofocus @click="$refs.packageDetails.close()" aria-label="Close package details" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-amber-500 dark:hover:bg-slate-800"><x-heroicon-o-x-mark class="h-5 w-5" aria-hidden="true" /></button></div>
+                <div class="mt-2 space-y-2 text-sm text-slate-600 dark:text-slate-300"><p>{{ $monthLabel }} · B{{ $package->fleet }} · {{ $seat }} · {{ $package->source_revision }}</p><p>{{ count($allLines) }} eligible lines · {{ count($trips) }} imported trips</p>@foreach ($package->payload['coverage'] as $source => $present)<p>{{ ucfirst($source) }}: {{ $present ? 'Imported' : 'Not imported' }}</p>@endforeach</div>
+            </section>
+        </dialog>
+    @endif
+
+    @if ($dirty || $notice)
+    <div class="mt-2 flex flex-wrap gap-3 text-sm" role="status" aria-live="polite">
         @if ($dirty)<button type="button" wire:click="retrySave" class="font-semibold underline">Retry save</button><button type="button" wire:click="reloadSaved" wire:confirm="Discard local edits and reload saved choices?" class="underline">Reload saved choices</button>@endif
         @if ($notice)<span wire:key="bid-notice-{{ md5($notice) }}" x-data="{ visible: true }" x-show="visible" x-init="setTimeout(() => visible = false, 8000)">{{ $notice }} @if ($undoId)<button type="button" wire:click="undoAdd" class="font-semibold underline">Undo addition</button>@endif</span>@endif
     </div>
+    @endif
     @if ($errors->any())<div role="alert" class="my-3 rounded-lg border border-amber-500 p-3 text-sm text-amber-900 dark:text-amber-200">@foreach ($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
     <p data-bid-network-error hidden role="alert" class="my-3 rounded-lg border border-amber-500 p-3 text-sm">Request failed. Check your choices and retry the action. <button type="button" wire:click="retrySave" class="min-h-11 underline">Retry saving preferences</button></p>
 
@@ -55,16 +68,23 @@
     @endif
 
     @if ($package)
-        <details class="my-3 text-sm"><summary class="inline-block min-h-8 cursor-pointer underline">Package details</summary><div class="mt-2 space-y-1 text-slate-600 dark:text-slate-300"><p>{{ $monthLabel }} · B{{ $package->fleet }} · {{ $seat }} · {{ $package->source_revision }}</p><p>{{ count($allLines) }} eligible lines · {{ count($trips) }} imported trips</p>@foreach ($package->payload['coverage'] as $source => $present)<p>{{ ucfirst($source) }}: {{ $present ? 'Imported' : 'Not imported' }}</p>@endforeach</div></details>
-        <nav class="mt-4 flex gap-2 border-b border-slate-200 pb-2 dark:border-slate-700" aria-label="Bid package views">
+        <div class="my-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-slate-200 pb-2 dark:border-slate-700" data-bid-control-toolbar>
+        <nav class="flex shrink-0 gap-1" aria-label="Bid package views">
             @foreach (['flying' => 'Lines', 'trips' => 'Trips', 'reserve' => 'Reserve'] as $value => $label)<button type="button" wire:click="$set('tab', '{{ $value }}')" @class(['min-h-11 rounded-lg px-4 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-amber-500', 'bg-[#1B365D] text-white' => $tab === $value, 'text-slate-600 dark:text-slate-300' => $tab !== $value]) aria-current="{{ $tab === $value ? 'page' : 'false' }}">{{ $label }}</button>@endforeach
         </nav>
-        <div class="mt-4 flex flex-wrap items-center gap-2 text-sm">
-            <p>Preferences: @forelse ($goals as $goal){{ $goalLabels[$goal] ?? $goal }}{{ $loop->last ? '' : ' → ' }}@empty None @endforelse · {{ count($daysOff) }} dates off (UTC)@if ($startCity) · Start {{ $startCity }}@endif</p>
-            <button type="button" wire:click="$toggle('showPreferences')" class="min-h-11 px-2 font-semibold underline">Edit preferences</button>
+        @if ($tab !== 'trips')<span class="ms-auto whitespace-nowrap text-xs text-slate-500 dark:text-slate-400" aria-live="polite">{{ count($lines) }} matching / {{ $total }}</span>@endif
+        <div @class(['flex max-w-full flex-wrap items-center justify-end gap-2 text-xs', 'ms-auto' => $tab === 'trips'])>
+            <button type="button" wire:click="$toggle('showPreferences')" aria-expanded="{{ $showPreferences ? 'true' : 'false' }}" aria-controls="bid-preferences" class="inline-flex min-h-11 max-w-40 items-center gap-1.5 rounded-full bg-slate-200/70 px-3 text-slate-700 focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-800 dark:text-slate-200 sm:max-w-64">
+                <x-heroicon-o-adjustments-horizontal class="h-4 w-4 shrink-0" aria-hidden="true" /><span class="sr-only">Edit preferences: </span><span class="truncate">@forelse ($goals as $goal){{ $goalLabels[$goal] ?? $goal }}{{ $loop->last ? '' : ' → ' }}@empty Preferences @endforelse @if ($daysOff !== []) · {{ count($daysOff) }} dates off (UTC)@endif @if ($startCity) · Start {{ $startCity }}@endif</span>
+            </button>
+            @if ($tab !== 'trips')
+                <label for="bid-sort" class="sr-only">Sort lines</label><select id="bid-sort" wire:model.live="sort" class="min-h-11 w-32 max-w-full rounded-lg text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900 sm:w-auto"><option value="best">{{ $goals === [] ? 'Line ID (no goals set)' : 'Best match' }}</option><option value="credit">Highest credit</option><option value="block">Highest block time</option><option value="days_off">Most days off</option><option value="id">Line ID</option></select>
+                <button type="button" x-ref="filtersTrigger" @click="filtersOpen = ! filtersOpen" :aria-expanded="filtersOpen" aria-controls="bid-filters" class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-slate-300 px-3 font-semibold focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-600"><x-heroicon-o-funnel class="h-4 w-4" aria-hidden="true" /><span>Filters</span>@if ($layoverCity !== '' || $extendedLayoversOnly || $avoidShortLayovers || $minimumCredit !== null || $minimumDaysOff !== null || $selectedOnly)<span class="h-1.5 w-1.5 rounded-full bg-[#C5A059]" aria-hidden="true"></span><span class="sr-only">active</span>@endif</button>
+            @endif
+        </div>
         </div>
         @if ($showPreferences)
-            <section class="my-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900" aria-label="Set preferences">
+            <section id="bid-preferences" class="my-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900" aria-label="Set preferences">
                 <h2 class="text-lg font-semibold">Set preferences</h2>
                 <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Choose goals, then order them. Lower priorities only break ties. Days off and start city exclude nonmatching lines.</p>
                 <fieldset class="mt-3 flex flex-wrap gap-4"><legend class="mb-2 text-sm font-semibold">1. Choose goals</legend>@foreach ($goalLabels as $value => $label)<label class="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" wire:model.live="goals" value="{{ $value }}" class="rounded">{{ $label }}</label>@endforeach</fieldset>
@@ -82,10 +102,24 @@
                 @empty<p class="rounded-xl border border-slate-200 p-5 dark:border-slate-700">Trips file not imported or no supported trip details were found. @can('manage-crew-bids')Use Manage package to import Trips.@else An admin can update this package.@endcan</p>@endforelse
             </section>
         @else
-            <div class="relative z-10 my-3 flex flex-wrap items-center gap-3 bg-gray-100 py-2 text-sm dark:bg-gray-950">
-                <span>{{ count($lines) }} matching / {{ $total }}</span><label for="bid-sort" class="sr-only">Sort lines</label><select id="bid-sort" wire:model.live="sort" class="rounded-lg text-sm dark:bg-slate-900"><option value="best">{{ $goals === [] ? 'Line ID (no goals set)' : 'Best match' }}</option><option value="credit">Highest credit</option><option value="block">Highest block time</option><option value="days_off">Most days off</option><option value="id">Line ID</option></select>
-                <details><summary class="cursor-pointer px-2 py-3 underline">Filters</summary><div class="absolute start-0 z-20 flex max-w-full flex-wrap gap-3 rounded-xl border border-slate-300 bg-white p-4 shadow-lg dark:border-slate-600 dark:bg-slate-900"><label>Minimum credit (hours)<input type="number" min="0" max="300" wire:model.live.debounce.400ms="minimumCredit" class="block w-28 rounded-lg dark:bg-slate-800"></label><label>Minimum days off<input type="number" min="0" max="31" wire:model.live.debounce.400ms="minimumDaysOff" class="block w-28 rounded-lg dark:bg-slate-800"></label><label class="flex items-center gap-2"><input type="checkbox" wire:model.live="selectedOnly">Selected only</label><button type="button" wire:click="resetFilters" class="min-h-11 underline">Reset filters</button></div></details>
-                <span wire:loading class="text-slate-500">Updating results…</span>
+            <div id="bid-filters" x-show="filtersOpen" x-cloak class="mb-3 space-y-2" role="region" aria-label="Line filters">
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <span class="sr-only">Layover quick filters</span>
+                    <button type="button" wire:click="$toggle('extendedLayoversOnly')" aria-pressed="{{ $extendedLayoversOnly ? 'true' : 'false' }}" @class(['min-h-11 rounded-full border px-3 font-semibold focus-visible:ring-2 focus-visible:ring-amber-500', 'border-[#C5A059] bg-[#C5A059]/15 text-[#1B365D] dark:text-amber-200' => $extendedLayoversOnly, 'border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300' => ! $extendedLayoversOnly])>24h+ layover</button>
+                    <button type="button" wire:click="$toggle('avoidShortLayovers')" aria-pressed="{{ $avoidShortLayovers ? 'true' : 'false' }}" @class(['min-h-11 rounded-full border px-3 font-semibold focus-visible:ring-2 focus-visible:ring-amber-500', 'border-[#C5A059] bg-[#C5A059]/15 text-[#1B365D] dark:text-amber-200' => $avoidShortLayovers, 'border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300' => ! $avoidShortLayovers])>Avoid under 10h</button>
+                    <label class="flex items-center gap-2"><span class="sr-only">Layover airport</span><select wire:model.live="layoverCity" class="min-h-11 rounded-full font-mono text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900"><option value="">Any layover airport</option>@foreach ($layoverCities as $city)<option value="{{ $city }}">{{ $city }}</option>@endforeach</select></label>
+                    @if ($layoverCity !== '' || $extendedLayoversOnly || $avoidShortLayovers)<button type="button" wire:click="clearLayoverFilters" class="min-h-11 rounded-full px-2 underline focus-visible:ring-2 focus-visible:ring-amber-500">Clear layovers</button>@endif
+                    <label class="flex items-center gap-2">Min credit (h)<input type="number" min="0" max="300" wire:model.live.debounce.400ms="minimumCredit" class="w-20 rounded-lg text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900"></label>
+                    <label class="flex items-center gap-2">Min days off<input type="number" min="0" max="31" wire:model.live.debounce.400ms="minimumDaysOff" class="w-16 rounded-lg text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900"></label>
+                    <label class="flex min-h-11 items-center gap-2"><input type="checkbox" wire:model.live="selectedOnly" class="rounded focus-visible:ring-2 focus-visible:ring-amber-500">Selected only</label>
+                    <button type="button" wire:click="resetFilters" class="min-h-11 rounded-lg px-2 underline focus-visible:ring-2 focus-visible:ring-amber-500">Reset filters</button>
+                </div>
+                @error('layoverCity')<p class="mt-1 text-xs text-amber-800 dark:text-amber-300">{{ $message }}</p>@enderror
+                @if ($layoverCity !== '' || $extendedLayoversOnly || $avoidShortLayovers)
+                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Matching layovers are outlined in gold in the trip timeline. Avoid under 10h applies to every airport and requires complete connection data. Your bid list keeps its order.</p>
+                @elseif ($layoverCities === [])
+                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">No connected layover data is available for these lines.</p>
+                @endif
             </div>
             <p class="mb-3 text-xs text-slate-500 dark:text-slate-400">Credit h:mm[:ss] · Block h:mm · UTC · Blue: flying trip (includes layover/rest) · Orange: reserve · Light: off · ?: unknown</p>
             <section class="space-y-3" aria-label="Available lines">

@@ -28,6 +28,56 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Trip leg and layover quick filters
+
+### Goal
+
+Find lines with extended layovers at a chosen airport and exclude short connections without changing the private bid order.
+
+### Current implementation
+
+Added combinable 24h+ and avoid-under-10h controls, a connected-layover airport selector, clear/reset actions, and gold outlines with text on matching timeline segments. Uses existing scheduled UTC connection calculations; source rest remains separate. Positive extended-layover evidence can match partial trip coverage, while avoiding short connections requires all linked trips and consistent connections. Selected lines remain in the bid drawer in their original order. Filters reset with the package/seat context.
+
+### Problem addressed
+
+Previously duration flags required inspecting each expanded pairing individually. The focused Sail regression run passed 11 tests (44 assertions), including exact thresholds, combined filters, absent/empty trips, inconsistent connections, reset/context changes, and preserved source payloads and saved choices.
+
+Commit message: `feat: filter crew bid lines by layover duration and airport`
+
+## [x] Completed: Crew complement and deadhead summary indicators
+
+### Goal
+
+Compare crew distribution and known deadhead legs without opening Details.
+
+### Current implementation
+
+Crew complement now appears below each line ID when present. The existing evidence-based DH indicator keeps its text visible on narrow screens. Route flags, accessible explanations, missing-data omission, and source payloads are preserved.
+
+### Problem addressed
+
+Crew distribution was only available in Details, and narrow screens hid the DH label. Eleven focused Sail cases passed (76 assertions), including collapsed-header content, incomplete trip coverage, unlinked deadheads, duplicate pairings, and missing metrics.
+
+Commit message: `feat: surface crew complement and deadheads in bid summaries`
+
+## [x] Completed: Crew bid pay rates JSON
+
+### Goal
+
+Provide valid JSON pay-rate data for the crew bid tool.
+
+### Current implementation
+
+Converted `app/Data/pay_rates.json` from a JavaScript fragment to a JSON object with quoted `CA` and `FO` keys and numeric arrays. Preserved all 12 rates per seat in their original order.
+
+### Problem addressed
+
+Unquoted keys, `Object.freeze()` calls, and a trailing JavaScript closing wrapper prevented JSON parsing.
+
+Validation: Sail JSON parsing and exact comparison passed for all 24 rates. One Larastan run passed with zero errors. No PHP files changed; Pint was not required. Unrelated working-tree changes preserved.
+
+Commit message: `fix: convert crew bid pay rates to valid JSON`
+
 ## Completed: FP: Delay reporting: Departure UTC time format
 
 - [x] Format delay reporting UTC timestamps as `2026-10-26 03:47z`.
@@ -214,6 +264,36 @@ Added shopping-cart, plus, check, calendar, airplane, document, and settings ico
 Validation: Three focused Crew Bids tests passed (43 assertions), covering inline previews, matching explanations, and saved flying/reserve selections. Production build, Pint, one Larastan run (zero errors), and diff checks passed. No new tests were added for this presentation-only change. Manual browser review remains pending; existing working-tree changes were preserved.
 
 Commit message: `style: add icons to crew bidding actions and disclosures`
+
+### [x] Planning outcome: Auto bidding feature (2026-10-27)
+
+Expanded the existing Auto bidding section in CREW_BIDS.md into a plan for submitting the user's exact reviewed list to Kalitta's bidding system, as confirmed by the user. Documented transient credentials, read-only preflight and replacement comparison, final confirmation, workspace/portal state binding, one submission attempt, verified receipt/read-back, unknown-outcome reconciliation, and a separate read-only award-discovery workflow. The recommended baseline re-enters credentials for final submission so credentials and portal cookies do not persist between operations. Implementation remains pending; no login or bid submission occurred.
+
+Inspected the supplied private saved-source HTML without recording field values. Observed a Web Forms POST form, fresh-page hidden state/event-validation requirements, 315 Choice/Line input pairs in interleaved visual order, numeric/training-line validation, account/context controls, and a confirmation-label candidate. Recorded the observed Bid Awarded, All Bids Awarded, Submitted Bid Lines, and Days Off and Comp Lines navigation. Explicitly left the submit event, rank/identifier mapping, current authentication behavior, usable capacity, deadlines/time zone, confirmation semantics, and award schema unverified. The public login page was readable through the web tool; authenticated Bid Sheet/All Bids Awarded were inaccessible through that tool. Their contents were not inferred from link names.
+
+The plan separates authenticated discovery, offline adapter/preflight coverage, reviewed submission, and an award-integration decision. Added implementation acceptance cases for mapping/rank preservation, eligibility/capacity, unrelated portal settings, stale/concurrent state, owner isolation, duplicate actions, ambiguous network outcomes, and secret redaction. Kept the existing review/copy workflow and background/autosave behavior intact. No credentials, cookies, raw page state, or private source contents were added to documentation or fixtures.
+
+Validation: Documentation diff checks passed. Only CREW_BIDS.md and TODO.md were edited for this task; existing application/test changes were preserved. No runtime tests, Pint, build, or Larastan were needed for this documentation-only change. Authenticated discovery and submission verification remain future implementation work.
+
+Commit message: `docs: plan reviewed Kalitta bid submission and award discovery`
+
+### [x] CREW_BIDS.md cleanup outcome (2026-10-27)
+
+Reorganized CREW_BIDS.md into the current product contract, pending auto-bidding plan, remaining enhancements, open decisions, and verification guidance. Removed completed follow-up/task sections, duplicate first-release workflows and decision lists, historical examples for unimplemented filters, and obsolete implementation scaffolding. Preserved the confirmed UTC/occupancy/ranking/privacy rules and exact Block/base-credit/PCH reference cases as product reference rather than completed tasks. Retained outstanding browser review, quick-glance flags, legal-rest/fatigue work, private tags/notes, advanced filters, additional imports/exports, estimated pay, and personal-data visibility decisions. Corrected stale proposed-route and unverified-credit wording.
+
+Validation: Confirmed the pending auto-bidding plan was preserved verbatim, completed checkbox/follow-up sections were removed, and documentation diff checks passed. Reduced the document from approximately 555 to 217 lines. Only documentation changed; no runtime tests, Pint, build, or Larastan were required. Existing working-tree changes were preserved.
+
+Commit message: `docs: organize crew bidding requirements and remove completed tasks`
+
+### [x] Quick-glance card flags outcome (2026-10-27)
+
+Added compact trip endpoint and deadhead indicators beneath each line ID. A common return airport shows its code, a shared open route shows origin→destination, and differing linked-trip endpoints show Mixed ends. Endpoint claims require every linked trip to have valid known endpoints; missing records/codes suppress that flag. A known deadhead still produces DH when other trip details are missing. Unlinked trips and repeated pairing references do not create extra flags. Endpoints remain available from legacy metadata when leg details are absent, without inferring deadhead absence or an assigned crew base.
+
+Badges use existing Heroicons, compact icons on narrow screens, text labels on larger screens, light/dark styling, accessible image descriptions, and hover titles. Full explanations appear in Details so their meaning is accessible without hover. The badges fit within the existing header row; no new card row or scrollbar was introduced. Flags are derived during presentation, so existing published packages work without reimport and source payloads/ranks are unchanged. Fatigue/time-zone/circumnavigation tags remain deferred pending definitions. Removed the completed current-focus section from CREW_BIDS.md and retained the resulting behavior in its product contract.
+
+Validation: 44 focused Crew Bids tests passed (232 assertions), including common return endpoints across trips, open routes, mixed endpoints, positive deadhead evidence with missing records, absent endpoint/leg data, unlinked deadheads, duplicate references, accessible explanations, unchanged payloads, and existing filtering/ranking behavior. Pint, production Vite build, one Larastan run (zero errors), and diff checks passed. Sail availability and existing Heroicons 2.7.0 were confirmed. Manual browser sizing/interaction review remains pending. Existing documentation edits were preserved.
+
+Commit message: `feat: show trip endpoint and deadhead flags on bid cards`
 
 ## Unified upload
 Currently: 2 tabs have 2 different upload points, user has to choose 

@@ -266,6 +266,72 @@ class CrewBidsTest extends TestCase
             ->assertSee('8:00')->assertSee('100:00')->assertSee('Deadhead')->assertDontSee('Hotel details');
 
         $this->assertSame(1, substr_count($page->html(), 'K4 749'));
+        $page->assertSeeHtml('aria-label="All linked trips start and end at MIA."')
+            ->assertSeeHtml('aria-label="Includes deadhead legs in the available trip details."')
+            ->assertSeeHtml('aria-label="Trip flag explanations for F1"');
+
+        $document = new \DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$page->html());
+        $header = (new \DOMXPath($document))->query('//article[.//h3[contains(., "F1")]]/div[1]')->item(0);
+        $this->assertStringContainsString('1 CA 2 FO', $header->textContent);
+        $this->assertStringContainsString('DH', $header->textContent);
+    }
+
+    /** @param array<int, array{0: string, 1: string, 2: bool, 3?: bool}|null> $tripSpecifications
+     * @param  list<string>  $expectedLabels
+     */
+    #[DataProvider('quickFlagSources')]
+    public function test_quick_flags_require_complete_endpoints_but_keep_positive_deadhead_evidence(array $tripSpecifications, array $expectedLabels): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['pairings'] = [];
+        $payload['trips'] = [999 => [
+            'id' => '999', 'start_date' => '2026-11-01', 'end_date' => '2026-11-01',
+            'start_city' => 'MIA', 'end_city' => 'CVG', 'report' => '00:00', 'release' => '03:30',
+            'legs' => [['date' => '2026-11-01', 'origin' => 'MIA', 'destination' => 'CVG', 'departure' => '01:00', 'arrival' => '03:00', 'deadhead' => true]],
+        ]];
+        foreach ($tripSpecifications as $id => $specification) {
+            $pairing = ['id' => (string) $id, 'date' => '2026-11-01'];
+            $payload['lines']['F1']['pairings'][] = $pairing;
+            $payload['lines']['F1']['pairings'][] = $pairing;
+            if ($specification === null) {
+                continue;
+            }
+            [$origin, $destination, $deadhead] = $specification;
+            $via = $origin === 'ANC' ? 'CVG' : 'ANC';
+            $payload['trips'][$id] = [
+                'id' => (string) $id, 'start_date' => '2026-11-01', 'end_date' => '2026-11-01',
+                'start_city' => $origin, 'end_city' => $destination, 'report' => '00:00', 'release' => '06:30',
+                'legs' => ($specification[3] ?? true) ? [
+                    ['date' => '2026-11-01', 'origin' => $origin, 'destination' => $via, 'departure' => '01:00', 'arrival' => '03:00', 'deadhead' => false],
+                    ['date' => '2026-11-01', 'origin' => $via, 'destination' => $destination ?: $origin, 'departure' => '04:00', 'arrival' => '06:00', 'deadhead' => $deadhead],
+                ] : [],
+            ];
+        }
+        $package->update(['payload' => $payload]);
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines[0]['quick_flags'], 'label') === $expectedLabels);
+
+        $this->assertSame($expectedLabels === [] ? 0 : 1, substr_count($page->html(), 'aria-label="Trip flags for F1"'));
+        $this->assertSame($payload, $package->fresh()->payload);
+    }
+
+    /** @return array<string, array{array<int, array{0: string, 1: string, 2: bool, 3?: bool}|null>, list<string>}> */
+    public static function quickFlagSources(): array
+    {
+        return [
+            'return airport and deadhead' => [[749 => ['MIA', 'MIA', true]], ['MIA', 'DH']],
+            'shared return airport across trips' => [[749 => ['MIA', 'MIA', false], 750 => ['MIA', 'MIA', false]], ['MIA']],
+            'common open route' => [[749 => ['MIA', 'CVG', false]], ['MIA→CVG']],
+            'different return airports' => [[749 => ['MIA', 'MIA', false], 750 => ['ANC', 'ANC', false]], ['Mixed ends']],
+            'partial coverage with a known deadhead' => [[749 => ['MIA', 'MIA', true], 750 => null], ['DH']],
+            'partial coverage without a known deadhead' => [[749 => ['MIA', 'MIA', false], 750 => null], []],
+            'missing endpoint' => [[749 => ['MIA', '', false]], []],
+            'known endpoints without legs' => [[749 => ['MIA', 'MIA', false, false]], ['MIA']],
+            'no linked trips despite an unrelated deadhead' => [[], []],
+        ];
     }
 
     public function test_legacy_trip_data_calculates_block_and_overnight_layovers_across_the_year_boundary(): void

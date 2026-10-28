@@ -39,7 +39,7 @@
                         </details>
                     </li>
                     @if ($leg['connection_status'] !== null)
-                        <li class="w-36 shrink-0">
+                        <li @class(['w-36 shrink-0 rounded-md', 'outline-2 outline-offset-2 outline-[#C5A059]' => $leg['layover_matches_filter']])>
                             <p class="mb-2 font-mono text-xs text-slate-500 dark:text-slate-400">{{ $leg['arrival_date'] }}</p>
                             @if ($leg['connection_status'] === 'layover')
                                 <details @class(['rounded-md border focus-within:ring-2 focus-within:ring-amber-500', 'border-amber-400 bg-amber-50 text-amber-950 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100' => $leg['layover_highlight'] === 'short', 'border-blue-300 bg-blue-50 text-[#1B365D] dark:border-blue-700 dark:bg-blue-950 dark:text-blue-200' => $leg['layover_highlight'] === 'extended', 'border-[#C5A059]/50 bg-amber-50 text-amber-950 dark:bg-amber-950 dark:text-amber-100' => $leg['layover_highlight'] === null])>
@@ -47,6 +47,7 @@
                                         <span class="block text-[10px] font-semibold uppercase tracking-wide">Layover</span>
                                         <span class="mt-1 block font-mono text-sm font-bold">{{ $leg['destination'] }}</span>
                                         <span class="mt-1 block font-mono text-xs">{{ $leg['layover_label'] }}</span>
+                                        @if ($leg['layover_matches_filter'])<span class="mt-1 block text-[10px] font-semibold">Matches layover filter</span>@endif
                                         @if ($leg['layover_highlight'] === 'short')<span class="mt-2 inline-flex rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">Short layover · under 10h</span>
                                         @elseif ($leg['layover_highlight'] === 'extended')<span class="mt-2 inline-flex rounded-full border border-blue-300 bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-[#1B365D] dark:border-blue-700 dark:bg-blue-950 dark:text-blue-200">Extended layover · 24h+</span>@endif
                                     </summary>

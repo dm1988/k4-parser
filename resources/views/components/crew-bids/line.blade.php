@@ -3,6 +3,17 @@
     <div class="relative -mx-2 grid min-h-11 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 bg-white px-2 dark:bg-slate-900 sm:gap-3 group-has-[[data-bid-expandable][open]]/bid-line:sticky group-has-[[data-bid-expandable][open]]/bid-line:top-[var(--crew-bids-header-height,0px)] group-has-[[data-bid-expandable][open]]/bid-line:z-20 group-has-[[data-bid-expandable][open]]/bid-line:shadow-sm">
         <div>
             <h3 @class(['font-mono text-base font-bold', 'text-orange-700 dark:text-orange-300' => $line['type'] === 'reserve', 'text-[#1B365D] dark:text-blue-200' => $line['type'] === 'flying'])>{{ $line['id'] }}<span class="sr-only"> · {{ $line['type'] === 'reserve' ? 'Reserve' : 'Flying' }} line</span></h3>
+            @if (filled($line['crew']))<span class="block whitespace-nowrap font-mono text-[10px] leading-4 text-slate-600 dark:text-slate-300" aria-label="Crew complement: {{ $line['crew'] }}">{{ $line['crew'] }}</span>@endif
+            @if ($line['quick_flags'] !== [])
+                <div role="group" class="flex items-center gap-0.5" aria-label="Trip flags for {{ $line['id'] }}">
+                    @foreach ($line['quick_flags'] as $flag)
+                        <span role="img" aria-label="{{ $flag['description'] }}" title="{{ $flag['description'] }}" @class(['inline-flex h-4 items-center gap-1 rounded px-0.5 text-[9px] leading-none', 'bg-blue-50 text-[#1B365D] dark:bg-blue-950 dark:text-blue-200' => $flag['type'] === 'return', 'bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-200' => $flag['type'] === 'deadhead', 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' => in_array($flag['type'], ['route', 'mixed'], true)])>
+                            <x-dynamic-component :component="match ($flag['type']) { 'return' => 'heroicon-o-arrow-path', 'route' => 'heroicon-o-arrow-right', 'mixed' => 'heroicon-o-arrows-right-left', 'deadhead' => 'heroicon-o-ticket' }" class="h-3 w-3 shrink-0" aria-hidden="true" />
+                            <span @class(['hidden sm:inline' => $flag['type'] !== 'deadhead']) aria-hidden="true">{{ $flag['label'] }}</span>
+                        </span>
+                    @endforeach
+                </div>
+            @endif
         </div>
         <dl class="flex min-w-0 items-center justify-end gap-2 text-[10px] leading-4 sm:justify-start sm:gap-6">
             @if (isset($line['credit']))<div class="min-w-0"><dt class="text-slate-500 dark:text-slate-400">Credit</dt><dd class="truncate font-mono text-xs font-semibold" title="{{ $line['credit_label'] }} · adjusted credit, h:mm[:ss]">{{ $line['credit_label'] }}</dd></div>@endif
@@ -61,6 +72,11 @@
     <details data-bid-expandable class="ms-auto min-w-0 open:ms-0">
         <summary class="min-h-7 cursor-pointer whitespace-nowrap rounded-md py-1.5 text-right font-medium underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-amber-500"><span class="inline-flex items-center gap-1 align-top"><x-heroicon-o-document-text class="h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span>Details</span></span></summary>
         @foreach ($line['warnings'] as $warning)<p class="mt-2 text-sm font-medium text-amber-800 dark:text-amber-300">{{ $warning }}</p>@endforeach
+        @if ($line['quick_flags'] !== [])
+            <ul class="mt-2 space-y-1 text-xs" aria-label="Trip flag explanations for {{ $line['id'] }}">
+                @foreach ($line['quick_flags'] as $flag)<li>{{ $flag['description'] }}</li>@endforeach
+            </ul>
+        @endif
         <dl class="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
             @if ($showBlocks && isset($line['blocks']))<div><dt class="text-slate-500 dark:text-slate-400">Work blocks</dt><dd class="font-mono">{{ $line['blocks'] }}</dd></div>@endif
             @if (isset($line['duty_days']))<div><dt class="text-slate-500 dark:text-slate-400">Duty days (source)</dt><dd class="font-mono">{{ $line['duty_days'] }}</dd></div>@endif

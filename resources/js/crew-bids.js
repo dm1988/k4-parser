@@ -18,6 +18,7 @@ export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeOb
     let destroyed = false;
 
     return {
+        filtersOpen: false,
         init() {
             this.$nextTick(() => {
                 if (destroyed) return;
