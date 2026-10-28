@@ -28,6 +28,24 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Immediate goal selection and priority ordering
+
+### Goal
+
+Update chosen goals and their priority order immediately while debouncing preference saves.
+
+### Current implementation
+
+The priority list now renders from the client-side goals array. Checkbox changes, Move up, and drag ordering share one 250ms save debounce. Reordering updates that array immediately and uses the bundled Alpine Sort plugin; its DOM order is restored before the keyed loop applies the new order. The client-owned list stays intact during server renders. Native ordered-list markers replace manually repeated rank numbers. Existing server validation, strict ranking, saved goal order, bid-list order, and unsaved-change protection remain in place.
+
+### Problem addressed
+
+The previous goal list waited for a server render after checkbox changes, while Move up called the server immediately. Five focused Sail feature cases passed (42 assertions), covering exact client-order persistence/reload, strict ranking, invalid goals, date selection, and retained bid order. Eleven focused JavaScript tests passed, including immediate moves, drag-order reconciliation, invalid targets, and deferred-save protection. Pint, production build, one final Larastan run (zero errors), and changed-file diff checks passed.
+
+Reviewed the actual Blade goal controls with bundled Alpine and synthetic state/save handling in headless Chrome. Rapid selection, repeated Move up, and checkbox off/on changes updated the DOM with zero immediate saves, then produced one final save after the debounce. A simulated drag callback kept DOM/state order aligned and saved once afterward; no JavaScript errors occurred. This checked client interaction independently of authenticated Livewire requests, which were covered by the focused feature tests; a physical drag gesture was not exercised. Existing source-document edits and concurrent staging/commits were preserved.
+
+Commit message: `perf: update goal priorities instantly with debounced saves`
+
 ## [x] Completed: Open crew bid preferences immediately
 
 ### Goal
@@ -165,6 +183,14 @@ Unquoted keys, `Object.freeze()` calls, and a trailing JavaScript closing wrappe
 Validation: Sail JSON parsing and exact comparison passed for all 24 rates. One Larastan run passed with zero errors. No PHP files changed; Pint was not required. Unrelated working-tree changes preserved.
 
 Commit message: `fix: convert crew bid pay rates to valid JSON`
+
+### Estimated pay specification outcome (2026-10-28)
+
+Updated the Estimated pay section in `CREW_BIDS.md` to reference `app/Data/pay_rates.json` and describe the supplied `CA`/`FO` arrays with 12 numeric rates each. Rate input is now available; rate management, dollar estimates, and pay sorting remain deferred. Currency, effective dates, fleet applicability, longevity mapping, guarantee treatment, and the pay formula still need confirmation.
+
+Validation: Sail JSON parsing confirmed 12 entries per seat. Documentation-only update; checked the focused diff for whitespace errors. No PHP files changed; tests, Pint, and Larastan were not needed. Preserved unrelated working-tree changes.
+
+Commit message: `docs: reference supplied rates in estimated pay specification`
 
 ## Completed: FP: Delay reporting: Departure UTC time format
 
@@ -364,6 +390,34 @@ The plan separates authenticated discovery, offline adapter/preflight coverage, 
 Validation: Documentation diff checks passed. Only CREW_BIDS.md and TODO.md were edited for this task; existing application/test changes were preserved. No runtime tests, Pint, build, or Larastan were needed for this documentation-only change. Authenticated discovery and submission verification remain future implementation work.
 
 Commit message: `docs: plan reviewed Kalitta bid submission and award discovery`
+
+### Auto bidding implementation outcome (2026-10-28; submission pending)
+
+Goal: Advance the existing auto-bidding task using the supplied portal HTML and confirmed employee-number/password login. The user confirmed that bidding is closed and that F1 → 1, Q99 → 99, and R70/R 70 → 70, with unique numeric IDs.
+
+Current implementation: Added `crew-bids:discover-portal`, a local interactive command with hidden credential prompts and optional `--lines` candidate checking. Its only POST is login; Bid Sheet access uses GET. Fresh login hidden state and split ViewState fields are preserved in memory, redirects are bounded and restricted to the HTTPS portal, and credentials cannot be posted to the Bid Sheet action. An isolated HTTP factory omits application HTTP events/global middleware; cookie jars are operation-local and cleared on success/failure. Safe domain errors omit upstream exception text and do not retain a previous transport exception. Output contains structural counts, supported control names, and a report-link flag, excluding actual choices, account labels, cookies, credentials, and page/state values. Noninteractive credential use is refused. No database, queue, session, cache, browser storage, dependency, or application UI changes were introduced.
+
+The offline adapter pairs Choice/Line fields by suffix, orders them by displayed Choice values, and rejects ambiguous/incomplete layouts. Candidate preparation preserves the supplied sequence across F/Q/R lines, rejects unsupported IDs and numeric collisions, checks runtime slot count/range/training rules, and clears trailing line fields in the candidate without changing unrelated controls. This preparation never submits a bid and does not establish account/context eligibility or an open window. Synthetic fixtures contain invented values rather than copied private page state.
+
+Problem still outstanding: Closed-window HTML does not expose the live submit sequence or receipt/read-back contract. Initial implementation used fake transport; the user subsequently ran authenticated read-only discovery successfully. No live bid write, submitted-report retrieval, or award retrieval was performed. The overall current-focus task remains incomplete. Open-window form evidence, account/month/fleet/seat/revision binding, deadline basis, submitted-report evidence, and the application review/confirmation/attempt/reconciliation flow remain necessary before enabling submission. Existing review/copy behavior and prior working-tree edits were preserved.
+
+Validation: All 39 focused parser, discovery transport, and command tests passed (81 assertions), using only fake HTTP responses with stray-request prevention. Coverage includes rank versus DOM/suffix order, mixed-prefix mapping, maximum/excess/empty choices, trailing clearing, numeric collisions, malformed layouts, training restrictions, hidden login state, unsafe actions/redirects, rejected authentication, no write retries, operation cookie isolation, HTTP-profiler isolation, safe failures, and output redaction. Pint passed after fixes; the single final application-wide Larastan run passed with zero errors; diff whitespace checks passed. No frontend build was needed.
+
+Commit message: `feat: add read-only Kalitta bid discovery and offline line adapter`
+
+Follow-up outcome (2026-10-28): A public GET identified the actual `pages/Login.aspx` action missing from the original allowlist. Added that exact login path and coverage for direct/redirected login forms. Unexpected failures now reveal only their operation step, exception type, and a numeric cURL code or PHP source basename/line; raw messages, full paths, URLs, and previous exceptions stay excluded. The user confirmed the login landing page is `/Redirect.aspx`; discovery now visits it with the same cookies before navigating to Bid Sheet. Fixed legitimate repeated radio-button names being rejected as ambiguous, while retaining duplicate hidden/text/mixed-type rejection. The private saved Bid Sheet now passes the parser smoke test without committing its contents.
+
+The user reported successful authenticated discovery: 315 choice slots, zero editable slots, 21 populated slots, no submission controls, a Submitted Bid Lines link, and no candidate list. This matches the confirmed closed bidding window and establishes read-only access, not submission or receipt verification. The next required evidence is the redacted Submitted Bid Lines report and the open-window form controls.
+
+Follow-up validation: All 51 focused parser/discovery/command tests passed (142 assertions), including the private saved layout, cookie handoff through the landing page, repeated radio groups, unsafe duplicates, and diagnostic redaction. Pint and final Larastan passed with zero static-analysis errors; diff whitespace checks passed. Existing staging and unrelated changes were preserved.
+
+Follow-up commit message: `fix: support Kalitta login landing and radio groups in discovery`
+
+Source-capture follow-up (2026-10-28): Updated the private-layout parser test and documentation to follow the Bid Sheet capture moved into `storage/app/private/Bid_Packages/HTML`. Inspected the newly supplied BidLineDataOutput capture using structural metadata only. It contains the ReportViewer wrapper, Excel/PDF export choices, a `DocMapReport` iframe, and a nested `ReportArea` handler URL. The actual report body and submitted-choice rows are outside the saved top-level source, so the capture cannot yet establish columns, personal-versus-all-crew scope, owner/context matching, ordered read-back, or receipt semantics. Documented the need for an Excel/PDF export or rendered report-frame content, and the requirement to fetch fresh session-dependent report/control identifiers. Private values and captured identifiers were not copied into fixtures or documentation.
+
+Source-capture validation: The focused moved-capture test passed (one test, one assertion), exercising the relocated file rather than skipping it. Pint and final Larastan passed with zero static-analysis errors; diff whitespace checks passed. Existing staging was preserved. The overall auto-bidding task remains open pending report-body evidence and open-window submission controls.
+
+Source-capture commit message: `chore: update private portal capture paths and report discovery notes`
 
 ### [x] CREW_BIDS.md cleanup outcome (2026-10-27)
 
