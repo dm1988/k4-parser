@@ -22,9 +22,9 @@
         </dl>
         <div>
             @if ($rank !== null)
-                <button type="button" wire:click="$set('showList', true)" aria-label="Selected #{{ $rank }}; open my bid list" class="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-amber-500"><x-heroicon-o-check class="h-4 w-4 shrink-0" aria-hidden="true" /><span><span class="hidden sm:inline">Selected </span>#{{ $rank }}</span></button>
+                <button type="button" @click="$wire.showList = true" aria-label="Selected #{{ $rank }}; open my bid list" class="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-amber-500"><x-heroicon-o-check class="h-4 w-4 shrink-0" aria-hidden="true" /><span><span class="hidden sm:inline">Selected </span>#{{ $rank }}</span></button>
             @else
-                <button type="button" wire:click="add('{{ $line['id'] }}')" wire:loading.attr="disabled" aria-label="Add {{ $line['id'] }} to my bid list" class="inline-flex min-h-11 items-center gap-1 rounded-lg bg-[#1B365D] px-3 text-xs font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50"><x-heroicon-o-plus class="h-4 w-4 shrink-0" aria-hidden="true" /><span>Add</span></button>
+                <button type="button" x-data="bidAction" @click="run(() => $wire.add('{{ $line['id'] }}'))" :disabled="pending" :aria-busy="pending" wire:loading.attr="disabled" wire:target="add,remove,move,addMatching,clearList,undoAdd,changeContext,confirmRevision" aria-label="Add {{ $line['id'] }} to my bid list" class="inline-flex min-h-11 items-center gap-1 rounded-lg bg-[#1B365D] px-3 text-xs font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50"><x-heroicon-o-plus x-show="! pending" class="h-4 w-4 shrink-0" aria-hidden="true" /><x-heroicon-o-arrow-path x-show="pending" x-cloak class="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" /><span x-text="pending ? 'Adding…' : 'Add'" role="status">Add</span></button>
             @endif
         </div>
     </div>

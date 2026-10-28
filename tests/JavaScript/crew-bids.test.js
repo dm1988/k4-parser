@@ -1,6 +1,34 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { copyBidText, createBidGoalPreferences, createBidTripDetails, createCrewBidsHeader, shouldWarnBeforeLeaving } from '../../resources/js/crew-bids.js';
+import { copyBidText, createBidAction, createBidGoalPreferences, createBidTripDetails, createCrewBidsHeader, shouldWarnBeforeLeaving } from '../../resources/js/crew-bids.js';
+
+test('bid actions show progress immediately and ignore duplicate clicks until the request finishes', async () => {
+    const state = createBidAction();
+    let finish;
+    let requests = 0;
+    const action = () => { requests++; return new Promise((resolve) => { finish = resolve; }); };
+
+    const pending = state.run(action);
+    assert.equal(state.pending, true);
+    await state.run(action);
+    assert.equal(requests, 1);
+
+    finish('saved');
+    assert.equal(await pending, 'saved');
+    assert.equal(state.pending, false);
+});
+
+test('failed bid actions announce the error and allow a retry without claiming success', async () => {
+    const state = createBidAction();
+    const announcements = [];
+    state.$dispatch = (event) => announcements.push(event);
+
+    assert.equal(await state.run(async () => { throw new Error('Connection failed'); }), undefined);
+    assert.equal(state.pending, false);
+    assert.deepEqual(announcements, ['bid-action-failed']);
+    assert.equal(await state.run(async () => 'saved'), 'saved');
+    assert.equal(state.pending, false);
+});
 
 test('copy writes the exact reviewed bid order and reports success', async () => {
     const status = {};

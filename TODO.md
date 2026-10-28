@@ -28,6 +28,116 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Seat link before header save status
+
+### Goal
+
+Swap the seat preference link and Saved indicator in the header.
+
+### Current implementation
+
+The First Officer/Captain preference link now precedes the save status, followed by My bid list.
+
+### Problem addressed
+
+The header previously displayed Saved before the seat link. Pint, one Larastan run with zero errors, and diff checks passed. Tests were not needed for this element-order-only change.
+
+Commit message: `ui: place bid seat link before header save status`
+
+## [x] Completed: Addition notice beside header save status
+
+### Goal
+
+Move the added-at-rank notice and Undo addition to the left of Saved in the header.
+
+### Current implementation
+
+The existing notice now appears immediately before the header save status, with its eight-second dismissal, Undo action, loading feedback, and polite status announcement preserved. The header can wrap on narrow screens. Save-recovery actions remain below the header without an empty notice row.
+
+### Problem addressed
+
+Addition feedback previously occupied a separate row below the toolbar. Two focused undo/save-recovery cases passed (10 assertions), along with Pint, one Larastan run with zero errors, and diff checks. No tests were added for this layout-only change.
+
+Commit message: `ui: move bid addition notice beside header save status`
+
+## [x] Completed: Back to lines icon
+
+### Goal
+
+Add an icon to the slide-over's Back to lines button.
+
+### Current implementation
+
+The button pairs the existing label with a decorative left-arrow Heroicon using the established icon sizing and inline spacing. Its immediate close action and focus restoration remain intact.
+
+### Problem addressed
+
+The return action previously had only text. The focused drawer feature test passed (nine assertions), alongside Pint, one Larastan run with zero errors, and diff checks. No tests were added for this visual-only change.
+
+Commit message: `ui: add a back arrow to the bid list close button`
+
+## [x] Completed: Responsive Add and crew bids controls review
+
+### Goal
+
+Improve Add responsiveness and review K4 Bids controls for appropriate JavaScript, debounce, and loading feedback.
+
+### Current implementation
+
+| Controls | Decision and resulting behavior |
+| --- | --- |
+| Add | Immediate client-side Adding feedback, a reduced-motion-aware spinner, and a guard against duplicate clicks. Selection still waits for server validation. Failures clear the pending state and show the existing request error. Loading disables Add during list mutations and context changes while leaving unrelated filter requests independent. |
+| My bid list, Selected, and Back to lines | The drawer stays mounted and opens/closes locally, with reactive expanded state, focus trapping, initial focus, and focus restoration. |
+| Manage package, preferences, filters, package info, trip tabs, and disclosures | Keep immediate local JavaScript or native interactions; no debounce or request is needed to open these views. |
+| Sort, start airport, layover airport, and Selected only | Send discrete changes immediately on change instead of waiting 250ms. Layover quick filters update their pressed styling immediately while requesting results. |
+| Goals, goal ordering, and UTC days off | Preserve immediate client feedback and the shared 250ms preference-save debounce. Done retains its 250ms delay to include pending edits and now shows save progress. |
+| Minimum credit and minimum days off | Retain the 400ms typing debounce. Results show delayed loading feedback while filtering. |
+| Date-range application, resets, retries, revision review, list moves/removal, and bulk list actions | Keep server validation and persistence, with scoped progress labels and duplicate-action disabling. Empty bulk actions are disabled. |
+| Upload, preview, and publication | Show upload/preview/publication progress and prevent overlapping import operations. Keep server-side admin checks. |
+| Review and copy | Keep review server-backed and clipboard copying local. Disable copying while requests or preference edits are pending, or when the list is empty. |
+
+Captured Debugbar requests took 2.6–3.9 seconds; one 3.56-second request spent only 26ms on queries and reached its first Blade view after about 3.14 seconds. Code review found repeated decoding of the encrypted package payload for each eligible line. Rendering now decodes each package once and reuses it for line presentation, trips, and revision comparisons. No post-change live timing benchmark was performed.
+
+### Problem addressed
+
+Add previously had no progress label and was disabled by every component request. Several other server controls had no local progress feedback, while opening the drawer required a request. Focused Sail checks passed: 67 bids/filter cases (375 assertions), 13 JavaScript cases including immediate pending state, duplicate suppression, and failure/retry handling, two import cases (14 assertions), and four follow-up cases after the final payload-access correction (29 assertions). Production build, Pint, and diff checks passed. The single Larastan run reported one redundant null-safe expression; it was corrected and the affected paths passed focused tests. Larastan was not rerun under the one-run rule. Browser interaction/focus review remains outstanding. Existing changes and concurrent staging were preserved.
+
+Commit message: `perf: improve crew bid controls and reuse decoded package data`
+
+## [x] Completed: Open Manage package immediately
+
+### Goal
+
+Make the Manage package controls respond immediately.
+
+### Current implementation
+
+Both Manage package buttons toggle the client-side Livewire property directly and announce their expanded state. The admin-only import panel stays rendered with `wire:show` and `x-cloak`, retaining its file input while hidden. Import and publication actions keep their server-side permission checks.
+
+### Problem addressed
+
+Opening and closing the panel previously waited for a server-rendered response. Five focused Sail feature tests passed (32 assertions), covering import/publication, failed imports, access, metadata escaping, and withholding the form from non-admins even when they set the visibility property. Pint, one final Larastan run (zero errors), and diff checks passed. Browser interaction review remains outstanding.
+
+Commit message: `perf: toggle package management without a server round trip`
+
+## [x] Completed: Tool-based user preferences and saved K4 bid seat
+
+### Goal
+
+Move the bid seat selector into user preferences, grouped by tool.
+
+### Current implementation
+
+The Profile form now groups User preferences into Schedule Extractor (airline codes and flight tracker) and K4 Bids (bid seat). The existing profile Save action validates and persists First Officer/Captain for the authenticated user. Omitted seat values preserve the saved choice. K4 Bids loads that seat when opening the workspace and retains it during package changes; each seat keeps its existing private preferences and bid list. The toolbar displays the active seat as a link to the K4 Bids preference section, replacing its selector. Already-open workspaces retain their current seat until reopened.
+
+The migration preserves each existing user's latest workspace seat, with deterministic ordering for tied update times, and defaults users without a workspace to First Officer. The new column and migration record are confirmed in the local database. Existing workspace records are preserved.
+
+### Problem addressed
+
+Seat selection previously lived among workspace controls instead of the user's tool settings. Focused Sail checks passed: 28 profile, migration, and seat-context cases (136 assertions), followed by 68 bids and package-import regression cases (474 assertions). Coverage includes invalid values, omitted preferences, per-user saves, saved-seat precedence over recent workspace history, seat-specific lists and eligibility, package changes, no-package initialization, migration defaults/backfill, and rollback preservation of workspaces. Pint, production build, one final Larastan run (zero errors), and diff checks passed. Browser visual review remains outstanding. Existing toolbar changes and concurrent staging were preserved.
+
+Commit message: `feat: move bid seat into tool-based user preferences`
+
 ## [x] Completed: Two-tier crew bids toolbar
 
 ### Goal

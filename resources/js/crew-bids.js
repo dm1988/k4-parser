@@ -13,6 +13,23 @@ export async function copyBidText(field, status, clipboard) {
     }
 }
 
+export function createBidAction() {
+    return {
+        pending: false,
+        async run(action) {
+            if (this.pending) return;
+            this.pending = true;
+            try {
+                return await action();
+            } catch {
+                this.$dispatch('bid-action-failed');
+            } finally {
+                this.pending = false;
+            }
+        },
+    };
+}
+
 export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeObserver } = {}) {
     let observer;
     let destroyed = false;
@@ -93,6 +110,7 @@ export default function initializeCrewBids() {
         window.Alpine.data('crewBidsHeader', () => createCrewBidsHeader());
         window.Alpine.data('bidTripDetails', createBidTripDetails);
         window.Alpine.data('bidGoalPreferences', createBidGoalPreferences);
+        window.Alpine.data('bidAction', createBidAction);
     };
     if (window.Alpine) {
         registerComponents();

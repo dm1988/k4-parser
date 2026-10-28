@@ -457,14 +457,15 @@ class CrewBids extends Component
     private function viewData(): array
     {
         $package = $this->packageId === null ? null : $this->package();
+        $payload = $package->payload ?? [];
         $matcher = app(BidLineMatcher::class);
         $layoverFilters = $this->layoverCity !== '' || $this->extendedLayoversOnly || $this->avoidShortLayovers
             ? ['city' => $this->layoverCity, 'extended' => $this->extendedLayoversOnly, 'avoid_short' => $this->avoidShortLayovers]
             : [];
         $all = [];
-        foreach ($package?->payload['lines'] ?? [] as $line) {
+        foreach ($payload['lines'] ?? [] as $line) {
             if ($line[$this->seat === 'CA' ? 'captains' : 'first_officers'] > 0) {
-                $all[$line['id']] = $matcher->present($line, $package->period, $this->preferences(), $package->payload['trips'] ?? [], $layoverFilters);
+                $all[$line['id']] = $matcher->present($line, $package->period, $this->preferences(), $payload['trips'] ?? [], $layoverFilters);
             }
         }
         $lines = array_values(array_filter($all, fn (array $line): bool => $line['type'] === $this->tab
@@ -491,9 +492,10 @@ class CrewBids extends Component
         $target = $this->pendingPackageId === null ? null : BidPackage::query()->whereNotNull('published_at')->find($this->pendingPackageId);
         $revisionChanges = [];
         if ($target !== null && $package !== null) {
+            $targetPayload = $target->payload;
             foreach ($this->selections as $id) {
-                $before = $package->payload['lines'][$id] ?? null;
-                $after = $target->payload['lines'][$id] ?? null;
+                $before = $payload['lines'][$id] ?? null;
+                $after = $targetPayload['lines'][$id] ?? null;
                 $details = [];
                 if ($before !== null && $after !== null && $before !== $after) {
                     $old = $matcher->present($before, $package->period, $this->preferences());
@@ -530,7 +532,7 @@ class CrewBids extends Component
             'monthLabel' => $month?->format('F Y'),
             'packageStartDate' => $month?->format('Y-m-d'),
             'packageEndDate' => $month?->endOfMonth()->format('Y-m-d'),
-            'trips' => $package?->payload['trips'] ?? [],
+            'trips' => $payload['trips'] ?? [],
             'total' => count(array_filter($all, fn (array $line): bool => $line['type'] === $this->tab)),
             'draft' => $this->draftId === null ? null : BidPackage::query()->where('imported_by', Auth::id())->find($this->draftId),
             'target' => $target,

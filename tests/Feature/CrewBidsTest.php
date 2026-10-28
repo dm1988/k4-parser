@@ -262,7 +262,10 @@ class CrewBidsTest extends TestCase
     public function test_non_admin_cannot_import_even_when_general_access_is_enabled(): void
     {
         config(['features.crew_bids.for_all_users' => true]);
-        Livewire::actingAs(User::factory()->create())->test(CrewBids::class)->call('previewImport')->assertForbidden();
+        Livewire::actingAs(User::factory()->create())->test(CrewBids::class)
+            ->assertDontSee('id="bid-package-import"', false)
+            ->set('showImport', true)->assertDontSee('id="bid-package-import"', false)
+            ->call('previewImport')->assertForbidden();
     }
 
     public function test_invalid_dates_and_duplicate_goals_do_not_persist(): void
