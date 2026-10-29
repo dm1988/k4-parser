@@ -88,7 +88,7 @@
                 'source_block_label' => 'Lines block · h:mm',
                 'base_credit_label' => 'Base credit · h:mm',
                 'deadhead_credit_label' => 'Deadhead credit · 50% elapsed · h:mm[:ss]',
-                'pch_label' => 'PCH · carry-in credit before premium · h:mm[:ss]',
+                'carry_credit_label' => 'Carry credit subtotal · before premium · h:mm[:ss]',
                 'carry_flying_label' => 'Carry-in flying · h:mm[:ss]',
                 'carry_deadhead_credit_label' => 'Carry-in deadhead credit · h:mm[:ss]',
                 'carry_premium_label' => 'Extra 50% carry-in credit · h:mm[:ss]',
@@ -100,7 +100,7 @@
             <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">
                 @if (isset($line['credit']))Base credit: {{ ($line['credit_basis'] ?? '') === 'trip_totals' ? 'Complete pairing Credit Time totals from Trips, including credited deadheads.' : 'Recorded line credit.' }}@endif
                 @if (isset($line['block']))Block: {{ ($line['block_basis'] ?? '') === 'trip_totals' ? 'Complete pairing Block Time totals from Trips.' : 'Recorded Lines block time.' }}@endif
-                @if (isset($line['pch_seconds']))PCH counts legs departing in the next month in UTC: flying at 100% and deadheads at 50%. Adjusted credit adds only an extra 50% of PCH to base credit. Flights departing before month-end and ground transfers contribute no PCH. Seconds preserve fractional minutes.@endif
+                @if (isset($line['carry_credit_seconds']))Carry credit subtotal counts legs departing in the next calendar month in UTC: flying at 100% and deadheads at 50%. Flights departing before month-end and ground transfers are excluded from this subtotal. Adjusted credit currently adds 50% of the subtotal to base credit. Seconds preserve fractional minutes. This subtotal is not total contractual Pay Credit Hours (PCH), which also covers other qualifying activities such as reserve, vacation, and training.@endif
             </p>
         @endif
         <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">Days off and work blocks use UTC occupancy, including trip layovers. Duty days are the separate source count.</p>

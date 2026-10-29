@@ -138,7 +138,7 @@ class ParseBidDocuments
         $line['base_credit'] = $line['credit'];
         $line['credit_seconds'] = $line['credit'] === null ? null : $line['credit'] * 60;
         $line['carry_flying_seconds'] = null;
-        $line['pch_seconds'] = null;
+        $line['carry_credit_seconds'] = null;
         $line['carry_deadhead_credit_seconds'] = null;
         $line['carry_premium_seconds'] = null;
         $line['deadhead_credit_seconds'] = null;
@@ -196,9 +196,9 @@ class ParseBidDocuments
             }
             $line['carry_flying_seconds'] = $carrySeconds;
             $line['carry_deadhead_credit_seconds'] = $carryDeadheadSeconds;
-            $line['pch_seconds'] = $carrySeconds + $carryDeadheadSeconds;
+            $line['carry_credit_seconds'] = $carrySeconds + $carryDeadheadSeconds;
             $line['deadhead_credit_seconds'] = $allLegsAvailable ? $deadheadSeconds : null;
-            $line['carry_premium_seconds'] = intdiv($line['pch_seconds'], 2);
+            $line['carry_premium_seconds'] = intdiv($line['carry_credit_seconds'], 2);
             $line['credit_seconds'] += $line['carry_premium_seconds'];
             $line['credit'] = intdiv($line['credit_seconds'], 60);
         }

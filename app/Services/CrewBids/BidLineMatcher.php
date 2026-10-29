@@ -71,7 +71,11 @@ class BidLineMatcher
         $carryDays = $line['pairings'] !== [] && ! $missingTrips ? count($carryDates) : ($line['carry_in'] ?? null);
         $creditLabel = array_key_exists('credit_seconds', $line) ? $this->secondsLabel($line['credit_seconds']) : $this->timeLabel($line['credit']);
         $blockLabel = $this->timeLabel($line['block'] ?? null);
-        $line['pch_label'] = $this->secondsLabel($line['pch_seconds'] ?? null);
+        if (! array_key_exists('carry_credit_seconds', $line)) {
+            $line['carry_credit_seconds'] = $line['pch_seconds'] ?? null;
+        }
+        unset($line['pch_seconds'], $line['pch_label']);
+        $line['carry_credit_label'] = $this->secondsLabel($line['carry_credit_seconds']);
         $line['carry_deadhead_credit_label'] = $this->secondsLabel($line['carry_deadhead_credit_seconds'] ?? null);
         $matchDetails = [];
         foreach ($preferences['goals'] ?? [] as $goal) {

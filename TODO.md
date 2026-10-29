@@ -28,6 +28,46 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Plan automated bid-package imports
+
+### Goal
+
+Plan monthly imports from forwarded work Outlook email or scheduled crew-bids website downloads.
+
+### Current implementation
+
+Recorded an email-first automation plan in CREW_BIDS.md, with shared receipt/staging/classification, coherent package grouping, deduplication, revision handling, privacy/retention, scheduler recovery, and phased acceptance criteria. Incorporated the user's policy: automatically publish complete validated first packages; hold revisions for review. Existing importer supports three source roles per group rather than the full ten-attachment email. Identified `/Pages/Documents.aspx` in saved portal navigation as a discovery lead, not a verified package source. Recorded the persistent-authentication decision needed before unattended portal downloads.
+
+### Problem addressed
+
+Monthly import currently requires manual file selection, while complete emails include unsupported and potentially personal documents. The plan prevents partial or mixed revisions from replacing packages and preserves private bid lists. No automation, forwarding rule, credentials, infrastructure, or application changes were introduced.
+
+Verification: Inspected importer/parser/publication code, existing tests, scheduler configuration, and local source filenames. Confirmed Laravel 13.34.0 through Sail and checked Boost scheduler/queue documentation plus official forwarding/inbound-mail references. Connected Outlook is a personal account; the actual work-email manifest remains unverified. Documentation diff check passed; no application tests, Pint, or Larastan were needed for this plan.
+
+Commit message: `docs: plan automated bid package ingestion and publication`
+
+## [x] Completed: Review CREW_BIDS.md against the supplied CBA
+
+### Goal
+
+Check the crew-bidding document against the supplied 2021 CKS CBA, especially Part I Sections 5 and 17, and document discrepancies in CREW_BIDS.md.
+
+### Current implementation
+
+Added a dated source review with eight compensation findings and eight scheduling findings, each with clause and printed/PDF page references. Qualified the historical carry-credit formula and examples, corrected the guarantee's verification status, identified the rate arrays as Appendix 5-A's January 1, 2024 longevity-year 1–12 values, and distinguished contractual deadlines from pending live portal discovery. Recorded the agreement's renewal/effective-date provisions and the limits of applying the supplied text to 2026 packages. Application code and portal behavior were not changed.
+
+### Problem addressed
+
+The document called the carry-premium formula confirmed while leaving CBA-defined guarantees, rate provenance, and scheduling constraints unresolved. The review separates direct discrepancies, missing contractual qualifications, and product choices.
+
+Follow-up clarification: Section 5.M establishes transition-credit allocation: all PCH for the transitioning duty is paid in the new bid period, and transition PCH is credited to the compensation Month of the last duty assignment. Added this confirmed rule beside the Carry-In Days definition and January–March compensation boundaries, and explicitly labeled the old departure-only formula as historical implementation. Remaining uncertainty concerns source coverage for applying the rule, additional premium eligibility, and current applicability; the allocation rule itself is defined by the supplied CBA.
+
+User-confirmed application: Recorded one duty period, potentially containing multiple legs, as the Section 5.M duty-assignment boundary. Carry-in credit is the greater of awarded or actually worked credit for each Z day, summed after the daily comparisons; each flight segment's full credit belongs to its departure Z day. Replaced the earlier two-leg illustration with a daily comparison showing why comparing aggregate totals gives the wrong result. Distinguished daily valuation from Section 5.M pay-period allocation and awarded planning values from finalized pay. Attributed the daily greater-of rule to the user's clarification, without inventing a supporting CBA clause. The extra 50% remains conditional on qualifying excess days or scheduled-day-off work, with flight and non-flight treatment kept separate. Preserved the user's documentation-only scope.
+
+Verification: Read both key chapters in full and checked related definitions, rest/deadhead/hostile-area clauses, duration, and implementation LOA through Sail PDF extraction. Compared both stored rate arrays with Appendix 5-A. Documentation-only change; application tests, Pint, and Larastan were not run. Final whitespace/diff review passed.
+
+Commit message: `docs: review crew bidding rules against the 2021 CBA`
+
 ## [x] Completed: Seat link before header save status
 
 ### Goal

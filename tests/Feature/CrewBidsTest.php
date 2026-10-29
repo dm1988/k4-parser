@@ -685,6 +685,44 @@ class CrewBidsTest extends TestCase
             ->assertDontSee('A leg timeline is unavailable because no dated legs were imported.');
     }
 
+    /** @param array<string, int|null> $creditFields */
+    #[DataProvider('carryCreditPayloads')]
+    public function test_saved_packages_present_carry_credit_without_rewriting_the_payload(array $creditFields, ?int $expectedSeconds, string $expectedLabel): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines'] = ['F1' => array_replace($payload['lines']['F1'], $creditFields)];
+        $package->update(['payload' => $payload]);
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->assertViewHas('lines', function (array $lines) use ($expectedSeconds, $expectedLabel): bool {
+                $this->assertSame($expectedSeconds, $lines[0]['carry_credit_seconds']);
+                $this->assertSame($expectedLabel, $lines[0]['carry_credit_label']);
+                $this->assertArrayNotHasKey('pch_seconds', $lines[0]);
+                $this->assertArrayNotHasKey('pch_label', $lines[0]);
+
+                return true;
+            })
+            ->assertDontSee('PCH · carry-in credit')->assertDontSee('PCH counts legs');
+
+        $this->assertSame($expectedSeconds !== null, str_contains($page->html(), 'Carry credit subtotal · before premium'));
+        $this->assertSame($expectedSeconds !== null, str_contains($page->html(), 'This subtotal is not total contractual Pay Credit Hours (PCH)'));
+        $this->assertSame($payload, $package->fresh()->payload);
+    }
+
+    /** @return array<string, array{array<string, int|null>, int|null, string}> */
+    public static function carryCreditPayloads(): array
+    {
+        return [
+            'legacy subtotal with seconds' => [['pch_seconds' => 90], 90, '0:01:30'],
+            'legacy zero' => [['pch_seconds' => 0], 0, '0:00'],
+            'missing subtotal' => [[], null, 'Not available'],
+            'current subtotal overrides legacy' => [['carry_credit_seconds' => 120, 'pch_seconds' => 90], 120, '0:02'],
+            'current zero overrides legacy' => [['carry_credit_seconds' => 0, 'pch_seconds' => 90], 0, '0:00'],
+            'current unknown overrides legacy' => [['carry_credit_seconds' => null, 'pch_seconds' => 90], null, 'Not available'],
+        ];
+    }
+
     public function test_missing_metrics_are_omitted_and_known_zero_values_remain_visible(): void
     {
         $package = BidPackage::factory()->create();

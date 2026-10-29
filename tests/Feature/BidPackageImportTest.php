@@ -154,7 +154,7 @@ class BidPackageImportTest extends TestCase
         }
     }
 
-    public function test_private_november_trip_totals_take_priority_and_match_confirmed_pch_examples(): void
+    public function test_private_november_trip_totals_take_priority_and_preserve_carry_credit_examples(): void
     {
         $files = [];
         foreach (['Lines.pdf', 'Trips.pdf'] as $suffix) {
@@ -176,13 +176,13 @@ class BidPackageImportTest extends TestCase
             'F61' => [5810, 5810, 374700, 52200],
             'F46' => [4985, 5272, 329820, 27000],
             'F55' => [5140, 5140, 321900, 27000],
-        ] as $id => [$block, $baseCredit, $adjustedSeconds, $pchSeconds]) {
+        ] as $id => [$block, $baseCredit, $adjustedSeconds, $carryCreditSeconds]) {
             $line = $parsed['payload']['lines'][$id];
             $this->assertSame($block, $line['block'], $id.' block');
             $this->assertSame($baseCredit, $line['base_credit'], $id.' base credit');
             $this->assertSame($adjustedSeconds, $line['credit_seconds'], $id.' adjusted credit');
-            $this->assertSame($pchSeconds, $line['pch_seconds'], $id.' PCH');
-            $this->assertSame(intdiv($pchSeconds, 2), $line['carry_premium_seconds'], $id.' carry premium');
+            $this->assertSame($carryCreditSeconds, $line['carry_credit_seconds'], $id.' carry credit subtotal');
+            $this->assertSame(intdiv($carryCreditSeconds, 2), $line['carry_premium_seconds'], $id.' carry premium');
             $this->assertSame('trip_totals', $line['credit_basis']);
         }
         $this->assertSame(5415, $parsed['payload']['lines']['F83']['source_credit']);
@@ -191,7 +191,7 @@ class BidPackageImportTest extends TestCase
         $this->assertSame(4385, $parsed['payload']['lines']['F23']['source_credit']);
     }
 
-    public function test_pch_uses_next_month_departures_with_half_credit_deadheads_and_exact_premiums(): void
+    public function test_carry_credit_subtotal_uses_next_month_departures_with_half_credit_deadheads_and_exact_premiums(): void
     {
         $lines = \Mockery::mock(Document::class);
         $lines->shouldReceive('getText')->once()->andReturn("Lines\nPlan: 202612 / 777 / LINES_4 / 94.PUBLISH\nF1 - 1/2\nBlock time: 0:01\nCredit time: 0:01\n700\nThu\n31Dec\n700\n");
@@ -206,12 +206,15 @@ class BidPackageImportTest extends TestCase
         $this->assertSame(3, $line['block']);
         $this->assertSame(60, $line['carry_flying_seconds']);
         $this->assertSame(30, $line['carry_deadhead_credit_seconds']);
-        $this->assertSame(90, $line['pch_seconds']);
+        $this->assertSame(90, $line['carry_credit_seconds']);
+        $this->assertArrayNotHasKey('pch_seconds', $line);
         $this->assertSame(45, $line['carry_premium_seconds']);
         $this->assertSame(285, $line['credit_seconds']);
         BidPackage::factory()->create(['period' => '2026-12', 'payload' => $parsed['payload']]);
         Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
-            ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['credit_label'] === '0:04:45' && $lines[0]['block_label'] === '0:03' && $lines[0]['pch_label'] === '0:01:30')
+            ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['credit_label'] === '0:04:45' && $lines[0]['block_label'] === '0:03' && $lines[0]['carry_credit_label'] === '0:01:30')
+            ->assertSee('Carry credit subtotal · before premium')->assertSee('Pay Credit Hours (PCH)')
+            ->assertDontSee('PCH · carry-in credit')->assertDontSee('PCH counts legs')
             ->assertSee('0:04:45')->assertSee('0:00:45');
     }
 
@@ -231,6 +234,7 @@ class BidPackageImportTest extends TestCase
         $this->assertSame(300, $line['credit']);
         $this->assertSame('line_source', $line['credit_basis']);
         $this->assertSame('line_source', $line['block_basis']);
+        $this->assertNull($line['carry_credit_seconds']);
         $this->assertNull($line['carry_premium_seconds']);
     }
 
