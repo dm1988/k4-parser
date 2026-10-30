@@ -10,15 +10,155 @@ use App\Validation\FlightPlanValidationRules;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class FlightPlanUploadTest extends TestCase
 {
     use RefreshDatabase;
+
+    /** @param array<string, mixed> $payload */
+    #[DataProvider('missingFiles')]
+    public function test_missing_files_return_a_recoverable_422_without_storing_anything(array $payload): void
+    {
+        Storage::fake('tmp-for-tests');
+        Log::spy();
+
+        $response = $this->post($this->uploadUrl(), $payload, ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonFragment(['files.0' => ['The upload could not be completed. Please select the file and try again.']])
+            ->assertHeader('X-Upload-Request-Id');
+
+        Storage::disk('tmp-for-tests')->assertDirectoryEmpty('/');
+        Log::shouldHaveReceived('log')->once()->withArgs(
+            fn (string $level, string $message, array $context): bool => $level === 'warning'
+                && $message === 'Temporary upload request.'
+                && $context['status'] === 422
+                && $context['file_count'] === 0
+                && $context['returned_path_count'] === 0
+                && $context['request_id'] === $response->headers->get('X-Upload-Request-Id')
+                && $context['php_sapi'] === PHP_SAPI
+                && ! str_contains(json_encode($context, JSON_THROW_ON_ERROR), 'private.pdf'),
+        );
+    }
+
+    /** @return array<string, array{array<string, mixed>}> */
+    public static function missingFiles(): array
+    {
+        return [
+            'absent' => [[]],
+            'empty' => [['files' => []]],
+            'text instead of files' => [['files' => 'private.pdf']],
+            'text array instead of files' => [['files' => ['private.pdf']]],
+        ];
+    }
+
+    public function test_a_sparse_file_collection_is_rejected_before_storage(): void
+    {
+        Storage::fake('tmp-for-tests');
+
+        $this->post($this->uploadUrl(), [
+            'files' => [1 => UploadedFile::fake()->create('release.pdf', 10, 'application/pdf')],
+        ], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('files.0');
+
+        Storage::disk('tmp-for-tests')->assertDirectoryEmpty('/');
+    }
+
+    public function test_multiple_uploads_remain_supported_for_other_components(): void
+    {
+        Storage::fake('tmp-for-tests');
+
+        $this->post($this->uploadUrl(), ['files' => [
+            UploadedFile::fake()->create('first.pdf', 10, 'application/pdf'),
+            UploadedFile::fake()->create('second.pdf', 10, 'application/pdf'),
+        ]], ['Accept' => 'application/json'])
+            ->assertOk()
+            ->assertJsonCount(2, 'paths');
+    }
+
+    public function test_successful_uploads_are_not_logged_when_diagnostics_are_disabled(): void
+    {
+        Storage::fake('tmp-for-tests');
+        Log::spy();
+        config()->set('livewire.upload_diagnostics', false);
+
+        $this->post($this->uploadUrl(), ['files' => [
+            UploadedFile::fake()->create('release.pdf', 10, 'application/pdf'),
+        ]], ['Accept' => 'application/json'])->assertOk();
+
+        Log::shouldNotHaveReceived('log');
+    }
+
+    public function test_upload_diagnostics_correlate_paths_without_logging_private_upload_data(): void
+    {
+        Storage::fake('tmp-for-tests');
+        Log::spy();
+        config()->set('livewire.upload_diagnostics', true);
+
+        $response = $this->post($this->uploadUrl(), ['files' => [
+            UploadedFile::fake()->create('private-flight-release.pdf', 10, 'application/pdf'),
+        ]], ['Accept' => 'application/json', 'X-CSRF-TOKEN' => 'private-token'])
+            ->assertOk();
+        $reference = $response->json('paths.0');
+
+        Log::shouldHaveReceived('log')->once()->withArgs(function (string $level, string $message, array $context) use ($reference): bool {
+            $logged = json_encode($context, JSON_THROW_ON_ERROR);
+
+            return $level === 'info' && $message === 'Temporary upload request.'
+                && $context['file_count'] === 1 && $context['returned_path_count'] === 1
+                && $context['status'] === 200
+                && $context['reference_hash'] === hash_hmac('sha256', $reference, (string) config('app.key'))
+                && ! str_contains($logged, $reference)
+                && ! str_contains($logged, 'private-flight-release.pdf')
+                && ! str_contains($logged, 'private-token')
+                && ! str_contains($logged, 'signature=');
+        });
+    }
+
+    public function test_php_upload_errors_are_rejected_and_logged_as_codes(): void
+    {
+        Storage::fake('tmp-for-tests');
+        Log::spy();
+        config()->set('livewire.upload_diagnostics', true);
+
+        $this->post($this->uploadUrl(), ['files' => [
+            new UploadedFile('', 'private.pdf', 'application/pdf', UPLOAD_ERR_INI_SIZE, true),
+        ]], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('files.0');
+
+        Storage::disk('tmp-for-tests')->assertDirectoryEmpty('/');
+        Log::shouldHaveReceived('log')->once()->withArgs(
+            fn (string $level, string $message, array $context): bool => $context['status'] === 422
+                && $context['php_upload_errors'] === [UPLOAD_ERR_INI_SIZE],
+        );
+    }
+
+    public function test_nested_file_entries_are_rejected_without_breaking_diagnostics(): void
+    {
+        Storage::fake('tmp-for-tests');
+        Log::spy();
+        config()->set('livewire.upload_diagnostics', true);
+
+        $this->post($this->uploadUrl(), ['files' => [
+            ['nested' => UploadedFile::fake()->create('release.pdf', 10, 'application/pdf')],
+        ]], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('files.0');
+
+        Storage::disk('tmp-for-tests')->assertDirectoryEmpty('/');
+        Log::shouldHaveReceived('log')->withArgs(
+            fn (string $level, string $message, array $context): bool => $context['status'] === 422
+                && $context['php_upload_errors'] === [null],
+        )->once();
+    }
 
     public function test_temporary_upload_accepts_a_pdf_at_the_flight_plan_size_limit(): void
     {
