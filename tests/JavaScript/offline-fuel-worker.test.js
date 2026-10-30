@@ -88,10 +88,10 @@ const worker = (caches = cacheStorage()) => {
             await pending;
             return result;
         },
-        async request(url = pageUrl, method = 'GET', mode = 'navigate') {
+        async request(url = pageUrl, method = 'GET', mode = 'navigate', headers = {}) {
             let pending;
             listeners.get('fetch')({
-                request: { url, method, mode },
+                request: { url, method, mode, headers: new Headers(headers) },
                 respondWith: (promise) => { pending = promise; },
             });
             return pending;
@@ -100,6 +100,27 @@ const worker = (caches = cacheStorage()) => {
 };
 
 const offline = () => { throw new TypeError('Failed to fetch'); };
+
+test('multipart file uploads use the browser network path without being reissued by the worker', async () => {
+    const instance = worker();
+    await instance.prepare();
+    let networkCalls = 0;
+    instance.network.handler = () => {
+        networkCalls += 1;
+        return new Response('{}');
+    };
+
+    for (const contentType of ['multipart/form-data; boundary=----WebKitFormBoundaryExample', 'Multipart/Form-Data; boundary=example']) {
+        const response = await instance.request(`${origin}/livewire/upload-file`, 'POST', 'cors', {
+            'Content-Type': contentType,
+        });
+        assert.equal(response, undefined);
+    }
+
+    assert.equal(networkCalls, 0);
+    instance.network.handler = offline;
+    assert.match(await (await instance.request()).text(), /CKS241/);
+});
 
 test('activation removes old prepared pages and requires preparation before recovering a preliminary warning', async () => {
     const caches = cacheStorage();
@@ -176,7 +197,7 @@ for (const [label, headers] of [
         const instance = worker();
         await instance.prepare();
         instance.network.handler = () => new Response('{}', { headers });
-        await instance.request(`${origin}/livewire/update`, 'POST', 'cors');
+        await instance.request(`${origin}/livewire/update`, 'POST', 'cors', { 'Content-Type': 'application/json' });
         assert.equal(instance.notifications.at(-1).type, 'OFFLINE_FUEL_INVALIDATED');
         instance.network.handler = offline;
         assert.equal((await instance.request()).status, 503);
