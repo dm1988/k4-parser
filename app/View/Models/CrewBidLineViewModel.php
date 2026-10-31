@@ -46,7 +46,7 @@ final readonly class CrewBidLineViewModel
         return new self(
             id: $line['id'],
             typeLabel: $reserve ? 'Reserve' : 'Flying',
-            headingClasses: $reserve ? 'text-orange-700 dark:text-orange-300' : 'text-[#1B365D] dark:text-blue-200',
+            headingClasses: $reserve ? 'text-orange-700 dark:text-orange-300' : 'text-slate-900 dark:text-slate-100',
             crew: filled($line['crew']) ? $line['crew'] : null,
             rank: $rank,
             summaryMetrics: self::summaryMetrics($line),

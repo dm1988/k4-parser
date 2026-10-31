@@ -28,6 +28,44 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Upgrade bid card depth and header styling
+
+### Goal
+
+Give every shared bid line card more depth, clearer header hierarchy, and consistent 12px spacing.
+
+### Current implementation
+
+Added soft layered shadows, deeper hover shadows, and a 2px hover lift. Cards reserve a 3px left border that turns Aviation Blue when a disclosure is expanded, with a lighter blue accent in dark mode; its fixed width prevents content shifts. Headers use slate-50 in light mode and an opaque slate-800 surface in dark mode. Flying line IDs use bold, darker Slate text. Header, calendar, footer, and warning spacing now use 12px. Hover and state transitions share the disclosure's 240ms cubic-bezier curve, and reduced-motion preferences disable lift and animation.
+
+### Problem addressed
+
+The shared cards needed stronger separation from the background, a differentiated header, more internal space, and a visible expanded state. The view model and existing card/disclosure interactions remain intact.
+
+Verification: Focused Sail tests passed (86 tests, 512 assertions). Pint, one Larastan run with zero errors, the production Vite build, and scoped diff checks passed. Synthetic F83/F55/reserve previews covered a 320px card container in light mode and 1440px desktop in dark mode with an expanded disclosure. Computed styles confirmed 12px padding, the fixed 3px left border, the expanded blue accent, contrasting headers, and no horizontal card overflow. No additional tests were added for this styling-only change. Prior working-tree edits were preserved.
+
+Commit message: `ui: add depth and expanded accents to bid cards`
+
+## [x] Completed: Polish bid card sections and interactions
+
+### Goal
+
+Separate the header, calendar, and footer with consistent spacing and give bid cards clearer hover and expansion feedback.
+
+### Current implementation
+
+Added a subtle header divider, dotted footer divider, 8px section padding, a minimum 80px ID column, and wrapping summary metrics. Cards have a light shadow and stronger border/shadow feedback on hover, with matching dark-theme styling. Card-background clicks toggle the native date disclosure; nested controls, disclosure summaries, prevented clicks, and text selection retain their existing behavior. Existing summary controls provide keyboard access. The view model, typography, colors, and calendar labels remain intact.
+
+Disclosure content uses a 240ms intrinsic-height transition with a cubic-bezier curve and deferred content visibility. Reduced-motion preferences disable animation; browsers without the required CSS support retain native disclosure behavior. Cards now size to their content rather than using the former 150px maximum, accommodating the requested spacing and warnings without clipping.
+
+### Problem addressed
+
+The card sections lacked separation and hover feedback. Background clicks had no expansion behavior, and disclosure content appeared immediately.
+
+Verification: Focused Sail feature tests passed (76 tests, 458 assertions), and all 15 crew-bidding JavaScript tests passed, including background toggling, independent cards, preserved controls, selected text, and prevented clicks. Pint, one Larastan run with zero errors, the production Vite build, and scoped diff checks passed. Synthetic Chrome previews covered a 320px card container, 1440px desktop, both themes, warnings, long credit values, and expanded date content. A real-time Chrome check confirmed intermediate card heights during opening (156 → 496.6 → 508px) and closing (508 → 171.3 → 156px). Physical touch and live authenticated interaction were not exercised. Existing staged work was preserved.
+
+Commit message: `ui: refine bid card sections and disclosure feedback`
+
 ## [x] Completed: Extract a bid line view model while preserving the existing appearance
 
 ### Goal

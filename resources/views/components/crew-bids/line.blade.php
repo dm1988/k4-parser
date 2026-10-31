@@ -1,6 +1,6 @@
 @props(['line'])
-<article x-data="{ inspected: '' }" {{ $attributes->class('group/bid-line max-h-[150px] rounded-xl border border-slate-200 bg-white p-2 has-[[data-bid-expandable][open]]:max-h-none dark:border-slate-700 dark:bg-slate-900') }}>
-    <div class="relative -mx-2 grid min-h-11 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 bg-white px-2 dark:bg-slate-900 sm:gap-3 group-has-[[data-bid-expandable][open]]/bid-line:sticky group-has-[[data-bid-expandable][open]]/bid-line:top-[var(--crew-bids-header-height,0px)] group-has-[[data-bid-expandable][open]]/bid-line:z-20 group-has-[[data-bid-expandable][open]]/bid-line:shadow-sm">
+<article x-data="bidLineCard" @click="toggleFromCard($event)" {{ $attributes->class('cc-bid-line group/bid-line cursor-pointer rounded-xl border border-l-[3px] border-slate-200 bg-white p-3 shadow-[0_1px_3px_0_rgb(15_23_42/0.08),0_1px_2px_-1px_rgb(15_23_42/0.06)] transition-[border-color,box-shadow,translate] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-slate-300 hover:shadow-[0_8px_20px_-6px_rgb(15_23_42/0.18),0_2px_6px_-2px_rgb(15_23_42/0.10)] focus-within:border-slate-400 has-[[data-bid-expandable][open]]:border-l-[#1B365D] motion-safe:hover:-translate-y-0.5 motion-reduce:transition-none dark:border-slate-700 dark:bg-slate-900 dark:shadow-[0_1px_3px_rgb(0_0_0/0.24),0_1px_2px_rgb(0_0_0/0.16)] dark:hover:border-slate-500 dark:hover:shadow-[0_8px_20px_-6px_rgb(0_0_0/0.5),0_2px_6px_-2px_rgb(0_0_0/0.3)] dark:focus-within:border-slate-500 dark:has-[[data-bid-expandable][open]]:border-l-blue-300') }}>
+    <div class="relative -mx-3 -mt-3 grid min-h-11 grid-cols-[minmax(80px,auto)_minmax(0,1fr)_auto] items-center gap-2 rounded-t-xl border-b border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800 sm:gap-3 group-has-[[data-bid-expandable][open]]/bid-line:sticky group-has-[[data-bid-expandable][open]]/bid-line:top-[var(--crew-bids-header-height,0px)] group-has-[[data-bid-expandable][open]]/bid-line:z-20 group-has-[[data-bid-expandable][open]]/bid-line:shadow-sm">
         <div>
             <h3 class="font-mono text-base font-bold {{ $line->headingClasses }}">{{ $line->id }}<span class="sr-only"> · {{ $line->typeLabel }} line</span></h3>
             @if ($line->crew !== null)<span class="block whitespace-nowrap font-mono text-[10px] leading-4 text-slate-600 dark:text-slate-300" aria-label="Crew complement: {{ $line->crew }}">{{ $line->crew }}</span>@endif
@@ -15,7 +15,7 @@
                 </div>
             @endif
         </div>
-        <dl class="flex min-w-0 items-center justify-end gap-2 text-[10px] leading-4 sm:justify-start sm:gap-6">
+        <dl class="flex min-w-0 flex-wrap items-center justify-end gap-2 text-[10px] leading-4 sm:justify-start sm:gap-6">
             @foreach ($line->summaryMetrics as $metric)
                 <div class="{{ $metric['containerClasses'] }}"><dt class="text-slate-500 dark:text-slate-400 {{ $metric['labelClasses'] }}">{{ $metric['label'] }}</dt><dd class="{{ $metric['valueClasses'] }}" @if ($metric['title'] !== null) title="{{ $metric['title'] }}" @endif>{{ $metric['value'] }}</dd></div>
             @endforeach
@@ -28,8 +28,8 @@
             @endif
         </div>
     </div>
-    @if ($line->warnings !== [])<p class="mt-1 truncate text-xs leading-4 font-medium text-amber-800 dark:text-amber-300">{{ $line->warningSummary }}</p>@endif
-    <div class="mt-1 flex items-stretch gap-1">
+    @if ($line->warnings !== [])<p class="mt-3 truncate text-xs leading-4 font-medium text-amber-800 dark:text-amber-300">{{ $line->warningSummary }}</p>@endif
+    <div class="flex items-stretch gap-1 py-3">
     <button type="button" class="grid min-h-8 min-w-0 flex-1 gap-px rounded-md focus-visible:ring-2 focus-visible:ring-amber-500" style="grid-template-columns: repeat({{ count($line->calendarDays) }}, minmax(0, 1fr))" aria-label="Inspect UTC dates for {{ $line->id }}; select a day marker, or open Line below" @click="inspected = $event.target.closest('[data-date-detail]')?.dataset.dateDetail ?? 'Open Line to inspect each date.'; $refs.dateDetails.open = true">
         @foreach ($line->calendarDays as $day)
             <span data-date-detail="{{ $day['description'] }}" class="flex min-w-0 items-center justify-center rounded-sm font-mono text-[9px] {{ $day['classes'] }}">{{ $day['label'] }}</span>
@@ -39,7 +39,7 @@
         <span class="flex shrink-0 items-center justify-center rounded-md border border-[#C5A059] bg-amber-50 px-2 font-mono text-xs font-semibold text-[#1B365D] dark:bg-amber-950 dark:text-amber-200" aria-label="{{ $line->carryDays }} carry-in days after month-end for {{ $line->id }}">+{{ $line->carryDays }}</span>
     @endif
     </div>
-    <div class="mt-1 flex items-start gap-3 text-xs has-[>details[open]]:grid has-[>details[open]]:grid-cols-1">
+    <div class="flex items-start gap-3 border-t border-dotted border-slate-200 pt-3 text-xs has-[>details[open]]:grid has-[>details[open]]:grid-cols-1 dark:border-slate-700">
     <details data-bid-expandable x-ref="dateDetails" class="min-w-0">
         <summary class="min-h-7 cursor-pointer whitespace-nowrap rounded-md py-1.5 text-left focus-visible:ring-2 focus-visible:ring-amber-500"><span class="inline-flex items-center gap-1 align-top"><x-heroicon-o-calendar-days class="h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span>Line<span class="sr-only"> · UTC dates</span></span></span></summary>
         <p x-show="inspected" x-text="inspected" x-cloak role="status" class="mt-2 text-xs"></p>

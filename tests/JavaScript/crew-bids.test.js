@@ -1,6 +1,37 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { copyBidText, createBidAction, createBidGoalPreferences, createBidTripDetails, createCrewBidsHeader, shouldWarnBeforeLeaving } from '../../resources/js/crew-bids.js';
+import { copyBidText, createBidAction, createBidGoalPreferences, createBidLineCard, createBidTripDetails, createCrewBidsHeader, shouldWarnBeforeLeaving } from '../../resources/js/crew-bids.js';
+
+test('clicking a bid card background toggles its native date disclosure independently', () => {
+    const state = createBidLineCard({ selectionText: () => '' });
+    const other = createBidLineCard({ selectionText: () => '' });
+    state.$refs = { dateDetails: { open: false } };
+    other.$refs = { dateDetails: { open: false } };
+    const event = { target: { closest: () => null } };
+
+    state.toggleFromCard(event);
+    assert.equal(state.$refs.dateDetails.open, true);
+    assert.equal(other.$refs.dateDetails.open, false);
+    state.toggleFromCard(event);
+    assert.equal(state.$refs.dateDetails.open, false);
+});
+
+test('card background clicks preserve nested controls, selected text, and prevented events', () => {
+    let selection = '';
+    const state = createBidLineCard({ selectionText: () => selection });
+    state.$refs = { dateDetails: { open: false } };
+
+    for (const control of ['button', 'a', 'summary', 'details', 'input', 'select', 'textarea', '[role="button"]', '[contenteditable]']) {
+        state.toggleFromCard({ target: { closest: (selector) => selector.split(', ').includes(control) ? {} : null } });
+        assert.equal(state.$refs.dateDetails.open, false, `${control} must retain its own interaction`);
+    }
+    selection = '90:15';
+    state.toggleFromCard({ target: { closest: () => null } });
+    assert.equal(state.$refs.dateDetails.open, false);
+    selection = '';
+    state.toggleFromCard({ defaultPrevented: true, target: { closest: () => null } });
+    assert.equal(state.$refs.dateDetails.open, false);
+});
 
 test('bid actions show progress immediately and ignore duplicate clicks until the request finishes', async () => {
     const state = createBidAction();

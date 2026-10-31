@@ -56,6 +56,17 @@ export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeOb
     };
 }
 
+export function createBidLineCard({ selectionText = () => globalThis.getSelection?.()?.toString() ?? '' } = {}) {
+    return {
+        inspected: '',
+        toggleFromCard(event) {
+            if (event.defaultPrevented || selectionText() || event.target.closest('a, button, input, select, textarea, summary, details, [role="button"], [contenteditable]')) return;
+
+            this.$refs.dateDetails.open = !this.$refs.dateDetails.open;
+        },
+    };
+}
+
 export function createBidGoalPreferences(labels) {
     return {
         labels,
@@ -108,6 +119,7 @@ export function createBidTripDetails() {
 export default function initializeCrewBids() {
     const registerComponents = () => {
         window.Alpine.data('crewBidsHeader', () => createCrewBidsHeader());
+        window.Alpine.data('bidLineCard', () => createBidLineCard());
         window.Alpine.data('bidTripDetails', createBidTripDetails);
         window.Alpine.data('bidGoalPreferences', createBidGoalPreferences);
         window.Alpine.data('bidAction', createBidAction);
