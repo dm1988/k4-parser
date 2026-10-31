@@ -3,7 +3,7 @@
 K4 Bids helps pilots compare monthly bid packages and prepare a private, ordered bid list. This document records the current product contract and remaining work. Completed implementation tasks, validation history, and commit messages are recorded in [TODO.md](TODO.md).
 
 Status (2026-10-28): Package import/publication, browsing, preferences, manual ranking, review/copy, compact cards, interactive trip timelines, credit calculations, icons, and trip endpoint/deadhead flags are implemented. Auto bidding has read-only discovery and an offline adapter; reviewed submission and the enhancements below remain pending. Manual browser, touch, and keyboard review is still outstanding.
-## Set preferences pop out
+## [x] Completed: Set preferences pop out
 Problem: if a user is not at the top of the page, the Set preferences opens when a user is out of view. The user needs to scroll up to set preferences. Perfer a pop out or full page preferences view
 
 Element:

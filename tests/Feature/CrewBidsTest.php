@@ -100,6 +100,45 @@ class CrewBidsTest extends TestCase
         Livewire::test(CrewBids::class)->assertSet('selections', ['R2', 'F1'])->assertSet('showPreferences', false);
     }
 
+    public function test_preferences_reopen_and_close_after_saving_without_changing_bid_order(): void
+    {
+        BidPackage::factory()->create();
+        $user = User::factory()->admin()->create();
+
+        Livewire::actingAs($user)->test(CrewBids::class)->assertSet('showPreferences', true)
+            ->call('finishSetup')->assertSet('showPreferences', false)
+            ->call('add', 'R2')->call('add', 'F1')->set('showPreferences', true)
+            ->set('goals', ['days_off', 'credit'])->set('startCity', 'ANC')
+            ->call('finishSetup')->assertHasNoErrors()->assertSet('showPreferences', false)
+            ->assertSet('selections', ['R2', 'F1']);
+
+        $workspace = BidWorkspace::query()->sole();
+        $this->assertSame(['goals' => ['days_off', 'credit'], 'days_off' => [], 'start_city' => 'ANC', 'initialized' => true], $workspace->preferences);
+        $this->assertSame(['R2', 'F1'], $workspace->selections);
+        Livewire::test(CrewBids::class)->assertSet('showPreferences', false)->assertSet('startCity', 'ANC');
+    }
+
+    public function test_preferences_stay_open_with_the_save_error_inside_the_dialog_after_a_tab_conflict(): void
+    {
+        BidPackage::factory()->create();
+        $user = User::factory()->admin()->create();
+        $first = Livewire::actingAs($user)->test(CrewBids::class);
+        $second = Livewire::test(CrewBids::class);
+        $first->call('add', 'F1');
+
+        $second->set('goals', ['credit'])->call('finishSetup')
+            ->assertHasErrors('workspace')->assertSet('showPreferences', true)
+            ->assertSet('dirty', true)->assertSet('goals', ['credit']);
+
+        $document = new \DOMDocument;
+        @$document->loadHTML($second->html());
+        $xpath = new \DOMXPath($document);
+        $this->assertSame('This list changed in another tab. Your edits are retained. Reload saved choices before retrying.', $xpath->evaluate('string(//*[@id="bid-preferences"]//*[@role="alert"])'));
+        $workspace = BidWorkspace::query()->sole();
+        $this->assertSame(['F1'], $workspace->selections);
+        $this->assertSame([], $workspace->preferences['goals']);
+    }
+
     public function test_date_conflicts_exclude_available_lines_but_retain_selected_choices(): void
     {
         BidPackage::factory()->create();

@@ -1,4 +1,4 @@
-<div class="mx-auto max-w-7xl px-3 py-6 sm:px-6" data-crew-bids data-dirty="{{ $dirty ? 'true' : 'false' }}" x-data="crewBidsHeader" @bid-action-failed="$refs.networkError.hidden = false" :data-preferences-dirty="$wire.$dirty(['goals', 'daysOff', 'startCity'])" @keydown.escape.window="if ($wire.showList) { $wire.showList = false; $refs.listTrigger?.focus() } else if (filtersOpen) { filtersOpen = false; $refs.filtersTrigger?.focus() }">
+<div class="mx-auto max-w-7xl px-3 py-6 sm:px-6" data-crew-bids data-dirty="{{ $dirty ? 'true' : 'false' }}" x-data="crewBidsHeader" @bid-action-failed="$refs.networkError.hidden = false; if ($refs.preferencesNetworkError) $refs.preferencesNetworkError.hidden = false" :data-preferences-dirty="$wire.$dirty(['goals', 'daysOff', 'startCity'])" @keydown.escape.window="if ($wire.showPreferences) { $wire.showPreferences = false } else if ($wire.showList) { $wire.showList = false; $refs.listTrigger?.focus() } else if (filtersOpen) { filtersOpen = false; $refs.filtersTrigger?.focus() }">
     <header x-ref="workspaceHeader" class="sticky top-0 z-30 -mx-3 border-b border-slate-200 bg-gray-100 px-3 shadow-sm dark:border-slate-800 dark:bg-gray-950 sm:-mx-6 sm:px-6">
         <div class="flex flex-wrap items-center gap-3 py-3" data-bid-command-bar>
             <h1 class="shrink-0 text-2xl font-bold text-[#1B365D] dark:text-amber-200">K4 Bids</h1>
@@ -33,7 +33,7 @@
                 </nav>
                 <div class="flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                     @if ($tab !== 'trips')<span class="whitespace-nowrap font-mono text-slate-500 dark:text-slate-400" aria-live="polite">{{ count($lines) }} matching / {{ $total }}</span>@endif
-                    <button type="button" @click="$wire.showPreferences = ! $wire.showPreferences" :aria-expanded="$wire.showPreferences" aria-controls="bid-preferences" class="inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-full bg-slate-200/70 px-3 text-slate-700 focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-800 dark:text-slate-200 lg:max-w-80">
+                    <button type="button" x-ref="preferencesTrigger" @click="$wire.showPreferences = true" :aria-expanded="$wire.showPreferences" aria-haspopup="dialog" aria-controls="bid-preferences" class="inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-full bg-slate-200/70 px-3 text-slate-700 focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-800 dark:text-slate-200 lg:max-w-80">
                         <x-heroicon-o-adjustments-horizontal class="h-4 w-4 shrink-0" aria-hidden="true" /><span class="sr-only">Edit preferences: </span><span class="truncate">@forelse ($goals as $goal){{ $goalLabels[$goal] ?? $goal }}{{ $loop->last ? '' : ' → ' }}@empty Preferences @endforelse @if ($daysOff !== []) · {{ count($daysOff) }} dates off (UTC)@endif @if ($startCity) · Start {{ $startCity }}@endif</span>
                     </button>
                 </div>
@@ -96,8 +96,13 @@
     @endif
 
     @if ($package)
-            <section id="bid-preferences" wire:show="showPreferences" x-cloak class="my-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900" aria-label="Set preferences">
-                <h2 class="text-lg font-semibold">Set preferences</h2>
+        <div wire:show="showPreferences" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 sm:p-6" x-trap.inert.noscroll="$wire.showPreferences" x-effect="if ($wire.showPreferences) $nextTick(() => $refs.closePreferences.focus({ preventScroll: true }))" @click.self="$wire.showPreferences = false">
+            <section id="bid-preferences" role="dialog" aria-modal="true" aria-labelledby="bid-preferences-title" class="flex h-dvh w-full flex-col overflow-hidden border border-slate-200 bg-white text-slate-900 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:h-auto sm:max-h-[calc(100dvh_-_3rem)] sm:max-w-2xl sm:rounded-xl">
+                <header class="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+                    <h2 id="bid-preferences-title" class="text-lg font-semibold">Set preferences</h2>
+                    <button type="button" x-ref="closePreferences" @click="$wire.showPreferences = false" aria-label="Close preferences" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-amber-500 dark:hover:bg-slate-800"><x-heroicon-o-x-mark class="h-5 w-5" aria-hidden="true" /></button>
+                </header>
+                <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
                 <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Choose goals, then order them. Lower priorities only break ties. Days off and start city exclude nonmatching lines.</p>
                 <div x-data="bidGoalPreferences(@js($goalLabels))" @bid-goals-changed.debounce.250ms="$wire.$commit()">
                     <fieldset class="mt-3 flex flex-wrap gap-4" @change="$dispatch('bid-goals-changed')"><legend class="mb-2 text-sm font-semibold">1. Choose goals</legend>@foreach ($goalLabels as $value => $label)<label class="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" wire:model="goals" value="{{ $value }}" class="rounded">{{ $label }}</label>@endforeach</fieldset>
@@ -127,8 +132,18 @@
                 </fieldset>
                 <details class="mt-2 text-sm"><summary class="cursor-pointer py-2 underline">Select a date range</summary><div class="flex flex-wrap items-end gap-2"><label>From (UTC)<input type="date" min="{{ $packageStartDate }}" max="{{ $packageEndDate }}" wire:model="rangeStart" class="block rounded-lg dark:bg-slate-800"></label><label>Through (UTC)<input type="date" min="{{ $packageStartDate }}" max="{{ $packageEndDate }}" wire:model="rangeEnd" class="block rounded-lg dark:bg-slate-800"></label><button type="button" wire:click="addRange" class="min-h-11 px-3 underline" wire:loading.attr="disabled" wire:target="addRange"><span wire:loading.remove wire:target="addRange">Add range</span><span wire:loading wire:target="addRange" role="status">Adding dates…</span></button></div></details>
                 <label class="mt-4 block text-sm font-semibold" for="bid-start-city">3. Required start city</label><select id="bid-start-city" wire:model.change.live="startCity" class="mt-1 rounded-lg text-sm dark:bg-slate-800"><option value="">Any start city</option>@foreach ($cities as $city)<option value="{{ $city }}">{{ $city }}</option>@endforeach</select>
-                <div class="mt-4 flex gap-3"><button type="button" wire:click.debounce.250ms="finishSetup" wire:loading.attr="disabled" wire:target="finishSetup" class="min-h-11 rounded-lg bg-[#1B365D] px-4 font-semibold text-white"><span wire:loading.remove wire:target="finishSetup">{{ $initialized ? 'Done' : 'Skip setup and browse' }}</span><span wire:loading wire:target="finishSetup" role="status">Saving preferences…</span></button></div>
+                </div>
+                <footer class="flex shrink-0 flex-col gap-3 border-t border-slate-200 p-4 dark:border-slate-700">
+                    @if ($errors->any())<div role="alert" class="max-h-24 overflow-y-auto rounded-lg border border-amber-500 p-3 text-sm text-amber-900 dark:text-amber-200">@foreach ($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
+                    <p x-ref="preferencesNetworkError" hidden role="alert" class="rounded-lg border border-amber-500 p-3 text-sm">Request failed. Your edits are retained. Check your connection and retry.</p>
+                    @if ($dirty)<p class="text-xs text-amber-900 dark:text-amber-200">Use Done to retry saving, or close preferences to reload saved choices.</p>@endif
+                    <div class="flex items-center justify-between gap-3">
+                    <span class="text-xs text-slate-500 dark:text-slate-400" role="status" aria-live="polite"><span wire:loading>Updating…</span><span wire:loading.remove>{{ $dirty ? 'Unsaved changes' : ($revision > 0 ? 'Saved' : '') }}</span></span>
+                    <div x-data="bidAction"><button type="button" @click.debounce.250ms="run(() => $wire.finishSetup())" :disabled="pending" wire:loading.attr="disabled" wire:target="finishSetup" class="min-h-11 rounded-lg bg-[#1B365D] px-4 font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50"><span x-show="! pending">{{ $initialized ? 'Done' : 'Skip setup and browse' }}</span><span x-show="pending" x-cloak role="status">Saving preferences…</span></button></div>
+                    </div>
+                </footer>
             </section>
+        </div>
         @if ($tab === 'trips')
             <section class="mt-4 space-y-3" aria-label="Trips">
                 @forelse ($trips as $trip)

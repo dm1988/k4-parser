@@ -28,6 +28,24 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Set preferences pop out
+
+### Goal
+
+Open K4 Bids preferences in view from any scroll position.
+
+### Current implementation
+
+Replaced the inline preferences section with a viewport overlay using the existing bid-list focus trap and scroll-lock pattern. The panel fills narrow screens and becomes a centered dialog on larger screens. Its form scrolls independently while Close and Done remain visible. Escape and the desktop backdrop dismiss it; reopening from the toolbar retains current preferences. Existing autosave, initial setup, and manual bid order remain intact. Save status, validation/conflict errors, and failed Done requests appear within the dialog; a failed save keeps it open for retry.
+
+### Problem addressed
+
+The sticky preferences control previously opened a section near the page top, requiring users farther down the line list to scroll back up.
+
+Verification: Sail's focused CrewBids feature tests passed (64 tests, 409 assertions), including save/reopen behavior and a conflicting-tab error displayed inside the dialog. All 13 existing crew-bidding JavaScript tests passed. Pint, the production Vite build, and one Larastan run with zero errors passed. Task-scoped diff checks passed. Manual browser, touch, and keyboard review remains outstanding. The user's CREW_BIDS.md edits were preserved.
+
+Commit message: `fix: open crew bid preferences in a responsive dialog`
+
 ## [x] Completed: Plan automated bid-package imports
 
 ### Goal
