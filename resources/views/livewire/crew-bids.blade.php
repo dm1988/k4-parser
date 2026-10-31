@@ -173,7 +173,7 @@
             <p wire:loading.delay wire:target="tab,sort,daysOff,goals,startCity,minimumCredit,minimumDaysOff,layoverCity,extendedLayoversOnly,avoidShortLayovers,selectedOnly,changeContext,resetFilters,clearLayoverFilters,clearDates,addRange" role="status" class="mb-2 text-xs text-slate-500 dark:text-slate-400">Updating matching lines…</p>
             <p class="mb-3 text-xs text-slate-500 dark:text-slate-400">Credit h:mm[:ss] · Block h:mm · UTC · Blue: flying trip (includes layover/rest) · Orange: reserve · Light: off · ?: unknown</p>
             <section class="space-y-3" aria-label="Available lines" wire:loading.class="opacity-60" wire:target="tab,sort,daysOff,goals,startCity,minimumCredit,minimumDaysOff,layoverCity,extendedLayoversOnly,avoidShortLayovers,selectedOnly,changeContext,resetFilters,clearLayoverFilters,clearDates,addRange">
-                @forelse ($lines as $line)<x-crew-bids.line :line="$line" :rank="in_array($line['id'], $selections, true) ? array_search($line['id'], $selections, true) + 1 : null" :show-blocks="in_array('blocks', $goals, true)" wire:key="bid-line-{{ $packageId }}-{{ $line['id'] }}" />
+                @forelse ($lineCards as $line)<x-crew-bids.line :line="$line" wire:key="bid-line-{{ $packageId }}-{{ $line->id }}" />
                 @empty<div class="rounded-xl border border-slate-200 p-5 dark:border-slate-700"><p>No lines match these filters.</p><button type="button" wire:click="resetFilters" class="min-h-11 font-semibold underline" wire:loading.attr="disabled" wire:target="resetFilters"><span wire:loading.remove wire:target="resetFilters">Reset filters</span><span wire:loading wire:target="resetFilters" role="status">Resetting…</span></button></div>@endforelse
             </section>
         @endif

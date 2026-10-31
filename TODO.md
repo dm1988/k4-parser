@@ -28,6 +28,26 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Extract a bid line view model while preserving the existing appearance
+
+### Goal
+
+Move line presentation decisions out of Blade while retaining the existing bidding layout and styling.
+
+### Current implementation
+
+Added the readonly CrewBidLineViewModel, built after matching and sorting. It prepares summary/detail metrics, flag icons and existing colors, calendar labels and descriptions, trip disclosure labels, credit explanations, warnings, and manual selection rank. The line component renders that contract rather than the original line array. Matching, credit calculations, source data, and bid ordering remain unchanged.
+
+Per the user's follow-up, reverted the visual changes. Retained the original header layout, typography, badge styles, calendar colors, complete date labels at every width, carry-day badge beside the calendar, disclosure spacing, and 150px collapsed-card limit. Trip details and leg timeline templates match their prior versions. The rebuilt stylesheet matches the stylesheet from before the visual changes.
+
+### Problem addressed
+
+The line template chose icons, formatted calendar labels, selected detail metrics, and assembled credit explanations directly from a loosely structured array. These decisions now have a dedicated, testable presentation contract.
+
+Verification: The focused Sail run passed 86 tests (512 assertions), covering missing versus zero values, second-precision credit, 28/29/30/31-day calendars with complete date labels, retained trip/rank data, credit-source explanations, and escaped metadata. Pint, one application-wide Larastan run with zero errors, and the production Vite build passed after reverting the visuals. Scoped diff checks passed. Unrelated CREW_BIDS.md edits were preserved.
+
+Commit message: `refactor: extract bid line view model without visual changes`
+
 ## [x] Completed: Set preferences pop out
 
 ### Goal

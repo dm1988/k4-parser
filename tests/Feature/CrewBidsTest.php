@@ -7,6 +7,7 @@ use App\Livewire\CrewBids;
 use App\Models\BidPackage;
 use App\Models\BidWorkspace;
 use App\Models\User;
+use App\View\Models\CrewBidLineViewModel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -137,6 +138,23 @@ class CrewBidsTest extends TestCase
         $workspace = BidWorkspace::query()->sole();
         $this->assertSame(['F1'], $workspace->selections);
         $this->assertSame([], $workspace->preferences['goals']);
+    }
+
+    public function test_line_view_models_render_manual_rank_after_reordering_and_escape_source_metadata(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['crew'] = '<script>alert("crew")</script>';
+        $payload['lines']['F1']['calendar']['2026-11-01']['activity'] = '<script>alert("activity")</script>';
+        $package->update(['payload' => $payload]);
+
+        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->call('add', 'F1')->call('add', 'R2')->call('move', 'R2', 0)->set('sort', 'credit')
+            ->assertViewHas('lineCards', fn (array $cards): bool => count($cards) === 1 && $cards[0] instanceof CrewBidLineViewModel && $cards[0]->id === 'F1' && $cards[0]->rank === 2)
+            ->assertSeeHtml('aria-label="Selected #2; open my bid list"')
+            ->assertSee('&lt;script&gt;alert', false)
+            ->assertDontSee('<script>alert("crew")</script>', false)
+            ->assertDontSee('<script>alert("activity")</script>', false);
     }
 
     public function test_date_conflicts_exclude_available_lines_but_retain_selected_choices(): void

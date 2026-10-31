@@ -9,6 +9,7 @@ use App\Models\BidWorkspace;
 use App\Models\User;
 use App\Services\CrewBids\BidLineMatcher;
 use App\Services\CrewBids\ParseBidDocuments;
+use App\View\Models\CrewBidLineViewModel;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -520,10 +521,14 @@ class CrewBids extends Component
             }
         }
 
+        $ranks = array_flip($this->selections);
+        $showBlocks = in_array('blocks', $this->goals, true);
+
         return [
             'package' => $package,
             'packages' => BidPackage::query()->whereNotNull('published_at')->orderByDesc('period')->orderByDesc('id')->get(['id', 'period', 'fleet', 'source_revision']),
             'lines' => $lines,
+            'lineCards' => array_map(static fn (array $line): CrewBidLineViewModel => CrewBidLineViewModel::fromLine($line, isset($ranks[$line['id']]) ? $ranks[$line['id']] + 1 : null, $showBlocks), $lines),
             'allLines' => $all,
             'selected' => $selected,
             'cities' => $cities,
