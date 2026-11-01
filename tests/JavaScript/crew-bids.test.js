@@ -2,35 +2,121 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { copyBidText, createBidAction, createBidGoalPreferences, createBidLineCard, createBidTripDetails, createCrewBidsHeader, shouldWarnBeforeLeaving } from '../../resources/js/crew-bids.js';
 
-test('clicking a bid card background toggles its native date disclosure independently', () => {
+test('clicking a bid card background toggles its primary disclosure independently', () => {
     const state = createBidLineCard({ selectionText: () => '' });
     const other = createBidLineCard({ selectionText: () => '' });
-    state.$refs = { dateDetails: { open: false } };
-    other.$refs = { dateDetails: { open: false } };
+    state.$refs = { primaryDetails: { open: false } };
+    other.$refs = { primaryDetails: { open: false } };
     const event = { target: { closest: () => null } };
 
     state.toggleFromCard(event);
-    assert.equal(state.$refs.dateDetails.open, true);
-    assert.equal(other.$refs.dateDetails.open, false);
+    assert.equal(state.$refs.primaryDetails.open, true);
+    assert.equal(other.$refs.primaryDetails.open, false);
     state.toggleFromCard(event);
-    assert.equal(state.$refs.dateDetails.open, false);
+    assert.equal(state.$refs.primaryDetails.open, false);
 });
 
 test('card background clicks preserve nested controls, selected text, and prevented events', () => {
     let selection = '';
     const state = createBidLineCard({ selectionText: () => selection });
-    state.$refs = { dateDetails: { open: false } };
+    state.$refs = { primaryDetails: { open: false } };
 
     for (const control of ['button', 'a', 'summary', 'details', 'input', 'select', 'textarea', '[role="button"]', '[contenteditable]']) {
         state.toggleFromCard({ target: { closest: (selector) => selector.split(', ').includes(control) ? {} : null } });
-        assert.equal(state.$refs.dateDetails.open, false, `${control} must retain its own interaction`);
+        assert.equal(state.$refs.primaryDetails.open, false, `${control} must retain its own interaction`);
     }
     selection = '90:15';
     state.toggleFromCard({ target: { closest: () => null } });
-    assert.equal(state.$refs.dateDetails.open, false);
+    assert.equal(state.$refs.primaryDetails.open, false);
     selection = '';
     state.toggleFromCard({ defaultPrevented: true, target: { closest: () => null } });
-    assert.equal(state.$refs.dateDetails.open, false);
+    assert.equal(state.$refs.primaryDetails.open, false);
+});
+
+function dateInspector(length = 30) {
+    const days = Array.from({ length }, (_, index) => {
+        const date = `2026-11-${String(index + 1).padStart(2, '0')}`;
+        return { dataset: { date, dateDetail: `${date} UTC · ${index === 1 ? 'Unknown' : index < 15 ? 'Trip / occupied' : 'Off'}` } };
+    });
+    const state = createBidLineCard();
+    let focused = false;
+    state.$refs = {
+        calendar: { querySelector: () => days[0], querySelectorAll: () => days, focus: () => { focused = true; } },
+        primaryDetails: { open: false },
+    };
+    return { state, days, focused: () => focused };
+}
+
+test('selecting a day replaces the compact activity readout without expanding the card', () => {
+    const { state, days } = dateInspector();
+    const other = dateInspector().state;
+    state.inspectDate({ target: { closest: () => days[1] } });
+    assert.equal(state.inspected, '2026-11-02 UTC · Unknown');
+    assert.equal(state.inspectedDate, '2026-11-02');
+    state.inspectDate({ target: { closest: () => days[29] } });
+    assert.equal(state.inspected, '2026-11-30 UTC · Off');
+    assert.equal(state.$refs.primaryDetails.open, false);
+    assert.equal(other.inspected, '');
+});
+
+test('keyboard activation and gap clicks select the first day or preserve the inspected date', () => {
+    const { state, days } = dateInspector();
+    const event = { target: { closest: () => null } };
+    state.inspectDate(event);
+    assert.equal(state.inspected, '2026-11-01 UTC · Trip / occupied');
+    state.selectDate(days[14]);
+    state.inspectDate(event);
+    assert.equal(state.inspectedDate, '2026-11-15');
+});
+
+for (const length of [28, 29, 30, 31]) {
+    test(`date keyboard navigation reaches and stops at the ${length}-day calendar boundaries`, () => {
+        const { state, days } = dateInspector(length);
+        const press = (key) => {
+            let prevented = false;
+            state.handleDateKey({ key, preventDefault: () => { prevented = true; } });
+            assert.equal(prevented, true);
+        };
+        press('ArrowRight');
+        assert.equal(state.inspectedDate, days[0].dataset.date);
+        press('ArrowRight');
+        assert.equal(state.inspected, '2026-11-02 UTC · Unknown');
+        press('ArrowLeft');
+        press('ArrowLeft');
+        assert.equal(state.inspectedDate, days[0].dataset.date);
+        press('End');
+        press('ArrowRight');
+        assert.equal(state.inspectedDate, days[length - 1].dataset.date);
+        press('Home');
+        assert.equal(state.inspectedDate, days[0].dataset.date);
+        state.clearDate();
+        press('ArrowLeft');
+        assert.equal(state.inspectedDate, days[length - 1].dataset.date);
+    });
+}
+
+test('clearing a date restores focus to the calendar and leaves disclosures unchanged', () => {
+    const { state, days, focused } = dateInspector();
+    state.selectDate(days[0]);
+    state.$refs.primaryDetails.open = true;
+    state.handleDateKey({ key: 'Escape', preventDefault() {} });
+    assert.equal(state.inspected, '');
+    assert.equal(state.inspectedDate, '');
+    assert.equal(focused(), true);
+    assert.equal(state.$refs.primaryDetails.open, true);
+});
+
+test('date inspection leaves unrelated and modified keys alone and tolerates an empty calendar', () => {
+    const { state } = dateInspector();
+    const unexpected = () => assert.fail('unhandled keys must keep their default behavior');
+    for (const event of [{ key: 'Tab' }, { key: 'Enter' }, { key: 'Escape' }, { key: 'ArrowRight', ctrlKey: true }, { key: 'Home', altKey: true }, { key: 'End', metaKey: true }]) {
+        state.handleDateKey({ ...event, preventDefault: unexpected });
+    }
+    assert.equal(state.inspected, '');
+    const empty = dateInspector(0).state;
+    empty.handleDateKey({ key: 'ArrowRight', preventDefault: unexpected });
+    empty.inspectDate({ target: { closest: () => null } });
+    assert.equal(empty.inspected, '');
 });
 
 test('bid actions show progress immediately and ignore duplicate clicks until the request finishes', async () => {

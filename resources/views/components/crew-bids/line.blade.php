@@ -29,28 +29,26 @@
         </div>
     </div>
     @if ($line->warnings !== [])<p class="mt-3 truncate text-xs leading-4 font-medium text-amber-800 dark:text-amber-300">{{ $line->warningSummary }}</p>@endif
-    <div class="flex items-stretch gap-1 py-3">
-    <button type="button" class="grid min-h-8 min-w-0 flex-1 gap-px rounded-md focus-visible:ring-2 focus-visible:ring-amber-500" style="grid-template-columns: repeat({{ count($line->calendarDays) }}, minmax(0, 1fr))" aria-label="Inspect UTC dates for {{ $line->id }}; select a day marker, or open Line below" @click="inspected = $event.target.closest('[data-date-detail]')?.dataset.dateDetail ?? 'Open Line to inspect each date.'; $refs.dateDetails.open = true">
+    <div x-id="['date-help']" class="space-y-1.5 py-3">
+    <div class="flex items-stretch gap-1">
+    <button type="button" x-ref="calendar" class="grid min-h-8 min-w-0 flex-1 gap-px rounded-md focus-visible:ring-2 focus-visible:ring-amber-500" style="grid-template-columns: repeat({{ count($line->calendarDays) }}, minmax(0, 1fr))" aria-label="Inspect UTC dates for {{ $line->id }}" :aria-describedby="$id('date-help')" @click="inspectDate($event)" @keydown="handleDateKey($event)">
         @foreach ($line->calendarDays as $day)
-            <span data-date-detail="{{ $day['description'] }}" class="flex min-w-0 items-center justify-center rounded-sm font-mono text-[9px] {{ $day['classes'] }}">{{ $day['label'] }}</span>
+            <span data-date="{{ $day['date'] }}" data-date-detail="{{ $day['description'] }}" title="{{ $day['description'] }}" :class="inspectedDate === $el.dataset.date ? 'ring-2 ring-inset ring-[#C5A059]' : ''" class="flex min-w-0 items-center justify-center rounded-sm font-mono text-[9px] {{ $day['classes'] }}">{{ $day['label'] }}</span>
         @endforeach
     </button>
     @if ($line->carryDays > 0)
         <span class="flex shrink-0 items-center justify-center rounded-md border border-[#C5A059] bg-amber-50 px-2 font-mono text-xs font-semibold text-[#1B365D] dark:bg-amber-950 dark:text-amber-200" aria-label="{{ $line->carryDays }} carry-in days after month-end for {{ $line->id }}">+{{ $line->carryDays }}</span>
     @endif
     </div>
+    <p :id="$id('date-help')" class="sr-only">Select a day for its UTC activity. Use Left and Right arrows to move between days, Home and End to jump, and Escape to clear.</p>
+    <div x-show="inspectedDate" x-cloak class="flex min-h-6 items-start justify-between gap-2 text-xs text-slate-600 dark:text-slate-300">
+        <p role="status" aria-atomic="true" class="min-w-0 break-words" x-text="inspected"></p>
+        <button type="button" x-show="inspectedDate" x-cloak @click="clearDate()" aria-label="Clear inspected date for {{ $line->id }}" class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-amber-500 dark:hover:bg-slate-800"><x-heroicon-o-x-mark class="h-3.5 w-3.5" aria-hidden="true" /></button>
+    </div>
+    </div>
     <div class="flex items-start gap-3 border-t border-dotted border-slate-200 pt-3 text-xs has-[>details[open]]:grid has-[>details[open]]:grid-cols-1 dark:border-slate-700">
-    <details data-bid-expandable x-ref="dateDetails" class="min-w-0">
-        <summary class="min-h-7 cursor-pointer whitespace-nowrap rounded-md py-1.5 text-left focus-visible:ring-2 focus-visible:ring-amber-500"><span class="inline-flex items-center gap-1 align-top"><x-heroicon-o-calendar-days class="h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span>Line<span class="sr-only"> · UTC dates</span></span></span></summary>
-        <p x-show="inspected" x-text="inspected" x-cloak role="status" class="mt-2 text-xs"></p>
-        <div class="mt-2 flex flex-wrap gap-2">
-            @foreach ($line->calendarDays as $day)
-                <span class="rounded-md border border-slate-200 px-2 py-1 text-xs dark:border-slate-700"><span class="font-mono">{{ $day['date'] }}</span> · {{ $day['activity'] }}</span>
-            @endforeach
-        </div>
-    </details>
     @if ($line->trips !== [])
-        <details data-bid-expandable class="min-w-0">
+        <details data-bid-expandable x-ref="primaryDetails" class="min-w-0">
             <summary class="min-h-7 cursor-pointer truncate rounded-md py-1.5 text-left font-mono font-semibold text-[#1B365D] focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-blue-200"><span class="inline-flex max-w-full items-center gap-1 align-top"><x-heroicon-o-paper-airplane class="h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span class="truncate">{{ $line->tripSummaryLabel }}</span></span></summary>
             <div class="mt-2 space-y-2" aria-label="Trips for {{ $line->id }}">
             @foreach ($line->trips as $trip)
@@ -69,7 +67,7 @@
             </div>
         </details>
     @endif
-    <details data-bid-expandable class="ms-auto min-w-0 open:ms-0">
+    <details data-bid-expandable @if ($line->trips === []) x-ref="primaryDetails" @endif class="ms-auto min-w-0 open:ms-0">
         <summary class="min-h-7 cursor-pointer whitespace-nowrap rounded-md py-1.5 text-right font-medium underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-amber-500"><span class="inline-flex items-center gap-1 align-top"><x-heroicon-o-document-text class="h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span>Details</span></span></summary>
         @foreach ($line->warnings as $warning)<p class="mt-2 text-sm font-medium text-amber-800 dark:text-amber-300">{{ $warning }}</p>@endforeach
         @if ($line->quickFlags !== [])

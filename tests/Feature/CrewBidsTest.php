@@ -157,6 +157,35 @@ class CrewBidsTest extends TestCase
             ->assertDontSee('<script>alert("activity")</script>', false);
     }
 
+    /** @return array<string, array{bool, string}> */
+    public static function primaryLineDisclosures(): array
+    {
+        return ['linked trip' => [true, 'Trip 749'], 'no linked trips' => [false, 'Details']];
+    }
+
+    #[DataProvider('primaryLineDisclosures')]
+    public function test_line_cards_inspect_dates_in_place_and_expand_trips_or_details(bool $hasTrips, string $primaryLabel): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['pairings'] = $hasTrips ? [['id' => '749', 'date' => '2026-11-01']] : [];
+        $payload['lines']['F1']['calendar']['2026-11-02'] = ['status' => 'unknown', 'activity' => 'Unknown'];
+        $package->update(['payload' => $payload]);
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+
+        $document = new \DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$page->html());
+        $xpath = new \DOMXPath($document);
+        $card = '//article[@x-data="bidLineCard"]';
+        $this->assertSame(1, $xpath->query($card.'//details[@x-ref="primaryDetails"]')->length);
+        $this->assertSame($primaryLabel, $xpath->evaluate('normalize-space(('.$card.'//details[@x-ref="primaryDetails"]/summary)[1])'));
+        $this->assertSame(30, $xpath->query($card.'//button[@x-ref="calendar"]/span[@data-date]')->length);
+        $this->assertSame('2026-11-02 UTC · Unknown', $xpath->evaluate('string(('.$card.'//span[@data-date="2026-11-02"]/@data-date-detail)[1])'));
+        $this->assertSame(0, $xpath->query($card.'//details[@x-ref="dateDetails"]')->length);
+        $page->assertDontSee('UTC · Select a day for activity.')->assertSee('Escape to clear.');
+    }
+
     public function test_date_conflicts_exclude_available_lines_but_retain_selected_choices(): void
     {
         BidPackage::factory()->create();

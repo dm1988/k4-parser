@@ -59,10 +59,48 @@ export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeOb
 export function createBidLineCard({ selectionText = () => globalThis.getSelection?.()?.toString() ?? '' } = {}) {
     return {
         inspected: '',
+        inspectedDate: '',
+        selectDate(day) {
+            if (!day) return;
+            this.inspected = day.dataset.dateDetail;
+            this.inspectedDate = day.dataset.date;
+        },
+        inspectDate(event) {
+            const day = event.target.closest('[data-date-detail]');
+            if (day) this.selectDate(day);
+            else if (!this.inspectedDate) this.selectDate(this.$refs.calendar.querySelector('[data-date-detail]'));
+        },
+        clearDate() {
+            this.inspected = '';
+            this.inspectedDate = '';
+            this.$refs.calendar.focus();
+        },
+        handleDateKey(event) {
+            if (event.altKey || event.ctrlKey || event.metaKey) return;
+            if (event.key === 'Escape') {
+                if (!this.inspectedDate) return;
+                event.preventDefault();
+                this.clearDate();
+                return;
+            }
+            const days = [...this.$refs.calendar.querySelectorAll('[data-date-detail]')];
+            if (!days.length) return;
+            const current = days.findIndex((day) => day.dataset.date === this.inspectedDate);
+            let next;
+            switch (event.key) {
+                case 'ArrowRight': next = Math.min(current + 1, days.length - 1); break;
+                case 'ArrowLeft': next = current < 0 ? days.length - 1 : Math.max(current - 1, 0); break;
+                case 'Home': next = 0; break;
+                case 'End': next = days.length - 1; break;
+                default: return;
+            }
+            event.preventDefault();
+            this.selectDate(days[next]);
+        },
         toggleFromCard(event) {
             if (event.defaultPrevented || selectionText() || event.target.closest('a, button, input, select, textarea, summary, details, [role="button"], [contenteditable]')) return;
 
-            this.$refs.dateDetails.open = !this.$refs.dateDetails.open;
+            this.$refs.primaryDetails.open = !this.$refs.primaryDetails.open;
         },
     };
 }
