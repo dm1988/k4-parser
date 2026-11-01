@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\DTOs\WaypointData;
 use App\Models\User;
+use App\Services\FlightPlan\Extractor\FlightPlanTextExtractor;
 use App\Services\FlightPlan\Extractor\WaypointExtractor;
 use App\Services\FlightPlan\WaypointDataBuilder;
 use App\Services\Infrastructure\FlightPlanResultStore;
@@ -220,6 +221,61 @@ class OfflineFuelScoreTest extends TestCase
                     && $calculator['waypoints'][40]['remainingFuel'] === ['amount' => 40000.0, 'unit' => 'lb']
                     && $calculator['waypoints'][40]['tbo'] === '0505';
             });
+    }
+
+    public function test_calculator_excludes_the_alternate_route_when_primary_headers_span_pages(): void
+    {
+        $owner = User::factory()->admin()->create();
+        $result = $this->flightPlanResult();
+        $source = file_get_contents(base_path('tests/Fixtures/FlightPlan/waypoints/primary-header-page-break.txt'));
+        $this->assertIsString($source);
+        $extracted = app(WaypointExtractor::class)->extract($source);
+        $waypoints = app(WaypointDataBuilder::class)->fromExtracted($extracted['data'], $result['flight_plan_data']['fuelPlan']);
+        $result['flight_plan_data']['waypoints'] = array_map(static fn (WaypointData $waypoint): array => $waypoint->toArray(), $waypoints);
+        $key = app(FlightPlanResultStore::class)->save($owner, $result);
+
+        $response = $this->actingAs($owner)
+            ->get(route('flight-release.fuel-score', ['flightPlanKey' => $key]))
+            ->assertOk();
+
+        $calculator = $response->viewData('calculator');
+        $this->assertSame(['35464N', 'ARIES', 'TOC', 'VHHH'], array_column($calculator['waypoints'], 'identifier'));
+        $this->assertSame(252, $calculator['waypoints'][3]['cumulativeDurationMinutes']);
+        $this->assertSame(['amount' => 19800.0, 'unit' => 'lb'], $calculator['waypoints'][3]['remainingFuel']);
+        $response->assertDontSee('22178N')->assertDontSee('VMMC');
+    }
+
+    public function test_supplied_rjaa_pdf_keeps_the_primary_route_in_the_calculator(): void
+    {
+        $path = storage_path('app/private/flight_releases/CKS024231RJAA.pdf');
+
+        if (! is_file($path)) {
+            $this->markTestSkipped('The private flight-release fixture is not available.');
+        }
+
+        $owner = User::factory()->admin()->create();
+        $result = $this->flightPlanResult();
+        $source = app(FlightPlanTextExtractor::class)->extract($path);
+        $extracted = app(WaypointExtractor::class)->extract($source);
+        $waypoints = app(WaypointDataBuilder::class)->fromExtracted($extracted['data'], $result['flight_plan_data']['fuelPlan']);
+        $result['flight_plan_data']['waypoints'] = array_map(static fn (WaypointData $waypoint): array => $waypoint->toArray(), $waypoints);
+        $key = app(FlightPlanResultStore::class)->save($owner, $result);
+
+        $response = $this->actingAs($owner)
+            ->get(route('flight-release.fuel-score', ['flightPlanKey' => $key]))
+            ->assertOk();
+
+        $calculator = $response->viewData('calculator');
+        $identifiers = array_column($calculator['waypoints'], 'identifier');
+        $this->assertSame(['35464N', 'ARIES', 'A4L11'], array_slice($identifiers, 0, 3));
+        $this->assertSame(['LIMES', 'VHHH'], array_slice($identifiers, -2));
+        $this->assertNotContains('22178N', $identifiers);
+        $this->assertNotContains('HH411', $identifiers);
+        $this->assertNotContains('VMMC', $identifiers);
+        $this->assertStringNotContainsString('VMMC', $extracted['source_fragments']['computed_flight_plan_waypoints']);
+        $destination = $calculator['waypoints'][array_key_last($calculator['waypoints'])];
+        $this->assertSame(252, $destination['cumulativeDurationMinutes']);
+        $this->assertSame(['amount' => 19800.0, 'unit' => 'lb'], $destination['remainingFuel']);
     }
 
     public function test_result_access_is_scoped_to_the_authenticated_verified_owner(): void

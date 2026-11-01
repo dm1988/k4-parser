@@ -82,7 +82,12 @@ class WaypointExtractor
 
     private function computedFlightPlanSection(string $text): ?string
     {
+        $text = preg_replace('/(?:KALITTA\h+BRIEF\h+)?PAGE\h+\d+\h+OF\h+\d+/i', ' ', $text) ?? $text;
         $matches = [];
+
+        if (preg_match('/-{3,}\h*ALTERNATE\b|\bALTERNATE\h+(?:ROUT(?:E|ING)|WAYPOINT\h+SUMMARY)\b|^\h*ALTERNATE\h*$/im', $text, $matches, PREG_OFFSET_CAPTURE) === 1) {
+            $text = substr($text, 0, $matches[0][1]);
+        }
 
         if (preg_match(self::HEADER_PATTERN, $text, $matches, PREG_OFFSET_CAPTURE) !== 1) {
             return null;
@@ -99,7 +104,7 @@ class WaypointExtractor
     {
         $matches = [];
 
-        if (preg_match('/-{3,}\h*ALTERNATE\b|\b(?:ATC|ICAO)\h+FLIGHT\h+PLAN\b|\b(?:FUEL\h+SUMMARY|ETOPS|NOTAMS?|WEATHER|MEL\h*\/\h*CDL|RAIM)\b/i', $text, $matches, PREG_OFFSET_CAPTURE) !== 1) {
+        if (preg_match('/\b(?:ATC|ICAO)\h+FLIGHT\h+PLAN\b|\b(?:FUEL\h+SUMMARY|ETOPS|NOTAMS?|WEATHER|MEL\h*\/\h*CDL|RAIM)\b/i', $text, $matches, PREG_OFFSET_CAPTURE) !== 1) {
             return $text;
         }
 
