@@ -28,16 +28,19 @@ use App\Services\FlightPlan\Extractor\WeightBalanceExtractor;
 use App\Services\Infrastructure\AirportCodeCache;
 use App\Services\Schedule\Extractor\CrewListParser;
 use Illuminate\Contracts\Cache\Repository;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Smalot\PdfParser\Parser;
 use Tests\TestCase;
 
 class ExtractFlightPlanDataTest extends TestCase
 {
-    public function test_it_passes_one_text_payload_to_each_focused_extractor(): void
+    #[DataProvider('extractionInputs')]
+    public function test_it_passes_one_text_payload_to_each_focused_extractor(bool $fromFile): void
     {
-        $text = 'normalized flight release text';
+        $rawText = 'KALITTA BRIEF PAGE 1 OF 2normalized flight release textPAGE 2 OF 2';
+        $text = "\fnormalized flight release text\f";
         $textExtractor = $this->createMock(FlightPlanTextExtractor::class);
-        $textExtractor->expects($this->once())->method('extract')->with('/tmp/release.pdf')->willReturn($text);
+        $textExtractor->expects($fromFile ? $this->once() : $this->never())->method('extract')->with('/tmp/release.pdf')->willReturn($rawText);
         $identityExtractor = $this->createMock(FlightIdentityExtractor::class);
         $identityExtractor->expects($this->once())->method('extract')->with($text)->willReturn([
             'data' => $this->identity(),
@@ -154,7 +157,7 @@ class ExtractFlightPlanDataTest extends TestCase
             'source_fragments' => ['dispatcher_notes' => 'private dispatcher note evidence'],
         ]);
 
-        $parsed = (new ExtractFlightPlanData(
+        $extractor = new ExtractFlightPlanData(
             $textExtractor,
             $identityExtractor,
             $scheduleExtractor,
@@ -173,7 +176,8 @@ class ExtractFlightPlanDataTest extends TestCase
             $releaseAuthorizationExtractor,
             $dispatcherNotesExtractor,
             new ReleaseStatusExtractor,
-        ))->extractFile('/tmp/release.pdf');
+        );
+        $parsed = $fromFile ? $extractor->extractFile('/tmp/release.pdf') : $extractor->extract($rawText);
 
         $this->assertInstanceOf(ParsedFlightPlanData::class, $parsed);
         $this->assertSame('CKS256', $parsed->identity['flight_number']);
@@ -211,6 +215,12 @@ class ExtractFlightPlanDataTest extends TestCase
         $this->assertSame(['FUEL BURN INCLUDES 0.5% PENALTY FOR PERISHABLES'], $parsed->dispatcherNotes);
         $this->assertSame('private dispatcher note evidence', $parsed->sourceFragments['dispatcher_notes']);
         $this->assertSame('12h10m', $parsed->schedule['block_duration']);
+    }
+
+    /** @return array<string, array{bool}> */
+    public static function extractionInputs(): array
+    {
+        return ['file input' => [true], 'direct text input' => [false]];
     }
 
     public function test_private_sample_characterizes_confirmed_normalized_fields(): void

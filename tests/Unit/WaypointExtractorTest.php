@@ -363,6 +363,7 @@ TEXT;
         return [
             'dashed' => ['--- ALTERNATE ---'],
             'standalone' => ['ALTERNATE'],
+            'standalone between page labels' => ['PAGE 9 OF 83ALTERNATEPAGE 10 OF 83'],
             'route' => ['Alternate Route'],
             'routing' => ["ALTERNATE\tROUTING"],
             'waypoint summary' => ['ALTERNATE WAYPOINT SUMMARY'],

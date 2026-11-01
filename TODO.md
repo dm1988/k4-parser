@@ -28,6 +28,18 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: FP: Remove page labels before field extraction
+
+Goal: Remove printed page headers and footers before extracting any flight-plan fields.
+
+Problem: Page-label removal was local to route, waypoint, maintenance-description, and dispatcher-note handling. The shared PDF text reader and extraction coordinator still passed printed labels into identity, fuel, and other field extractors. Weather also used the printed footer as a section boundary.
+
+Current implementation: Added a shared text normalizer for branded, standalone, repeated, fused, and wrapped page labels. PDF text is normalized after native/OCR assembly and cache retrieval, including the uncached/document-text fallback. The coordinator normalizes direct text input before invoking any field extractor. Route, waypoint, and weather entrypoints use the same normalizer. Labels become form-feed page breaks so weather remains bounded; preliminary-warning and alternate-heading detection recognize those boundaries. Existing operational headers and route identifiers remain content. Existing text-cache entries are cleaned on read without requiring another OCR pass.
+
+Regression coverage checks native/OCR/cached input, missing cache keys, label formats, idempotence, every coordinator dependency receiving cleaned text, and upload/save recovery of identity, fuel, primary waypoints, and bounded weather.
+
+Commit message: `fix: normalize flight plan page labels before field extraction`
+
 ## [x] Completed: FP: Fuel Score: Exclude alternate routing
 
 Goal: Extract and present only departure-to-destination waypoints in Fuel Score. Alternate routes, their waypoints, and their TOC/TOD markers remain unsupported.

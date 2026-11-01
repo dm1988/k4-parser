@@ -6,6 +6,7 @@ use App\DTOs\AirportData;
 use App\Exceptions\FlightPlanDataConflictException;
 use App\Exceptions\FlightRouteNotFoundException;
 use App\Services\Clients\AirportLookupClient;
+use App\Services\FlightPlan\FlightPlanTextNormalizer;
 use App\Services\Infrastructure\AirportCodeCache;
 
 class FlightRouteExtractor
@@ -54,6 +55,7 @@ class FlightRouteExtractor
      */
     public function extractRouteFromText(string $text): string
     {
+        $text = str_replace("\f", ' ', FlightPlanTextNormalizer::normalize($text));
         $flightPlanBlock = $this->extractFlightPlanBlock($text);
         $pattern = '/-(?:N\d{4}|K\d{4}|M\d{3})[A-Z]?\d{3,4}\h+(.+?)\s*-[A-Z]{4}\d{4}\b/s';
 
@@ -84,6 +86,7 @@ class FlightRouteExtractor
      */
     public function extractFlightPlanDataFromText(string $text): array
     {
+        $text = str_replace("\f", ' ', FlightPlanTextNormalizer::normalize($text));
         $flightPlanBlock = $this->extractFlightPlanBlock($text);
         $plannedRunways = $this->extractPlannedRunways($text);
 
@@ -203,11 +206,7 @@ class FlightRouteExtractor
             throw FlightRouteNotFoundException::flightPlanBlockMissing();
         }
 
-        return preg_replace(
-            '/\b(?:KALITTA\s+BRIEF\s+)?PAGE\s+\d+\s+OF\s+\d+\b/i',
-            ' ',
-            $matches[0],
-        ) ?? $matches[0];
+        return $matches[0];
     }
 
     public function extractDistanceNauticalMiles(string $text): ?int

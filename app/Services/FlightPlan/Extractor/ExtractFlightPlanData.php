@@ -7,6 +7,7 @@ use App\DTOs\Maintenance\MaintenanceInputData;
 use App\DTOs\ParsedFlightPlanData;
 use App\Services\FlightPlan\Extractor\Etops\EtopsQualificationExtractor;
 use App\Services\FlightPlan\Extractor\Etops\EtopsRouteExtractor;
+use App\Services\FlightPlan\FlightPlanTextNormalizer;
 use Closure;
 
 class ExtractFlightPlanData
@@ -43,6 +44,7 @@ class ExtractFlightPlanData
 
     public function extract(string $text): ParsedFlightPlanData
     {
+        $text = FlightPlanTextNormalizer::normalize($text);
         $identity = $this->identityExtractor->extract($text);
         $route = $this->routeExtractor->extractFlightPlanDataFromText($text);
         $schedule = $this->scheduleExtractor->extract(

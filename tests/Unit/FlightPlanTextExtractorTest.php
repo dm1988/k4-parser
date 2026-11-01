@@ -22,6 +22,63 @@ use Tests\TestCase;
 
 class FlightPlanTextExtractorTest extends TestCase
 {
+    public function test_page_labels_are_removed_from_native_ocr_and_cached_text(): void
+    {
+        $path = tempnam('/tmp', 'flight-plan-headers-');
+        $this->assertIsString($path);
+        file_put_contents($path, 'pdf bytes');
+        $nativePage = $this->createMock(Page::class);
+        $nativePage->expects($this->once())->method('getText')->willReturn('NATIVE KALITTA BRIEF PAGE 1 OF 2 PAGE 1 OF 2');
+        $imagePage = $this->createMock(Page::class);
+        $imagePage->expects($this->once())->method('getText')->willReturn('');
+        $document = $this->createMock(Document::class);
+        $document->expects($this->once())->method('getPages')->willReturn([$nativePage, $imagePage]);
+        $parser = $this->createMock(Parser::class);
+        $parser->expects($this->once())->method('parseFile')->with($path)->willReturn($document);
+        $ocr = $this->createMock(PdfImagePageTextExtractor::class);
+        $ocr->expects($this->once())->method('extract')->with($path, 1)->willReturn("OCR\x00 PAGE 2 OF 2");
+        $extractor = new FlightPlanTextExtractor($parser, new Repository(new ArrayStore), $ocr);
+
+        try {
+            $text = $extractor->extract($path);
+
+            $this->assertSame("NATIVE \f \f\nOCR \f", $text);
+            $this->assertSame($text, $extractor->extract($path));
+        } finally {
+            unlink($path);
+        }
+    }
+
+    public function test_existing_cached_text_is_cleaned_without_rereading_the_pdf(): void
+    {
+        $path = tempnam('/tmp', 'cached-flight-plan-headers-');
+        $this->assertIsString($path);
+        file_put_contents($path, 'cached pdf bytes');
+        $cache = new Repository(new ArrayStore);
+        $cache->put('flight-plan-extractor:v3:pdf-text:'.hash_file('sha256', $path), 'CACHED KALITTA BRIEF PAGE 1 OF 1');
+        $parser = $this->createMock(Parser::class);
+        $parser->expects($this->never())->method('parseFile');
+        $extractor = new FlightPlanTextExtractor($parser, $cache, new PdfImagePageTextExtractor);
+
+        try {
+            $this->assertSame("CACHED \f", $extractor->extract($path));
+        } finally {
+            unlink($path);
+        }
+    }
+
+    public function test_page_cleanup_also_covers_document_text_without_pages_or_a_cache_key(): void
+    {
+        $document = $this->createMock(Document::class);
+        $document->expects($this->once())->method('getPages')->willReturn([]);
+        $document->expects($this->once())->method('getText')->willReturn('BEFORE KALITTA BRIEF PAGE 1 OF 1 AFTER');
+        $parser = $this->createMock(Parser::class);
+        $parser->expects($this->once())->method('parseFile')->willReturn($document);
+        $extractor = new FlightPlanTextExtractor($parser, new Repository(new ArrayStore), new PdfImagePageTextExtractor);
+
+        $this->assertSame("BEFORE \f AFTER", $extractor->extract('/tmp/missing-flight-plan-header-test.pdf'));
+    }
+
     public function test_preliminary_status_is_detected_when_page_one_ocr_is_appended_after_native_pages_and_when_text_is_cached(): void
     {
         $path = tempnam('/tmp', 'preliminary-ocr-');

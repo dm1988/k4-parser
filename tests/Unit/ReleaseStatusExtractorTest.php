@@ -27,6 +27,7 @@ class ReleaseStatusExtractorTest extends TestCase
 
         return [
             'plain header' => [self::WARNING, self::WARNING],
+            'normalized page boundaries' => ["\f".self::WARNING."\fKALITTA AIR", self::WARNING],
             'decorative asterisks' => ['*** '.self::WARNING.' ***', self::WARNING],
             'fused flight header' => ['********'.self::WARNING.'********KALITTA AIR TRIP 123', self::WARNING],
             'case wrapping and dashes' => [$wrapped, $wrapped],

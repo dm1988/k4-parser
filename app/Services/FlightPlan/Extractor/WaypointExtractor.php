@@ -3,6 +3,7 @@
 namespace App\Services\FlightPlan\Extractor;
 
 use App\Enums\WaypointKind;
+use App\Services\FlightPlan\FlightPlanTextNormalizer;
 use Illuminate\Support\Str;
 
 class WaypointExtractor
@@ -25,6 +26,7 @@ class WaypointExtractor
      */
     public function extract(string $text): array
     {
+        $text = FlightPlanTextNormalizer::normalize($text);
         $section = $this->computedFlightPlanSection($text);
 
         if ($section === null) {
@@ -82,10 +84,9 @@ class WaypointExtractor
 
     private function computedFlightPlanSection(string $text): ?string
     {
-        $text = preg_replace('/(?:KALITTA\h+BRIEF\h+)?PAGE\h+\d+\h+OF\h+\d+/i', ' ', $text) ?? $text;
         $matches = [];
 
-        if (preg_match('/-{3,}\h*ALTERNATE\b|\bALTERNATE\h+(?:ROUT(?:E|ING)|WAYPOINT\h+SUMMARY)\b|^\h*ALTERNATE\h*$/im', $text, $matches, PREG_OFFSET_CAPTURE) === 1) {
+        if (preg_match('/-{3,}\h*ALTERNATE\b|\bALTERNATE\h+(?:ROUT(?:E|ING)|WAYPOINT\h+SUMMARY)\b|(?:^|\f)\h*ALTERNATE\h*(?=\f|$)/im', $text, $matches, PREG_OFFSET_CAPTURE) === 1) {
             $text = substr($text, 0, $matches[0][1]);
         }
 
@@ -159,7 +160,7 @@ class WaypointExtractor
 
         foreach ($records as $record) {
             $parts = preg_split('/(?:(?<![A-Z0-9-])|(?<=\.\.\h(?:\d{4}|----))|(?<=<-))'
-                .'(?=(?:TOC|TOD)\h+(?:\d{4}|----)\h+)/i', $this->withoutPageHeaders($record['content']), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                .'(?=(?:TOC|TOD)\h+(?:\d{4}|----)\h+)/i', $record['content'], -1, PREG_SPLIT_NO_EMPTY) ?: [];
 
             foreach ($parts as $index => $content) {
                 $splitRecords[] = [
@@ -170,11 +171,6 @@ class WaypointExtractor
         }
 
         return $splitRecords;
-    }
-
-    private function withoutPageHeaders(string $content): string
-    {
-        return preg_replace('/^(?:\h*(?:KALITTA BRIEF PAGE|PAGE)\h+\d+\h+OF\h+\d+)+\h*/i', '', $content) ?? $content;
     }
 
     /**
@@ -258,8 +254,6 @@ class WaypointExtractor
     private function detail(string $line): ?array
     {
         $matches = [];
-
-        $line = $this->withoutPageHeaders($line);
 
         if (preg_match('/^\h*(?<identifier>-?[A-Z0-9]{2,7})\h+(?:\d{4}|----)\h+(?<details>.+)$/i', $line, $matches) !== 1) {
             return null;

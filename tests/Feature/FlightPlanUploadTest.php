@@ -6,6 +6,8 @@ use App\Livewire\FlightPlanBrief;
 use App\Models\ExtractRequest;
 use App\Models\User;
 use App\Services\Clients\AirportLookupClient;
+use App\Services\FlightPlan\Extractor\FlightPlanTextExtractor;
+use App\Services\Infrastructure\FlightPlanResultStore;
 use App\Validation\FlightPlanValidationRules;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -21,6 +23,39 @@ use Tests\TestCase;
 class FlightPlanUploadTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_page_labels_are_removed_before_extracting_and_saving_flight_plan_fields(): void
+    {
+        Storage::fake('user_flight_releases');
+        Http::preventStrayRequests();
+        $owner = User::factory()->admin()->create();
+        $source = "KALITTA AIR TRIP 109001 KALITTA BRIEF PAGE 1 OF 83 PAGE 1 OF 83 RECALL 12345 N772CK B77L 10/31/26\n"
+            ."(FPL-CKS242-IS-B77L/H-SDE2-RJAA0900-N0500F360 DCT PIGOK-VHHH0412 VMMC-DOF/261031 REG/N772CK)\n"
+            ."FUEL BURN /1000 LBS\nTTL RMP KALITTA BRIEF PAGE 3 OF 83 PAGE 3 OF 83 84.5\n"
+            .file_get_contents(base_path('tests/Fixtures/FlightPlan/waypoints/primary-header-page-break.txt'))
+            ."\nDEPARTURE: NARITA\nMETAR RJAA 310800Z 31003KT CAVOK\n"
+            ."KALITTA BRIEF PAGE 11 OF 83 PAGE 11 OF 83\nUNRELATED NOTAM TEXT";
+        $textExtractor = $this->createMock(FlightPlanTextExtractor::class);
+        $textExtractor->expects($this->once())->method('extract')->willReturn($source);
+        $this->app->instance(FlightPlanTextExtractor::class, $textExtractor);
+        $airportLookup = $this->createMock(AirportLookupClient::class);
+        $airportLookup->method('resolveByIcaos')->willReturn([]);
+        $this->app->instance(AirportLookupClient::class, $airportLookup);
+
+        $component = Livewire::actingAs($owner)->test(FlightPlanBrief::class)
+            ->set('flightRelease', UploadedFile::fake()->create('release.pdf', 10, 'application/pdf'))
+            ->assertHasNoErrors();
+
+        $saved = app(FlightPlanResultStore::class)->get($owner, $component->get('flightPlanKey'));
+        $data = $saved['flight_plan_data'];
+        $this->assertSame('109001', $data['identity']['tripNumber']);
+        $this->assertSame('12345', $data['identity']['recallNumber']);
+        $this->assertSame(['amount' => 84500, 'unit' => 'lb'], $data['fuelPlan']['ramp']);
+        $this->assertSame(['35464N', 'ARIES', 'TOC', 'VHHH'], array_column($data['waypoints'], 'identifier'));
+        $this->assertSame(['METAR RJAA 310800Z 31003KT CAVOK'], $data['weather']['departure']['metars']);
+        $this->assertStringNotContainsString('KALITTA BRIEF PAGE', json_encode($data, JSON_THROW_ON_ERROR));
+        $this->assertStringNotContainsString('UNRELATED NOTAM TEXT', json_encode($data['weather'], JSON_THROW_ON_ERROR));
+    }
 
     /** @param array<string, mixed> $payload */
     #[DataProvider('missingFiles')]
