@@ -9,6 +9,19 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 /** @extends Factory<BidPackage> */
 class BidPackageFactory extends Factory
 {
+    public function withSourceGuarantee(): static
+    {
+        return $this->state(function (array $attributes): array {
+            $payload = $attributes['payload'];
+            foreach ($payload['lines'] as &$line) {
+                $line['source_credit'] = $line['credit'];
+            }
+            unset($line);
+
+            return ['payload' => $payload];
+        });
+    }
+
     /** @return array<string, mixed> */
     public function definition(): array
     {

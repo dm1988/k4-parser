@@ -36,7 +36,7 @@ class CrewBidPayProfile extends Model
             'check_airman' => array_key_exists('check_airman', $personal) ? $personal['check_airman'] : false,
             'qualified' => $custom ? ($scenario['qualified'] ?? true) : true,
             'full_period' => $custom ? ($scenario['full_period'] ?? true) : true,
-            'line_guarantee' => $custom ? ($scenario['line_guarantee'] ?? true) : true,
+            'line_guarantee' => true,
         ]);
     }
 }

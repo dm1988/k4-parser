@@ -48,6 +48,7 @@ class SaveCrewBidPayProfile
             'input.rows.*.duration' => ['required', 'regex:/\A\d{1,3}:[0-5]\d(?::[0-5]\d)?\z/'],
             'input.rows.*.actual' => ['present', 'nullable', 'regex:/\A\d{1,3}:[0-5]\d(?::[0-5]\d)?\z/'],
         ])->validate();
+        $context['line_guarantee'] = true;
         if ($lineId !== null) {
             $line = $package->payload['lines'][$lineId] ?? null;
             abort_unless($line !== null && $line[$seat === 'CA' ? 'captains' : 'first_officers'] > 0, 404);

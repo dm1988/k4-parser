@@ -47,7 +47,6 @@ final readonly class CrewBidPayEditorViewModel
             contextChoices: [
                 'qualified' => 'Use qualified hourly pay',
                 'full_period' => 'Available for the full pay period',
-                'line_guarantee' => 'Use published line Credit as the pay minimum',
                 'unsupported' => 'My circumstances need rules this estimate does not cover',
             ],
             rows: is_array($rows) && array_is_list($rows) ? array_slice($rows, 0, 200) : [],

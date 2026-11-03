@@ -59,6 +59,30 @@ class CrewBidPayDefaultsTest extends TestCase
             ->assertViewHas('allLines', fn (array $lines): bool => $lines['F1']['pay_estimate']->cents === null && $lines['F1']['pay_estimate']->minimumCents === 760500);
     }
 
+    public function test_saved_advanced_settings_cannot_lower_the_published_guarantee_minimum(): void
+    {
+        $package = $this->package();
+        $payload = $package->payload;
+        $payload['lines']['F55'] = array_replace($payload['lines']['F1'], ['id' => 'F55', 'credit' => 4690, 'source_credit' => 4690]);
+        unset($payload['lines']['F1']);
+        $payload['trips'] = [];
+        $package->update(['payload' => $payload]);
+        $user = User::factory()->admin()->withCrewPaySettings('2024-07-29')->create();
+        $profile = CrewBidPayProfile::factory()->create(['user_id' => $user->id, 'settings' => [],
+            'scenarios' => [$package->id.':FO' => ['qualified' => true, 'full_period' => true,
+                'line_guarantee' => false, 'custom_assumptions' => true, 'unsupported' => false]]]);
+
+        $page = Livewire::actingAs($user)->test(CrewBids::class);
+
+        $page->assertSee('$13,024.91 minimum')->assertDontSee('$10,664.32 minimum')
+            ->assertViewHas('allLines', fn (array $lines): bool => $lines['F55']['pay_estimate']->minimumCents === 1302491 && $lines['F55']['pay_estimate']->cents === null)
+            ->call('openPayEditor', 'F55')->assertSet('payContext.line_guarantee', true)
+            ->assertDontSee('wire:model="payContext.line_guarantee"', false)
+            ->set('payContext.line_guarantee', false)->call('savePayInputs')->assertHasNoErrors()
+            ->assertSee('$13,024.91 minimum');
+        $this->assertTrue($profile->fresh()->scenarios[$package->id.':FO']['line_guarantee']);
+    }
+
     public function test_full_breakdown_is_prepared_only_for_the_requested_line(): void
     {
         $this->package();

@@ -562,6 +562,8 @@ Planning and Sections 2/5 review completed: 2026-11-03. **Estimated pay calculat
 
 **User-confirmed direction (2026-11-03):** The first release should estimate **scheduled gross contractual pay in USD before taxes/deductions, with supported credits and premiums, excluding per diem and expense reimbursements**. A guarantee-only preview is not the selected first-release scope. The existing `app/Data/pay_rates.json` rates remain applicable. Automatic pay steps use **a separate adjusted pay-longevity date**, rather than assuming hire date, and **the new rate starts on the anniversary date**, including an anniversary within a compensation period. Owners may supply **private planning inputs for missing facts, with assumptions shown**.
 
+**Published minimum is mandatory for supported estimates:** The published line Credit cannot be disabled through advanced adjustments. Reading a saved scenario always includes it, even if an older custom scenario stored `line_guarantee = false`; new saves normalize that legacy field to true. Qualified/full-period and unsupported-scenario gates remain effective. Missing trip or occupied-day details withhold a complete total without lowering the known published floor. For November 2026 F55 at FO step 3 ($166.63/h; longevity 2024-07-29), published **78:10** means **$13,024.91 minimum**, not the 64-hour $10,664.32 floor. Unresolved additional compensation remains separate from that known minimum.
+
 **User-confirmed planning rules for longevity, proration, and rounding:**
 
 - Step 1 covers the first year from the adjusted pay-longevity date. Each anniversary increases the step by one, capped permanently at step 12. A date before the longevity start cannot resolve an eligible pay step and must not default to a zero rate.

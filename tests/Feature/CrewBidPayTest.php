@@ -25,7 +25,7 @@ class CrewBidPayTest extends TestCase
 
     public function test_owner_can_save_correct_remove_and_render_private_pay_without_changing_bids(): void
     {
-        $package = BidPackage::factory()->create();
+        $package = BidPackage::factory()->withSourceGuarantee()->create();
         $user = User::factory()->admin()->withCrewPaySettings('2026-01-01')->create(['crew_bid_seat_preference' => 'FO']);
         $page = Livewire::actingAs($user)->test(CrewBids::class)->call('finishSetup')->call('add', 'F1')
             ->set('minimumDaysOff', 14)->call('openPayEditor', 'F1');
@@ -58,7 +58,7 @@ class CrewBidPayTest extends TestCase
 
     public function test_other_viewers_and_other_package_seats_cannot_receive_private_estimates(): void
     {
-        $package = BidPackage::factory()->create();
+        $package = BidPackage::factory()->withSourceGuarantee()->create();
         $owner = User::factory()->admin()->withCrewPaySettings('2026-01-01')->create();
         $other = User::factory()->admin()->create();
         $this->save($owner, $package);
@@ -68,7 +68,7 @@ class CrewBidPayTest extends TestCase
         $this->assertDatabaseCount('crew_bid_pay_profiles', 1);
         $criteria = new CrewBidBrowseCriteria(seat: 'CA', preferences: ['goals' => [], 'days_off' => [], 'start_city' => '']);
         $seat = app(CrewBidsPageDataFactory::class)->make($package, $owner, $criteria);
-        $revision = BidPackage::factory()->create();
+        $revision = BidPackage::factory()->withSourceGuarantee()->create();
         $next = app(CrewBidsPageDataFactory::class)->make($revision, $owner, new CrewBidBrowseCriteria(seat: 'FO', preferences: $criteria->preferences));
 
         $this->assertNull($seat->browse->allLines['F1']['pay_estimate']->cents);
@@ -77,7 +77,7 @@ class CrewBidPayTest extends TestCase
 
     public function test_pay_sort_uses_ready_rounded_values_natural_ties_and_preserves_manual_ranks_and_bulk_order(): void
     {
-        $package = BidPackage::factory()->create();
+        $package = BidPackage::factory()->withSourceGuarantee()->create();
         $payload = $package->payload;
         foreach (['F2', 'F10', 'F3'] as $id) {
             $payload['lines'][$id] = array_replace($payload['lines']['F1'], ['id' => $id]);
@@ -98,7 +98,7 @@ class CrewBidPayTest extends TestCase
 
     public function test_stale_edit_retains_draft_and_does_not_overwrite_saved_context(): void
     {
-        $package = BidPackage::factory()->create();
+        $package = BidPackage::factory()->withSourceGuarantee()->create();
         $user = User::factory()->admin()->withCrewPaySettings('2026-01-01')->create();
         $first = Livewire::actingAs($user)->test(CrewBids::class)->call('openPayEditor', 'F1');
         $this->save($user, $package);
@@ -112,7 +112,7 @@ class CrewBidPayTest extends TestCase
     #[DataProvider('invalidInputs')]
     public function test_invalid_inputs_do_not_create_a_profile(string $path, mixed $value): void
     {
-        BidPackage::factory()->create();
+        BidPackage::factory()->withSourceGuarantee()->create();
         $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)->call('openPayEditor', 'F1')
             ->set('paySettings', $this->settings())->set('payContext', $this->context())->set('payInput', $this->input());
 
@@ -138,7 +138,7 @@ class CrewBidPayTest extends TestCase
 
     public function test_open_time_requires_private_mode_and_repeated_assignment_cannot_be_paid_twice(): void
     {
-        $package = BidPackage::factory()->create();
+        $package = BidPackage::factory()->withSourceGuarantee()->create();
         $user = User::factory()->admin()->create();
         $page = Livewire::actingAs($user)->test(CrewBids::class)->call('openPayEditor', 'F1')
             ->set('paySettings', $this->settings())->set('payContext', $this->context())->set('payInput', $this->input())
@@ -156,7 +156,7 @@ class CrewBidPayTest extends TestCase
 
     public function test_distinct_additional_pay_rules_may_share_an_ordinary_assignment_reference(): void
     {
-        BidPackage::factory()->create();
+        BidPackage::factory()->withSourceGuarantee()->create();
         $input = $this->input('80:00');
         $input['rows'][] = array_replace($input['rows'][0], ['type' => 'maintenance', 'duration' => '1:00']);
 
@@ -169,7 +169,7 @@ class CrewBidPayTest extends TestCase
 
     public function test_ineligible_lines_and_archived_packages_are_not_editable_by_new_viewers(): void
     {
-        $package = BidPackage::factory()->create();
+        $package = BidPackage::factory()->withSourceGuarantee()->create();
         $payload = $package->payload;
         $payload['lines']['F1']['first_officers'] = 0;
         $package->update(['payload' => $payload]);
@@ -184,7 +184,7 @@ class CrewBidPayTest extends TestCase
     public function test_non_entitled_users_cannot_write_pay_profiles(): void
     {
         $user = User::factory()->create();
-        $package = BidPackage::factory()->create();
+        $package = BidPackage::factory()->withSourceGuarantee()->create();
 
         $this->expectException(AuthorizationException::class);
         app(SaveCrewBidPayProfile::class)->handle($user, $package, 'FO', 0, $this->settings(), $this->context(), 'F1', $this->input());
@@ -192,7 +192,7 @@ class CrewBidPayTest extends TestCase
 
     public function test_profile_changes_recalculate_pay_and_clearing_longevity_disables_totals(): void
     {
-        $package = BidPackage::factory()->create();
+        $package = BidPackage::factory()->withSourceGuarantee()->create();
         $user = User::factory()->admin()->withCrewPaySettings('2026-01-01')->create();
         $this->save($user, $package);
         Livewire::actingAs($user)->test(CrewBids::class)->assertSee('$9,360.00')->call('openPayEditor', 'F1')
@@ -212,7 +212,7 @@ class CrewBidPayTest extends TestCase
 
     public function test_conflicting_migrated_override_requires_a_profile_choice_and_ignores_legacy_values(): void
     {
-        $package = BidPackage::factory()->create();
+        $package = BidPackage::factory()->withSourceGuarantee()->create();
         $user = User::factory()->admin()->withCrewPaySettings('2026-01-01')->create();
         $profile = $this->save($user, $package);
         $user->update(['crew_pay_settings' => ['longevity_date' => '2026-01-01', 'check_airman' => null]]);
