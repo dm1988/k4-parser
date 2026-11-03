@@ -36,6 +36,20 @@ Validation: Documentation diff review and whitespace checks only; no application
 
 Commit message: `docs: break advanced bid comparison controls into subtasks`
 
+Advanced comparison subtask 2 completed (2026-11-03): Grouped existing browsing filters into independent collapsible Credit & crew, Work pattern, and Airports sections using a reusable Blade disclosure component. Added active-filter counts/summary, group-specific clear actions, inline validation descriptions, and shared reset/loading behavior. Preserved temporary Livewire filter values during browsing, preferences/list panel use, and disclosure changes; package changes clear browsing filters. Group clears retain saved preferences, selected lines, and manual ranks. Sorting and Selected only remain outside the groups. Added the requested credit presets (64h, 70h, 80h) and days-off presets (14, 15, 16), using the existing fields with immediate result updates and active-value highlighting. Credit arithmetic, base-credit ranges, crew filters, and later metrics remain separate tasks.
+
+Validation: Sail was available with elevated access. Focused comparison regression files passed (85 tests, 599 assertions); after the requested quick-entry update, the focused advanced-filter file passed again (7 tests, 133 assertions). Final Pint, production Vite build, whitespace checks, and the single Larastan integration run passed (zero errors). Added coverage for independent group resets, combined filtering and stable ranking across tabs/panels, temporary state, zero-valued filters, reset/error recovery, quick-entry availability, and disclosure/input accessibility markup. Manual browser layout, touch, focus restoration, and native disclosure keyboard interaction remain unverified.
+
+Commit message: `feat: group advanced bid comparison controls`
+
+Advanced comparison subtask 1 completed (2026-11-03): Finished the definition/source-coverage review and recorded the user's answers in `CREW_BIDS.md`. Source line credit in either Lines or Overview is the published contractual guarantee; both present values must agree. Guarantee-relative browsing uses complete base pairing credit minus that separately preserved guarantee, with Below/At/Above and a signed duration. Crew filtering describes published line CA/FO counts, with trip differences shown separately. Published Duty Days remains as supplied; conflicting numeric duty totals block publication. First report and final endpoint use complete linked trips across month boundaries, with inclusive UTC time windows and midnight wrapping. Confirmed Any/Only/Exclude missing-data rules, retained selected bids and the existing incomplete-days-off exception, and preserved the earlier carry fallback, split, country-grouping, and temporary-state decisions.
+
+Recorded a metric/source/coverage table for guarantee, pairing credit, crew, duty/carry counts, occupancy/splits, deadheads/routes, report/endpoints, scheduled gaps/source Rest, and countries. Identified dependent implementation work: source-value omission/conflict handling, duty-total preservation, calculated-first carry fallback, `base_credit` source fallback, per-metric coverage beyond document-presence flags, legacy provenance, and dated trip reconstruction. Deferred features remain explicitly gated; they do not leave this definition task unfinished. Updated dependent task descriptions without changing runtime code or the previous subtask 2 implementation.
+
+Validation: Existing focused `BidPackageImportTest` passed through elevated Sail (12 tests, 151 assertions, no skipped samples), including native B747 October 2026 and B777 November 2026 packages, source-credit preservation, partial Trips totals, Reserve/FO-only normalization, and UTC/year transitions. Documentation consistency/whitespace reviewed. No PHP/application files changed during this definition task; Pint and Larastan were not repeated. Preserved the existing working-tree changes.
+
+Commit message: `docs: define advanced bid comparison semantics and coverage`
+
 ### Goal
 
 Organize K4 Bids within the app and define a clean user-facing workspace for monthly package comparison and bid ranking.

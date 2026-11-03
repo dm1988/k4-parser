@@ -221,11 +221,23 @@ class CrewBids extends Component
     {
         $this->daysOff = [];
         $this->startCity = '';
-        $this->minimumCredit = null;
-        $this->minimumDaysOff = null;
+        $this->clearCreditFilters();
+        $this->clearWorkPatternFilters();
         $this->selectedOnly = false;
         $this->clearLayoverFilters();
         $this->persist();
+    }
+
+    public function clearCreditFilters(): void
+    {
+        $this->minimumCredit = null;
+        $this->resetValidation('minimumCredit');
+    }
+
+    public function clearWorkPatternFilters(): void
+    {
+        $this->minimumDaysOff = null;
+        $this->resetValidation('minimumDaysOff');
     }
 
     public function clearLayoverFilters(): void
@@ -454,6 +466,27 @@ class CrewBids extends Component
         }
     }
 
+    /** @return array{credit: list<string>, work_pattern: list<string>, airports: list<string>} */
+    private function filterSummaries(): array
+    {
+        $airports = [];
+        if ($this->layoverCity !== '') {
+            $airports[] = 'Layover '.$this->layoverCity;
+        }
+        if ($this->extendedLayoversOnly) {
+            $airports[] = '24h+ layover';
+        }
+        if ($this->avoidShortLayovers) {
+            $airports[] = 'Avoid under 10h';
+        }
+
+        return [
+            'credit' => $this->minimumCredit === null ? [] : ['Min credit '.$this->minimumCredit.'h'],
+            'work_pattern' => $this->minimumDaysOff === null ? [] : ['Min days off '.$this->minimumDaysOff],
+            'airports' => $airports,
+        ];
+    }
+
     /** @return array<string, mixed> */
     private function viewData(): array
     {
@@ -523,6 +556,11 @@ class CrewBids extends Component
 
         $ranks = array_flip($this->selections);
         $showBlocks = in_array('blocks', $this->goals, true);
+        $filterSummaries = $this->filterSummaries();
+        $activeFilters = array_merge(...array_values($filterSummaries));
+        if ($this->selectedOnly) {
+            $activeFilters[] = 'Selected only';
+        }
 
         return [
             'package' => $package,
@@ -533,6 +571,9 @@ class CrewBids extends Component
             'selected' => $selected,
             'cities' => $cities,
             'layoverCities' => $layoverCities,
+            'filterSummaries' => $filterSummaries,
+            'activeFilterCount' => count($activeFilters),
+            'activeFilterSummary' => $activeFilters === [] ? 'No active browsing filters' : implode(' · ', $activeFilters),
             'dates' => $dates,
             'monthLabel' => $month?->format('F Y'),
             'packageStartDate' => $month?->format('Y-m-d'),

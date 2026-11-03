@@ -40,7 +40,7 @@
                 @if ($tab !== 'trips')
                     <div class="ms-auto flex max-w-full flex-wrap items-center justify-end gap-2 text-xs">
                         <label for="bid-sort" class="sr-only">Sort lines</label><select id="bid-sort" wire:model.change.live="sort" class="min-h-11 w-32 max-w-full rounded-lg text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900 sm:w-auto"><option value="best">{{ $goals === [] ? 'Line ID (no goals set)' : 'Best match' }}</option><option value="credit">Highest credit</option><option value="block">Highest block time</option><option value="days_off">Most days off</option><option value="id">Line ID</option></select>
-                        <button type="button" x-ref="filtersTrigger" @click="filtersOpen = ! filtersOpen" :aria-expanded="filtersOpen" aria-controls="bid-filters" class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-slate-300 px-3 font-semibold focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-600"><x-heroicon-o-funnel class="h-4 w-4" aria-hidden="true" /><span>Filters</span>@if ($layoverCity !== '' || $extendedLayoversOnly || $avoidShortLayovers || $minimumCredit !== null || $minimumDaysOff !== null || $selectedOnly)<span class="h-1.5 w-1.5 rounded-full bg-[#C5A059]" aria-hidden="true"></span><span class="sr-only">active</span>@endif</button>
+                        <button type="button" x-ref="filtersTrigger" @click="filtersOpen = ! filtersOpen" :aria-expanded="filtersOpen" aria-controls="bid-filters" class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-slate-300 px-3 font-semibold focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-600"><x-heroicon-o-funnel class="h-4 w-4" aria-hidden="true" /><span>Filters</span><span class="rounded-full bg-[#C5A059]/15 px-1.5 font-mono">{{ $activeFilterCount }}<span class="sr-only"> active browsing filters</span></span></button>
                     </div>
                 @endif
             </div>
@@ -151,28 +151,54 @@
                 @empty<p class="rounded-xl border border-slate-200 p-5 dark:border-slate-700">Trips file not imported or no supported trip details were found. @can('manage-crew-bids')Use Manage package to import Trips.@else An admin can update this package.@endcan</p>@endforelse
             </section>
         @else
-            <div id="bid-filters" x-show="filtersOpen" x-cloak class="mb-3 space-y-2" role="region" aria-label="Line filters">
-                <div class="flex flex-wrap items-center gap-2 text-xs">
-                    <span class="sr-only">Layover quick filters</span>
-                    <button type="button" @click="$wire.$toggle('extendedLayoversOnly')" :aria-pressed="$wire.extendedLayoversOnly" :class="$wire.extendedLayoversOnly ? 'border-[#C5A059] bg-[#C5A059]/15 text-[#1B365D] dark:text-amber-200' : 'border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300'" class="min-h-11 rounded-full border px-3 font-semibold focus-visible:ring-2 focus-visible:ring-amber-500">24h+ layover</button>
-                    <button type="button" @click="$wire.$toggle('avoidShortLayovers')" :aria-pressed="$wire.avoidShortLayovers" :class="$wire.avoidShortLayovers ? 'border-[#C5A059] bg-[#C5A059]/15 text-[#1B365D] dark:text-amber-200' : 'border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300'" class="min-h-11 rounded-full border px-3 font-semibold focus-visible:ring-2 focus-visible:ring-amber-500">Avoid under 10h</button>
-                    <label class="flex items-center gap-2"><span class="sr-only">Layover airport</span><select wire:model.change.live="layoverCity" class="min-h-11 rounded-full font-mono text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900"><option value="">Any layover airport</option>@foreach ($layoverCities as $city)<option value="{{ $city }}">{{ $city }}</option>@endforeach</select></label>
-                    @if ($layoverCity !== '' || $extendedLayoversOnly || $avoidShortLayovers)<button type="button" wire:click="clearLayoverFilters" class="min-h-11 rounded-full px-2 underline focus-visible:ring-2 focus-visible:ring-amber-500" wire:loading.attr="disabled" wire:target="clearLayoverFilters"><span wire:loading.remove wire:target="clearLayoverFilters">Clear layovers</span><span wire:loading wire:target="clearLayoverFilters" role="status">Clearing…</span></button>@endif
-                    <label class="flex items-center gap-2">Min credit (h)<input type="number" min="0" max="300" wire:model.live.debounce.400ms="minimumCredit" class="w-20 rounded-lg text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900"></label>
-                    <label class="flex items-center gap-2">Min days off<input type="number" min="0" max="31" wire:model.live.debounce.400ms="minimumDaysOff" class="w-16 rounded-lg text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900"></label>
-                    <label class="flex min-h-11 items-center gap-2"><input type="checkbox" wire:model.change.live="selectedOnly" class="rounded focus-visible:ring-2 focus-visible:ring-amber-500">Selected only</label>
-                    <button type="button" wire:click="resetFilters" class="min-h-11 rounded-lg px-2 underline focus-visible:ring-2 focus-visible:ring-amber-500" wire:loading.attr="disabled" wire:target="resetFilters"><span wire:loading.remove wire:target="resetFilters">Reset filters</span><span wire:loading wire:target="resetFilters" role="status">Resetting…</span></button>
+            <div id="bid-filters" x-show="filtersOpen" x-cloak class="mb-3 flex flex-col gap-3" role="region" aria-label="Line filters">
+                <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs">
+                    <p class="min-w-0 text-slate-600 dark:text-slate-300" role="status">{{ $activeFilterSummary }}</p>
+                    <button type="button" wire:click="resetFilters" class="min-h-11 shrink-0 rounded-lg px-2 font-semibold underline focus-visible:ring-2 focus-visible:ring-amber-500" wire:loading.attr="disabled" wire:target="resetFilters"><span wire:loading.remove wire:target="resetFilters">Reset filters</span><span wire:loading wire:target="resetFilters" role="status">Resetting…</span></button>
                 </div>
-                @error('layoverCity')<p class="mt-1 text-xs text-amber-800 dark:text-amber-300">{{ $message }}</p>@enderror
-                @if ($layoverCity !== '' || $extendedLayoversOnly || $avoidShortLayovers)
-                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Matching layovers are outlined in gold in the trip timeline. Avoid under 10h applies to every airport and requires complete connection data. Your bid list keeps its order.</p>
-                @elseif ($layoverCities === [])
-                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">No connected layover data is available for these lines.</p>
-                @endif
+                <div class="grid gap-3 lg:grid-cols-3">
+                    <x-crew-bids.filter-group label="Credit & crew" :summary="$filterSummaries['credit']" clear-action="clearCreditFilters" clear-label="Clear credit" wire:key="bid-credit-filters">
+                        <label for="bid-minimum-credit" class="font-semibold">Min credit (h)</label>
+                        <div class="flex flex-wrap gap-2" role="group" aria-label="Quick minimum credit">
+                            @foreach ([64, 70, 80] as $hours)
+                                <button type="button" @click="$wire.$set('minimumCredit', {{ $hours }})" :aria-pressed="$wire.minimumCredit === {{ $hours }}" :class="$wire.minimumCredit === {{ $hours }} ? 'border-[#C5A059] bg-[#C5A059]/15 text-[#1B365D] dark:text-amber-200' : 'border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300'" aria-label="Set minimum credit to {{ $hours }} hours" wire:loading.attr="disabled" wire:target="minimumCredit" class="min-h-11 rounded-full border px-3 font-mono font-semibold focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50">{{ $hours }}h</button>
+                            @endforeach
+                        </div>
+                        <input id="bid-minimum-credit" type="number" min="0" max="300" wire:model.live.debounce.400ms="minimumCredit" aria-describedby="bid-minimum-credit-error" aria-invalid="{{ $errors->has('minimumCredit') ? 'true' : 'false' }}" class="min-h-11 w-full rounded-lg text-sm focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900">
+                        <p id="bid-minimum-credit-error" class="text-amber-800 empty:hidden dark:text-amber-300">@error('minimumCredit'){{ $message }}@enderror</p>
+                    </x-crew-bids.filter-group>
+                    <x-crew-bids.filter-group label="Work pattern" :summary="$filterSummaries['work_pattern']" clear-action="clearWorkPatternFilters" clear-label="Clear work pattern" wire:key="bid-work-pattern-filters">
+                        <label for="bid-minimum-days-off" class="font-semibold">Min days off</label>
+                        <div class="flex flex-wrap gap-2" role="group" aria-label="Quick minimum days off">
+                            @foreach ([14, 15, 16] as $days)
+                                <button type="button" @click="$wire.$set('minimumDaysOff', {{ $days }})" :aria-pressed="$wire.minimumDaysOff === {{ $days }}" :class="$wire.minimumDaysOff === {{ $days }} ? 'border-[#C5A059] bg-[#C5A059]/15 text-[#1B365D] dark:text-amber-200' : 'border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300'" aria-label="Set minimum days off to {{ $days }} days" wire:loading.attr="disabled" wire:target="minimumDaysOff" class="min-h-11 rounded-full border px-3 font-mono font-semibold focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50">{{ $days }} days</button>
+                            @endforeach
+                        </div>
+                        <input id="bid-minimum-days-off" type="number" min="0" max="31" wire:model.live.debounce.400ms="minimumDaysOff" aria-describedby="bid-minimum-days-off-error" aria-invalid="{{ $errors->has('minimumDaysOff') ? 'true' : 'false' }}" class="min-h-11 w-full rounded-lg text-sm focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900">
+                        <p id="bid-minimum-days-off-error" class="text-amber-800 empty:hidden dark:text-amber-300">@error('minimumDaysOff'){{ $message }}@enderror</p>
+                    </x-crew-bids.filter-group>
+                    <x-crew-bids.filter-group label="Airports" :summary="$filterSummaries['airports']" clear-action="clearLayoverFilters" clear-label="Clear airports" wire:key="bid-airport-filters">
+                        <label for="bid-layover-city" class="font-semibold">Layover airport</label>
+                        <select id="bid-layover-city" wire:model.change.live="layoverCity" aria-describedby="bid-layover-city-error" aria-invalid="{{ $errors->has('layoverCity') ? 'true' : 'false' }}" class="min-h-11 w-full rounded-lg font-mono text-sm focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900"><option value="">Any layover airport</option>@foreach ($layoverCities as $city)<option value="{{ $city }}">{{ $city }}</option>@endforeach</select>
+                        <p id="bid-layover-city-error" class="text-amber-800 empty:hidden dark:text-amber-300">@error('layoverCity'){{ $message }}@enderror</p>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" @click="$wire.$toggle('extendedLayoversOnly')" :aria-pressed="$wire.extendedLayoversOnly" :class="$wire.extendedLayoversOnly ? 'border-[#C5A059] bg-[#C5A059]/15 text-[#1B365D] dark:text-amber-200' : 'border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300'" class="min-h-11 rounded-full border px-3 font-semibold focus-visible:ring-2 focus-visible:ring-amber-500">24h+ layover</button>
+                            <button type="button" @click="$wire.$toggle('avoidShortLayovers')" :aria-pressed="$wire.avoidShortLayovers" :class="$wire.avoidShortLayovers ? 'border-[#C5A059] bg-[#C5A059]/15 text-[#1B365D] dark:text-amber-200' : 'border-slate-300 text-slate-600 dark:border-slate-600 dark:text-slate-300'" class="min-h-11 rounded-full border px-3 font-semibold focus-visible:ring-2 focus-visible:ring-amber-500">Avoid under 10h</button>
+                        </div>
+                        @if ($filterSummaries['airports'] !== [])
+                            <p class="text-slate-500 dark:text-slate-400">Matching layovers are outlined in gold in the trip timeline. Avoid under 10h applies to every airport and requires complete connection data. Your bid list keeps its order.</p>
+                        @elseif ($layoverCities === [])
+                            <p class="text-slate-500 dark:text-slate-400">No connected layover data is available for these lines.</p>
+                        @endif
+                    </x-crew-bids.filter-group>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <label class="flex min-h-11 items-center gap-2"><input type="checkbox" wire:model.change.live="selectedOnly" class="rounded focus-visible:ring-2 focus-visible:ring-amber-500">Selected only</label>
+                </div>
             </div>
-            <p wire:loading.delay wire:target="tab,sort,daysOff,goals,startCity,minimumCredit,minimumDaysOff,layoverCity,extendedLayoversOnly,avoidShortLayovers,selectedOnly,changeContext,resetFilters,clearLayoverFilters,clearDates,addRange" role="status" class="mb-2 text-xs text-slate-500 dark:text-slate-400">Updating matching lines…</p>
+            <p wire:loading.delay wire:target="tab,sort,daysOff,goals,startCity,minimumCredit,minimumDaysOff,layoverCity,extendedLayoversOnly,avoidShortLayovers,selectedOnly,changeContext,resetFilters,clearCreditFilters,clearWorkPatternFilters,clearLayoverFilters,clearDates,addRange" role="status" class="mb-2 text-xs text-slate-500 dark:text-slate-400">Updating matching lines…</p>
             <p class="mb-3 text-xs text-slate-500 dark:text-slate-400">Credit h:mm[:ss] · Block h:mm · UTC · Blue: flying trip (includes layover/rest) · Orange: reserve · Light: off · ?: unknown</p>
-            <section class="space-y-3" aria-label="Available lines" wire:loading.class="opacity-60" wire:target="tab,sort,daysOff,goals,startCity,minimumCredit,minimumDaysOff,layoverCity,extendedLayoversOnly,avoidShortLayovers,selectedOnly,changeContext,resetFilters,clearLayoverFilters,clearDates,addRange">
+            <section class="space-y-3" aria-label="Available lines" wire:loading.class="opacity-60" wire:target="tab,sort,daysOff,goals,startCity,minimumCredit,minimumDaysOff,layoverCity,extendedLayoversOnly,avoidShortLayovers,selectedOnly,changeContext,resetFilters,clearCreditFilters,clearWorkPatternFilters,clearLayoverFilters,clearDates,addRange">
                 @forelse ($lineCards as $line)<x-crew-bids.line :line="$line" wire:key="bid-line-{{ $packageId }}-{{ $line->id }}" />
                 @empty<div class="rounded-xl border border-slate-200 p-5 dark:border-slate-700"><p>No lines match these filters.</p><button type="button" wire:click="resetFilters" class="min-h-11 font-semibold underline" wire:loading.attr="disabled" wire:target="resetFilters"><span wire:loading.remove wire:target="resetFilters">Reset filters</span><span wire:loading wire:target="resetFilters" role="status">Resetting…</span></button></div>@endforelse
             </section>
