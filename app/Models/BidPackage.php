@@ -11,16 +11,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['imported_by', 'period', 'fleet', 'source_revision', 'fingerprint', 'payload', 'published_at', 'archived_at'])]
-#[Hidden(['payload', 'fingerprint'])]
+#[Hidden(['payload', 'fingerprint', 'pay_source'])]
 class BidPackage extends Model
 {
     /** @use HasFactory<BidPackageFactory> */
     use HasFactory;
 
-    /** @return array{payload: 'encrypted:array', published_at: 'immutable_datetime', archived_at: 'immutable_datetime'} */
+    /** @return array{payload: 'encrypted:array', pay_source: 'encrypted:array', published_at: 'immutable_datetime', archived_at: 'immutable_datetime'} */
     protected function casts(): array
     {
-        return ['payload' => 'encrypted:array', 'published_at' => 'immutable_datetime', 'archived_at' => 'immutable_datetime'];
+        return ['payload' => 'encrypted:array', 'pay_source' => 'encrypted:array', 'published_at' => 'immutable_datetime', 'archived_at' => 'immutable_datetime'];
     }
 
     /** @return BelongsTo<User, $this> */

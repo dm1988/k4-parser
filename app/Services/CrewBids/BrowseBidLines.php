@@ -13,10 +13,14 @@ class BrowseBidLines
     /** @param array<string, mixed> $payContext */
     public function browse(?BidPackage $package, CrewBidBrowseCriteria $criteria, array $payContext = []): CrewBidBrowseResult
     {
-        $allLines = $this->eligibleLines($package, $criteria);
+        $payload = $package === null ? [] : $package->payload;
+        $paySource = $package === null ? null : $package->pay_source;
+        $payPayload = ($paySource['package_fingerprint'] ?? null) === $package?->fingerprint
+            ? ($paySource['payload'] ?? $payload) : $payload;
+        $allLines = $this->eligibleLines($package, $criteria, $payload);
         foreach ($allLines as &$line) {
-            $line['pay_estimate'] = $this->pay->calculate($line, $package->payload['trips'] ?? [], $package->period, $package->fleet, $criteria->seat, $payContext);
-            $line['pay_compact'] = $criteria->sort === 'pay' || (bool) ($payContext['settings']['show_compact'] ?? false);
+            $line['pay_estimate'] = $this->pay->calculate($payPayload['lines'][$line['id']] ?? $line, $payPayload['trips'] ?? [], $package->period, $package->fleet, $criteria->seat, $payContext);
+            $line['pay_compact'] = true;
         }
         unset($line);
         $lines = array_values(array_filter($allLines, fn (array $line): bool => $this->matches($line, $criteria)));
@@ -57,14 +61,15 @@ class BrowseBidLines
         );
     }
 
-    /** @return array<string, array<string, mixed>> */
-    private function eligibleLines(?BidPackage $package, CrewBidBrowseCriteria $criteria): array
+    /** @param array<string, mixed> $payload
+     * @return array<string, array<string, mixed>>
+     */
+    private function eligibleLines(?BidPackage $package, CrewBidBrowseCriteria $criteria, array $payload): array
     {
         if ($package === null) {
             return [];
         }
 
-        $payload = $package->payload;
         $seatKey = $criteria->seat === 'CA' ? 'captains' : 'first_officers';
         $layoverFilters = $criteria->layoverCity !== '' || $criteria->extendedLayoversOnly || $criteria->avoidShortLayovers
             ? ['city' => $criteria->layoverCity, 'extended' => $criteria->extendedLayoversOnly, 'avoid_short' => $criteria->avoidShortLayovers]

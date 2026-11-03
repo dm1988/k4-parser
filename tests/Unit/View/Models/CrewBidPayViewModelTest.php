@@ -44,7 +44,7 @@ class CrewBidPayViewModelTest extends TestCase
     {
         $editor = CrewBidPayEditorViewModel::fromInput(true, 'F1', ['rows' => 'invalid'], '2026-02', 'FO');
 
-        $this->assertSame('Private pay context · F1', $editor->title);
+        $this->assertSame('Pay adjustments · F1', $editor->title);
         $this->assertSame('FO · 2026-01-31 through 2026-03-01 UTC compensation period', $editor->period);
         $this->assertSame([], $editor->rows);
         $this->assertArrayHasKey('open_time', $editor->payTypes);

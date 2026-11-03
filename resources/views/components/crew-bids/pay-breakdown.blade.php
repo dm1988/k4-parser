@@ -1,8 +1,18 @@
 @props(['estimate', 'lineId'])
-<details class="mt-3 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
-    <summary class="cursor-pointer rounded py-1 font-semibold focus-visible:ring-2 focus-visible:ring-amber-500">Estimated pay · {{ $estimate->label }}</summary>
+<details @toggle="if ($event.target === $el && $el.open && !$wire.payDetails.includes('{{ $lineId }}')) $wire.loadPayDetails('{{ $lineId }}')" class="mt-3 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
+    <summary class="cursor-pointer rounded py-1 font-semibold focus-visible:ring-2 focus-visible:ring-amber-500">{{ $estimate->title }} · {{ $estimate->label }}</summary>
     <div class="mt-3 space-y-3">
+        @if (! $estimate->loaded)
+            <p role="status" class="text-slate-500 dark:text-slate-400">Loading pay breakdown…</p>
+        @else
         <p>{{ $estimate->period }} · USD scheduled gross</p>
+        @if ($estimate->allocations !== [])
+            <dl class="space-y-2">
+                @foreach ($estimate->allocations as $allocation)
+                    <div><dt>{{ $allocation['label'] }}</dt><dd class="font-mono font-semibold">{{ $allocation['amount'] }}</dd></div>
+                @endforeach
+            </dl>
+        @endif
         @if (! $estimate->ready)
             <p class="text-amber-800 dark:text-amber-300">A complete total is unavailable. Known components below are not a complete pay estimate.</p>
             <ul class="list-disc space-y-1 ps-5">@foreach ($estimate->missing as $message)<li>{{ $message }}</li>@endforeach</ul>
@@ -17,8 +27,9 @@
             <details><summary class="cursor-pointer py-2 underline">Rates, sources and assumptions</summary><div class="space-y-2 text-xs text-slate-600 dark:text-slate-300">
                 @foreach ($estimate->rates as $rate)<p>{{ $rate }}</p>@endforeach
                 @foreach ($estimate->assumptions as $assumption)<p>{{ $assumption }}</p>@endforeach
-                <p>Rules: {{ $estimate->version }}. The user-confirmed longevity, proration and Open Time interpretations are scenario assumptions; the Sections 2/5 review does not independently verify them.</p>
+                <p>Rules: {{ $estimate->version }}. The user-confirmed longevity, proration, carry-in excess-day and Open Time interpretations are scenario assumptions; the Sections 2/5 review does not independently verify them.</p>
             </div></details>
+        @endif
         @endif
     </div>
 </details>

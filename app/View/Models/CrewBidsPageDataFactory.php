@@ -18,7 +18,8 @@ class CrewBidsPageDataFactory
         private CompareBidPackageRevision $compareRevision,
     ) {}
 
-    public function make(?BidPackage $package, User $user, CrewBidBrowseCriteria $criteria, ?int $draftId = null, ?int $pendingPackageId = null): CrewBidsPageData
+    /** @param list<string> $payDetails */
+    public function make(?BidPackage $package, User $user, CrewBidBrowseCriteria $criteria, ?int $draftId = null, ?int $pendingPackageId = null, array $payDetails = []): CrewBidsPageData
     {
         $profile = CrewBidPayProfile::query()->where('user_id', $user->id)->first() ?? new CrewBidPayProfile;
         $context = $package === null ? [] : $profile->context($package->id, $criteria->seat, $user);
@@ -39,7 +40,7 @@ class CrewBidsPageDataFactory
                 ->where(fn ($query) => $query->whereNull('archived_at')->orWhereHas('workspaces', fn ($query) => $query->where('user_id', $user->id)->where('seat', $criteria->seat)))
                 ->orderByDesc('period')->orderByDesc('id')->get(['id', 'period', 'fleet', 'source_revision']),
             browse: $browse,
-            lineCards: array_map(static fn (array $line): CrewBidLineViewModel => CrewBidLineViewModel::fromLine($line, isset($ranks[$line['id']]) ? $ranks[$line['id']] + 1 : null, $showBlocks), $browse->lines),
+            lineCards: array_map(static fn (array $line): CrewBidLineViewModel => CrewBidLineViewModel::fromLine($line, isset($ranks[$line['id']]) ? $ranks[$line['id']] + 1 : null, $showBlocks, in_array($line['id'], $payDetails, true)), $browse->lines),
             filterSummaries: $filterSummaries,
             activeFilterCount: count($activeFilters),
             activeFilterSummary: $activeFilters === [] ? 'No active browsing filters' : implode(' · ', $activeFilters),

@@ -35,7 +35,7 @@ class CrewBidPayTest extends TestCase
         $page->set('paySettings', $this->settings())->set('payContext', $this->context())->set('payInput', $this->input('80:00'))
             ->call('savePayInputs')->assertHasNoErrors()->assertSet('showPayEditor', false)
             ->assertSet('minimumDaysOff', 14)->assertSet('selections', ['F1'])
-            ->assertSee('$9,360.00')->assertSee('Highest estimated pay')
+            ->assertSee('$9,360.00')->assertSee('Highest estimated line value')
             ->assertViewHas('allLines', fn (array $lines): bool => $lines['F1']['pay_estimate']->cents === 936000);
 
         $profile = CrewBidPayProfile::query()->where('user_id', $user->id)->sole();
@@ -64,7 +64,7 @@ class CrewBidPayTest extends TestCase
         $this->save($owner, $package);
 
         Livewire::actingAs($other)->test(CrewBids::class)->assertDontSee('$9,360.00')->call('openPayEditor', 'F1')
-            ->assertSet('paySettings', ['show_compact' => false])->assertSet('payInput.rows', [])->assertDontSee('2026-01-01');
+            ->assertSet('paySettings', ['show_compact' => true])->assertSet('payInput.rows', [])->assertDontSee('2026-01-01');
         $this->assertDatabaseCount('crew_bid_pay_profiles', 1);
         $criteria = new CrewBidBrowseCriteria(seat: 'CA', preferences: ['goals' => [], 'days_off' => [], 'start_city' => '']);
         $seat = app(CrewBidsPageDataFactory::class)->make($package, $owner, $criteria);
@@ -220,7 +220,7 @@ class CrewBidPayTest extends TestCase
         $scenarios[$package->id.':FO']['check_airman'] = true;
         $profile->update(['settings' => ['longevity_date' => '2000-01-01', 'show_compact' => true], 'scenarios' => $scenarios]);
 
-        Livewire::actingAs($user)->test(CrewBids::class)->assertSee('Saved Check Airman scenarios disagree')
+        Livewire::actingAs($user)->test(CrewBids::class)->call('loadPayDetails', 'F1')->assertSee('Saved Check Airman scenarios disagree')
             ->assertViewHas('allLines', fn (array $lines): bool => $lines['F1']['pay_estimate']->cents === null);
         $this->patch(route('profile.update'), ['name' => $user->name, 'email' => $user->email,
             'crew_pay_settings' => ['longevity_date' => '2026-01-01', 'check_airman' => '0']])->assertSessionHasNoErrors();
@@ -242,7 +242,7 @@ class CrewBidPayTest extends TestCase
     /** @return array<string, mixed> */
     private function context(): array
     {
-        return ['qualified' => true, 'full_period' => true, 'line_guarantee' => false, 'unsupported' => false];
+        return ['qualified' => true, 'full_period' => true, 'line_guarantee' => false, 'unsupported' => false, 'custom_assumptions' => true];
     }
 
     /** @return array<string, mixed> */

@@ -38,12 +38,12 @@ final readonly class CrewBidLineViewModel
     ) {}
 
     /** @param array<string, mixed> $line */
-    public static function fromLine(array $line, ?int $rank = null, bool $showBlocks = false): self
+    public static function fromLine(array $line, ?int $rank = null, bool $showBlocks = false, bool $payDetails = false): self
     {
         $reserve = $line['type'] === 'reserve';
         $trips = $line['trip_details'];
         $tripCount = count($trips);
-        $payEstimate = isset($line['pay_estimate']) ? CrewBidPayViewModel::fromEstimate($line['pay_estimate']) : null;
+        $payEstimate = isset($line['pay_estimate']) ? CrewBidPayViewModel::fromEstimate($line['pay_estimate'], $payDetails) : null;
 
         return new self(
             id: $line['id'],
@@ -85,7 +85,7 @@ final readonly class CrewBidLineViewModel
             $metrics[] = ['label' => 'Days off', 'value' => (string) $line['days_off'], 'title' => null, 'containerClasses' => 'shrink-0', 'labelClasses' => 'whitespace-nowrap', 'valueClasses' => 'font-mono text-xs font-semibold'];
         }
         if (($line['pay_compact'] ?? false) && $payEstimate !== null) {
-            $metrics[] = ['label' => 'Estimated pay', 'value' => $payEstimate->label, 'title' => 'USD scheduled gross · '.$payEstimate->period, 'containerClasses' => 'min-w-0', 'labelClasses' => '', 'valueClasses' => 'font-mono text-xs font-semibold'];
+            $metrics[] = ['label' => $payEstimate->title, 'value' => $payEstimate->label, 'title' => 'USD scheduled gross · '.$payEstimate->period, 'containerClasses' => 'min-w-0', 'labelClasses' => '', 'valueClasses' => 'font-mono text-xs font-semibold'];
         }
 
         return $metrics;

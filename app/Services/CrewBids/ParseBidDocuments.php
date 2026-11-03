@@ -10,6 +10,8 @@ use Throwable;
 
 class ParseBidDocuments
 {
+    public const string VERSION = 'crew-bids-parser:v4';
+
     public function __construct(private ReadBidOverview $overview, private Parser $pdf) {}
 
     /** @param list<UploadedFile> $files
@@ -120,7 +122,7 @@ class ParseBidDocuments
         unset($line);
         sort($hashes);
 
-        return $context + ['fingerprint' => hash('sha256', 'crew-bids-parser:v3:'.implode('', $hashes)), 'payload' => ['lines' => $lines, 'trips' => $trips, 'coverage' => ['overview' => $overview !== null, 'lines' => isset($documents['lines']), 'trips' => isset($documents['trips'])]]];
+        return $context + ['fingerprint' => hash('sha256', self::VERSION.':'.implode('', $hashes)), 'payload' => ['lines' => $lines, 'trips' => $trips, 'coverage' => ['overview' => $overview !== null, 'lines' => isset($documents['lines']), 'trips' => isset($documents['trips'])]]];
     }
 
     /**
@@ -262,9 +264,60 @@ class ParseBidDocuments
                 $start = $start->subDay();
             }
             $trips[$id[1]] = ['id' => $id[1], 'start_date' => $start->format('Y-m-d'), 'end_date' => $end->format('Y-m-d'), 'start_city' => $first['origin'], 'end_city' => $last['destination'], 'report' => $show[1] ?? null, 'release' => $release, 'duty_days' => isset($dutyDays[1]) ? (int) $dutyDays[1] : null, 'crew_label' => isset($crew[1], $crew[2]) ? $crew[1].' CA, '.$crew[2].' FO' : null, 'block_minutes' => $this->overview->credit($blockTime[1] ?? ''), 'credit_minutes' => $this->overview->credit($creditTime[1] ?? ''), 'legs' => $normalized];
+            $trips[$id[1]]['duties'] = $this->duties($chunk, $legs, $normalized);
         }
 
         return $trips;
+    }
+
+    /**
+     * @param  list<array<int, array{string, int}>>  $capturedLegs
+     * @param  list<array<string, mixed>>  $legs
+     * @return list<array{start_date: string, end_date: string, leg_indexes: list<int>}>|null
+     */
+    private function duties(string $chunk, array $capturedLegs, array $legs): ?array
+    {
+        if (count($capturedLegs) !== count($legs)) {
+            return null;
+        }
+        preg_match_all('/Show Time\s+(\d{2}:\d{2})/', $chunk, $reports, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+        $duties = [];
+        $assigned = 0;
+        foreach ($reports as $index => $report) {
+            $startOffset = $report[0][1];
+            $endOffset = $reports[$index + 1][0][1] ?? strlen($chunk);
+            $indexes = [];
+            foreach ($capturedLegs as $legIndex => $leg) {
+                if ($leg[0][1] >= $startOffset && $leg[0][1] < $endOffset) {
+                    $indexes[] = $legIndex;
+                }
+            }
+            if ($indexes === []) {
+                return null;
+            }
+            $first = $legs[$indexes[0]];
+            $lastIndex = $indexes[array_key_last($indexes)];
+            $last = $legs[$lastIndex];
+            $afterLast = $capturedLegs[$lastIndex][0][1] + strlen($capturedLegs[$lastIndex][0][0]);
+            if (! preg_match('/Debriefing\s+(\d{2}:\d{2})/', substr($chunk, $afterLast, $endOffset - $afterLast), $release)) {
+                return null;
+            }
+            $start = CarbonImmutable::parse($first['date'], 'UTC');
+            if ($report[1][0] > $first['departure']) {
+                $start = $start->subDay();
+            }
+            $end = CarbonImmutable::parse($last['date'], 'UTC');
+            if ($last['arrival'] < $last['departure']) {
+                $end = $end->addDay();
+            }
+            if ($release[1] < $last['arrival']) {
+                $end = $end->addDay();
+            }
+            $duties[] = ['start_date' => $start->format('Y-m-d'), 'end_date' => $end->format('Y-m-d'), 'leg_indexes' => $indexes];
+            $assigned += count($indexes);
+        }
+
+        return $assigned === count($legs) ? $duties : null;
     }
 
     private function invalid(string $message): never

@@ -13,6 +13,7 @@ use App\Models\CrewBidPayProfile;
 use App\Models\User;
 use App\Services\CrewBids\BidLineMatcher;
 use App\Services\CrewBids\BrowseBidLines;
+use App\Services\CrewBids\CalculateCrewBidPay;
 use App\Services\CrewBids\CrewPayPeriod;
 use App\View\Models\CrewBidPayEditorViewModel;
 use App\View\Models\CrewBidsPageDataFactory;
@@ -105,6 +106,10 @@ class CrewBids extends Component
 
     #[Locked]
     public int $payRevision = 0;
+
+    /** @var list<string> */
+    #[Locked]
+    public array $payDetails = [];
 
     /** @var array<string, mixed> */
     public array $paySettings = [];
@@ -371,14 +376,23 @@ class CrewBids extends Component
         $context = $profile->context($package->id, $this->seat, $this->user());
         $this->payRevision = $profile->revision ?? 0;
         $this->payLineId = $lineId;
-        $this->paySettings = ['show_compact' => (bool) ($context['settings']['show_compact'] ?? false)];
-        $this->payContext = array_intersect_key($context, array_flip(['qualified', 'full_period', 'line_guarantee', 'unsupported']))
-            + ['qualified' => false, 'full_period' => false, 'line_guarantee' => false, 'unsupported' => false];
-        $this->payInput = $lineId === null ? [] : ($context['lines'][$lineId] ?? ['mode' => 'source', 'reviewed' => false, 'category' => '', 'rows' => []]);
+        $this->paySettings = ['show_compact' => true];
+        $this->payContext = array_intersect_key($context, array_flip(['qualified', 'full_period', 'line_guarantee', 'unsupported', 'custom_assumptions']))
+            + ['qualified' => true, 'full_period' => true, 'line_guarantee' => true, 'unsupported' => false, 'custom_assumptions' => false];
+        $this->payInput = $lineId === null ? [] : ($context['lines'][$lineId] ?? ['mode' => 'source', 'reviewed' => true, 'category' => CalculateCrewBidPay::category($lineId) ?? '', 'rows' => []]);
         $this->showPreferences = false;
         $this->showList = false;
         $this->showPayEditor = true;
         $this->resetErrorBag();
+    }
+
+    public function loadPayDetails(string $lineId): void
+    {
+        $this->assertPackageAvailable($this->package());
+        $this->eligibleLine($lineId);
+        if (! in_array($lineId, $this->payDetails, true)) {
+            $this->payDetails[] = $lineId;
+        }
     }
 
     public function addPayRow(): void
@@ -491,6 +505,7 @@ class CrewBids extends Component
     private function loadPackage(BidPackage $package, string $seat): void
     {
         $this->closePayEditor();
+        $this->payDetails = [];
         $workspace = BidWorkspace::query()->where('user_id', Auth::id())->where('bid_package_id', $package->id)->where('seat', $seat)->first();
         $preferences = $workspace->preferences ?? [];
         $this->packageId = $package->id;
@@ -583,6 +598,7 @@ class CrewBids extends Component
             criteria: $this->browseCriteria(),
             draftId: $this->draftId,
             pendingPackageId: $this->pendingPackageId,
+            payDetails: $this->payDetails,
         );
 
         return view('livewire.crew-bids', $data->toViewData() + [

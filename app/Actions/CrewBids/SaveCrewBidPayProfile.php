@@ -5,6 +5,7 @@ namespace App\Actions\CrewBids;
 use App\Models\BidPackage;
 use App\Models\CrewBidPayProfile;
 use App\Models\User;
+use App\Services\CrewBids\CalculateCrewBidPay;
 use App\Services\CrewBids\CrewPayPeriod;
 use App\Services\CrewBids\NormalizeCrewBidPay;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,8 @@ class SaveCrewBidPayProfile
             'seat' => ['required', Rule::in(['CA', 'FO'])],
             'settings' => ['required', 'array:show_compact'],
             'settings.show_compact' => ['required', 'boolean'],
-            'context' => ['required', 'array:qualified,full_period,line_guarantee,unsupported'],
+            'context' => ['required', 'array:qualified,full_period,line_guarantee,unsupported,custom_assumptions'],
+            'context.custom_assumptions' => ['sometimes', 'boolean'],
             'context.qualified' => ['required', 'boolean'], 'context.full_period' => ['required', 'boolean'],
             'context.line_guarantee' => ['required', 'boolean'],
             'context.unsupported' => ['required', 'boolean'],
@@ -49,7 +51,8 @@ class SaveCrewBidPayProfile
         if ($lineId !== null) {
             $line = $package->payload['lines'][$lineId] ?? null;
             abort_unless($line !== null && $line[$seat === 'CA' ? 'captains' : 'first_officers'] > 0, 404);
-            if (! isset($input['category'], $input['mode'], $input['reviewed'], $input['rows'])) {
+            $input['category'] = CalculateCrewBidPay::category($lineId) ?? ($input['category'] ?? '');
+            if (! isset($input['mode'], $input['reviewed'], $input['rows'])) {
                 throw ValidationException::withMessages(['pay' => 'Complete the line category, credit basis and review fields.']);
             }
             $seen = [];
