@@ -5,11 +5,13 @@ namespace App\Livewire;
 use App\Actions\CrewBids\ImportBidPackage;
 use App\Actions\CrewBids\PublishBidPackage;
 use App\Actions\CrewBids\SaveBidWorkspace;
+use App\DTOs\CrewBidBrowseCriteria;
 use App\Models\BidPackage;
 use App\Models\BidWorkspace;
 use App\Models\User;
 use App\Services\CrewBids\BidLineMatcher;
-use App\View\Models\CrewBidLineViewModel;
+use App\Services\CrewBids\BrowseBidLines;
+use App\View\Models\CrewBidsPageDataFactory;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -284,10 +286,11 @@ class CrewBids extends Component
         }
     }
 
-    public function addMatching(): void
+    public function addMatching(BrowseBidLines $browseBidLines): void
     {
-        $data = $this->viewData();
-        foreach ($data['lines'] as $line) {
+        $package = $this->packageId === null ? null : $this->package();
+        $result = $browseBidLines->browse($package, $this->browseCriteria());
+        foreach ($result->lines as $line) {
             if (! in_array($line['id'], $this->selections, true)) {
                 $this->selections[] = $line['id'];
             }
@@ -465,133 +468,33 @@ class CrewBids extends Component
         }
     }
 
-    /** @return array{credit: list<string>, work_pattern: list<string>, airports: list<string>} */
-    private function filterSummaries(): array
+    private function browseCriteria(): CrewBidBrowseCriteria
     {
-        $airports = [];
-        if ($this->layoverCity !== '') {
-            $airports[] = 'Layover '.$this->layoverCity;
-        }
-        if ($this->extendedLayoversOnly) {
-            $airports[] = '24h+ layover';
-        }
-        if ($this->avoidShortLayovers) {
-            $airports[] = 'Avoid under 10h';
-        }
-
-        return [
-            'credit' => $this->minimumCredit === null ? [] : ['Min credit '.$this->minimumCredit.'h'],
-            'work_pattern' => $this->minimumDaysOff === null ? [] : ['Min days off '.$this->minimumDaysOff],
-            'airports' => $airports,
-        ];
+        return new CrewBidBrowseCriteria(
+            seat: $this->seat,
+            preferences: $this->preferences(),
+            selections: $this->selections,
+            tab: $this->tab,
+            sort: $this->sort,
+            minimumCredit: $this->minimumCredit,
+            minimumDaysOff: $this->minimumDaysOff,
+            selectedOnly: $this->selectedOnly,
+            layoverCity: $this->layoverCity,
+            extendedLayoversOnly: $this->extendedLayoversOnly,
+            avoidShortLayovers: $this->avoidShortLayovers,
+        );
     }
 
-    /** @return array<string, mixed> */
-    private function viewData(): array
+    public function render(CrewBidsPageDataFactory $pageDataFactory): View
     {
-        $package = $this->packageId === null ? null : $this->package();
-        $payload = $package->payload ?? [];
-        $matcher = app(BidLineMatcher::class);
-        $layoverFilters = $this->layoverCity !== '' || $this->extendedLayoversOnly || $this->avoidShortLayovers
-            ? ['city' => $this->layoverCity, 'extended' => $this->extendedLayoversOnly, 'avoid_short' => $this->avoidShortLayovers]
-            : [];
-        $all = [];
-        foreach ($payload['lines'] ?? [] as $line) {
-            if ($line[$this->seat === 'CA' ? 'captains' : 'first_officers'] > 0) {
-                $all[$line['id']] = $matcher->present($line, $package->period, $this->preferences(), $payload['trips'] ?? [], $layoverFilters);
-            }
-        }
-        $lines = array_values(array_filter($all, fn (array $line): bool => $line['type'] === $this->tab
-            && $line['matches']
-            && $line['layover_matches']
-            && (! $this->selectedOnly || in_array($line['id'], $this->selections, true))
-            && ($this->minimumCredit === null || ($line['credit'] !== null && ($line['credit_seconds'] ?? $line['credit'] * 60) >= $this->minimumCredit * 3600))
-            && ($this->minimumDaysOff === null || ($line['days_off'] !== null && $line['days_off'] >= $this->minimumDaysOff))));
-        $lines = $matcher->sort($lines, $this->goals, $this->sort);
-        $selected = [];
-        foreach ($this->selections as $id) {
-            $selected[] = $all[$id] ?? ['id' => $id, 'credit_label' => 'Not available', 'block_label' => 'Not available', 'days_off' => null, 'warnings' => ['Unavailable in this revision']];
-        }
-        $cities = array_values(array_unique(array_filter(array_column($all, 'start_city'))));
-        sort($cities);
-        $layoverCities = array_values(array_unique(array_merge(...array_column($all, 'layover_airports'))));
-        sort($layoverCities);
-        $month = $package === null ? null : CarbonImmutable::parse($package->period.'-01', 'UTC');
-        $dates = [];
-        for ($day = 1; $month !== null && $day <= $month->daysInMonth; $day++) {
-            $date = $month->addDays($day - 1);
-            $dates[] = ['date' => $date->format('Y-m-d'), 'day' => $day, 'weekday' => $date->format('D')];
-        }
-        $target = $this->pendingPackageId === null ? null : BidPackage::query()->whereNotNull('published_at')->find($this->pendingPackageId);
-        $revisionChanges = [];
-        if ($target !== null && $package !== null) {
-            $targetPayload = $target->payload;
-            foreach ($this->selections as $id) {
-                $before = $payload['lines'][$id] ?? null;
-                $after = $targetPayload['lines'][$id] ?? null;
-                $details = [];
-                if ($before !== null && $after !== null && $before !== $after) {
-                    $old = $matcher->present($before, $package->period, $this->preferences());
-                    $new = $matcher->present($after, $target->period, $this->preferences());
-                    $details[] = 'Credit '.$old['credit_label'].' → '.$new['credit_label'].'; days off '.($old['days_off'] ?? 'unknown').' → '.($new['days_off'] ?? 'unknown');
-                    $changedDates = [];
-                    foreach ($old['month'] as $date => $entry) {
-                        if ($entry !== ($new['month'][$date] ?? null)) {
-                            $changedDates[] = $date;
-                        }
-                    }
-                    if ($changedDates !== []) {
-                        $details[] = 'Changed UTC schedule dates: '.implode(', ', $changedDates);
-                    }
-                    $details[] = 'Start city '.($old['start_city'] ?? 'unknown').' → '.($new['start_city'] ?? 'unknown');
-                }
-                $revisionChanges[] = [
-                    'id' => $id,
-                    'status' => $after === null || $after[$this->seat === 'CA' ? 'captains' : 'first_officers'] === 0 ? 'Unavailable — will be omitted' : ($before === $after ? 'Unchanged' : 'Changed — review before carrying forward'),
-                    'details' => $details,
-                ];
-            }
-        }
+        $data = $pageDataFactory->make(
+            package: $this->packageId === null ? null : $this->package(),
+            user: $this->user(),
+            criteria: $this->browseCriteria(),
+            draftId: $this->draftId,
+            pendingPackageId: $this->pendingPackageId,
+        );
 
-        $ranks = array_flip($this->selections);
-        $showBlocks = in_array('blocks', $this->goals, true);
-        $filterSummaries = $this->filterSummaries();
-        $activeFilters = array_merge(...array_values($filterSummaries));
-        if ($this->selectedOnly) {
-            $activeFilters[] = 'Selected only';
-        }
-
-        return [
-            'package' => $package,
-            'packages' => BidPackage::query()->whereNotNull('published_at')
-                ->where(fn ($query) => $query->whereNull('archived_at')->orWhereHas('workspaces', fn ($query) => $query->where('user_id', Auth::id())->where('seat', $this->seat)))
-                ->orderByDesc('period')->orderByDesc('id')->get(['id', 'period', 'fleet', 'source_revision']),
-            'lines' => $lines,
-            'lineCards' => array_map(static fn (array $line): CrewBidLineViewModel => CrewBidLineViewModel::fromLine($line, isset($ranks[$line['id']]) ? $ranks[$line['id']] + 1 : null, $showBlocks), $lines),
-            'allLines' => $all,
-            'selected' => $selected,
-            'cities' => $cities,
-            'layoverCities' => $layoverCities,
-            'filterSummaries' => $filterSummaries,
-            'activeFilterCount' => count($activeFilters),
-            'activeFilterSummary' => $activeFilters === [] ? 'No active browsing filters' : implode(' · ', $activeFilters),
-            'dates' => $dates,
-            'monthLabel' => $month?->format('F Y'),
-            'packageStartDate' => $month?->format('Y-m-d'),
-            'packageEndDate' => $month?->endOfMonth()->format('Y-m-d'),
-            'trips' => $payload['trips'] ?? [],
-            'total' => count(array_filter($all, fn (array $line): bool => $line['type'] === $this->tab)),
-            'draft' => $this->draftId === null ? null : BidPackage::query()->where('imported_by', Auth::id())->find($this->draftId),
-            'target' => $target,
-            'revisionChanges' => $revisionChanges,
-            'latest' => $package === null ? null : BidPackage::query()->whereNotNull('published_at')->whereNull('archived_at')->where('period', $package->period)->where('fleet', $package->fleet)->where('id', '>', $package->id)->latest('id')->first(),
-            'copyText' => implode("\n", array_map(fn (string $id, int $index): string => ($index + 1).'. '.$id, $this->selections, array_keys($this->selections))),
-            'goalLabels' => ['credit' => 'Maximize credit', 'days_off' => 'Maximize days off', 'blocks' => 'Fewer work blocks'],
-        ];
-    }
-
-    public function render(): View
-    {
-        return view('livewire.crew-bids', $this->viewData())->layout('layouts.app');
+        return view('livewire.crew-bids', $data->toViewData())->layout('layouts.app');
     }
 }

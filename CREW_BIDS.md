@@ -558,13 +558,162 @@ A company-compatible spreadsheet export needs an agreed schema and review of the
 
 ### Estimated pay
 
-Dollar estimates, rate management, and pay sorting remain deferred. Use Estimated pay as the eventual interface label; MoneyLine is only a possible later product name.
+Planning review completed: 2026-11-03. **Feasible as a scheduled-pay planning feature**, with the rule/source work below completed before releasing dollar totals. Use **Estimated pay** as the interface label. The product questions asked during this planning review have been answered. This section is an implementation plan; no pay calculator, personal pay profile, or pay sort has been implemented by this planning task.
 
-Rate-table input is available in [app/Data/pay_rates.json](app/Data/pay_rates.json): `CA` (Captain) and `FO` (First Officer) each contain 12 numeric rates. Comparison with Appendix 5-A identifies these as the January 1, 2024 dollar hourly rates in longevity-year order 1–12, without separate fleet columns. The JSON itself carries no effective-date or currency metadata, and applicable 2026 rates remain unverified (finding C7).
+**User-confirmed direction (2026-11-03):** The first release should estimate **scheduled gross contractual pay in USD before taxes/deductions, with supported credits and premiums, excluding per diem and expense reimbursements**. A guarantee-only preview is not the selected first-release scope. The existing `app/Data/pay_rates.json` rates remain applicable. Automatic pay steps use **a separate adjusted pay-longevity date**, rather than assuming hire date, and **the new rate starts on the anniversary date**, including an anniversary within a compensation period. Owners may supply **private planning inputs for missing facts, with assumptions shown**.
 
-Section 5.C verifies a 64-PCH MBPG and a 70-PCH composite-line minimum in the supplied CBA, subject to the qualifications in finding C5. Apply the greater-of monthly-pay structure and separate additional compensation rather than treating adjusted trip totals as pay. Confirm current applicability, source eligibility, premium interactions, hostile-area designations, and monetary rounding before implementation. The historical carry-in credit calculation above is not CBA-validated; findings C1–C8 record the discrepancies and rules already established by the supplied text.
+**Confirmed longevity, proration, and rounding:**
 
-Keep user pay context private and rate management admin-only. Avoid double counting carry credit already present in base credit. Missing rates or unresolved rules mean no estimate, not an invented zero. Show assumptions and exclusions when a supported estimate is introduced.
+- Step 1 covers the first year from the adjusted pay-longevity date. Each anniversary increases the step by one, capped permanently at step 12. A date before the longevity start cannot resolve an eligible pay step and must not default to a zero rate.
+- For a February 29 longevity date, the anniversary is March 1 in non-leap years and February 29 in leap years. Count actual anniversary boundaries rather than dividing elapsed days by 365 or allowing a date library to choose February 28 automatically.
+- An anniversary within the compensation period creates old/new rate intervals. The user confirmed that each applicable MBPG/published line guarantee is weighted by the UTC days before and on/after the anniversary, divided by the **actual number of UTC days in that compensation period**. The new rate starts at **0000Z on the anniversary date**, so that entire date belongs to the new rate. Derive the denominator from the compensation-period boundaries, including the recorded January–March exceptions; do not substitute calendar-month length or a fixed 30-day divisor.
+- Keep exact amounts through component calculations and round **the final USD total once**, to the nearest cent using **half-up** rounding. Do not round each payable component before summing. Component amounts formatted for display must not become calculation inputs; explain any difference between their formatted sum and the rounded final total in the breakdown.
+
+For an applicable guarantee of `G` PCH, old/new rates `r_old`/`r_new` in USD per hour, `d_old`/`d_new` UTC days in those rate intervals, and `D` actual UTC days in the compensation period, the confirmed guarantee valuation is:
+
+`guarantee USD = G × (d_old × r_old + d_new × r_new) / D`, where `d_old + d_new = D`.
+
+Apply the same day weighting across all applicable rate intervals if more than one change occurs. Determine the applicable guarantee/eligibility first; this anniversary valuation rule does not define how leave or partial availability changes the guarantee itself. Keep each eligible guarantee candidate separate from earned/scheduled-credit valuation and any separately payable premiums.
+
+#### Feasibility and existing evidence
+
+The application already imports shared Lines/Trips/Overview packages, preserves original line credit as `source_credit`, supports private owner-scoped workspaces, and displays per-line credit breakdowns. The user previously confirmed that source line credit is the published contractual Bid Line Guarantee. These provide a starting point for rates, package comparison, and private context; they do not establish all payable credit or premium eligibility.
+
+`app/Data/pay_rates.json` contains CA and FO arrays with 12 numeric values each. The earlier CBA review identified their source as Appendix 5-A's January 1, 2024 column, ordered by longevity years 1–12 and without separate fleet tables. The user's 2026-11-03 confirmation resolves whether these supplied rates remain applicable for the intended current packages and confirms USD as the estimate currency. Preserve that confirmation as provenance alongside the original table/effective date; do not imply a newly published 2026 rate table or unlimited future applicability. Add metadata for currency, validity, the confirmed step/anniversary policy, and final-only half-up rounding.
+
+The reviewed Section 5.D structure uses the greatest of applicable MBPG, accrued bid-month PCH, and published Bid Line Guarantee, with relevant rate/overrides and separately addressed additional compensation. The 64-PCH MBPG and 70-PCH composite minimum have qualifications recorded in C5. For planning, an eligible scheduled-credit estimate may stand in for future accrued credit only with its scope and assumptions labelled. Never equate the current adjusted Credit field with total PCH, multiply its blanket carry premium into dollars, or treat every line as having a universal 64/70-hour floor. Findings C2–C6 and S1 remain dependencies of the scheduled-pay calculation.
+
+| Input | Available now | Requirement before use in Estimated pay |
+| --- | --- | --- |
+| Hourly rates | CA/FO table, 12 entries each; user confirms continued applicability and USD currency. | Add table identity/source, effective/approved applicability, confirmed currency, pay-step semantics, and precision metadata. |
+| Personal pay context | Bid seat preference exists; no pay-longevity/eligibility profile is implemented. | Private adjusted pay-longevity date, rate changes on anniversary, relevant availability/eligibility, and private planning inputs with visible assumptions. |
+| Published line guarantee | Original Lines/Overview credit retained separately from pairing totals. | Trustworthy source value and revision, agreement of published sources, and personal applicability; no substitution from recalculated/legacy credit. |
+| Pairing/scheduled credit | Trips credit/block totals and scheduled legs, with variable completeness. | Normalize payable categories and compensation-period allocation; complete pairing totals alone do not establish every bid-period PCH component. |
+| Carry-in credit | Scheduled legs plus the current departure-only subtotal/calculation. | Duty-period boundaries, daily awarded valuation, receiving compensation period, and independently supported premium eligibility. Actual worked amounts remain unknown before work occurs. |
+| Other credits/premiums | Some reserve/training indicators; limited assignment evidence. | Category-specific sources or user-permitted private planning inputs, each labelled with origin/assumptions. Eligibility, above-guarantee treatment, and interaction/deduplication must be defined. |
+| Gross/net/expenses | No implemented deductions, tax, benefits, or per-diem model. | User selected USD gross contractual pay before taxes/deductions. Per diem and expense reimbursements are excluded; no take-home calculation is included. |
+
+#### 1. Set the pay contract and supported first-release cases
+
+**Goal:** Define exactly what scheduled gross pay includes and when the estimate is available.
+
+**Current implementation:** Compensation review C1–C8 and scheduling review S1 record source rules and gaps; the new first-release direction includes supported credits and premiums.
+
+**Problem:** A package line does not by itself establish personal eligibility, all payable activities, or actual work.
+
+Use the confirmed USD gross-pay scope, adjusted pay-longevity date with rate changes at 0000Z on anniversaries, steps 1–12, March 1 leap-day treatment, guarantee weighting by actual UTC days in the compensation period, final-only half-up rounding, and private planning-input policy. Settle the remaining category/source coverage and rate attribution for cross-date/transitioned credit in this implementation subtask. Create a rule/coverage matrix for base flying credit, deadheads, reserve, vacation/training, carry-in allocation, and additional duty/off-day/other premiums. Each included component needs a rule reference, source or planning input, date/rate basis, eligibility predicate, and included-versus-above-guarantee treatment. Explicitly defer components that cannot yet be supported; do not silently set them to zero or claim a complete total when an applicable component is unresolved. The first delivery remains scheduled gross pay, even if unsupported personal scenarios must show unavailable.
+
+**Acceptance:** User decisions and rule evidence are recorded; supported scenarios and their required inputs are finite and testable. No guessed guarantee floor, tax amount, hostile-area designation, or premium entitlement enters the calculation.
+
+Commit message: `docs: define scheduled gross pay inputs and supported rules`
+
+#### 2. Version the applicable rates and longevity rules
+
+**Goal:** Resolve an explainable hourly rate for each supported earning interval.
+
+**Current implementation:** The rate JSON is valid but has only seat arrays and decimal numeric values without rate metadata.
+
+**Problem:** There is no table identity, currency/effective metadata, automatic pay-step rule, or handling of an anniversary/rate-table change inside a period.
+
+Start from the existing approved USD values and add explicit metadata without changing them. Represent monetary rates as exact decimal/minor-unit values during calculation; avoid binary floating-point multiplication. Resolve by seat, applicable date, and pay step derived from the private **adjusted pay-longevity date**: start at step 1, add one for each anniversary reached, and cap at 12. Apply the confirmed March 1 anniversary in non-leap years for a February 29 start. The new rate becomes effective at 0000Z on its anniversary date, so construct multiple dated rate intervals when an anniversary falls inside the compensation period. Do not select one rate only at period-start or postpone the change to the next period. Verify fleet applicability and reject unavailable pre-longevity-date rates explicitly. Cross-date/transitioned-credit rate attribution remains a rule-matrix requirement in subtasks 1 and 4. Preserve the original rate source and the user's applicability confirmation. Published rate versions must remain identifiable for explanations/recalculation; do not silently overwrite the meaning of an old estimate. Rate maintenance is admin-only. Use the existing JSON catalog initially if it meets the agreed update workflow; add a Filament maintenance interface only when that workflow requires it, rather than making an unrelated admin system a prerequisite.
+
+**Acceptance:** First/last steps, invalid/future longevity dates, exact anniversary boundaries, leap-day anniversaries, effective-date gaps/overlaps, seat changes, and any agreed mid-period rate transition have meaningful focused coverage. Missing rate coverage means unavailable.
+
+Depends on subtask 1. Commit message: `feat: version crew pay rates and resolve longevity steps`
+
+#### 3. Add private pay context and planning inputs
+
+**Goal:** Let the owner provide the personal facts required for the supported scenarios.
+
+**Current implementation:** Workspaces already use owner/context isolation and encrypted private preferences; profile settings include bid seat. No pay profile exists.
+
+**Problem:** Shared package data cannot supply longevity, availability/proration, or individual premium elections/eligibility.
+
+Store the adjusted pay-longevity date privately using the application's encrypted-data conventions; do not substitute hire date. Separate enduring personal context from period/line-specific planning adjustments. Scope every read/write by owner and appropriate period/seat; treat another seat as an explicit comparison scenario rather than proof of qualification. The user permits private planning inputs for missing facts: validate dates, units, eligibility choices, and supported manual amounts, show their assumptions, and retain their origin separately from imported evidence. A manual input supplies a scenario fact, not a new compensation formula or shared source record. If it contradicts imported evidence, retain both origins and require an explicit scenario choice rather than silently replacing the package value. Support correction/removal and keep these data out of package administration, shared payloads, copied numbered bids, and unrelated exports. Reuse existing action/autosave/concurrent-edit patterns without silently expanding the workspace preference allow-list or resetting rankings.
+
+**Acceptance:** Owner isolation, authorization, invalid/incomplete inputs, changed seat/period, save recovery, and concurrent edits are covered. No other package viewer gains access to a pay profile or individualized total.
+
+Depends on subtask 1 and rate-input definitions. Commit message: `feat: add private crew pay context`
+
+#### 4. Normalize payable credit and compensation periods
+
+**Goal:** Supply the calculator with credit components that have defined period and rule bases.
+
+**Current implementation:** Imports retain source guarantee, complete pairing totals where available, and scheduled leg timestamps. The existing carry formula has known discrepancies.
+
+**Problem:** Trip occupancy, elapsed time, pairing credit, contractual PCH, and personal compensation are different quantities; calendar boundaries do not always match compensation Months.
+
+Keep the published guarantee independent. Build normalized planning components with assignment identity, covered Z day, receiving compensation period, credit duration, category, source, and completeness. Deduplicate repeated pairing references. Preserve full-segment departure-Z-day attribution and the user-confirmed daily greater-of-awarded-or-actual rule for covered carry-in duties, while recognizing that future actual work is unavailable. Before actual work exists, explicitly use supported awarded/scheduled planning values; do not call missing actual work zero. Apply the recorded January–March compensation-period exceptions and duty-level transition allocation separately from calendar occupancy.
+
+Support each included category under its verified basis. Air/surface deadhead mode and scheduled/actual credit rules, reserve/vacation/training credit, and premiums need their own inputs. Do not reuse the blanket 50% carry increment or automatically value ground transfers at zero. Correct compensation inputs in a focused path while preserving the current comparison display until a separately reviewed change replaces it. Published packages remain fixed; source corrections/reimports follow revision review.
+
+**Acceptance:** Multi-leg duties, departure across midnight, month/year and January–March boundaries, duplicate references, missing duties/awarded credit, actual-versus-scheduled distinction, and carry credit already included in base amounts are covered. Unknown coverage stays unknown.
+
+Depends on the supported rule matrix in subtask 1. Commit message: `feat: normalize scheduled pay credits and period allocation`
+
+#### 5. Calculate scheduled gross pay and supported premiums
+
+**Goal:** Produce an exact, explainable amount for a supported personal scenario.
+
+**Current implementation:** There is no pay calculator. Existing adjusted Credit is a comparison metric with known limitations.
+
+**Problem:** Applying a rate to that metric would duplicate or misallocate credits and can award unsupported premiums.
+
+Use a focused calculation service with explicit inputs and a structured result. Resolve the applicable base-pay candidates under the reviewed greater-of structure, then add supported compensation that is payable separately. Apply overrides and premium multipliers only to their eligible components. Each component must state whether it contributes to the greater-of base or is added above it; enforce one contribution per assignment/rule rather than adding the same carry/deadhead credit again. Value each applicable MBPG/published-guarantee candidate with the confirmed UTC-day weighting across rate intervals and actual compensation-period denominator. An anniversary takes effect at 0000Z, including that day at the new rate. Scheduled-credit rate attribution, including transitioned credit, follows the category rules established in subtasks 1 and 4; do not apply `max(hours) × one rate` to a mixed-rate period by shortcut.
+
+Keep duration precision and exact monetary arithmetic through the final sum, then round the final USD total once to the nearest cent with half-up rounding. Include fractional proration and premium amounts without intermediate monetary rounding. Return currency, exact/display component subtotals, final rounded amount, selected base candidate, hourly rate/pay step, compensation dates, source and rule versions, assumptions, exclusions, and missing inputs. Explain any display-rounding reconciliation without changing the calculation. Distinguish ready, incomplete, and unsupported scenarios. A known-components subtotal can be shown only with that limited label; unresolved applicable compensation must not be presented as a complete gross total. A genuine zero requires supporting data, not a default.
+
+**Acceptance:** Each greater-of candidate winning/tie case, missing versus zero, exact fractional durations, premium stacking/exclusions, above-guarantee treatment, duplicated carry credit, proration/eligibility where supported, and final-only half-up rounding have focused tests based on agreed examples. Cover anniversaries at period-start/end and inside the period, old/new rate days summing to the actual denominator, leap-day anniversaries, capped rates, and January–March compensation-period boundaries. No payroll/tax or actual-work claim is inferred from a scheduled estimate.
+
+Depends on subtasks 1–4. Commit message: `feat: calculate scheduled gross crew pay`
+
+#### 6. Present the estimate in the existing comparison workspace
+
+**Goal:** Add useful pay comparison without crowding the compact timeline or exposing personal context.
+
+**Current implementation:** Lines have expandable details, shared filters, independent sorts, and a manually ordered bid list.
+
+**Problem:** A single dollar value can hide unresolved coverage or imply an actual paycheck; a new view could duplicate controls or reorder bids.
+
+The user selected an **optional compact Estimated pay amount, expanded breakdown, and Highest estimated pay sort for the first release**. Keep the compact timeline default and let the owner enable the pay metric. Put the detailed breakdown in existing line details. Provide a private Edit pay context entry showing the resolved pay step/rate intervals, compensation period, and key assumptions. Show source/rule details on demand, and distinguish missing inputs from supported zero. Refresh estimates when their inputs change with existing loading/save/error feedback; a failed recalculation must not leave a stale amount looking current. Retain filters, selections, and manual ranking. Exact placement can follow the existing compact metric/disclosure conventions during implementation.
+
+**Acceptance:** Valid/missing/partial/unsupported states, rate/profile updates, both themes, narrow screens, keyboard use, focus restoration, and owner-specific rendering are checked. Numbered bid copy retains its agreed line-only schema.
+
+Depends on subtask 5. Commit message: `feat: display private scheduled pay estimates`
+
+#### 7. Add pay sorting only for comparable estimates
+
+**Goal:** Make scheduled-pay comparison available without changing manual bid rank or Best match semantics.
+
+**Current implementation:** Credit, Block, Days off, Best match, and Line ID sorts already exist.
+
+**Problem:** Ordering an incomplete subtotal beside a complete estimate would imply comparable coverage.
+
+Include **Highest estimated pay** in the first release, as confirmed by the user. Sort ready estimates descending by the final rounded USD total in minor units, with the same personal scenario, compensation period, and supported scope. Equal displayed totals use natural Line ID as the stable final tie-break. Place missing/incomplete/unsupported values after ready estimates and visibly identify their status; never treat them as zero or compare different currencies without a separately approved conversion feature. Keep manual rank and the existing strict-priority goals intact; adding a pay ranking goal would require a separate decision.
+
+**Acceptance:** Exact ties, unknown values, changed personal context, inconsistent coverage, and selection/rank preservation are covered. All existing sorts remain available.
+
+Depends on subtask 5; first-release inclusion is confirmed. Commit message: `feat: add comparable estimated pay sorting`
+
+#### 8. Integrate and release the supported scheduled-pay scope
+
+**Goal:** Deliver the selected scheduled gross-pay release with evidence for each supported component.
+
+**Current implementation:** Package import/comparison tests and private workspace patterns provide existing regression coverage to extend.
+
+**Problem:** Correct arithmetic alone cannot establish source completeness, owner privacy, or a clear explanation of what is estimated.
+
+Review agreed representative Flying/Reserve and any supported composite/training cases, source disagreements, and deliberately incomplete packages. Verify that every visible amount traces to its inputs, versions, and scope, and that unavailable cases explain what is needed. Add calculator unit coverage for pure arithmetic and focused feature coverage for profile ownership, rate maintenance authorization, Livewire state, package revisions, and rendering. Use synthetic fixtures for private scenarios; do not add real personal dates to the repository. Review browser behavior manually. Require Sail before code changes, use installed APIs, run only focused tests, Pint after PHP edits, and Larastan once at final integration. Update TODO.md with actual outcomes and each completed task's commit message.
+
+**Acceptance:** The agreed gross-pay cases calculate with supported credit/premium rules; unresolved cases remain explicit. The feature does not silently fall back to the unselected guarantee-only release. No new dependencies, automatic payments, external payroll integration, or tax engine are included in this plan.
+
+Depends on the implemented release scope above. Commit message: `feat: release supported scheduled pay comparisons`
+
+#### Confirmed plan and implementation gates
+
+Confirmed: scheduled gross contractual pay in USD before taxes/deductions, excluding per diem and expense reimbursements; current applicability of the supplied rate values; a separate adjusted pay-longevity date; step 1 for the first year, annual increases capped at 12, March 1 non-leap-year anniversaries for a February 29 start; rate changes at 0000Z on the anniversary date; MBPG/line guarantees weighted by old/new rate UTC days divided by actual days in the compensation period; exact calculations with one final nearest-cent half-up rounding; private planning inputs with assumptions shown; and an optional compact amount, expanded breakdown, and Highest estimated pay sort in the first release.
+
+All product questions asked during this planning review are answered. Subtasks 1 and 4 must still establish source-backed category coverage, eligibility/proration cases, and rate attribution for work/credit crossing an anniversary or allocated to a different compensation period. Those are explicit implementation prerequisites for affected scenarios; unresolved rules remain unavailable rather than guessed. They do not reopen the confirmed longevity, guarantee-weighting, currency, rounding, input, or presentation decisions. The eight-subtask plan and planning documentation are complete; implementation remains pending.
 
 ### Personal-data visibility
 

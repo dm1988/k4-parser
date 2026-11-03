@@ -101,6 +101,27 @@ class CrewBidsTest extends TestCase
         Livewire::test(CrewBids::class)->assertSet('selections', ['R2', 'F1'])->assertSet('showPreferences', false);
     }
 
+    public function test_adding_matching_lines_appends_filtered_results_in_sort_order_without_reordering_existing_choices(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        foreach (['F3' => 4200, 'F4' => 4500, 'F5' => 3600] as $id => $credit) {
+            $payload['lines'][$id] = array_replace($payload['lines']['F1'], ['id' => $id, 'credit' => $credit]);
+        }
+        $package->update(['payload' => $payload]);
+        $user = User::factory()->admin()->create();
+        $page = Livewire::actingAs($user)->test(CrewBids::class)
+            ->call('add', 'R2')->call('add', 'F1')
+            ->set('minimumCredit', 70)->set('sort', 'credit')
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F4', 'F3']);
+
+        $page->call('addMatching')->assertHasNoErrors()->assertSet('selections', ['R2', 'F1', 'F4', 'F3'])
+            ->call('addMatching')->assertSet('selections', ['R2', 'F1', 'F4', 'F3']);
+
+        $this->assertSame(['R2', 'F1', 'F4', 'F3'], BidWorkspace::query()->where('user_id', $user->id)->sole()->selections);
+        $this->assertSame($payload, $package->fresh()->payload);
+    }
+
     public function test_preferences_reopen_and_close_after_saving_without_changing_bid_order(): void
     {
         BidPackage::factory()->create();
@@ -334,6 +355,43 @@ class CrewBidsTest extends TestCase
         $page->call('reviewRevision', $next->id)->assertSet('packageId', $prior->id)->assertSee('Unavailable — will be omitted')->assertSee('Credit 65:00 → 66:40')
             ->call('confirmRevision')->assertSet('packageId', $next->id)->assertSet('selections', ['F1']);
         $this->assertSame(['F1', 'R2'], BidWorkspace::query()->where('user_id', $user->id)->where('bid_package_id', $prior->id)->sole()->selections);
+    }
+
+    public function test_revision_review_preserves_choice_order_and_explains_schedule_city_and_seat_changes(): void
+    {
+        $prior = BidPackage::factory()->create();
+        $payload = $prior->payload;
+        foreach (['F3', 'F4'] as $id) {
+            $payload['lines'][$id] = array_replace($payload['lines']['F1'], ['id' => $id]);
+        }
+        $prior->update(['payload' => $payload]);
+        $user = User::factory()->admin()->create();
+        $page = Livewire::actingAs($user)->test(CrewBids::class)
+            ->call('add', 'F3')->call('add', 'F1')->call('add', 'F4')->call('add', 'R2');
+        $payload['lines']['F1']['credit'] = 4000;
+        $payload['lines']['F1']['start_city'] = 'CVG';
+        $payload['lines']['F1']['calendar']['2026-11-03'] = ['status' => 'off', 'activity' => 'Off'];
+        $payload['lines']['F4']['first_officers'] = 0;
+        unset($payload['lines']['R2']);
+        $next = BidPackage::factory()->create(['payload' => $payload]);
+
+        $page->call('reviewRevision', $next->id)->assertHasNoErrors()
+            ->assertViewHas('revisionChanges', [
+                ['id' => 'F3', 'status' => 'Unchanged', 'details' => []],
+                ['id' => 'F1', 'status' => 'Changed — review before carrying forward', 'details' => [
+                    'Credit 65:00 → 66:40; days off 15 → 16',
+                    'Changed UTC schedule dates: 2026-11-03',
+                    'Start city ANC → CVG',
+                ]],
+                ['id' => 'F4', 'status' => 'Unavailable — will be omitted', 'details' => [
+                    'Credit 65:00 → 65:00; days off 15 → 15',
+                    'Start city ANC → ANC',
+                ]],
+                ['id' => 'R2', 'status' => 'Unavailable — will be omitted', 'details' => []],
+            ])
+            ->assertSet('packageId', $prior->id)->assertSet('selections', ['F3', 'F1', 'F4', 'R2']);
+
+        $this->assertSame(['F3', 'F1', 'F4', 'R2'], BidWorkspace::query()->where('user_id', $user->id)->sole()->selections);
     }
 
     public function test_actions_recheck_access_after_feature_is_revoked(): void
