@@ -24,6 +24,10 @@
             </p>
             @endif
 
+            @foreach ($model->mergeWarnings as $warning)
+            <p role="status" class="rounded-md border border-[#C5A059]/40 bg-[#C5A059]/10 p-4 text-sm text-[#1B365D] dark:text-slate-200">{{ $warning }}</p>
+            @endforeach
+
             <div class="grid gap-3 sm:grid-cols-3">
                 <div class="rounded-md border border-[#1B365D]/5 bg-[#F8F9FA] p-3 dark:border-slate-700 dark:bg-slate-800">
                     <p class="text-xs font-semibold uppercase text-[#4A5568] dark:text-slate-400">Source</p>

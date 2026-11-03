@@ -8,6 +8,7 @@ use App\Exceptions\ExtractSourceResolutionException;
 use App\Livewire\ScheduleExtractor;
 use App\Models\ExtractRequest;
 use App\Models\User;
+use App\Services\Clients\AirportLookupClient;
 use App\Services\Infrastructure\EngineResultCache;
 use App\Services\Schedule\Extractor\ScheduleFormatParser;
 use App\Services\Schedule\JcaScheduleProcessor;
@@ -21,6 +22,7 @@ use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyExceptio
 use Livewire\Livewire;
 use LogicException;
 use Mockery\MockInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionMethod;
 use RuntimeException;
 use Tests\TestCase;
@@ -371,6 +373,134 @@ class ScheduleExtractorTest extends TestCase
         $this->assertSame(2, ExtractRequest::query()->sole()->uploaded_file_count);
     }
 
+    #[DataProvider('uploadOrders')]
+    public function test_it_merges_overlapping_flights_and_preserves_their_source_evidence(bool $reverse): void
+    {
+        $flight = $this->flightObservation();
+        $secondObservation = array_reverse($flight, true);
+        $secondObservation['metadata'] = [
+            'tail_number' => 'N772CK',
+            'destination' => 'HKG',
+            'raw_lines' => ['Second screenshot evidence'],
+            'origin' => 'ICN',
+            'flight_number' => 'CKS 240',
+        ];
+        $unrelatedFlight = $flight;
+        $unrelatedFlight['title'] = 'CKS 241 ICN-HKG';
+        $unrelatedFlight['metadata']['flight_number'] = 'CKS 241';
+        $otherLeg = $flight;
+        $otherLeg['title'] = 'CKS 240 HKG-ANC';
+        $otherLeg['start'] = '2026-06-16T07:00:00+00:00';
+        $otherLeg['end'] = '2026-06-16T15:00:00+00:00';
+        $otherLeg['metadata']['origin'] = 'HKG';
+        $otherLeg['metadata']['destination'] = 'ANC';
+        $files = $this->mockImageResults([
+            'first.png' => ['trip' => ['trip_number' => '13131'], 'calendar_events' => [$flight, $unrelatedFlight]],
+            'second.png' => ['trip' => ['trip_number' => '13131', 'annotations' => ['Second page note']], 'calendar_events' => [$secondObservation, $otherLeg]],
+        ], $reverse);
+
+        Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->set('files', $files)
+            ->call('extractRoster')
+            ->assertHasNoErrors()
+            ->assertSet('view', 'results')
+            ->assertDontSee('Conflicting UTC times or route');
+
+        $parsed = app(EngineResultCache::class)->latest()->parsed;
+        $this->assertCount(3, $parsed['calendar_events']);
+        $merged = $parsed['calendar_events'][0];
+        $this->assertSame('CKS 240 ICN-HKG', $merged['title']);
+        $this->assertSame('N772CK', $merged['metadata']['tail_number']);
+        $this->assertSame(['First screenshot evidence', 'Second screenshot evidence'], $merged['metadata']['raw_lines']);
+        $this->assertCount(2, $merged['metadata']['source_observations']);
+        $this->assertSame(['Second page note'], $parsed['trip']['annotations']);
+        $this->assertSame([], $parsed['merge_conflicts']);
+        $this->assertCount(2, $parsed['sources']);
+        $this->assertEqualsCanonicalizing(['first.png', 'second.png'], array_column($parsed['sources'], 'filename'));
+    }
+
+    #[DataProvider('uploadOrders')]
+    public function test_it_keeps_conflicting_flight_observations_and_warns_the_user(bool $reverse): void
+    {
+        $first = $this->flightObservation();
+        $second = $first;
+        $second['end'] = '2026-06-16T04:45:00+00:00';
+        $second['metadata']['destination'] = 'ANC';
+        $second['title'] = 'CKS 240 ICN-ANC <script>alert("source")</script>';
+        $files = $this->mockImageResults([
+            'first.png' => ['trip' => ['trip_number' => '13131'], 'calendar_events' => [$first]],
+            'second.png' => ['trip' => ['trip_number' => '14141'], 'calendar_events' => [$second]],
+        ], $reverse);
+
+        $component = Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->set('files', $files)
+            ->call('extractRoster')
+            ->assertHasNoErrors()
+            ->assertSet('view', 'results')
+            ->assertSee('Conflicting UTC times or route')
+            ->assertSee('Both versions are kept')
+            ->assertSee('Source schedules contain conflicting summary information')
+            ->assertSee('CKS 240 ICN-ANC <script>alert("source")</script>')
+            ->assertDontSeeHtml('<script>alert("source")</script>');
+
+        $parsed = app(EngineResultCache::class)->latest()->parsed;
+        $this->assertCount(2, $parsed['calendar_events']);
+        $this->assertNull($parsed['trip']['trip_number']);
+        $this->assertCount(2, $parsed['merge_conflicts']);
+        $this->assertEqualsCanonicalizing(['HKG', 'ANC'], array_column(array_column($parsed['calendar_events'], 'metadata'), 'destination'));
+        $this->assertEqualsCanonicalizing(['2026-06-16T03:45:00+00:00', '2026-06-16T04:45:00+00:00'], array_column($parsed['calendar_events'], 'end'));
+
+        $component->refresh()->assertSee('Conflicting UTC times or route');
+    }
+
+    /** @return array<string, array{bool}> */
+    public static function uploadOrders(): array
+    {
+        return ['original order' => [false], 'reversed order' => [true]];
+    }
+
+    /** @return array<string, mixed> */
+    private function flightObservation(): array
+    {
+        return [
+            'title' => 'CKS 240 ICN-HKG',
+            'type' => 'flight',
+            'start' => '2026-06-15T23:45:00+00:00',
+            'end' => '2026-06-16T03:45:00+00:00',
+            'timezone' => 'UTC',
+            'metadata' => [
+                'flight_number' => 'CKS 240',
+                'origin' => 'ICN',
+                'destination' => 'HKG',
+                'raw_lines' => ['First screenshot evidence'],
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $results
+     * @return list<UploadedFile>
+     */
+    private function mockImageResults(array $results, bool $reverse): array
+    {
+        $this->mock(AirportLookupClient::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('lookupByIataOrFail')->andReturnNull();
+        });
+        $this->mock(ScheduleInputResolver::class, function (MockInterface $mock) use ($results): void {
+            $mock->shouldReceive('resolve')->times(count($results))
+                ->andReturnUsing(fn (UploadedFile $file): array => $this->resolvedImageSource($file->getClientOriginalName()));
+        });
+        $this->mock(ScheduleFormatParser::class, function (MockInterface $mock) use ($results): void {
+            $mock->shouldReceive('parse')->times(count($results))
+                ->andReturnUsing(fn (string $text): array => $results[$text]);
+        });
+        $names = array_keys($reverse ? array_reverse($results, true) : $results);
+
+        return array_map(static fn (string $name): UploadedFile => UploadedFile::fake()->image($name, 300, 200), $names);
+    }
+
     public function test_it_shows_successful_results_and_a_modal_for_images_that_failed_extraction(): void
     {
         config()->set('mail.admin_address', 'bugs@example.test');
@@ -439,6 +569,9 @@ class ScheduleExtractorTest extends TestCase
 
         $this->assertCount(1, $events);
         $this->assertSame('Recovered duty', data_get($events, '0.title'));
+        $sources = app(EngineResultCache::class)->latest()->parsed['sources'];
+        $this->assertSame('successful-page.png', $sources[0]['filename']);
+        $this->assertSame(2, $sources[0]['position']);
         $this->assertSame(3, ExtractRequest::query()->sole()->uploaded_file_count);
     }
 

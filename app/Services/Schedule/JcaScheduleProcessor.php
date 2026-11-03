@@ -23,6 +23,7 @@ class JcaScheduleProcessor
         private readonly TripInformationParser $tripInformationParser,
         private readonly ScheduleInputResolver $scheduleInputResolver,
         private readonly AirportEnrichmentService $airportEnrichmentService,
+        private readonly ScheduleResultMerger $scheduleResultMerger,
     ) {}
 
     /**
@@ -96,7 +97,7 @@ class JcaScheduleProcessor
         $files = $file instanceof UploadedFile ? [$file] : (is_array($file) ? $file : []);
         $processedSources = $this->processSources($files, $text);
         $sources = $processedSources['sources'];
-        $parsed = $this->mergeParsedResults($processedSources['parsed_results']);
+        $parsed = $this->scheduleResultMerger->merge($processedSources['parsed_results'], $sources);
         $filteredParsed = $parsed;
 
         if ($eventTypes !== []) {
@@ -156,9 +157,11 @@ class JcaScheduleProcessor
         /** @var list<array{filename: string, error: string}> $failedFiles */
         $failedFiles = [];
 
-        foreach ($files as $file) {
+        foreach ($files as $fileIndex => $file) {
             try {
                 $source = $this->scheduleInputResolver->resolve($file, null);
+                $source['filename'] = $file->getClientOriginalName();
+                $source['position'] = $fileIndex + 1;
             } catch (Throwable $throwable) {
                 if (! $allowPartialResults) {
                     throw ExtractSourceResolutionException::fromThrowable($throwable, true);
@@ -237,41 +240,6 @@ class JcaScheduleProcessor
             )],
             'failed_files' => [],
         ];
-    }
-
-    /**
-     * @param  list<array<string, mixed>>  $parsedResults
-     * @return array<string, mixed>
-     */
-    private function mergeParsedResults(array $parsedResults): array
-    {
-        $parsed = $parsedResults[0];
-        $events = array_merge(...array_map(
-            static fn (array $result): array => is_array($result['calendar_events'] ?? null)
-                ? $result['calendar_events']
-                : [],
-            $parsedResults,
-        ));
-
-        $uniqueEvents = [];
-
-        foreach ($events as $event) {
-            $eventData = $event instanceof ExtractedEventDTO ? $event->toArray() : $event;
-            $key = hash('sha256', serialize($eventData));
-            $uniqueEvents[$key] = $event;
-        }
-
-        $events = array_values($uniqueEvents);
-        usort($events, static function (mixed $first, mixed $second): int {
-            $firstStart = $first instanceof ExtractedEventDTO ? $first->start : data_get($first, 'start');
-            $secondStart = $second instanceof ExtractedEventDTO ? $second->start : data_get($second, 'start');
-
-            return strcmp((string) $firstStart, (string) $secondStart);
-        });
-
-        $parsed['calendar_events'] = $events;
-
-        return $parsed;
     }
 
     /** @return array{filename: string, error: string, throwable: Throwable, source_resolution: bool} */

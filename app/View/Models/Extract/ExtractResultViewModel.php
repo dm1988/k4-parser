@@ -13,6 +13,7 @@ readonly class ExtractResultViewModel
 {
     /**
      * @param  list<ExtractEventViewModel|Flight|DutyEvent>  $events
+     * @param  list<string>  $mergeWarnings
      */
     public function __construct(
         public ?string $errorMessage,
@@ -23,6 +24,7 @@ readonly class ExtractResultViewModel
         public ?string $parseKey,
         public ?string $exportUrl,
         public string $rawJson,
+        public array $mergeWarnings = [],
     ) {}
 
     public static function fromData(ExtractedResultData $result): self
@@ -97,7 +99,24 @@ readonly class ExtractResultViewModel
                 ? null
                 : route('parse.export', ['event_types' => $filters, 'parse_key' => $result->parseKey]),
             rawJson: json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) ?: '{}',
+            mergeWarnings: self::mergeWarnings($result),
         );
+    }
+
+    /** @return list<string> */
+    private static function mergeWarnings(ExtractedResultData $result): array
+    {
+        $warnings = [];
+
+        foreach (($result->parsed['merge_conflicts'] ?? []) as $conflict) {
+            $warnings[] = ($conflict['kind'] ?? null) === 'event'
+                ? 'Conflicting UTC times or route for '.implode(' / ', $conflict['titles']).'. Both versions are kept; check the source schedules.'
+                : (($conflict['scope'] ?? null) === 'result'
+                    ? 'Source schedules contain conflicting summary information. Conflicting values are unavailable; check the source schedules.'
+                    : 'Source schedules contain conflicting event details. Conflicting values are unavailable; check the source schedules.');
+        }
+
+        return array_values(array_unique($warnings));
     }
 
     public function hasError(): bool
