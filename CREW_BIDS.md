@@ -3,17 +3,6 @@
 K4 Bids helps pilots compare monthly bid packages and prepare a private, ordered bid list. This document records the current product contract and remaining work. Completed implementation tasks, validation history, and commit messages are recorded in [TODO.md](TODO.md).
 
 Status (2026-10-28): Package import/publication, browsing, preferences, manual ranking, review/copy, compact cards, interactive trip timelines, credit calculations, icons, and trip endpoint/deadhead flags are implemented. Auto bidding has read-only discovery and an offline adapter; reviewed submission and the enhancements below remain pending. Manual browser, touch, and keyboard review is still outstanding.
-## [x] Completed: Set preferences pop out
-Problem: if a user is not at the top of the page, the Set preferences opens when a user is out of view. The user needs to scroll up to set preferences. Perfer a pop out or full page preferences view
-
-Element:
-```html
-<button type="button" @click="$wire.showPreferences = ! $wire.showPreferences" :aria-expanded="$wire.showPreferences" aria-controls="bid-preferences" class="inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-full bg-slate-200/70 px-3 text-slate-700 focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-800 dark:text-slate-200 lg:max-w-80" aria-expanded="false">
-                        <svg aria-hidden="true" class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" data-slot="icon">
-  <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"></path>
-</svg><span class="sr-only">Edit preferences: </span><span class="truncate"><!--[if BLOCK]><![endif]-->Maximize days off → Maximize credit<!--[if ENDBLOCK]><![endif]--> <!--[if BLOCK]><![endif]--> · 8 dates off (UTC)<!--[if ENDBLOCK]><![endif]--> <!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]--></span>
-                    </button>
-```
 
 ## CBA accuracy review — 2026-10-29
 
@@ -345,16 +334,167 @@ Add owner-scoped tags such as Top Pick, Backup, or Avoid, with optional notes ac
 
 ### Advanced comparison controls
 
-Keep secondary controls grouped and collapsible, derive options from the active package, and define Any/Only/Exclude behavior where meaningful.
+Planning review and user decisions: 2026-11-03. Implement one subtask at a time after its definitions are settled. Tasks blocked on a source or contractual definition do not block independent controls. The user confirmed hard filters with selected bids retained, base pairing credit, published carry count with a calculated fallback, UTC report times and split detection as described below, final-trip end city, avoidance across all leg endpoints, country grouping, temporary filters, and deferral of long stays and extra views.
 
-| Area | Remaining controls or decisions |
-| --- | --- |
-| Credit and crew | Full credit ranges, guarantee-relative comparisons, and crew-complement filters. Verify guarantee rules before using them. |
-| Work pattern | Source duty-day filters, carry-in preferences, split lines, deadheads, long stays, and first report/start time. Define comparison and month-boundary rules; do not hardcode example thresholds. |
-| Airports | End city, layover/rest city, avoided airports, and useful region grouping using existing airport reference data. |
-| Additional sorts | Source duty days, carry-in, start time, deadheads, or rest duration only when definitions and coverage are dependable. Existing Credit, Block, Days off, Best match, and Line ID sorts remain available. |
-| Display | Optional extra columns/views only where they add value beyond the compact timeline; retain shared filters and selections. |
-| Later scoring | Breakfast-friendly departures, fatigue scores, long-stay detection, and hazard-pay eligibility require explicit definitions and time bases. |
+#### 1. Agree on comparison definitions and source coverage
+
+**Goal:** Give each control a documented value, time basis, source, completeness rule, and matching rule.
+
+**Current implementation:** `CrewBids`, `BidLineMatcher`, `ParseBidDocuments`, and `ReadBidOverview` already provide minimum credit/days-off filters, required start city, selected-only browsing, scheduled-layover filters, crew counts, source duty days, and source carry-in counts. The matcher also calculates occupied dates after calendar month-end. These metrics are not interchangeable. Existing airport reference data provides city, state, and country; it does not supply a broad-region taxonomy or time zone in `AirportData`.
+
+**Problem:** Some requested controls describe ambiguous or incomplete values. Current displayed Credit includes a carry premium with discrepancies recorded in C2–C6; source line credit is not yet established as published contractual guarantee. Scheduled connection duration and source Rest are separate values.
+
+Comparison rules (user-confirmed product choices, with implementation details to validate against source coverage):
+
+- Advanced controls are hard filters on available results; saved selections stay in manual order with mismatch/unknown explanations. Best match keeps its existing strict goal priorities. Do not silently turn filters into weighted scoring. The user confirmed this behavior.
+- `Any` imposes no condition. For a Boolean property, `Only` requires positive evidence and `Exclude` requires complete evidence of absence. Unknown is neither false nor zero. For partially known data, a known positive match can satisfy `Only`; a known prohibited occurrence fails `Exclude`. An unknown result cannot satisfy a strict filter. Existing days-off handling of unknown dates remains as already agreed.
+- For categorical sets, use labelled inclusion/exclusion choices: selected values match with OR within a control, different controls combine with AND. `Only selected crew complements` means one of the exact selected CA/FO count pairs. It does not mean every trip must share that complement without verification.
+- Numeric ranges use inclusive lower/upper bounds, allow either bound to be empty, preserve zero, and reject inverted ranges. Use hour/minute entry where appropriate and preserve underlying seconds. No arbitrary example cutoffs become business rules.
+- Derive categorical choices and coverage from the active package and eligible seat before other filters narrow results, so selected options do not disappear while filtering. Inspect Flying/Reserve availability and explain unsupported metrics. Clear or explicitly reconcile invalid values on context/revision changes.
+- Keep personal calendar availability on UTC calendar dates. Contractual compensation Months and carry-in duty-day rules remain separate. Define whether each metric covers only the displayed month or complete linked pairings, including boundaries and duplicate pairing references.
+- Keep advanced browsing filters temporary, as existing quick filters are; preserve them during browsing and disclosure changes, and clear them on package/seat context changes. The user confirmed that filters do not need to persist across return visits. Existing saved preferences and bid lists retain their persistence behavior.
+
+**Acceptance:** Review representative B747/B777 packages, Flying/Reserve coverage, missing Trips, real zeros, and source disagreements. Record unresolved definitions as unavailable controls rather than inventing fallback values. This definition task does not change compensation arithmetic.
+
+Commit message: `docs: define advanced bid comparison semantics and coverage`
+
+#### 2. Group advanced controls and share filter state
+
+**Goal:** Keep the compact browsing workspace clear as controls grow.
+
+**Current implementation:** The filter area already collapses and updates results live; preferences and the bid list have separate panels.
+
+**Problem:** Adding every field to the existing quick-filter row would make browsing harder to scan.
+
+Group secondary controls into collapsible Credit & crew, Work pattern, and Airports sections. Show an active-filter count/summary, per-group clear, and Reset filters. Closing a section must retain its values. Reuse the existing matching, Livewire state, validation, loading/empty/error feedback, and selection flow; keep parsing and airport lookups out of Blade. Keep sort/display choices outside filter groups. Wire only controls whose definitions are ready.
+
+**Acceptance:** Keyboard access, focus and disclosure state, mobile layout, live result changes, reset behavior, and context switching work without changing selected ranks. Add behavior coverage for shared state and validation; review styling/accessibility manually.
+
+Depends on subtask 1. Commit message: `feat: group advanced bid comparison controls`
+
+#### 3. Add credit ranges and exact crew-complement filters
+
+**Goal:** Compare credit bands and staffing arrangements using explicit labels.
+
+**Current implementation:** Minimum Credit uses the existing adjusted value. Lines import Captain/FO counts and retain source/base credit separately.
+
+**Problem:** There is no upper credit bound or exact-complement filter; the existing minimum uses a different credit basis from the newly agreed range.
+
+The user selected **Base pairing credit** for the range. Use complete pairing Credit Time totals, label the range explicitly, and replace the existing quick minimum instead of keeping contradictory minimum controls. A source-only line total is not proven base pairing credit; show unavailable when complete pairing totals cannot be established. Do not silently change the current Credit sort or goal. Derive complement options from exact imported count pairs for the eligible seat. If line and trip complements disagree, expose the discrepancy and establish which source the control describes.
+
+**Acceptance:** Inclusive boundaries, fractional durations/seconds, missing credit versus zero, inverted ranges, eligible-seat options, absent/mixed complements, combined filters, and retained selections are covered. Guarantee comparison remains subtask 7.
+
+Depends on subtasks 1–2. Commit message: `feat: add bid credit ranges and crew filters`
+
+#### 4. Add source duty-day and carry-in comparisons
+
+**Goal:** Compare workload and month transitions without conflating occupancy, duty, and compensation.
+
+**Current implementation:** Imported `duty_days` and `carry_in` coexist with a calculated count of unique occupied UTC dates after calendar month-end. The current carry display can fall back between calculated and source values.
+
+**Problem:** A single unlabeled carry value cannot reliably describe source counts, contractual Transition Days, or obligations entering from a previous award.
+
+Add a labelled source-duty-day range where supported. The user selected **published source carry count, or work continuing into the next month when no count is published**. Preserve a published zero; fall back only when absent, not when it fails a filter. For the fallback, use the existing calendar-occupancy meaning: unique occupied UTC dates after month-end for trips continuing from the selected month, with complete linked-trip coverage required. Show `Published carry count` or `Calculated occupied days after month-end` beside the value/filter explanation so the basis is visible. Keep both raw values and flag discrepancies when available; contractual Transition Days remain distinct. Provide Any/Only/Exclude presence plus an optional count range if useful. Incoming obligations require evidence from the previous award and are unavailable from a prospective package alone. Source duty-day totals retain their source scope; the fallback alone counts dates beyond the displayed calendar month. No compensation-month boundary or premium inference applies to this calendar fallback.
+
+**Acceptance:** Calendar month/year transitions, compensation-period exceptions where used, duplicate dates, missing pairings, complete zero carry, partial coverage, and source/calculated disagreement have focused coverage. No automatic schedule adjustment or premium entitlement is inferred.
+
+Depends on subtasks 1–2. Commit message: `feat: add duty-day and carry comparisons`
+
+#### 5. Add defined work-pattern controls
+
+**Goal:** Filter split lines, deadheads, first report, and scheduled long stays using dependable evidence.
+
+**Current implementation:** Occupied work blocks, report/release values, deadhead legs, source Rest, and scheduled same-airport arrival-to-next-departure gaps are available to varying degrees. Existing 10h/24h chips are presentation rules.
+
+**Problem:** More than one occupied block does not by itself establish a contractual split line; report time differs from first departure; long-stay and rest values require explicit aggregation.
+
+The user defined a **split line** as a work block, an off block, and another work block, and confirmed detection within the displayed month using known occupied blocks separated by at least one confirmed off day. Provide Any/Only/Exclude for that personal comparison definition. Unknown dates do not establish an off block or prove the absence of a split. Do not impose the CBA's contractual split-line construction requirements on this preference or label the result a compliance check.
+
+For deadheads, begin with Any/Only/Exclude presence based on explicit leg markers; absence requires complete linked-leg coverage. Counts/duration can follow only with agreed aggregation. The user selected the **first chronological trip report in UTC** for first-report comparison; do not use first departure or apply the window to every trip. Preserve the full dated timestamp to establish chronology before comparing time of day. Verify full-pairing/month-boundary scope and define inclusive window behavior, including windows crossing midnight, before implementation. Missing report must not silently become departure time. The user deferred long stays until a duration is defined. Keep scheduled gaps, source Rest, legal rest, and fatigue distinct. Do not reuse visual chip thresholds as a new long-stay definition without agreement. Any future city-plus-duration condition must match both on the same stay.
+
+**Acceptance:** Exact duration bounds, midnight/year crossings, first-trip chronology independent of source order, split occupancy around month boundaries, ground transfers, incomplete legs, overlaps, and airport changes produce defined results. Cases needing unresolved definitions stay deferred.
+
+Depends on subtasks 1–2 and the relevant definitions. Commit message: `feat: add defined bid work-pattern filters`
+
+#### 6. Add airport inclusion, avoidance, and geographic groups
+
+**Goal:** Compare trip endpoints and stays with package-derived airport choices.
+
+**Current implementation:** Required start city and a connected-layover airport selector exist. Trips retain individual endpoints and legs; mixed endpoints are already identified. Airport reference data can enrich codes with city/state/country.
+
+**Problem:** End city could mean the last trip's endpoint or every trip's endpoint; avoided airports could cover stays only or every leg endpoint. Region names have no agreed mapping.
+
+The user selected **the final chronological trip endpoint** for end city, **all leg origins/destinations including deadheads** for avoided airports, and **countries** for geographic grouping. Establish the final trip from dated chronology, with unavailable status if missing trips could change that endpoint. Extend the existing layover selector rather than duplicate it; distinguish scheduled connections from source-rest locations. Avoidance requires complete route coverage to prove no prohibited endpoint is visited. Keep airport codes primary and identify airports sharing a city individually. Derive country groups from existing reference data for airports present in the package; preserve unresolved codes without assigning a guessed country. State/continent/custom-region groupings are outside the agreed first pass. Reuse airport resolution/cache services without a network lookup per rendered row.
+
+**Acceptance:** Mixed endpoints, city/duration correlation, avoided deadhead endpoints, multiple selected airports, unresolved codes, reference-service unavailability, incomplete routes, and package changes have defined behavior.
+
+Depends on subtasks 1–2 and airport-scope decisions. Commit message: `feat: extend bid airport comparison filters`
+
+#### 7. Verify and add guarantee-relative comparisons
+
+**Goal:** Support a labelled comparison to a proven applicable guarantee.
+
+**Current implementation:** The supplied CBA review records qualified 64-PCH MBPG and 70-PCH composite-line minima (C5), and distinguishes published Bid Line Guarantee from pairing totals (C6). Current applicability, source guarantee provenance, and personal eligibility remain unresolved.
+
+**Problem:** Comparing the existing adjusted Credit to a universal guarantee would imply unsupported compensation accuracy.
+
+Verify the governing agreement/amendments and effective period, applicable line category, availability/proration/eligibility, and independent published guarantee field. Define the numerator as well as the guarantee: published line value, accrued PCH, and incomplete pairing credit are not interchangeable. Confirm whether the control means below/at/above guarantee or a signed credit difference range. Preserve source provenance and show unavailable for unsupported comparisons; never substitute a constant floor or a trip sum for missing guarantee data. This comparison does not introduce estimated pay or silently repair the carry-credit calculation.
+
+**Acceptance:** Qualified hard/composite/reserve/no-duty cases, missing provenance, unsupported eligibility, and exact equality are covered using verified rules. If evidence remains insufficient, document the unresolved inputs and leave this control deferred.
+
+Depends on subtask 1 and verified inputs; independent filters can ship first. Commit message: `feat: add verified guarantee-relative bid comparisons`
+
+#### 8. Add dependable optional sorts
+
+**Goal:** Make the defined comparison metrics available for browsing order.
+
+**Current implementation:** Credit, Block, Days off, Best match, and Line ID sorts are available, with natural Line ID tie-breaking and unknown numeric values last.
+
+**Problem:** New sorts need a specific metric, direction, aggregation, and completeness policy.
+
+Add only supported source duty days, chosen carry metric, first report, deadhead count/duration, and chosen rest/stay duration. Confirm ascending/descending choices and line-level aggregation, such as shortest scheduled stay versus longest stay; source Rest must have a distinct label. Unknown values remain last in either direction, with natural Line ID as the final tie-break. Partial observations cannot establish a reliable maximum/minimum or zero. Keep existing sorts available, Best match priorities intact, and manual bid order independent.
+
+**Acceptance:** Equal values, zero/missing/partial values, both directions, stable ties, and combined filtering are covered. Do not expose a sort merely because some rows contain the field.
+
+Depends on the corresponding completed metric subtasks. Commit message: `feat: add supported bid comparison sorts`
+
+#### 9. Evaluate optional comparison columns or views
+
+**Goal:** Add a display option only when it answers a comparison need beyond the compact timeline.
+
+**Current implementation:** Compact monthly timelines and expandable details already show route, trip, credit, and stay information.
+
+**Problem:** A second display could duplicate information or lose active browsing state.
+
+The user confirmed **retain the compact timeline and defer extra views**. This subtask remains deferred until users identify fields needing side-by-side comparison. Prefer a small set of optional metrics in the existing layout; add a table/view only if that solves the stated need. Use the same filtered/sorted results, selected lines, add/remove actions, and warnings. Retain filters and selections across any future view changes, preserve the compact default and mobile usability, and define owner-scoped display persistence separately from filter persistence.
+
+**Acceptance:** View changes preserve filter/sort values and manual rank; missing values remain explicit. Review narrow/desktop layouts, both themes, keyboard interactions, and header/action overlap. If no additional value is established, record that outcome without adding a view.
+
+Depends on delivered metrics and a demonstrated display need. Commit message if implemented: `feat: add optional bid comparison display`
+
+#### 10. Define later scoring separately
+
+**Goal:** Establish evidence and definitions for later breakfast, fatigue, long-stay detection, and hazard-pay features.
+
+**Current implementation:** No agreed breakfast window, fatigue model, or general long-stay detector exists. C8 records supplied hostile-area provisions; an airport's region or international status does not prove eligibility.
+
+**Problem:** These features require more than package-derived categorical filters.
+
+Define breakfast location/window, relevant departure/report event, local time zones and DST, plus whether all or some departures qualify. Define fatigue inputs, time basis, model, aggregation, missing-data behavior, and any ranking integration separately. A scheduled-duration filter from subtask 5 does not establish fatigue or a contractual long-stay category. Hazard-pay work needs applicable designation dates, qualifying assignments/layover days, governing amendments, and verified compensation rules. Keep undefined scoring and eligibility unavailable; do not infer them from region grouping or the existing chip colors.
+
+**Acceptance:** A separately reviewed definition and source-coverage decision precedes each implementation task. This is deferred definition work, not a promise to add scoring in the first advanced-controls release.
+
+Commit message: `docs: define prerequisites for later bid scoring`
+
+#### Remaining definition gates
+
+- Verify package coverage/source disagreements and the meaning of published duty/carry counts. The carry fallback policy is confirmed; unknown source semantics must stay visible rather than being described as contractual equivalence.
+- Verify which dated pairing report/endpoints establish first and last trips across the displayed month boundary. Define time-window bounds and midnight wrapping before enabling a first-report filter.
+- Confirm guarantee provenance, effective rules, applicable line categories, and numerator before subtask 7. No universal guarantee comparison is authorized by the filter decisions.
+- Define deadhead count/duration and rest aggregation/direction before exposing those optional sorts. Presence filtering can ship independently.
+- Long stays, extra views, breakfast/fatigue scoring, broader regions, and hazard-pay eligibility remain deferred with their definition requirements above.
+
+**Integration checkpoint for implementation:** Require Sail availability before code changes. Confirm installed package versions and use Boost documentation for version-sensitive APIs. Run only focused tests for the delivered subtasks, Pint after PHP edits, and Larastan once at final integration. Cover changed matching decisions, boundary/missing-data failures, context/revision transitions, and private persistence if introduced. Record actual outcomes and a commit message for each completed task in TODO.md. This planning review changes documentation only and does not claim runtime validation.
 
 ### Additional sources and exports
 
@@ -379,7 +519,7 @@ Resolve access to assigned crew, vacations, and training records within shared p
 ## Open decisions
 
 - Which additional source periods/layout revisions need support beyond the validated native-text samples?
-- Which new preferences are hard exclusions, and how are carry-in, split lines, long stays, and availability compared?
+- Advanced comparison choices are recorded above: hard filters, base pairing credit, published carry count with a labelled fallback, split-block detection, UTC report times, airport scope, and temporary state. Remaining gates are source/boundary verification, guarantee applicability, optional sort definitions, and deferred long-stay/scoring/display work.
 - What source evidence and effective rules support legal-rest/fatigue indicators and compensation calculations?
 - What visibility, retention, and revision behavior apply to personal records, tags, and notes?
 - What spreadsheet schema and external evidence can establish exported, submitted, awarded, or projected states?
@@ -392,3 +532,17 @@ Use existing Laravel/Livewire, action/service, Blade, and owner-scoped persisten
 
 Run focused regression coverage for the changed behavior: source normalization and failures, UTC/month/year boundaries, exact credit arithmetic, filtering/ranking, persistence/concurrent edits, revision migration, access isolation, and missing versus zero values. Keep live portal writes out of automated tests. Run Pint after PHP edits and Larastan once at integration, and record actual outcomes in TODO.md. Manual browser review remains necessary for layout and interaction claims.
 
+## Completed
+
+---------------------
+## [x] Completed: Set preferences pop out
+Problem: if a user is not at the top of the page, the Set preferences opens when a user is out of view. The user needs to scroll up to set preferences. Perfer a pop out or full page preferences view
+
+Element:
+```html
+<button type="button" @click="$wire.showPreferences = ! $wire.showPreferences" :aria-expanded="$wire.showPreferences" aria-controls="bid-preferences" class="inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-full bg-slate-200/70 px-3 text-slate-700 focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-800 dark:text-slate-200 lg:max-w-80" aria-expanded="false">
+                        <svg aria-hidden="true" class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" data-slot="icon">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"></path>
+</svg><span class="sr-only">Edit preferences: </span><span class="truncate"><!--[if BLOCK]><![endif]-->Maximize days off → Maximize credit<!--[if ENDBLOCK]><![endif]--> <!--[if BLOCK]><![endif]--> · 8 dates off (UTC)<!--[if ENDBLOCK]><![endif]--> <!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]--></span>
+                    </button>
+```

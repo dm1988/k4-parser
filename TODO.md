@@ -30,6 +30,12 @@ Optionally add references and constraints.
 # Tasks
 ## Crew bidding
 
+Advanced comparison planning outcome (2026-11-03): Expanded the existing `Advanced comparison controls` section in `CREW_BIDS.md` into ten subtasks covering definitions/coverage, grouped controls, credit/crew, duty/carry, work patterns, airports, verified guarantee comparisons, supported sorts, optional display, and later scoring definitions. Recorded current implementation evidence, Any/Only/Exclude and missing-data semantics, dependencies, acceptance criteria, and commit messages. User confirmed hard filters with selected bids retained; explicitly labelled base pairing credit; published carry count with a labelled calculated next-month occupancy fallback only when absent; split detection within the displayed month from known work blocks separated by confirmed off days; first chronological trip report in UTC; final chronological trip endpoint for end city; avoided airports across all leg endpoints including deadheads; country groups; and temporary filters. Long stays and extra views are deferred. Source coverage, precise boundary/window behavior, guarantee applicability/provenance, and optional sort aggregation still require verification before their dependent controls. Implementation remains pending; preserved unrelated edits in `CREW_BIDS.md`.
+
+Validation: Documentation diff review and whitespace checks only; no application code changed, so tests, Pint, and Larastan were not run.
+
+Commit message: `docs: break advanced bid comparison controls into subtasks`
+
 ### Goal
 
 Organize K4 Bids within the app and define a clean user-facing workspace for monthly package comparison and bid ranking.
