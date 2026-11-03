@@ -21,6 +21,7 @@ class SaveBidWorkspace
     {
         Gate::forUser($user)->authorize('use-crew-bids');
         abort_unless($package->published_at !== null, 404);
+        abort_if($package->archived_at !== null && ! $package->workspaces()->where('user_id', $user->id)->where('seat', $seat)->exists(), 404);
         Validator::make(compact('seat', 'preferences', 'selections'), [
             'seat' => ['required', Rule::in(['CA', 'FO'])],
             'preferences' => ['required', 'array:goals,days_off,start_city,initialized'],

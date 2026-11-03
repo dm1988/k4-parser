@@ -2,19 +2,18 @@
 
 namespace App\Livewire;
 
+use App\Actions\CrewBids\ImportBidPackage;
 use App\Actions\CrewBids\PublishBidPackage;
 use App\Actions\CrewBids\SaveBidWorkspace;
 use App\Models\BidPackage;
 use App\Models\BidWorkspace;
 use App\Models\User;
 use App\Services\CrewBids\BidLineMatcher;
-use App\Services\CrewBids\ParseBidDocuments;
 use App\View\Models\CrewBidLineViewModel;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
@@ -109,7 +108,10 @@ class CrewBids extends Component
         $this->seat = $this->user()->crew_bid_seat_preference;
         $last = BidWorkspace::query()->where('user_id', Auth::id())->latest('updated_at')->first();
         $package = $last === null ? null : BidPackage::query()->whereNotNull('published_at')->find($last->bid_package_id);
-        $package ??= BidPackage::query()->whereNotNull('published_at')->orderByDesc('period')->orderByDesc('id')->first();
+        if ($package?->archived_at !== null && ! $package->workspaces()->where('user_id', Auth::id())->where('seat', $this->seat)->exists()) {
+            $package = null;
+        }
+        $package ??= BidPackage::query()->whereNotNull('published_at')->whereNull('archived_at')->orderByDesc('period')->orderByDesc('id')->first();
         if ($package !== null) {
             $this->loadPackage($package, $this->seat);
         }
@@ -139,6 +141,7 @@ class CrewBids extends Component
     {
         $this->validate(['contextPackage' => ['required', 'integer']]);
         $target = BidPackage::query()->whereNotNull('published_at')->findOrFail((int) $this->contextPackage);
+        $this->assertPackageAvailable($target);
         if ($this->dirty && ! $this->persist()) {
             $this->contextPackage = (string) $this->packageId;
 
@@ -160,6 +163,7 @@ class CrewBids extends Component
     {
         $package = $this->package();
         $target = BidPackage::query()->whereNotNull('published_at')->where('period', $package->period)->where('fleet', $package->fleet)->findOrFail($id);
+        $this->assertPackageAvailable($target);
         $this->pendingPackageId = $target->id;
     }
 
@@ -170,6 +174,7 @@ class CrewBids extends Component
         }
         $source = $this->package();
         $target = BidPackage::query()->whereNotNull('published_at')->where('period', $source->period)->where('fleet', $source->fleet)->findOrFail($this->pendingPackageId);
+        $this->assertPackageAvailable($target);
         $existing = BidWorkspace::query()->where('user_id', Auth::id())->where('bid_package_id', $target->id)->where('seat', $this->seat)->first();
         if ($existing === null) {
             $lines = $target->payload['lines'];
@@ -334,16 +339,8 @@ class CrewBids extends Component
     {
         Gate::authorize('manage-crew-bids');
         $this->draftId = null;
-        $this->validate(['files' => ['required', 'array', 'min:1', 'max:3'], 'files.*' => ['required', 'file', 'mimes:pdf,xlsx', 'extensions:pdf,xlsx', 'max:12288']]);
-        if (RateLimiter::tooManyAttempts('bid-import:'.Auth::id(), 5)) {
-            $this->addError('files', 'Please wait a minute before importing again.');
-
-            return;
-        }
-        RateLimiter::hit('bid-import:'.Auth::id(), 60);
         try {
-            $data = app(ParseBidDocuments::class)->parse($this->files);
-            $draft = BidPackage::query()->firstOrCreate(['fingerprint' => $data['fingerprint']], $data + ['imported_by' => Auth::id()]);
+            $draft = app(ImportBidPackage::class)->handle($this->files);
             if ($draft->published_at !== null) {
                 $this->notice = 'These files are already published.';
                 $this->draftId = null;
@@ -357,9 +354,6 @@ class CrewBids extends Component
             report($exception);
             $this->addError('files', 'Import failed. The current package is unchanged. Check the source files and try again.');
         } finally {
-            foreach ($this->files as $file) {
-                $file->delete();
-            }
             $this->files = [];
         }
     }
@@ -433,6 +427,11 @@ class CrewBids extends Component
     private function package(): BidPackage
     {
         return BidPackage::query()->whereNotNull('published_at')->findOrFail($this->packageId);
+    }
+
+    private function assertPackageAvailable(BidPackage $package): void
+    {
+        abort_if($package->archived_at !== null && ! $package->workspaces()->where('user_id', Auth::id())->where('seat', $this->seat)->exists(), 404);
     }
 
     private function user(): User
@@ -564,7 +563,9 @@ class CrewBids extends Component
 
         return [
             'package' => $package,
-            'packages' => BidPackage::query()->whereNotNull('published_at')->orderByDesc('period')->orderByDesc('id')->get(['id', 'period', 'fleet', 'source_revision']),
+            'packages' => BidPackage::query()->whereNotNull('published_at')
+                ->where(fn ($query) => $query->whereNull('archived_at')->orWhereHas('workspaces', fn ($query) => $query->where('user_id', Auth::id())->where('seat', $this->seat)))
+                ->orderByDesc('period')->orderByDesc('id')->get(['id', 'period', 'fleet', 'source_revision']),
             'lines' => $lines,
             'lineCards' => array_map(static fn (array $line): CrewBidLineViewModel => CrewBidLineViewModel::fromLine($line, isset($ranks[$line['id']]) ? $ranks[$line['id']] + 1 : null, $showBlocks), $lines),
             'allLines' => $all,
@@ -583,7 +584,7 @@ class CrewBids extends Component
             'draft' => $this->draftId === null ? null : BidPackage::query()->where('imported_by', Auth::id())->find($this->draftId),
             'target' => $target,
             'revisionChanges' => $revisionChanges,
-            'latest' => $package === null ? null : BidPackage::query()->whereNotNull('published_at')->where('period', $package->period)->where('fleet', $package->fleet)->where('id', '>', $package->id)->latest('id')->first(),
+            'latest' => $package === null ? null : BidPackage::query()->whereNotNull('published_at')->whereNull('archived_at')->where('period', $package->period)->where('fleet', $package->fleet)->where('id', '>', $package->id)->latest('id')->first(),
             'copyText' => implode("\n", array_map(fn (string $id, int $index): string => ($index + 1).'. '.$id, $this->selections, array_keys($this->selections))),
             'goalLabels' => ['credit' => 'Maximize credit', 'days_off' => 'Maximize days off', 'blocks' => 'Fewer work blocks'],
         ];

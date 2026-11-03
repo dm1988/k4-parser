@@ -15,6 +15,7 @@ class PublishBidPackage
         return DB::transaction(function () use ($draftId, $userId): BidPackage {
             $draft = BidPackage::query()->where('imported_by', $userId)->lockForUpdate()->findOrFail($draftId);
             if ($draft->published_at === null) {
+                Gate::authorize('publish', $draft);
                 $draft->update(['published_at' => now()]);
             }
 
