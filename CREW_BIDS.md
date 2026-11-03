@@ -556,24 +556,67 @@ Scanned PDFs/OCR, dedicated Training Requirements PDFs, Bid List spreadsheets, V
 
 A company-compatible spreadsheet export needs an agreed schema and review of the supplied Bid List workbook. Exporting or copying does not submit a company bid. Offline editing remains outside the current scope.
 
-### Estimated pay
+### Current focus: Estimated pay
 
-Planning review completed: 2026-11-03. **Feasible as a scheduled-pay planning feature**, with the rule/source work below completed before releasing dollar totals. Use **Estimated pay** as the interface label. The product questions asked during this planning review have been answered. This section is an implementation plan; no pay calculator, personal pay profile, or pay sort has been implemented by this planning task.
+Planning and Sections 2/5 review completed: 2026-11-03. **The supported scheduled-pay feature is implemented**, with encrypted private context, a separate exact-arithmetic calculator, optional compact amounts, a detailed breakdown, and Highest estimated pay sorting. Set **Adjusted pay-longevity date (UTC)** and **Check Airman override** under **Profile → User preferences → K4 Bids**. Open **Pay context** to save package/seat assumptions, then open a line's **Details → Estimated pay → Edit pay inputs** to review its category and credit coverage. The implementation supports qualified hourly Flight Pay with full-period availability. Missing or unsupported applicable compensation prevents a complete total; it does not silently become zero. User-confirmed scenario policies remain labelled assumptions, not a claim that every rule is independently established by the supplied CBA. The eight subtasks below retain the implementation rationale and acceptance requirements.
 
 **User-confirmed direction (2026-11-03):** The first release should estimate **scheduled gross contractual pay in USD before taxes/deductions, with supported credits and premiums, excluding per diem and expense reimbursements**. A guarantee-only preview is not the selected first-release scope. The existing `app/Data/pay_rates.json` rates remain applicable. Automatic pay steps use **a separate adjusted pay-longevity date**, rather than assuming hire date, and **the new rate starts on the anniversary date**, including an anniversary within a compensation period. Owners may supply **private planning inputs for missing facts, with assumptions shown**.
 
-**Confirmed longevity, proration, and rounding:**
+**User-confirmed planning rules for longevity, proration, and rounding:**
 
 - Step 1 covers the first year from the adjusted pay-longevity date. Each anniversary increases the step by one, capped permanently at step 12. A date before the longevity start cannot resolve an eligible pay step and must not default to a zero rate.
 - For a February 29 longevity date, the anniversary is March 1 in non-leap years and February 29 in leap years. Count actual anniversary boundaries rather than dividing elapsed days by 365 or allowing a date library to choose February 28 automatically.
 - An anniversary within the compensation period creates old/new rate intervals. The user confirmed that each applicable MBPG/published line guarantee is weighted by the UTC days before and on/after the anniversary, divided by the **actual number of UTC days in that compensation period**. The new rate starts at **0000Z on the anniversary date**, so that entire date belongs to the new rate. Derive the denominator from the compensation-period boundaries, including the recorded January–March exceptions; do not substitute calendar-month length or a fixed 30-day divisor.
 - Keep exact amounts through component calculations and round **the final USD total once**, to the nearest cent using **half-up** rounding. Do not round each payable component before summing. Component amounts formatted for display must not become calculation inputs; explain any difference between their formatted sum and the rounded final total in the breakdown.
+- Credits moved to a receiving compensation period retain the hourly rate on their **earning/departure UTC day**, including when an anniversary occurs before allocation. Allocation does not move the rate date. Guarantee valuation retains its separate UTC-day weighting rule.
+- Open Time flight duty on an actual scheduled duty-free day adds **1.5 × hours flown × applicable earning-day rate above base as the entire additional off-day payment**, with no separate ordinary-credit payment for that assignment under 5.D.2. Example using an illustrative $100/h rate: a $6,400 base plus 10 qualifying hours produces $7,900, not $8,900. This user-confirmed interaction does not resolve non-flight or training SDFDO pay. Private mode requires the assignment to be omitted from ordinary credits and entered once as Open Time; source mode rejects this adjustment because source totals cannot prove that exclusion.
+- The initial scope requires **qualified hourly Flight Pay and full-period availability**. New-hire weekly pay, partial availability and qualification/crew-class changes remain explicitly unsupported rather than receiving an hourly-rate shortcut.
 
 For an applicable guarantee of `G` PCH, old/new rates `r_old`/`r_new` in USD per hour, `d_old`/`d_new` UTC days in those rate intervals, and `D` actual UTC days in the compensation period, the confirmed guarantee valuation is:
 
 `guarantee USD = G × (d_old × r_old + d_new × r_new) / D`, where `d_old + d_new = D`.
 
 Apply the same day weighting across all applicable rate intervals if more than one change occurs. Determine the applicable guarantee/eligibility first; this anniversary valuation rule does not define how leave or partial availability changes the guarantee itself. Keep each eligible guarantee candidate separate from earned/scheduled-credit valuation and any separately payable premiums.
+
+#### CBA review: Sections 2 and 5 — 2026-11-03
+
+Reviewed the supplied [2021 CKS CBA](storage/app/private/CBA/2021_CKS%20CBA_Final.pdf), Section 2, printed pp. 11–15 (PDF pp. 23–27), and all of Section 5 including Appendix 5-A, printed pp. 25–32 (PDF pp. 37–44). The findings compare this plan with that text; they do not independently establish later amendments or current payroll interpretations. The approved product choices above are preserved. Distinguish an express conflicting pay branch from a rule the supplied sections simply do not establish.
+
+**EP1 — High: The anniversary formula is a planning assumption, not a rule verified in Sections 2/5.** Section 2 defines a UTC Day and compensation Month boundaries, but not an adjusted pay-longevity date or an anniversary valuation algorithm. It defines Date of Hire as commencement of initial Company crewmember training after employment, and Active Service as accumulated time commencing with Date of Hire. Appendix 5-A provides longevity rows 1–12, not an express rule for an adjusted date, March 1 leap-day treatment, permanent capping, or anniversary-date effectiveness. Section 5.C.1 requires MBPG proration for partial-period unavailability; 5.T.4 separately addresses proration for a Type/Crew Class qualification change. Neither supplies the plan's anniversary day-weighting formula for MBPG and published line guarantee. Section 5.D.1 states the greater-of PCH structure, without specifying mixed-anniversary-rate valuation. Final-cent half-up rounding is also not prescribed in these sections. These choices are not expressly prohibited here, so absence of support is not proof of contradiction. Retain them as user-confirmed scenario policies and obtain the governing interpretation before describing those outputs as CBA-verified compensation. Sources: Section 2, pp. 11–14 (PDF 23–26); 5.C and 5.D.1, p. 25 (PDF 37); 5.T.4, p. 31 (PDF 43); Appendix 5-A, p. 32 (PDF 44).
+
+**EP2 — High: Generic step-1 hourly pay would conflict with the new-hire branch.** Section 5.A pays a new hire in training before qualification $600 per week and starts Flight Pay on the first observation flight. Section 5.N.1 explicitly sends new-hire training back to 5.A. Resolving a step from a longevity date does not establish that hourly Flight Pay has begun. The first-release matrix must either support these dates/weekly pay or explicitly exclude that scenario. Section 5.B also permits a Company first-year Flight Pay increase capped at 90% of second-year Flight Pay; a private input cannot turn an arbitrary larger value into a rule supported by this text. Sources: 5.A–5.B, p. 25 (PDF 37); 5.N.1, p. 28 (PDF 40).
+
+**EP3 — High: Browsed seat and longevity cannot substitute for qualification-effective pay changes.** Section 5.T.4 applies when a Type/Crew Class change moves a crewmember to a different pay scale: prorated MBPG uses the Type/Crew Class for which the crewmember is current and qualified, and the pay change takes effect on the qualification date. A profile bid-seat change or selected package alone is not that event. The plan already treats another seat as a scenario; extend its input/rate-interval model with qualification-effective context for actual upgrade/scale-change cases, or mark them unsupported. Do not assume the user-approved anniversary formula also establishes the separate 5.T.4 proration basis. Source: 5.T.4, p. 31 (PDF 43).
+
+**EP4 — High: Off-day pay requires the 5.D.2 and 5.L interaction, not a generic premium multiplier.** Section 5.D.2 makes pay additional to 5.D.1 and distinguishes accrued PCH under Section 5 from additional PCH under 5.L. Section 5.L.1.b states hours flown multiplied by 1.5 above MBPG for awarded Open Time duty on an SDFDO; 5.L.2 uses the greater of four PCH, assignment PCH, or actual duty hours for non-flight SDFDO duty above Monthly Guarantee, subject to its reserve-hour qualification. Training on an SDFDO also has the specific 5.N.5 provision. The plan has not yet defined how the overlapping clauses form the final component amounts. Do not infer either a universal 50% top-up or one universal 1.5 multiplier from them. Its de-duplication requirement must remove repeated source records without erasing separately payable components expressly required by distinct clauses. Resolve the interaction with worked examples before declaring an SDFDO scenario ready. Section 2's SDFDO definition also requires freedom from Company direction, normally at the Resident Airport; a user's requested-off date or a gap between flights does not prove that status. Sources: Section 2, p. 14 (PDF 26); 5.D.2, pp. 25–26 (PDF 37–38); 5.L, pp. 27–28 (PDF 39–40); 5.N.5, p. 29 (PDF 41).
+
+**EP5 — Medium: The generic component matrix needs explicit treatment of the remaining Section 5 categories.** The plan correctly prevents a complete total when an applicable component is unresolved, but its named matrix omits several categories below. Record each as supported, not applicable for a declared scenario, or unsupported; do not let a lack of source data look like zero pay.
+
+| Clause | Requirement to add to the rule/coverage matrix | Printed page (PDF page) |
+| --- | --- | --- |
+| 5.D.4–6 | Hostile-area assignment pay: four hours at 150% above guarantee; hostile-area layover: four PCH in addition to MBPG per layover day; four PCH for each Company-assigned one-in-seven beyond three unpaid ones. Eligibility/designation evidence remains necessary. | 26 (38) |
+| 5.G–5.I | Reserve is the greater of four PCH per day or actual daily PCH; air deadhead distinguishes passenger scheduled block from non-passenger actual block; nonlocal surface deadhead uses actual drive time subject to 19.G.4; vacation is four PCH per day. | 26–27 (38–39) |
+| 5.K | Taxi-only repositioning has an actual-block basis with a minimum of one PCH; repositioning within a flight duty period uses block-to-block credit. | 27 (39) |
+| 5.N.2–5 | Distinguish training below 16 days (four PCH per day), training of at least 16 days (Monthly Guarantee), completed CQ CBT examinations (four PCH above MBPG), special/FAA-required tested CBT (one PCH), and SDFDO training. Do not apply a single daily-training rule to all CBT. | 28–29 (40–41) |
+| 5.O | Maintenance in addition to normal duties pays $25 per hour or fraction thereof, in addition to other compensation. Its specified pay-unit treatment must be preserved. | 29 (41) |
+| 5.Q | Check Airmen receive at least a $15 hourly override for all hours flown or credited, including when not performing Check Airman duties; this participates in 5.D pay. Non-Check-Airman simulator instruction has a separate at-least-$15-per-simulator-hour override including briefing/debriefing. | 29 (41) |
+| 5.R | A random drug/alcohol test pays one hour above MBPG under 5.D.3. | 29 (41) |
+| 5.S | Credit all work performed despite reaching FAR limits; the stated non-revenue-use case pays minimum Monthly Guarantee or hours flown, whichever is greater. Do not turn a flight-limit flag into zero compensation. | 30 (42) |
+| 5.J, 5.P, 5.U | Sick leave, jury duty, and emergency leave expressly refer to 7.C.3, 12.I, and 12.D. Sections 2/5 alone do not establish their complete valuation rules. | 27, 29, 31 (39, 41, 43) |
+
+**EP6 — Medium: Final currency rounding must not override contractual credit/pay units.** Keeping exact arithmetic and rounding the final USD total once is a user-approved money policy, not permission to prorate every entitlement continuously. Section 5.O's hour-or-fraction maintenance unit, the one-PCH minimum in 5.K.1, and fixed PCH awards in 5.N/5.R must be resolved before currency rounding. In particular, do not silently convert maintenance's stated unit into a proportional per-minute payment. Preserve the final-rounding policy while making entitlement units explicit in component rules and tests. Sources: 5.K.1, p. 27 (PDF 39); 5.N, pp. 28–29 (PDF 40–41); 5.O and 5.R, p. 29 (PDF 41).
+
+**EP7 — Medium: Private scenario facts cannot resolve a missing rule or contractual definition.** Section 2 distinguishes Company-directed deadheading from a personal commute, Duty from calendar occupancy, and Flight Segment/block-to-block from FAR Flight Time. Section 5.E pays Actual Block Time and assigns a segment's full Flight Pay to its departure Day; 5.H has different deadhead valuation bases. Source labels/private inputs must retain those distinctions. Section 5.F expressly requires 17.F.1 eligibility for line guarantee; 5.D.4 requires the 24.B hostile-area definition; 5.H.2 refers to 19.G.4. Record permitted owner inputs as scenario facts, while retaining unresolved cross-referenced rules as unsupported until reviewed. Sources: Section 2, pp. 11–14 (PDF 23–26); 5.D.4–5.H, pp. 26–27 (PDF 38–39).
+
+Section 5.M establishes receiving-period allocation for transitioning duty PCH; it does not itself state the plan's per-Z-day greater-of-awarded-or-actual valuation. Preserve that separately as the existing user-confirmed interpretation. Sections 5.E/5.M also do not expressly resolve which hourly-rate date applies when departure-day credit and its receiving compensation period straddle an anniversary. The subsequent user confirmation selects the earning/departure UTC-day rate, independently of guarantee day weighting; retain that as a scenario policy rather than an independently verified clause interpretation. Source: 5.M, p. 28 (PDF 40), read with 5.E, p. 26 (PDF 38).
+
+**EP8 — Low: Compensation-period gross pay is not the deposit schedule.** Section 5.T.1 provides biweekly paychecks and prior-period adjustments, including three-pay-period months. The plan's gross compensation-period estimate is compatible with that distinction, but the breakdown must label its compensation period and must not imply the amount will be deposited during the matching calendar month. This does not require adding a payroll-calendar feature. Source: 5.T.1, p. 30 (PDF 42).
+
+**Consistent parts of the plan:** UTC dates and the January–March compensation boundaries match Section 2. Preserving Company-assigned source line guarantee separately matches 5.F. The greater-of structure with separate additional compensation matches 5.D at the structural level. Recognizing Actual Block Time, deadhead distinctions, and whole-duty transition allocation under 5.E/5.H/5.M is appropriate; the current elapsed-time/departure-only carry arithmetic remains unsuitable as the pay engine. The exclusion of per diem/expenses from this chosen feature scope is explicit, rather than a claim that the agreement does not provide them.
+
+**Review disposition:** No express Section 2/5 prohibition of the user-approved anniversary/leap-day/rounding choices was identified; their contractual basis is unverified in these sections. The plan needs the conditional pay branches and rule matrix above before a complete scheduled gross estimate can be supported. Source attribution, eligibility, distinct pay units, and cross-clause interactions are implementation gates. Preserve approved scenario assumptions with labels; do not silently rewrite them or describe them as independently CBA-validated. This review changes documentation only and does not validate runtime calculations or actual payroll.
+
+**Subsequent implementation disposition (2026-11-03):** The user resolved earning-day rate attribution and the Open Time flight 1.5× whole-payment interaction, and explicitly limited the first scenarios to qualified hourly Flight Pay with full-period availability. EP2/EP3's new-hire/qualification-change branches are excluded; EP4's non-flight/training SDFDO overlap remains unsupported. EP1's user-confirmed policies remain visible assumptions. The reviewed findings above are preserved as the historical contract review, not silently reclassified as verified payroll rules.
 
 #### Feasibility and existing evidence
 
@@ -586,7 +629,7 @@ The reviewed Section 5.D structure uses the greatest of applicable MBPG, accrued
 | Input | Available now | Requirement before use in Estimated pay |
 | --- | --- | --- |
 | Hourly rates | CA/FO table, 12 entries each; user confirms continued applicability and USD currency. | Add table identity/source, effective/approved applicability, confirmed currency, pay-step semantics, and precision metadata. |
-| Personal pay context | Bid seat preference exists; no pay-longevity/eligibility profile is implemented. | Private adjusted pay-longevity date, rate changes on anniversary, relevant availability/eligibility, and private planning inputs with visible assumptions. |
+| Personal pay context | Encrypted owner-only longevity/Check Airman settings live on the user profile; display settings and package/seat/line scenarios remain in the private comparison profile. | Owner supplies adjusted longevity and eligible qualified/full-period scenario facts; unsupported branches remain unavailable. |
 | Published line guarantee | Original Lines/Overview credit retained separately from pairing totals. | Trustworthy source value and revision, agreement of published sources, and personal applicability; no substitution from recalculated/legacy credit. |
 | Pairing/scheduled credit | Trips credit/block totals and scheduled legs, with variable completeness. | Normalize payable categories and compensation-period allocation; complete pairing totals alone do not establish every bid-period PCH component. |
 | Carry-in credit | Scheduled legs plus the current departure-only subtotal/calculation. | Duty-period boundaries, daily awarded valuation, receiving compensation period, and independently supported premium eligibility. Actual worked amounts remain unknown before work occurs. |
@@ -597,11 +640,27 @@ The reviewed Section 5.D structure uses the greatest of applicable MBPG, accrued
 
 **Goal:** Define exactly what scheduled gross pay includes and when the estimate is available.
 
-**Current implementation:** Compensation review C1–C8 and scheduling review S1 record source rules and gaps; the new first-release direction includes supported credits and premiums.
+**Current implementation:** `CalculateCrewBidPay` and `NormalizeCrewBidPay` implement the finite scope below. Each line requires an owner review of category, source/private credit basis, eligibility and all applicable additional pay. Unsupported applicable pay has an explicit scenario/row flag that prevents a complete total.
 
 **Problem:** A package line does not by itself establish personal eligibility, all payable activities, or actual work.
 
 Use the confirmed USD gross-pay scope, adjusted pay-longevity date with rate changes at 0000Z on anniversaries, steps 1–12, March 1 leap-day treatment, guarantee weighting by actual UTC days in the compensation period, final-only half-up rounding, and private planning-input policy. Settle the remaining category/source coverage and rate attribution for cross-date/transitioned credit in this implementation subtask. Create a rule/coverage matrix for base flying credit, deadheads, reserve, vacation/training, carry-in allocation, and additional duty/off-day/other premiums. Each included component needs a rule reference, source or planning input, date/rate basis, eligibility predicate, and included-versus-above-guarantee treatment. Explicitly defer components that cannot yet be supported; do not silently set them to zero or claim a complete total when an applicable component is unresolved. The first delivery remains scheduled gross pay, even if unsupported personal scenarios must show unavailable.
+
+| Implemented component | Basis, evidence and treatment |
+| --- | --- |
+| MBPG / line guarantee | 5.C/5.D/5.F: declared hard/reserve category uses 64 PCH, composite uses 70. Published guarantee uses independently preserved `source_credit` only, with owner-declared 17.F.1 eligibility. Compare separately valued base candidates; never substitute adjusted Credit. Guarantees use confirmed daily rate weighting. |
+| Source ordinary credits | Complete, deduplicated linked pairing credit totals only when each trip lies wholly inside the compensation period at a constant rate, all period days are known, and occupied dates are covered. Reserve/composite scenarios require private daily inputs. A source trip spanning a rate/period boundary requires private attribution rather than an inferred split. |
+| Private ordinary / flight / carry credits | Owner-supplied awarded ordinary PCH or flight block; transitioning duty uses daily greater-of-awarded/entered-actual PCH, with unknown future actuals labelled unknown. Private ordinary inputs replace the source basis. Earning/departure UTC-day rates apply even when the receiving period differs; whole segments are not split at midnight. Owner supplies receiving-period duty allocation; incomplete source duty evidence is not reconstructed by guesswork. |
+| Passenger air deadhead | 5.H: Company-directed passenger travel, 50% of entered scheduled block. Personal commute is not eligible. Non-passenger/surface cases remain unsupported. |
+| Reserve / vacation / short training | 5.G/5.I/5.N: daily reserve is greater of 4 PCH or entered planned daily PCH; vacation and under-16-day training are 4 PCH/day. Repeated daily entitlements are rejected. Sixteen or more training days remain unavailable pending the Monthly Guarantee branch. |
+| Taxi-only / special tested CBT | 5.K/5.N: taxi-only uses greater of 1 PCH or entered block; special tested CBT is 1 PCH. Ordinary-credit contributions, not blanket premiums. |
+| CQ CBT / random test | 5.N/5.R: completed qualifying CQ examinations add 4 PCH; a qualifying random drug/alcohol test adds one hour of pay, separately above selected base. Owner review supplies qualifying completion/assignment facts. |
+| Open Time flight SDFDO | 5.D.2/5.L interaction follows the user's confirmed whole-payment policy: 1.5× hours flown × earning-day rate separately above base; assignment excluded from ordinary credit. Other SDFDO branches remain unsupported. |
+| Maintenance | 5.O: $25 for each started hour, separately above base. Entitlement time units resolve before final currency rounding. |
+| Check Airman / simulator instruction | 5.Q: declared Check Airman scenario applies minimum $15/h override to all flown/credited hours and guarantees. Non-Check-Airman simulator instruction adds minimum $15/h using brief/debrief-inclusive duration; incompatible simultaneous override modes are unavailable. Higher negotiated overrides remain unsupported. |
+| Other applicable compensation | New-hire weekly pay, partial availability, qualification/crew-class changes, discretionary first-year rates, hostile-area pay, extra assigned one-in-seven pay, non-flight/training SDFDO, surface/non-passenger deadhead, longer training, external leave rules and special FAR-limit cases remain unsupported. Owners flag these instead of omitting them. No complete total is shown for an applicable unresolved case. |
+
+The engine uses the existing installed `brick/math` rational arithmetic without adding a dependency. Every component retains exact minor-unit value and source/private basis; only the final total is rounded for comparison. `CrewBidPayViewModel` prepares display labels, component amounts and rate intervals. `CrewBidPayEditorViewModel` supplies editor categories, choices, rows and compensation-period context; Blade does not resolve rules or rates.
 
 **Acceptance:** User decisions and rule evidence are recorded; supported scenarios and their required inputs are finite and testable. No guessed guarantee floor, tax amount, hostile-area designation, or premium entitlement enters the calculation.
 
@@ -611,7 +670,7 @@ Commit message: `docs: define scheduled gross pay inputs and supported rules`
 
 **Goal:** Resolve an explainable hourly rate for each supported earning interval.
 
-**Current implementation:** The rate JSON is valid but has only seat arrays and decimal numeric values without rate metadata.
+**Current implementation:** The existing rate JSON now has table/source, USD, 2024 effective-date, fleet and 2026-11-03 applicability-confirmation metadata, preserving its CA/FO values. `CrewPayRates` resolves exact minor-unit rates and approved anniversary/step policies. Catalog changes use repository maintenance; no unrelated admin rate editor was added.
 
 **Problem:** There is no table identity, currency/effective metadata, automatic pay-step rule, or handling of an anniversary/rate-table change inside a period.
 
@@ -625,7 +684,9 @@ Depends on subtask 1. Commit message: `feat: version crew pay rates and resolve 
 
 **Goal:** Let the owner provide the personal facts required for the supported scenarios.
 
-**Current implementation:** Workspaces already use owner/context isolation and encrypted private preferences; profile settings include bid seat. No pay profile exists.
+**Current implementation:** Encrypted, hidden `User.crew_pay_settings` owns the account-wide adjusted longevity date and Check Airman override, edited through the existing owner-only profile form. Blank longevity disables estimates; omitted pay fields preserve saved values. `CrewBidPayProfile` retains encrypted display settings and package/revision/seat/line scenarios with a unique owner and optimistic revision. `SaveCrewBidPayProfile` validates allow-listed comparison fields and cannot write either profile setting. Corrections/removal retain bid preferences and rankings; removing comparison inputs also retains the two personal profile values. New package revisions/seats do not inherit a reviewed scenario. Private context is not added to shared payloads, serialized users or numbered bid copy.
+
+The move-to-profile migration copies existing encrypted longevity and consistent Check Airman values, removes their old copies and increments comparison revisions to invalidate open editors. Conflicting package Check Airman choices are preserved privately and require an explicit profile selection before a complete total is available. Rollback restores personal values into the old encrypted settings/scenarios before dropping the new column; an unresolved conflict retains its original per-context choices. Once an owner resolves a conflict, rollback restores that chosen account-wide value rather than resurrecting superseded choices. Deployment must apply the migration before the new profile fields are used.
 
 **Problem:** Shared package data cannot supply longevity, availability/proration, or individual premium elections/eligibility.
 
@@ -639,7 +700,7 @@ Depends on subtask 1 and rate-input definitions. Commit message: `feat: add priv
 
 **Goal:** Supply the calculator with credit components that have defined period and rule bases.
 
-**Current implementation:** Imports retain source guarantee, complete pairing totals where available, and scheduled leg timestamps. The existing carry formula has known discrepancies.
+**Current implementation:** `CrewPayPeriod` implements UTC compensation boundaries, including January 1–30, January 31–March 1 for February, and March 2–31. The separate pay normalizer preserves source guarantee, deduplicates pairing references, and uses reviewed dated private inputs when daily credit/allocation is not established. Existing comparison credit/carry display remains separate.
 
 **Problem:** Trip occupancy, elapsed time, pairing credit, contractual PCH, and personal compensation are different quantities; calendar boundaries do not always match compensation Months.
 
@@ -655,7 +716,7 @@ Depends on the supported rule matrix in subtask 1. Commit message: `feat: normal
 
 **Goal:** Produce an exact, explainable amount for a supported personal scenario.
 
-**Current implementation:** There is no pay calculator. Existing adjusted Credit is a comparison metric with known limitations.
+**Current implementation:** `CalculateCrewBidPay` returns `CrewBidPayEstimate` with ready/incomplete/unsupported/unconfigured status, exact component values, selected greater-of base, separate additions, rate intervals, period/version, assumptions and missing inputs. It does not produce a complete total from a guarantee-only or incomplete credit scenario.
 
 **Problem:** Applying a rate to that metric would duplicate or misallocate credits and can award unsupported premiums.
 
@@ -671,7 +732,7 @@ Depends on subtasks 1–4. Commit message: `feat: calculate scheduled gross crew
 
 **Goal:** Add useful pay comparison without crowding the compact timeline or exposing personal context.
 
-**Current implementation:** Lines have expandable details, shared filters, independent sorts, and a manually ordered bid list.
+**Current implementation:** Pay context opens a native modal with comparison settings and explicit save/recalculate/error handling. It displays the two personal profile values with an Edit profile link; their editable controls live only in the user profile. Line Details contains a pay disclosure with the breakdown and per-line editor. Compact amounts are optional and also shown when sorting by pay. Typed pay view models prepare the presentation; shared filters/selections/ranks remain intact.
 
 **Problem:** A single dollar value can hide unresolved coverage or imply an actual paycheck; a new view could duplicate controls or reorder bids.
 
@@ -685,7 +746,7 @@ Depends on subtask 5. Commit message: `feat: display private scheduled pay estim
 
 **Goal:** Make scheduled-pay comparison available without changing manual bid rank or Best match semantics.
 
-**Current implementation:** Credit, Block, Days off, Best match, and Line ID sorts already exist.
+**Current implementation:** Highest estimated pay sorts ready final rounded USD cents descending, unknowns last, with natural Line ID ties. Bulk-add uses the same private context/order. Existing Credit, Block, Days off, Best match and Line ID sorts remain available, and manual ranks remain unchanged.
 
 **Problem:** Ordering an incomplete subtotal beside a complete estimate would imply comparable coverage.
 
@@ -699,7 +760,7 @@ Depends on subtask 5; first-release inclusion is confirmed. Commit message: `fea
 
 **Goal:** Deliver the selected scheduled gross-pay release with evidence for each supported component.
 
-**Current implementation:** Package import/comparison tests and private workspace patterns provide existing regression coverage to extend.
+**Current implementation:** Focused pure-calculation/view-model and feature coverage exercises pay arithmetic, input validation, owner privacy, package/seat isolation, optimistic revisions, rendering, sorting and retained manual bid order. Integration results and remaining manual-browser checks are recorded in TODO.md.
 
 **Problem:** Correct arithmetic alone cannot establish source completeness, owner privacy, or a clear explanation of what is estimated.
 
@@ -713,7 +774,7 @@ Depends on the implemented release scope above. Commit message: `feat: release s
 
 Confirmed: scheduled gross contractual pay in USD before taxes/deductions, excluding per diem and expense reimbursements; current applicability of the supplied rate values; a separate adjusted pay-longevity date; step 1 for the first year, annual increases capped at 12, March 1 non-leap-year anniversaries for a February 29 start; rate changes at 0000Z on the anniversary date; MBPG/line guarantees weighted by old/new rate UTC days divided by actual days in the compensation period; exact calculations with one final nearest-cent half-up rounding; private planning inputs with assumptions shown; and an optional compact amount, expanded breakdown, and Highest estimated pay sort in the first release.
 
-All product questions asked during this planning review are answered. Subtasks 1 and 4 must still establish source-backed category coverage, eligibility/proration cases, and rate attribution for work/credit crossing an anniversary or allocated to a different compensation period. Those are explicit implementation prerequisites for affected scenarios; unresolved rules remain unavailable rather than guessed. They do not reopen the confirmed longevity, guarantee-weighting, currency, rounding, input, or presentation decisions. The eight-subtask plan and planning documentation are complete; implementation remains pending.
+All product questions asked during planning are answered, including earning/departure-day rates for allocated credits, the whole 1.5× Open Time flight off-day payment and the qualified/full-period first scope. The supported implementation follows the rule/coverage matrix above. The Sections 2/5 review still qualifies the contract-support status of user policies; excluded branches remain unavailable, and product approval does not independently establish contractual correctness. Final integration outcomes and the task's commit message are recorded in TODO.md rather than duplicated here.
 
 ### Personal-data visibility
 

@@ -34,6 +34,7 @@ final readonly class CrewBidLineViewModel
         public string $warningSummary,
         public array $matchDetails,
         public array $filterDetails,
+        public ?CrewBidPayViewModel $payEstimate = null,
     ) {}
 
     /** @param array<string, mixed> $line */
@@ -42,6 +43,7 @@ final readonly class CrewBidLineViewModel
         $reserve = $line['type'] === 'reserve';
         $trips = $line['trip_details'];
         $tripCount = count($trips);
+        $payEstimate = isset($line['pay_estimate']) ? CrewBidPayViewModel::fromEstimate($line['pay_estimate']) : null;
 
         return new self(
             id: $line['id'],
@@ -49,7 +51,7 @@ final readonly class CrewBidLineViewModel
             headingClasses: $reserve ? 'text-orange-700 dark:text-orange-300' : 'text-slate-900 dark:text-slate-100',
             crew: filled($line['crew']) ? $line['crew'] : null,
             rank: $rank,
-            summaryMetrics: self::summaryMetrics($line),
+            summaryMetrics: self::summaryMetrics($line, $payEstimate),
             quickFlags: self::quickFlags($line['quick_flags']),
             calendarDays: self::calendarDays($line['month'], $reserve),
             carryDays: $line['carry_days'],
@@ -62,6 +64,7 @@ final readonly class CrewBidLineViewModel
             warningSummary: implode(' · ', $line['warnings']),
             matchDetails: $line['match_details'],
             filterDetails: $line['filter_details'],
+            payEstimate: $payEstimate,
         );
     }
 
@@ -69,7 +72,7 @@ final readonly class CrewBidLineViewModel
      * @param  array<string, mixed>  $line
      * @return list<array{label: string, value: string, title: ?string, containerClasses: string, labelClasses: string, valueClasses: string}>
      */
-    private static function summaryMetrics(array $line): array
+    private static function summaryMetrics(array $line, ?CrewBidPayViewModel $payEstimate): array
     {
         $metrics = [];
         if (isset($line['credit'])) {
@@ -80,6 +83,9 @@ final readonly class CrewBidLineViewModel
         }
         if (isset($line['days_off'])) {
             $metrics[] = ['label' => 'Days off', 'value' => (string) $line['days_off'], 'title' => null, 'containerClasses' => 'shrink-0', 'labelClasses' => 'whitespace-nowrap', 'valueClasses' => 'font-mono text-xs font-semibold'];
+        }
+        if (($line['pay_compact'] ?? false) && $payEstimate !== null) {
+            $metrics[] = ['label' => 'Estimated pay', 'value' => $payEstimate->label, 'title' => 'USD scheduled gross · '.$payEstimate->period, 'containerClasses' => 'min-w-0', 'labelClasses' => '', 'valueClasses' => 'font-mono text-xs font-semibold'];
         }
 
         return $metrics;

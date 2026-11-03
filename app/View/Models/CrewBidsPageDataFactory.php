@@ -5,6 +5,7 @@ namespace App\View\Models;
 use App\DTOs\CrewBidBrowseCriteria;
 use App\DTOs\CrewBidsPageData;
 use App\Models\BidPackage;
+use App\Models\CrewBidPayProfile;
 use App\Models\User;
 use App\Services\CrewBids\BrowseBidLines;
 use App\Services\CrewBids\CompareBidPackageRevision;
@@ -19,7 +20,9 @@ class CrewBidsPageDataFactory
 
     public function make(?BidPackage $package, User $user, CrewBidBrowseCriteria $criteria, ?int $draftId = null, ?int $pendingPackageId = null): CrewBidsPageData
     {
-        $browse = $this->browseBidLines->browse($package, $criteria);
+        $profile = CrewBidPayProfile::query()->where('user_id', $user->id)->first() ?? new CrewBidPayProfile;
+        $context = $package === null ? [] : $profile->context($package->id, $criteria->seat, $user);
+        $browse = $this->browseBidLines->browse($package, $criteria, $context);
         $month = $package === null ? null : CarbonImmutable::parse($package->period.'-01', 'UTC');
         $target = $pendingPackageId === null ? null : BidPackage::query()->whereNotNull('published_at')->find($pendingPackageId);
         $ranks = array_flip($criteria->selections);

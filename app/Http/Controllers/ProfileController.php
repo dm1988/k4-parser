@@ -29,7 +29,11 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $attributes = $request->validated();
+        if (isset($attributes['crew_pay_settings'])) {
+            $attributes['crew_pay_settings']['check_airman'] = (bool) $attributes['crew_pay_settings']['check_airman'];
+        }
+        $request->user()->fill($attributes);
 
         if ($request->user()->isDirty('email')) {
             $request->user()->email_verified_at = null;

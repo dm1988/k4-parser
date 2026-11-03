@@ -86,6 +86,9 @@
             </p>
         @endif
         <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">Days off and work blocks use UTC occupancy, including trip layovers. Duty days are the separate source count.</p>
+        @if ($line->payEstimate !== null)
+            <x-crew-bids.pay-breakdown :estimate="$line->payEstimate" :line-id="$line->id" />
+        @endif
     </details>
     @if ($line->matchDetails !== [] || $line->filterDetails !== [])
         <details data-bid-expandable class="min-w-0">

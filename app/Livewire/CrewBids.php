@@ -5,12 +5,16 @@ namespace App\Livewire;
 use App\Actions\CrewBids\ImportBidPackage;
 use App\Actions\CrewBids\PublishBidPackage;
 use App\Actions\CrewBids\SaveBidWorkspace;
+use App\Actions\CrewBids\SaveCrewBidPayProfile;
 use App\DTOs\CrewBidBrowseCriteria;
 use App\Models\BidPackage;
 use App\Models\BidWorkspace;
+use App\Models\CrewBidPayProfile;
 use App\Models\User;
 use App\Services\CrewBids\BidLineMatcher;
 use App\Services\CrewBids\BrowseBidLines;
+use App\Services\CrewBids\CrewPayPeriod;
+use App\View\Models\CrewBidPayEditorViewModel;
 use App\View\Models\CrewBidsPageDataFactory;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -94,6 +98,23 @@ class CrewBids extends Component
 
     public bool $showImport = false;
 
+    public bool $showPayEditor = false;
+
+    #[Locked]
+    public ?string $payLineId = null;
+
+    #[Locked]
+    public int $payRevision = 0;
+
+    /** @var array<string, mixed> */
+    public array $paySettings = [];
+
+    /** @var array<string, mixed> */
+    public array $payContext = [];
+
+    /** @var array<string, mixed> */
+    public array $payInput = [];
+
     public string $notice = '';
 
     /** @var list<TemporaryUploadedFile> */
@@ -125,7 +146,7 @@ class CrewBids extends Component
             $this->validate([
                 'minimumCredit' => ['nullable', 'integer', 'between:0,300'],
                 'minimumDaysOff' => ['nullable', 'integer', 'between:0,31'],
-                'sort' => ['required', Rule::in(['best', 'credit', 'block', 'days_off', 'id'])],
+                'sort' => ['required', Rule::in(['best', 'credit', 'block', 'days_off', 'id', 'pay'])],
                 'tab' => ['required', Rule::in(['flying', 'reserve', 'trips'])],
                 'layoverCity' => ['nullable', 'regex:/\A[A-Z]{3}\z/'],
             ]);
@@ -289,7 +310,8 @@ class CrewBids extends Component
     public function addMatching(BrowseBidLines $browseBidLines): void
     {
         $package = $this->packageId === null ? null : $this->package();
-        $result = $browseBidLines->browse($package, $this->browseCriteria());
+        $profile = CrewBidPayProfile::query()->where('user_id', $this->user()->id)->first() ?? new CrewBidPayProfile;
+        $result = $browseBidLines->browse($package, $this->browseCriteria(), $package === null ? [] : $profile->context($package->id, $this->seat, $this->user()));
         foreach ($result->lines as $line) {
             if (! in_array($line['id'], $this->selections, true)) {
                 $this->selections[] = $line['id'];
@@ -336,6 +358,73 @@ class CrewBids extends Component
     {
         $this->loadPackage($this->package(), $this->seat);
         $this->notice = 'Saved choices reloaded.';
+    }
+
+    public function openPayEditor(?string $lineId = null): void
+    {
+        $package = $this->package();
+        $this->assertPackageAvailable($package);
+        if ($lineId !== null) {
+            $this->eligibleLine($lineId);
+        }
+        $profile = CrewBidPayProfile::query()->where('user_id', $this->user()->id)->first() ?? new CrewBidPayProfile;
+        $context = $profile->context($package->id, $this->seat, $this->user());
+        $this->payRevision = $profile->revision ?? 0;
+        $this->payLineId = $lineId;
+        $this->paySettings = ['show_compact' => (bool) ($context['settings']['show_compact'] ?? false)];
+        $this->payContext = array_intersect_key($context, array_flip(['qualified', 'full_period', 'line_guarantee', 'unsupported']))
+            + ['qualified' => false, 'full_period' => false, 'line_guarantee' => false, 'unsupported' => false];
+        $this->payInput = $lineId === null ? [] : ($context['lines'][$lineId] ?? ['mode' => 'source', 'reviewed' => false, 'category' => '', 'rows' => []]);
+        $this->showPreferences = false;
+        $this->showList = false;
+        $this->showPayEditor = true;
+        $this->resetErrorBag();
+    }
+
+    public function addPayRow(): void
+    {
+        abort_unless($this->payLineId !== null && is_array($this->payInput['rows'] ?? null) && count($this->payInput['rows']) < 200, 422);
+        $this->eligibleLine($this->payLineId);
+        $this->payInput['rows'][] = ['assignment' => '', 'type' => 'credit', 'date' => (new CrewPayPeriod($this->package()->period))->start->format('Y-m-d'), 'duration' => '0:00', 'actual' => ''];
+        $this->payInput['reviewed'] = false;
+    }
+
+    public function removePayRow(int $index): void
+    {
+        abort_unless(is_array($this->payInput['rows'] ?? null) && isset($this->payInput['rows'][$index]), 422);
+        array_splice($this->payInput['rows'], $index, 1);
+        $this->payInput['reviewed'] = false;
+    }
+
+    public function savePayInputs(SaveCrewBidPayProfile $save): void
+    {
+        $this->resetErrorBag();
+        try {
+            $save->handle($this->user(), $this->package(), $this->seat, $this->payRevision, $this->paySettings, $this->payContext, $this->payLineId, $this->payInput);
+            $this->closePayEditor();
+            $this->notice = 'Private pay inputs saved. Estimates recalculated from the saved scenario.';
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->addError('pay', 'Pay inputs could not be saved. Your edits are retained; retry saving.');
+        }
+    }
+
+    public function forgetPayInputs(SaveCrewBidPayProfile $save): void
+    {
+        $save->forget($this->user(), $this->payRevision);
+        $this->closePayEditor();
+        $this->notice = 'Private pay comparison inputs removed. Profile pay settings retained.';
+    }
+
+    public function closePayEditor(): void
+    {
+        $this->showPayEditor = false;
+        $this->payLineId = null;
+        $this->paySettings = [];
+        $this->payContext = [];
+        $this->payInput = [];
     }
 
     public function previewImport(): void
@@ -401,6 +490,7 @@ class CrewBids extends Component
 
     private function loadPackage(BidPackage $package, string $seat): void
     {
+        $this->closePayEditor();
         $workspace = BidWorkspace::query()->where('user_id', Auth::id())->where('bid_package_id', $package->id)->where('seat', $seat)->first();
         $preferences = $workspace->preferences ?? [];
         $this->packageId = $package->id;
@@ -495,6 +585,8 @@ class CrewBids extends Component
             pendingPackageId: $this->pendingPackageId,
         );
 
-        return view('livewire.crew-bids', $data->toViewData())->layout('layouts.app');
+        return view('livewire.crew-bids', $data->toViewData() + [
+            'payEditor' => CrewBidPayEditorViewModel::fromInput($this->showPayEditor, $this->payLineId, $this->payInput, $data->package?->period, $this->seat, $this->user()->crew_pay_settings ?? []),
+        ])->layout('layouts.app');
     }
 }

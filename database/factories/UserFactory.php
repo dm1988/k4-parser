@@ -72,4 +72,11 @@ class UserFactory extends Factory
             'has_bought_coffee' => true,
         ]);
     }
+
+    public function withCrewPaySettings(string $longevityDate, bool $checkAirman = false): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'crew_pay_settings' => ['longevity_date' => $longevityDate, 'check_airman' => $checkAirman],
+        ]);
+    }
 }

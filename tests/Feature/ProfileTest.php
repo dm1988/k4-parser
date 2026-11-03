@@ -3,13 +3,64 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class ProfileTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_owner_can_save_encrypted_pay_settings_and_omitting_them_preserves_values(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->withCrewPaySettings('2020-03-01')->create();
+
+        $this->actingAs($user)->patch(route('profile.update'), ['name' => $user->name, 'email' => $user->email,
+            'user_id' => $other->id, 'crew_pay_settings' => ['longevity_date' => '2020-02-29', 'check_airman' => '1']])
+            ->assertSessionHasNoErrors()->assertRedirect(route('profile.edit'));
+
+        $user->refresh();
+        $this->assertSame(['longevity_date' => '2020-02-29', 'check_airman' => true], $user->crew_pay_settings);
+        $raw = DB::table('users')->where('id', $user->id)->value('crew_pay_settings');
+        $this->assertStringNotContainsString('2020-02-29', $raw);
+        $this->assertSame($user->crew_pay_settings, json_decode(Crypt::decryptString($raw), true));
+        $this->assertArrayNotHasKey('crew_pay_settings', $user->toArray());
+        $this->assertSame(['longevity_date' => '2020-03-01', 'check_airman' => false], $other->fresh()->crew_pay_settings);
+        $this->get(route('profile.edit'))->assertOk()->assertSee('Adjusted pay-longevity date (UTC)')
+            ->assertSee('Check Airman override')->assertSee('value="2020-02-29"', false);
+
+        $this->patch(route('profile.update'), ['name' => $user->name, 'email' => $user->email])->assertSessionHasNoErrors();
+        $this->assertSame(['longevity_date' => '2020-02-29', 'check_airman' => true], $user->fresh()->crew_pay_settings);
+    }
+
+    #[DataProvider('invalidPaySettings')]
+    public function test_invalid_profile_pay_settings_are_rejected(array $settings, string $field): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-03 00:00:00', 'UTC'));
+        $user = User::factory()->withCrewPaySettings('2020-01-01')->create();
+
+        $this->actingAs($user)->from(route('profile.edit'))->patch(route('profile.update'), [
+            'name' => $user->name, 'email' => $user->email, 'crew_pay_settings' => $settings,
+        ])->assertSessionHasErrors($field)->assertRedirect(route('profile.edit'));
+
+        $this->assertSame(['longevity_date' => '2020-01-01', 'check_airman' => false], $user->fresh()->crew_pay_settings);
+    }
+
+    /** @return array<string, array{array<string, mixed>, string}> */
+    public static function invalidPaySettings(): array
+    {
+        return [
+            'invalid calendar date' => [['longevity_date' => '2026-02-30', 'check_airman' => false], 'crew_pay_settings.longevity_date'],
+            'future UTC date' => [['longevity_date' => '2026-11-04', 'check_airman' => false], 'crew_pay_settings.longevity_date'],
+            'invalid flag' => [['longevity_date' => '2020-01-01', 'check_airman' => 'yes'], 'crew_pay_settings.check_airman'],
+            'unknown field' => [['longevity_date' => '2020-01-01', 'check_airman' => false, 'user_id' => 999], 'crew_pay_settings'],
+            'missing flag' => [['longevity_date' => '2020-01-01'], 'crew_pay_settings.check_airman'],
+        ];
+    }
 
     public function test_profile_page_is_displayed(): void
     {

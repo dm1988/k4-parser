@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\FlightTracker;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -39,6 +40,9 @@ class ProfileUpdateRequest extends FormRequest
             'airline_icao_code' => ['nullable', 'string', 'size:3', 'regex:/^[A-Z]{3}$/'],
             'flight_tracker_preference' => ['sometimes', 'required', Rule::enum(FlightTracker::class)],
             'crew_bid_seat_preference' => ['sometimes', 'required', 'string', Rule::in(['FO', 'CA'])],
+            'crew_pay_settings' => ['sometimes', 'required', 'array:longevity_date,check_airman'],
+            'crew_pay_settings.longevity_date' => ['present_with:crew_pay_settings', 'nullable', 'date_format:Y-m-d', 'before_or_equal:'.CarbonImmutable::now('UTC')->format('Y-m-d')],
+            'crew_pay_settings.check_airman' => ['required_with:crew_pay_settings', 'boolean'],
         ];
     }
 

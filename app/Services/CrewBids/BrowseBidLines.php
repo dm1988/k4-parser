@@ -8,13 +8,29 @@ use App\Models\BidPackage;
 
 class BrowseBidLines
 {
-    public function __construct(private BidLineMatcher $matcher) {}
+    public function __construct(private BidLineMatcher $matcher, private CalculateCrewBidPay $pay) {}
 
-    public function browse(?BidPackage $package, CrewBidBrowseCriteria $criteria): CrewBidBrowseResult
+    /** @param array<string, mixed> $payContext */
+    public function browse(?BidPackage $package, CrewBidBrowseCriteria $criteria, array $payContext = []): CrewBidBrowseResult
     {
         $allLines = $this->eligibleLines($package, $criteria);
+        foreach ($allLines as &$line) {
+            $line['pay_estimate'] = $this->pay->calculate($line, $package->payload['trips'] ?? [], $package->period, $package->fleet, $criteria->seat, $payContext);
+            $line['pay_compact'] = $criteria->sort === 'pay' || (bool) ($payContext['settings']['show_compact'] ?? false);
+        }
+        unset($line);
         $lines = array_values(array_filter($allLines, fn (array $line): bool => $this->matches($line, $criteria)));
-        $lines = $this->matcher->sort($lines, $criteria->preferences['goals'], $criteria->sort);
+        if ($criteria->sort === 'pay') {
+            usort($lines, static function (array $left, array $right): int {
+                $a = $left['pay_estimate']->cents;
+                $b = $right['pay_estimate']->cents;
+
+                return ($a === null ? 1 : 0) <=> ($b === null ? 1 : 0)
+                    ?: ($b ?? 0) <=> ($a ?? 0) ?: strnatcmp($left['id'], $right['id']);
+            });
+        } else {
+            $lines = $this->matcher->sort($lines, $criteria->preferences['goals'], $criteria->sort);
+        }
         $selected = [];
         foreach ($criteria->selections as $id) {
             $selected[] = $allLines[$id] ?? [

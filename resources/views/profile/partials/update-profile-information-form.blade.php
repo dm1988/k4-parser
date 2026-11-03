@@ -96,6 +96,25 @@
                     <p id="bid-seat-help" class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Used when opening K4 Bids. Each seat keeps its own preferences and bid list.') }}</p>
                     <x-input-error class="mt-2" :messages="$errors->get('crew_bid_seat_preference')" />
                 </div>
+                <div>
+                    <x-input-label for="crew_pay_longevity_date" :value="__('Adjusted pay-longevity date (UTC)')" />
+                    <x-text-input id="crew_pay_longevity_date" name="crew_pay_settings[longevity_date]" type="date" class="mt-1 block min-h-11 w-full" :value="old('crew_pay_settings.longevity_date', $user->crew_pay_settings['longevity_date'] ?? '')" aria-describedby="pay-longevity-help" />
+                    <p id="pay-longevity-help" class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Private date used by Estimated pay across packages and seats. Separate from hire date. Leave blank to disable estimates. Annual steps cap at 12; February 29 anniversaries use March 1 in non-leap years, with changes at 0000Z.') }}</p>
+                    <x-input-error class="mt-2" :messages="$errors->get('crew_pay_settings.longevity_date')" />
+                </div>
+                <div>
+                    <input type="hidden" name="crew_pay_settings[check_airman]" value="0">
+                    <label for="crew_pay_check_airman" class="flex min-h-11 items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <input id="crew_pay_check_airman" name="crew_pay_settings[check_airman]" type="checkbox" value="1" @checked(old('crew_pay_settings.check_airman', $user->crew_pay_settings['check_airman'] ?? false)) aria-describedby="check-airman-help" class="rounded border-gray-300 text-[#1B365D] focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900">
+                        {{ __('Check Airman override') }}
+                    </label>
+                    <p id="check-airman-help" class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Apply the contractual minimum $15/h override to all flown/credited hours and guarantees in Estimated pay. This account-wide setting does not establish qualification for another seat or support a higher negotiated override.') }}</p>
+                    @if (array_key_exists('check_airman', $user->crew_pay_settings ?? []) && $user->crew_pay_settings['check_airman'] === null)
+                        <p role="status" class="mt-2 text-sm text-amber-800 dark:text-amber-300">{{ __('Your saved package scenarios had different Check Airman settings. Select the intended profile value and save; pay estimates remain unavailable until this is resolved.') }}</p>
+                    @endif
+                    <x-input-error class="mt-2" :messages="$errors->get('crew_pay_settings.check_airman')" />
+                    <x-input-error class="mt-2" :messages="$errors->get('crew_pay_settings')" />
+                </div>
             </fieldset>
         </fieldset>
 
