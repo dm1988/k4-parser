@@ -28,98 +28,6 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## [x] Completed: FP: Remove page labels before field extraction
-
-Goal: Remove printed page headers and footers before extracting any flight-plan fields.
-
-Problem: Page-label removal was local to route, waypoint, maintenance-description, and dispatcher-note handling. The shared PDF text reader and extraction coordinator still passed printed labels into identity, fuel, and other field extractors. Weather also used the printed footer as a section boundary.
-
-Current implementation: Added a shared text normalizer for branded, standalone, repeated, fused, and wrapped page labels. PDF text is normalized after native/OCR assembly and cache retrieval, including the uncached/document-text fallback. The coordinator normalizes direct text input before invoking any field extractor. Route, waypoint, and weather entrypoints use the same normalizer. Labels become form-feed page breaks so weather remains bounded; preliminary-warning and alternate-heading detection recognize those boundaries. Existing operational headers and route identifiers remain content. Existing text-cache entries are cleaned on read without requiring another OCR pass.
-
-Regression coverage checks native/OCR/cached input, missing cache keys, label formats, idempotence, every coordinator dependency receiving cleaned text, and upload/save recovery of identity, fuel, primary waypoints, and bounded weather.
-
-Commit message: `fix: normalize flight plan page labels before field extraction`
-
-## [x] Completed: FP: Fuel Score: Exclude alternate routing
-
-Goal: Extract and present only departure-to-destination waypoints in Fuel Score. Alternate routes, their waypoints, and their TOC/TOD markers remain unsupported.
-
-Problem: In `CKS024231RJAA.pdf`, page 4/5 footers separate the two primary computed-flight-plan header rows. The parser skipped that header and selected the complete header in the alternate section, presenting the VHHH-to-VMMC alternate as the primary route.
-
-Current implementation: Remove page labels before matching waypoint headers and bound extraction before the alternate section before searching for a table. Missing or incomplete primary headers yield no waypoints instead of falling back to an alternate table. Alternate rows and phase markers are excluded from extracted waypoints, source fragments, saved results produced by new extraction, and Fuel Score calculator data. Existing alternate-airport identification and fuel figures retain their separate meanings.
-
-Added a compact route-table fixture, header and alternate-heading regressions, a saved-calculator rendering regression, and an optional regression using the supplied private PDF. The private PDF and crew details are not included in the changes.
-
-Verification (2026-11-01): All 33 focused waypoint-extractor and offline Fuel Score tests passed through elevated Sail access (251 assertions), including the supplied PDF. The regressions reproduced the alternate-table fallback before the fix. Primary waypoints begin with `35464N`, `ARIES`, and `A4L11`, end with `LIMES` and `VHHH`, and retain destination duration 04:12 and planned FOB 19,800 lb. Alternate waypoints and phase markers stay excluded. Pint passed; Larastan passed once with zero errors; `git diff --check` passed. No full suite or manual browser review was run.
-
-Existing saved briefs and prepared offline calculator pages require re-uploading the PDF and preparing offline recovery again to replace previously extracted alternate waypoints; stored results lack the source section needed for safe automatic repair.
-
-Commit message: `fix: exclude alternate routes from primary fuel score waypoints`
-
-## [x] Completed: Preserve iPad multipart uploads outside the service worker
-
-Goal: Allow flight release uploads from Chrome on iPad while retaining offline fuel calculator recovery and private-cache invalidation.
-
-Problem: Production logs show one selected file followed by a multipart request with no parsed files on iPadOS 26.6 / Chrome 156.0.8078.54, from both On My iPad and company OneDrive. Mac Chrome succeeds against the same FPM settings. The worker reissued every same-origin request through fetch(event.request), matching the multipart body-loss path reported in [WebKit bug 319396, comment 7](https://bugs.webkit.org/show_bug.cgi?id=319396#c7). This is a likely trigger, pending confirmation on the affected iPad.
-
-Current implementation: Multipart requests return from the worker's fetch listener without respondWith or fetch, leaving transmission to the browser. Other requests retain existing behavior, including JSON responses that invalidate cached private data after logout, account changes, release replacement, or clearing results. No PHP, parser, upload limit, dependency, or Vite bundle changes.
-
-Verification: The new upload bypass regression failed before the fix. All 26 focused worker and offline-recovery JavaScript tests passed through Sail after the fix, including multipart headers with boundaries and mixed casing, offline recovery, and JSON mutation invalidation. Git diff whitespace checks passed. Pint and Larastan were not needed for this JavaScript-only change.
-
-Production follow-up: Deploy the updated public/offline-fuel-worker.js through the normal release process. On the iPad, open the fuel calculator online to trigger worker registration/update, allow the update to activate, then reload Flight Plan Brief and select the PDF again. Existing skipWaiting/clients.claim activation is retained. Confirm a successful temporary-upload response with one file and one returned path, followed by completion_received. No production deployment or physical-iPad verification was performed here; if the failure persists with the updated worker active, investigate the broader WebKit file-body issue before changing upload limits.
-
-Commit message: `fix: bypass service worker for multipart uploads`
-
-## [x] Completed: Reject empty Livewire uploads and add safe diagnostics
-
-Outcome: Reproduced Livewire 4.4.8 accepting missing/empty temporary-upload collections and returning empty paths, which its single-file completion handler indexes without checking. Added application middleware requiring a nonempty file list before storage, with a recoverable JSON 422 error keyed for Livewire's upload error handling. The endpoint retains signature validation, CSRF middleware, throttling, individual-file validation, and support for multiple files in other components. Flight Plan Brief rejects malformed single-file completions through the normal upload-error lifecycle while preserving signed-reference validation, saved results, and existing parsing.
-
-Diagnostics: Missing/malformed collections and rejected completions emit bounded warnings. `LIVEWIRE_UPLOAD_DIAGNOSTICS=true` additionally logs upload starts, request status, file/path counts, property presence, numeric PHP upload errors, and effective request-process PHP settings. An `X-Upload-Request-Id` response header identifies request logs. Keyed reference hashes correlate successful temporary uploads with completion calls; repeated hashes for the same component identify repeated completion requests. These records exclude original filenames, PDF data, signed references/URLs, and authentication tokens. Normal lifecycle logging is disabled by default.
-
-Verification: Through Sail, 39 distinct focused endpoint, upload lifecycle, extraction, and saved-result tests passed; one unavailable private fixture was skipped. Coverage includes missing/malformed requests and completions, rejected PDFs, PHP upload errors, signed-reference rejection, multi-file compatibility, successful single uploads, retry and repeated uploads, preserved saved results, and diagnostic privacy/correlation. The existing full-PDF fixture hit a 30-second OCR timeout on page 103 during one run, then passed in isolation without an OCR change. The single Larastan pass reported two related type diagnostics in the file-error logging callback: Laravel's file() annotation assumes a flat file list. Changed inspection to Symfony's file bag so malformed nested multipart entries remain representable, and reran 14 focused request/diagnostic tests including a new nested-entry regression (all passed, 55 assertions). Static analysis was not rerun, honoring the one-pass rule. Pint passed before this final correction; final formatting follows it.
-
-Production follow-up: Deploy through the normal release procedure, rebuild configuration/route caches, and reload PHP-FPM. Temporarily enable diagnostics and refresh configuration to investigate the missing-file trigger. Verify successful PDF upload, invalid-file feedback, retry, and repeated upload in a fresh browser session. Empty requests should return 422 instead of successful empty paths; completion errors should release the loading state. Check the web-request `php_sapi` and limits in diagnostics, and identify whether K4's Nginx server/location uses the observed 20M or 30M limit. The supplied `sudo -u www-data php` check still used CLI. Production's intermittent file-loss trigger and real-browser recovery remain to be confirmed; no deployment or production configuration changes were performed here.
-
-Commit message: `fix: reject empty Livewire uploads and add safe diagnostics`
-
-## Completed: FP: Flight-plan block split across PDF pages
-
-### Goal
-
-Allow `CKS020426RKSI.pdf` to upload and extract its route successfully.
-
-### Current implementation
-
-Page labels are removed from the complete ICAO flight-plan block before matching its fields. Added a portable text regression and an upload test using the private supplied PDF when available.
-
-### Problem addressed
-
-The equipment field ends on page 2 and departure starts on page 3. Intervening page labels caused full flight-plan matching to fail before the existing route-only cleanup could run.
-
-Validation (2026-10-26): The new text test reproduced the reported error before the fix. Focused Sail route tests and the supplied-PDF upload test passed: 33 passed, one unavailable private fixture skipped, 129 assertions. The supplied release completed processing and displayed RKSI/VHHH. Pint passed for changed PHP files; one Larastan run passed with zero errors. No full suite was run.
-
-Commit message: `fix: parse flight-plan blocks split across PDF pages`
-
-## Completed: FP: Delay reporting: Departure UTC time format
-
-- [x] Format delay reporting UTC timestamps as `2026-10-26 03:47z`.
-
-### Goal
-
-Use `YYYY-MM-DD HH:mmz` for UTC date/time displays in delay reporting.
-
-### Current implementation
-
-Scheduled departure, report timeline and delay endpoints, autosave status, and saved history timestamps now share the requested format. Departure timestamps are converted to UTC before display; missing or unreadable values show `Not recorded`. Stored snapshots and native datetime input values retain their existing formats.
-
-### Problem addressed
-
-Scheduled departure previously displayed raw ISO text such as `2026-10-25T01:00:00+00:00`, while other delay timestamps used inconsistent suffixes and precision.
-
-Validation: Sail focused tests passed (38 tests, 217 assertions), Pint passed, and Larastan passed once with zero errors. Existing unrelated working-tree changes preserved.
-
-Commit message: `fix: standardize delay reporting UTC timestamps`
-
 ## Crew bidding
 
 ### Goal
@@ -329,335 +237,16 @@ Commit message for this review: `docs: record codebase logic and organization im
 
 -------------------------------------------------------
 
-## [x] Completed: Bug: Extracted crew list:
-## [x] Completed: FP: Fuel Score: Include TOC, TOD
-## [x] Completed: FP: Missing SIGWX and additional fuel notes
-
-### Goal
-
-Extract all five dispatcher notes from `storage/app/private/flight_releases/CKS024201RJGG.pdf`, including the government SIGWX forecast and additional holding fuel for destination thunderstorms.
-
-### Current implementation
-
-`DispatcherNotesExtractor` recognizes both missing headings through the existing bulleted-note parser. It retains source order, joins wrapped bullet text, preserves heading/bullet line breaks, and bounds extraction at the next note, boxed separator, MEL/CDL section, or end of text. Existing ENROUTE SIGWX notes reuse the same parser.
-
-### Problem
-
-The parser's supported heading patterns omitted `GOVT SIGWX PROG FORECASTS AREAS OF` and `ADDITIONAL FUEL ADDED`, silently returning only the runway, maintenance, and FSA notes. The supplied PDF and four synthetic layout regressions reproduced the omission before the fix.
-
-### Validation outcome (2026-10-06)
-
-Through Sail, all 12 `DispatcherNotesExtractorTest` cases passed, including the supplied PDF's exact five-note result and the existing RJAA, PANC, and KCVG release regressions. The focused extraction orchestration and Notes rendering checks also passed: 14 passing tests and 99 assertions total; one separate private-PDF characterization was skipped because `CKS025625KLAX.pdf` is unavailable. Pint passed, and one full application Larastan run passed with zero errors. Boost's version-specific documentation search succeeded. Unrelated working-tree changes and staging were preserved.
-
-Previously saved releases require uploading/extracting the PDF again to populate the two omitted notes. No frontend rebuild is required.
-
-Commit message: `fix: extract government SIGWX and additional fuel dispatcher notes`
-
-## [x] Completed: Capture flight-plan test streams
-
-### Goal
-
-Keep Livewire flight-plan progress frames out of PHPUnit console output while preserving progress assertions.
-
-### Current implementation
-
-The shared flight-plan test case captures output with a callback buffer that absorbs Livewire's explicit flushes and closes in teardown. Extraction tests check captured success and failure progress plus an empty output buffer. Browser streaming remains unchanged.
-
-### Problem
-
-Livewire writes progress frames directly and flushes the buffer, leaking JSON into otherwise passing test output.
-
-### Validation outcome (2026-10-06)
-
-Through Sail, all 41 focused flight-plan Livewire tests passed with 977 assertions and no streamed JSON in console output. The updated extraction test file also passed individually. Pint passed and one full application Larastan run passed with zero errors. Unrelated TODO edits were preserved.
-
-Commit message: `test: capture flight-plan progress streams during Livewire tests`
-
-## [x] Completed: Schedule: R2 status determine
-
-### Goal
-
-Use Duty as the umbrella event type for reserve, training, and deadhead assignments, classify specific duties from assignment context, and replace generic Duty badges with R1, R2, R4, or Training where supported.
-
-### Current implementation
-
-- `DutyEventType` represents FlightDuty, Deadhead, Training, ReserveR1, ReserveR2, ReserveR4, and GeneralDuty. `ScheduleEventType` retains Flight, Duty, Layover, Off, 1in7, and Unknown; legacy deadhead/training values normalize to Duty.
-- `DutyTypeResolver` recognizes reserve codes, training keywords, deadhead markers, and flight-duty context. `TripInformationParser` applies it to both tabular and date-range formats, keeps assignment activity codes out of flight-number metadata, and produces `R2 LAX` from the supplied noisy R2 text with LAX station context. Published-roster reserve assignments use the same resolver.
-- Duty cards show subtype labels and colors with light/dark variants: amber R1, indigo R2, purple R4, blue Training, slate Deadhead/GeneralDuty, and green FlightDuty. Duty subtype metadata and typed duty DTOs survive serialization and download updates.
-- Route-bearing deadheads retain their flight-card route, flight number, airline, timing, and calendar download details. Assignment classification excludes crew-list context; an operating flight remains a flight when a crew member is deadheading. Reserve and training duties remain separate from overlapping flights.
-- Extraction and calendar filters include reserve, training, and deadheads under **Duties only**. **Flights only** includes operating flights. Existing legacy deadhead and training payloads still load; saved results missing assignment evidence require re-extraction to obtain newly supported classifications.
-
-### Problem
-
-R2 had only a generic Duty badge, while other reserve/training assignments could be parsed as flights. Activity codes were stored as flight numbers, and deadhead/training classifications were separate event types rather than duty subtypes.
-
-### Validation outcome (2026-10-12)
-
-Through Sail, all 161 focused resolver, parser, DTO, view-model, card-rendering, calendar-export, Livewire schedule, and extraction-logging tests passed with 1,050 assertions. Coverage includes the supplied noisy R2 text, training/reserve assignments in both trip-information formats, legacy payloads, serialization, overlapping duties, and extraction/export filtering. Pint completed successfully; one application-wide Larastan run passed with zero errors. Boost's version-specific documentation search succeeded.
-
-The production Vite build passed after `npm ci --ignore-scripts --no-audit --no-fund` restored the existing lockfile's packages; installed Tailwind 3 had conflicted with the declared Tailwind 4 version. Dependency manifests and lockfiles were unchanged. Badge markup and light/dark classes were verified programmatically; no manual browser review was performed. `duty_extracted_example.json` was unavailable, so its quoted noisy text was covered by a regression fixture in the parser test. Other TODO sections were preserved.
-
-Commit message: `feat: classify schedule duty subtypes and display reserve badges`
-
-## [x] Completed: Repair Pint commit-hook failure
-
-### Outcome (2026-10-12)
-
-Reproduced Pint's broken SHA512 PHAR signature inside Sail and reinstalled only `laravel/pint` v1.30.5 with Composer, bypassing cache, scripts, plugins, and autoloader generation. Dependency manifests, lockfiles, application files, and the Git index were unchanged.
-
-The repaired executable reports Pint 1.30.5. The existing pre-commit hook passed its focused staged-file Pint check and one staged-file Larastan run with zero errors. No application tests were needed for this vendor-only repair. Existing working-tree changes were preserved; no commit was created.
-
-Commit message: `docs: record Pint installation repair and successful hook checks`
-
 ## [x] Completed: Schedule: Cleanup Schedule Notes
-
-### Goal
-
-Group exported flight iCalendar notes into compact flight details, flight times, duty times, and crew sections, with less repetition and airport enrichment clutter.
-
-### Current implementation
-
-`IcsDescriptionFormatter` renders flight number, tail/aircraft, and position on one line, followed by the route with available IATA/ICAO codes. UTC flight times come from the actual event boundaries; local flight and duty times retain their source values. Same-day ranges abbreviate the end date; UTC ranges crossing a year include both years. Missing fields are omitted or shown as unavailable for partial ranges/counts, while explicit zero counts remain valid.
-
-Crew names and roles use Unicode-aware column padding, optional bases are omitted when absent, and employee IDs remain unchanged. Existing crew extraction from raw lines remains supported. Airport names, cities, states, countries, resolution status, raw evidence, download metadata, and redundant counters are omitted from flight notes. Custom notes, airline context, and labeled slot times remain in an additional Notes section. Non-flight events retain their existing note layout, and calendar timestamps, URLs, escaping, and line folding remain covered by export tests.
-
-### Problem
-
-The previous formatter emitted almost every metadata item separately, repeated flight/time/crew labels, and mixed airport enrichment details into operational notes.
-
-Previous extracted flight iCal note:
-```
-✈️ FLIGHT DETAILS
-• ICN - HKG
-• Destination iata: HKG
-• Destination icao: VHHH
-• Destination name: Hong Kong International Airport
-• Destination city: Hong Kong
-• Destination state: NT
-• Destination country: HK
-• Origin iata: ICN
-• Origin icao: RKSI
-• Origin name: Incheon International Airport
-• Origin city: Seoul
-• Origin state: 28
-• Origin country: KR
-• Flight number: CKS 256
-• Position: AFO
-• Aircraft: 77X
-• Tail number: N774CK
-• Block time: 4:00h
-• Leg local start: Oct 08 01:00
-• Leg local end: Oct 08 04:00
-• Duty local start: Oct 07 23:00
-• Duty local end: Oct 08 04:30
-• Origin airport status: found
-• Destination airport status: found
-
-👥 CREW LOGISTICS
-• Crew count: 4
-• Operating crew count: 4
-• Deadheading crew count: 0
-• Crew Members:
-  └─ Paolo Falco Beccalli (CP • PVD • #70978)
-  └─ Ali Guner (FO • SRQ • #72446)
-  └─ Eduardo Nunez Duarte (AFO • #72311)
-  └─ David Gonzalez (AFO • #72860)
-
-⏰ TIMES
-• UTC start: 10-07 16:00 Z
-• UTC end: 10-07 20:00 Z
-```
-
-Implemented layout (illustrative crew IDs):
-```
-✈️ FLIGHT DETAILS
-Flight: CKS 256  |  Tail: N774CK (77X)  |  Pos: AFO
-Route: ICN (RKSI) ➔ HKG (VHHH)
-
-⏰ TIMES
-UTC:   Oct 07 16:00z ➔ 20:00z  (Block: 4:00h)
-Local: Oct 08 01:00  ➔ 04:00
-
-👨‍✈️ DUTY TIMES
-Local: Oct 07 23:00  ➔ Oct 08 04:30
-
-👥 CREW (4 Ops / 0 DH)
-• Paolo Falco Beccalli  │ CP  │ PVD │ #70999
-• Ali Guner             │ FO  │ SRQ │ #72999
-• Eduardo Nunez Duarte  │ AFO │ #72999
-• David Gonzalez        │ AFO │ #72999
-```
-
-### Validation outcome (2026-10-12)
-
-All 34 focused formatter, ICS serializer, roster export, and flight-duty export tests passed through Sail. New formatter coverage verifies the compact layout, omitted airport enrichment, explicit UTC/local labels, timezone offsets, day/year rollovers, partial and invalid dates, missing fields, zero/unknown crew counts, source employee IDs, Unicode alignment, deadheads, and retained custom/slot notes. Pint passed for this task's PHP files; one application-wide Larastan run passed with zero errors. Boost's version-specific documentation search succeeded. Existing staged and unrelated changes were preserved. Existing parsed results use the new layout on their next calendar download; already imported calendars need the newly exported file.
-
-Commit message: `feat: compact schedule calendar notes into operational sections`
-
 ## [x] Completed: Schedule: Flight radar option
-
-### Goal
-
-Centralize flight-tracker URL generation and let users choose FlightAware or Flightradar24 for schedule links and iCalendar exports.
-
-### Confirmed choices
-
-- Apply the preference to both schedule flight cards and iCal exports.
-- Prefer the tail number; use the flight number when the tail is unavailable, including commercial deadheads.
-- Use the current user preference when viewing or downloading previously parsed schedules. Already imported calendar files require a new export to change their links.
-
-### Current implementation
-
-- `FlightTracker` defines the two supported choices, labels, and FlightAware fallback for unset/invalid stored preferences. Profile validation rejects unsupported, empty, or malformed submitted choices and preserves the preference when another profile field is updated.
-- A new reversible migration adds `users.flight_tracker_preference` with the database default `flightaware`; the User model mirrors this default and includes the preference in its fillable attributes. The profile form includes a labeled select, helper text, validation errors, and light/dark styling.
-- `FlightTrackerUrlGenerator` is the shared source for extraction's legacy FlightAware URL, current flight-card links, and the iCalendar URL property. Configured roots live in `services.flightaware.url` and `services.flightradar24.url`, exposed as `FLIGHTAWARE_URL` and `FLIGHTRADAR24_URL` in `.env.example`. Defaults work without editing a local `.env`.
-- Tail identifiers preserve registration hyphens and use each provider's expected case. Flight-number links use ICAO airline prefixes for FlightAware and IATA prefixes for Flightradar24. Company codes use existing schedule preferences; commercial conversions reuse the bundled airline-code data through `AirlineCodeLookupClient`, with no database queries during tracker URL generation. The service is scoped per request to reuse its lookup data.
-- Unknown ICAO-to-IATA mappings fall back to a FlightAware flight-number URL and label. Missing or invalid identifiers produce no tracker link. Generic duties and layovers have no tracker URL.
-- Tracker links are separate from calendar download URLs. `FlightMapper` no longer overwrites tracker metadata with a per-event iCal download URL, and aircraft types such as `77X` are no longer treated as tail registrations. Existing cached schedules use their structured identifiers and current preference instead of trusting an old stored URL.
-
-### Problem
-
-FlightAware URLs were repeated in extraction and Blade, users could not select another tracker, and flight DTOs reused `downloadUrl` for both tracker links and calendar downloads. That could place an application download URL in the iCalendar URL property. Flights without tails also lacked a tracking link.
-
-### Validation outcome (2026-10-12)
-
-Through Sail, all 123 focused URL-generator, profile, User/Flight DTO, parser, view-model, flight-card, cached roster export, ICS serialization, and flight-duty export tests passed with 705 assertions. Coverage includes both providers, company/commercial flight numbers, hyphenated tails, configured URL roots, invalid/unset preferences, missing identifiers, unknown airline fallback, saved preference changes affecting cached exports, and distinct calendar download links. Pint completed successfully; one application-wide Larastan run passed with zero errors; the production Vite build passed. Profile/card markup was verified programmatically; no manual browser review was performed.
-
-Boost's version-specific documentation and users-schema checks succeeded. The migration is recorded as applied in local Sail, and a read-only aggregate confirmed both existing development users have the FlightAware default. Other deployment databases must run the new migration before using the profile setting. Dependency files and unrelated TODO edits were preserved.
-
-The provider URL formats were checked against [Flightradar24 aircraft history](https://www.flightradar24.com/data/aircraft/n772ck), [Flightradar24 flight history](https://www.flightradar24.com/data/flights/k4240), and [FlightAware flight tracking](https://www.flightaware.com/live/flight/CKS240).
-
-Commit message: `feat: add flight tracker preferences for schedule links and calendar exports`
-
 ## Completed: Security email
-Goal: Send a clear update about the reported eight-and-a-half-hour outage associated with a php2shell remote code execution vulnerability, then introduce the Flight Plan Brief and other meaningful changes since the previous user email.
-
-Current implementation: The previous user announcement is `VersionOneAnnouncement` and its `mail:version-one` command. That email described Schedule Extractor v1. Git history shows the announcement code was added on 2026-08-03, but does not establish when the full email was sent. The command's recipient rule is active users with nonempty email addresses, including unverified users; it queues individual messages and guards against a duplicate full send.
-
-Problem: The incident details and approximate previous-send time are recorded below. The corrected 08:00–16:30 window spans eight and a half hours. The incident date, impact assessment, production patch status, and delivery record still need confirmation. Do not imply that user data was or was not accessed without evidence.
-
-Plan:
-1. Confirm the incident record before writing final copy: affected service and time window with timezone, actual downtime, the vulnerability name and how it affected this deployment, containment and remediation completed, whether any user data or accounts were affected, and any action users need to take. Record what remains unknown and give a follow-up date or channel if the investigation is still open.
-   * From 08:00 to 16:30 Central time (eight and a half hours); confirm the incident date and whether daylight saving time applied before using a CST/CDT abbreviation.
-   * CVE-2026-109618 and CVE-2026-109619
-   * Upload-progress unserializer use-after-free
-   * Remote process-memory disclosure
-   * Fatal-error backtrace use-after-free
-   * OPcache type confusion
-   * Only affect was downtime, no server compromises, no unauthorized access
-   * Patches and updates in place
-   * No user data or accounts affected
-   * No user action needed
-   * Verify the technical descriptions against the PHP security advisories before using them in public copy; verify the deployment and incident records separately for the claims about this service.
-2. Find the actual send date and content of the last user email from delivery or queue records. Use that date as the start of the feature audit; the 2026-08-03 source commit is only a provisional lower bound. Compare deployed releases and user-visible behavior, not just commit titles.
-    * Version one announcement sent around Mon, Aug 3, 3:51 PM
-
-3. Build a short, verified change list. Lead with the new Flight Plan Brief and what a user can do with it. Candidate changes to check: saved latest flight release, overview and task navigation, weight and balance and ETOPS summaries, offline waypoint fuel calculator, dispatcher notes, and schedule flight-tracker preferences, calendar notes, and reserve badges. Omit anything not live for recipients or already announced.
-4. Draft one email with this order: incident and apology; restoration and current status; impact and required user action (or an explicit statement that the investigation is ongoing); concise Flight Plan Brief introduction; up to three additional changes; support contact and expected follow-up. Keep the security subject and opening factual; do not let the feature announcement obscure the incident.
-5. Review the draft against the incident record and deployed features. Preview the rendered email and links, confirm the intended recipients and mail configuration, and use a guarded, one-time send with delivery monitoring. Record the send date, audience, final copy, and any follow-up needed in this section.
-
-Completion criteria: Incident claims are approved against evidence, the feature list is verified from the last actual send, recipients and links are checked, and the email is sent once with a recorded outcome.
-
-Implementation outcome: Added a queued security update mailable and Markdown email, plus `mail:security-update` with a single-address review option, confirmed full-audience send, staggered broadcast delivery, and a duplicate-send guard. The copy leads with the incident, states the supplied impact assessment and the corrected eight-and-a-half-hour outage, and highlights Flight Plan Brief and selected schedule improvements. The product button leads to the public page so account-specific feature access is handled there.
-
-Verification: Five focused PHPUnit tests passed (32 assertions). Pint passed for the changed PHP files, and Larastan passed once with zero errors.
-
-Pending send: Confirm the incident date, impact assessment, production patch status, last mailing record, and which highlighted features are deployed for recipients. Review a rendered copy and the production audience before queueing the full send. This Sail checkout uses `APP_ENV=local`; run the actual send in production and record its delivery outcome here afterward.
-
-Commit message: `feat: add security update email and guarded send command`
-
 ## [x] Completed: Diagnose PDF OCR failures reported after the server migration
-Outcome: The checkout already uses Poppler `pdftoppm` for page rendering; the reported Imagick/Ghostscript stack belongs to the earlier implementation. The historical cause remains unconfirmed because the failing PDF and Ghostscript stderr from the migrated worker are unavailable. Current OCR failures stop extraction without caching partial text. Renderer failure logs now record stage, one-based page, exception type, and exit code without recording the private PDF path or subprocess stderr.
-
-Verification: The two focused extractor test files passed in Sail (13 passed, one skipped, 86 assertions); the skipped private ETOPS fixture is unavailable. The available private image-only fixture passed. A new regression verifies that a rasterization failure prevents partial text from being cached. A production smoke test on the actual failing PDF remains required.
-
-Commit message: `fix(ocr): log safe page context for rasterization failures`
-
 ## [x] Completed: Include bug email if an error occurs on upload
-Outcome: Flight Plan Brief and Schedule Extractor now offer a mailto link to report a possible bug beside upload errors. The schedule's partial extraction failure dialog offers the same link. The address comes from `MAIL_ADMIN_ADDRESS` through `config('mail.admin_address')`, and the link stays hidden when there is no error or no configured address.
-
-Verification: Six focused PHPUnit tests passed (103 assertions), covering clean upload screens, invalid files, a processing exception, and partial schedule failures. Pint passed; Larastan passed once with zero errors.
-
-Follow-up verification: Added explicit unexpected-fixture cases to three schedule test matches after the staged Larastan check flagged them. The two affected tests passed (33 assertions); Pint and Larastan passed with zero errors.
-
-Commit message: `feat: offer bug report email on upload errors`
-
 ## [x] Completed: Replace Imagick PDF page rendering with Poppler
-Outcome: `PdfImagePageTextExtractor` now renders one selected page to PNG with Poppler's `pdftoppm`, then reads that PNG with Tesseract. This removes the Imagick/Ghostscript rendering and its resource-cleanup issue. It validates both executables, converts zero-based page indexes to Poppler's one-based pages, and deletes both temporary files on success or failure. `PDFTOPPM_PATH` is configurable, and the Sail Dockerfile installs `poppler-utils`.
-
-Verification: Five new extractor tests passed; the existing flight-plan text extractor tests passed against a local container with Poppler installed (12 passing tests, one skipped across the two files; 71 assertions). Pint passed; Larastan passed with zero errors. The full Sail image rebuild was not completed, so production must have `pdftoppm` installed at the configured path before deploying this change.
-
-Commit message: `fix(ocr): replace Imagick PDF rendering with Poppler` (`669c59b`).
-
 ## B. Make OCR resolution configurable
-You're currently rendering at 200 DPI.
-That's reasonable for many documents, but flight schedules can contain small text, especially aircraft registrations, flight numbers, and timestamps.
-I would make DPI configurable, with 300 as an option for difficult documents.
-
 ## Don't force PSM 6 for every document
-Your current command:
-[
-    $tesseract,
-    $imagePath,
-    'stdout',
-    '--psm', '6',
-]
-
-
-PSM 6 assumes a single uniform block of text.
-That can be effective for flight plan sections, but schedules with multiple columns or complex layouts may benefit from PSM 3 or 4.
-I'd make page segmentation mode configurable per extraction call.
-
 ## [x] Completed: FP: Envelope: Include flight date in task
-
-Completed (2026-10-13): Envelope Flight details now shows the confirmed flight date immediately after Trip number, labeled `Date`, formatted as `10/1/2026`. Missing dates show `Not confirmed`. Removed the Flight number metric from Envelope and moved Tail number before Aircraft type. The field order is Trip number, Date, Tail number, Aircraft type, Departure, Destination.
-
-Reused the flight identity date and metric component with Envelope-specific formatting. Shared header and Maintenance date presentation remain unchanged.
-
-Validation: All 68 focused Envelope feature and flight-release view-model tests passed through Sail (731 assertions), covering field/value order, unpadded dates, missing dates, and refresh persistence. Pint passed; one application-wide Larastan run passed with zero errors. No manual browser review was performed.
-
-Sail was started using temporary `APP_PORT=8080` and `VITE_PORT=5174` overrides because ports 80 and 5173 were occupied; environment files were not changed. Boost documentation access failed with a closed transport, so the official Livewire 4 testing documentation was used as fallback.
-
-Commit message: `feat: add flight date and reorder aircraft fields in envelope task`
-
 ## [x] Completed: FP: Delay reporting
-
-### Goal
-
-Allow captains to record delay observations in an autosaving UTC form and generate a copyable, factual report text block for company use. Preserve owner-only history independently of the currently loaded flight plan.
-
-### Current implementation
-
-- Added the FlightDelay model, migration, factory states, and user relationship. One report per owner/release key is enforced by a unique constraint. Flight identity is snapshotted server-side; the snapshot and narrative fields are encrypted and hidden from incidental model serialization. Clearing/replacing a brief retains its reports; deleting the owner removes them.
-- Added the Delay reporting task and a dedicated Livewire form for logbook receipt, flight following brief, fueling/loading completion, load master briefing, new payload, new recall/flight plan, new TLR, Other, delay start/end, cause, supplied timeline, actions, notes, and additional facts.
-- Inputs autosave after a 500 ms pause. Timestamp fields have immediate server-UTC Now controls; manual timestamps use explicit UTC with minute precision. Invalid/incomplete dates preserve their saved values while unrelated valid changes can save. Retry feedback, field errors, and saved/unsaved indicators preserve input after failure.
-- Pending edits are flushed before report generation, task switching, clearing/replacing a brief, or in-app navigation. Incomplete browser datetime inputs are prevented from becoming accidental clears. Closing with unsaved input triggers the browser's unsaved-change warning; offline persistence is not provided.
-- Save actions recheck authentication, verification, feature/gate access, owner/release context, and revision inside a transaction. Stale briefs and conflicting tabs cannot overwrite reports. Changed/conflicting inputs invalidate the report preview.
-- Added a formatter with chronological event ordering, stable ties, complete UTC dates, honest missing-data labels, multiline narrative preservation, and explicitly labeled delay-interval duration. Reports are escaped, selectable, and copyable with success/failure feedback and manual-copy fallback. No email is drafted or sent.
-- Added paginated, read-only history and detail routes under the existing flight-release access controls. History is reachable with or without a loaded brief when the owner has reports; another owner's reports do not expose the link. Direct empty-history visits show an empty state. Historical reports use their snapshot without replacing or reparsing the current brief.
-- Moved field rules, messages, attributes, and validation into app/Validation/FlightDelayValidationRules.php, as requested. FlightDelayFields retains field definitions, saved-input presentation, UTC normalization, and flight-context mapping.
-
-### Problem addressed
-
-The brief previously offered no persistent delay timeline or consistent report text. Its saved-result row is replaced on upload and removed on clearing, so reports now have independent ownership and a release-key snapshot rather than a cascading dependency on that row.
-
-### Confirmed behavior (2026-10-26)
-
-The user confirmed one timestamp per milestone, read-only history, all populated notes included in report text, and duration calculated only from explicitly entered delay start/end times. Now applies to event/delay timestamps only; narrative fields have no separate recorded-at timestamp. Missing endpoints yield an unavailable duration; zero minutes is valid, and negative intervals are rejected. A new release key starts a separate report.
-
-### Validation outcome (2026-10-26)
-
-- Sail: 32 delay form/history feature tests passed (171 assertions). Coverage includes UTC/midnight, creation/reload/clearing, empty-history prevention, independent validation, failed-save retry, duration, report content/escaping, owner isolation, access gates, identifier tampering, conflicting tabs, stale briefs, history retention, pagination, and account deletion.
-- Existing integration checks covered task enums, page-data availability, task routes, navigation, saved-result lifecycle, access, and view models. The corrected integration subset passed 87 tests (902 assertions); the other 24 affected tests passed in the initial focused run. No full suite was run.
-- Sail: seven new JavaScript tests passed for pending-save navigation, invalid datetime preservation, generation, recovery, close warnings, and listener cleanup. Both existing delegated-copy tests also passed.
-- Production Vite build passed. The local delay schema and named history routes were verified. git diff --check passed.
-- Pint passed after PHP changes. One application-wide Larastan run identified model-cast inference/nullsafe-access issues; accurate cast return types and null-coalescing access resolved them. The subsequent focused static recheck of the six implicated files passed with zero errors.
-- No manual browser/visual review was performed; actual clipboard permissions, native datetime editing behavior, and light/dark/mobile appearance were not manually exercised. Automated component and JavaScript tests cover their implemented contracts.
-
-Unrelated TODO content, working-tree changes, and concurrent staging were preserved. No dependencies changed.
-
-Commit message: `feat: add UTC flight delay reporting with autosaved observations`
-
 ## [x] Completed: FP: Prelim flight plans
 
 ### Goal
@@ -718,3 +307,97 @@ vendor/bin/sail exec -T -e DB_DATABASE=:memory: -e DB_CONNECTION=sqlite laravel.
 Unrelated working-tree changes and concurrent staging were preserved.
 
 Commit message: `feat: identify preliminary flight plans and label planning data`
+
+## [x] Completed: FP: Remove page labels before field extraction
+
+Goal: Remove printed page headers and footers before extracting any flight-plan fields.
+
+Problem: Page-label removal was local to route, waypoint, maintenance-description, and dispatcher-note handling. The shared PDF text reader and extraction coordinator still passed printed labels into identity, fuel, and other field extractors. Weather also used the printed footer as a section boundary.
+
+Current implementation: Added a shared text normalizer for branded, standalone, repeated, fused, and wrapped page labels. PDF text is normalized after native/OCR assembly and cache retrieval, including the uncached/document-text fallback. The coordinator normalizes direct text input before invoking any field extractor. Route, waypoint, and weather entrypoints use the same normalizer. Labels become form-feed page breaks so weather remains bounded; preliminary-warning and alternate-heading detection recognize those boundaries. Existing operational headers and route identifiers remain content. Existing text-cache entries are cleaned on read without requiring another OCR pass.
+
+Regression coverage checks native/OCR/cached input, missing cache keys, label formats, idempotence, every coordinator dependency receiving cleaned text, and upload/save recovery of identity, fuel, primary waypoints, and bounded weather.
+
+Verification (2026-11-01): The final focused Sail integration run passed 128 tests (780 assertions); one existing unavailable private route fixture was skipped. The supplied RJAA PDF regression passed. An earlier run hit the existing 30-second OCR timeout on page 93; the final run passed without changing OCR limits. Pint passed after formatting the coordinator test, and one Larastan run passed with zero errors. Staged and unstaged whitespace checks passed. No full suite or manual browser review was run.
+
+Commit message: `fix: normalize flight plan page labels before field extraction`
+
+## [x] Completed: FP: Fuel Score: Exclude alternate routing
+
+Goal: Extract and present only departure-to-destination waypoints in Fuel Score. Alternate routes, their waypoints, and their TOC/TOD markers remain unsupported.
+
+Problem: In `CKS024231RJAA.pdf`, page 4/5 footers separate the two primary computed-flight-plan header rows. The parser skipped that header and selected the complete header in the alternate section, presenting the VHHH-to-VMMC alternate as the primary route.
+
+Current implementation: Remove page labels before matching waypoint headers and bound extraction before the alternate section before searching for a table. Missing or incomplete primary headers yield no waypoints instead of falling back to an alternate table. Alternate rows and phase markers are excluded from extracted waypoints, source fragments, saved results produced by new extraction, and Fuel Score calculator data. Existing alternate-airport identification and fuel figures retain their separate meanings.
+
+Added a compact route-table fixture, header and alternate-heading regressions, a saved-calculator rendering regression, and an optional regression using the supplied private PDF. The private PDF and crew details are not included in the changes.
+
+Verification (2026-11-01): All 33 focused waypoint-extractor and offline Fuel Score tests passed through elevated Sail access (251 assertions), including the supplied PDF. The regressions reproduced the alternate-table fallback before the fix. Primary waypoints begin with `35464N`, `ARIES`, and `A4L11`, end with `LIMES` and `VHHH`, and retain destination duration 04:12 and planned FOB 19,800 lb. Alternate waypoints and phase markers stay excluded. Pint passed; Larastan passed once with zero errors; `git diff --check` passed. No full suite or manual browser review was run.
+
+Existing saved briefs and prepared offline calculator pages require re-uploading the PDF and preparing offline recovery again to replace previously extracted alternate waypoints; stored results lack the source section needed for safe automatic repair.
+
+Commit message: `fix: exclude alternate routes from primary fuel score waypoints`
+
+## [x] Completed: Preserve iPad multipart uploads outside the service worker
+
+Goal: Allow flight release uploads from Chrome on iPad while retaining offline fuel calculator recovery and private-cache invalidation.
+
+Problem: Production logs show one selected file followed by a multipart request with no parsed files on iPadOS 26.6 / Chrome 156.0.8078.54, from both On My iPad and company OneDrive. Mac Chrome succeeds against the same FPM settings. The worker reissued every same-origin request through fetch(event.request), matching the multipart body-loss path reported in [WebKit bug 319396, comment 7](https://bugs.webkit.org/show_bug.cgi?id=319396#c7). This is a likely trigger, pending confirmation on the affected iPad.
+
+Current implementation: Multipart requests return from the worker's fetch listener without respondWith or fetch, leaving transmission to the browser. Other requests retain existing behavior, including JSON responses that invalidate cached private data after logout, account changes, release replacement, or clearing results. No PHP, parser, upload limit, dependency, or Vite bundle changes.
+
+Verification: The new upload bypass regression failed before the fix. All 26 focused worker and offline-recovery JavaScript tests passed through Sail after the fix, including multipart headers with boundaries and mixed casing, offline recovery, and JSON mutation invalidation. Git diff whitespace checks passed. Pint and Larastan were not needed for this JavaScript-only change.
+
+Production follow-up: Deploy the updated public/offline-fuel-worker.js through the normal release process. On the iPad, open the fuel calculator online to trigger worker registration/update, allow the update to activate, then reload Flight Plan Brief and select the PDF again. Existing skipWaiting/clients.claim activation is retained. Confirm a successful temporary-upload response with one file and one returned path, followed by completion_received. No production deployment or physical-iPad verification was performed here; if the failure persists with the updated worker active, investigate the broader WebKit file-body issue before changing upload limits.
+
+Commit message: `fix: bypass service worker for multipart uploads`
+
+## [x] Completed: Reject empty Livewire uploads and add safe diagnostics
+
+Outcome: Reproduced Livewire 4.4.8 accepting missing/empty temporary-upload collections and returning empty paths, which its single-file completion handler indexes without checking. Added application middleware requiring a nonempty file list before storage, with a recoverable JSON 422 error keyed for Livewire's upload error handling. The endpoint retains signature validation, CSRF middleware, throttling, individual-file validation, and support for multiple files in other components. Flight Plan Brief rejects malformed single-file completions through the normal upload-error lifecycle while preserving signed-reference validation, saved results, and existing parsing.
+
+Diagnostics: Missing/malformed collections and rejected completions emit bounded warnings. `LIVEWIRE_UPLOAD_DIAGNOSTICS=true` additionally logs upload starts, request status, file/path counts, property presence, numeric PHP upload errors, and effective request-process PHP settings. An `X-Upload-Request-Id` response header identifies request logs. Keyed reference hashes correlate successful temporary uploads with completion calls; repeated hashes for the same component identify repeated completion requests. These records exclude original filenames, PDF data, signed references/URLs, and authentication tokens. Normal lifecycle logging is disabled by default.
+
+Verification: Through Sail, 39 distinct focused endpoint, upload lifecycle, extraction, and saved-result tests passed; one unavailable private fixture was skipped. Coverage includes missing/malformed requests and completions, rejected PDFs, PHP upload errors, signed-reference rejection, multi-file compatibility, successful single uploads, retry and repeated uploads, preserved saved results, and diagnostic privacy/correlation. The existing full-PDF fixture hit a 30-second OCR timeout on page 103 during one run, then passed in isolation without an OCR change. The single Larastan pass reported two related type diagnostics in the file-error logging callback: Laravel's file() annotation assumes a flat file list. Changed inspection to Symfony's file bag so malformed nested multipart entries remain representable, and reran 14 focused request/diagnostic tests including a new nested-entry regression (all passed, 55 assertions). Static analysis was not rerun, honoring the one-pass rule. Pint passed before this final correction; final formatting follows it.
+
+Production follow-up: Deploy through the normal release procedure, rebuild configuration/route caches, and reload PHP-FPM. Temporarily enable diagnostics and refresh configuration to investigate the missing-file trigger. Verify successful PDF upload, invalid-file feedback, retry, and repeated upload in a fresh browser session. Empty requests should return 422 instead of successful empty paths; completion errors should release the loading state. Check the web-request `php_sapi` and limits in diagnostics, and identify whether K4's Nginx server/location uses the observed 20M or 30M limit. The supplied `sudo -u www-data php` check still used CLI. Production's intermittent file-loss trigger and real-browser recovery remain to be confirmed; no deployment or production configuration changes were performed here.
+
+Commit message: `fix: reject empty Livewire uploads and add safe diagnostics`
+
+## Completed: FP: Flight-plan block split across PDF pages
+
+### Goal
+
+Allow `CKS020426RKSI.pdf` to upload and extract its route successfully.
+
+### Current implementation
+
+Page labels are removed from the complete ICAO flight-plan block before matching its fields. Added a portable text regression and an upload test using the private supplied PDF when available.
+
+### Problem addressed
+
+The equipment field ends on page 2 and departure starts on page 3. Intervening page labels caused full flight-plan matching to fail before the existing route-only cleanup could run.
+
+Validation (2026-10-26): The new text test reproduced the reported error before the fix. Focused Sail route tests and the supplied-PDF upload test passed: 33 passed, one unavailable private fixture skipped, 129 assertions. The supplied release completed processing and displayed RKSI/VHHH. Pint passed for changed PHP files; one Larastan run passed with zero errors. No full suite was run.
+
+Commit message: `fix: parse flight-plan blocks split across PDF pages`
+
+## Completed: FP: Delay reporting: Departure UTC time format
+
+- [x] Format delay reporting UTC timestamps as `2026-10-26 03:47z`.
+
+### Goal
+
+Use `YYYY-MM-DD HH:mmz` for UTC date/time displays in delay reporting.
+
+### Current implementation
+
+Scheduled departure, report timeline and delay endpoints, autosave status, and saved history timestamps now share the requested format. Departure timestamps are converted to UTC before display; missing or unreadable values show `Not recorded`. Stored snapshots and native datetime input values retain their existing formats.
+
+### Problem addressed
+
+Scheduled departure previously displayed raw ISO text such as `2026-10-25T01:00:00+00:00`, while other delay timestamps used inconsistent suffixes and precision.
+
+Validation: Sail focused tests passed (38 tests, 217 assertions), Pint passed, and Larastan passed once with zero errors. Existing unrelated working-tree changes preserved.
+
+Commit message: `fix: standardize delay reporting UTC timestamps`
