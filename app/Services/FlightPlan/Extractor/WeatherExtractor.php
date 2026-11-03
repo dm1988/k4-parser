@@ -2,6 +2,7 @@
 
 namespace App\Services\FlightPlan\Extractor;
 
+use App\Services\FlightPlan\FlightPlanTextNormalizer;
 use Illuminate\Support\Str;
 
 class WeatherExtractor
@@ -19,6 +20,7 @@ class WeatherExtractor
      */
     public function extract(string $text): array
     {
+        $text = FlightPlanTextNormalizer::normalize($text);
         $weather = [
             'departure' => null,
             'destination' => null,
@@ -27,7 +29,7 @@ class WeatherExtractor
         ];
         $sourceFragments = [];
         $matches = [];
-        $pattern = '/(?<role>DEPARTURE|ARRIVAL|ALTERNATE|OTHER):\h*(?<body>.*?)(?=(?:DEPARTURE|ARRIVAL|ALTERNATE|OTHER):|KALITTA\h+BRIEF\h+PAGE\b|\z)/is';
+        $pattern = '/(?<role>DEPARTURE|ARRIVAL|ALTERNATE|OTHER):\h*(?<body>.*?)(?=(?:DEPARTURE|ARRIVAL|ALTERNATE|OTHER):|\f|\z)/is';
 
         if (preg_match_all($pattern, $text, $matches, PREG_SET_ORDER) !== false) {
             foreach ($matches as $match) {

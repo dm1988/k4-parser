@@ -13,9 +13,12 @@ use App\Validation\FlightPlanValidationRules;
 use App\View\Models\FlightReleasePageViewModel;
 use App\View\Models\FlightReleasePageViewModelFactory;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
@@ -25,7 +28,10 @@ use Throwable;
 
 class FlightPlanBrief extends Component
 {
-    use WithFileUploads;
+    use WithFileUploads {
+        _startUpload as protected startTemporaryUpload;
+        _finishUpload as protected finishTemporaryUpload;
+    }
 
     private const string EXTRACTION_COMPLETED_SESSION_KEY = 'flight-plan-brief.extraction-completed';
 
@@ -54,6 +60,59 @@ class FlightPlanBrief extends Component
     protected BuildFlightPlanPageData $buildFlightPlanPageData;
 
     protected FlightReleasePageViewModelFactory $flightReleasePageViewModelFactory;
+
+    /** @param array<int, array{name: string, size: int, type: string}> $fileInfo */
+    #[Renderless]
+    public function _startUpload(string $name, array $fileInfo, bool $isMultiple): void
+    {
+        $this->authorizedUser();
+        abort_unless($name === 'flightRelease', 422);
+
+        $this->recordUploadLifecycle('started', count($fileInfo));
+        $this->startTemporaryUpload($name, $fileInfo, $isMultiple);
+    }
+
+    public function _finishUpload(string $name, mixed $tmpPath, bool $isMultiple, bool $append = true): void
+    {
+        $this->authorizedUser();
+        abort_unless($name === 'flightRelease', 422);
+
+        if ($tmpPath instanceof Collection) {
+            $tmpPath = $tmpPath->all();
+        }
+
+        $fileCount = is_array($tmpPath) ? count($tmpPath) : 0;
+
+        if (
+            $isMultiple || ! is_array($tmpPath) || ! array_is_list($tmpPath)
+            || $fileCount !== 1 || ! is_string($tmpPath[0]) || $tmpPath[0] === ''
+        ) {
+            $this->recordUploadLifecycle('completion_rejected', $fileCount);
+            $this->_uploadErrored($name, json_encode([
+                'errors' => ['files.0' => ['The upload could not be completed. Please select the file and try again.']],
+            ], JSON_THROW_ON_ERROR), false);
+
+            return;
+        }
+
+        $this->recordUploadLifecycle('completion_received', $fileCount, $tmpPath[0]);
+        $this->finishTemporaryUpload($name, $tmpPath, $isMultiple, $append);
+    }
+
+    private function recordUploadLifecycle(string $phase, int $fileCount, ?string $reference = null): void
+    {
+        if ($phase !== 'completion_rejected' && ! config('livewire.upload_diagnostics')) {
+            return;
+        }
+
+        Log::log($phase === 'completion_rejected' ? 'warning' : 'info', 'Flight release upload lifecycle.', [
+            'phase' => $phase,
+            'component_id' => $this->getId(),
+            'file_count' => $fileCount,
+            'has_temporary_file' => $this->flightRelease !== null,
+            'reference_hash' => $reference === null ? null : hash_hmac('sha256', $reference, (string) config('app.key')),
+        ]);
+    }
 
     public function boot(
         HandleFlightPlanExtraction $handleFlightPlanExtraction,

@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Services\FlightPlan\Extractor\WaypointExtractor;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class WaypointExtractorTest extends TestCase
@@ -309,6 +310,64 @@ TEXT;
         $this->assertSame(['1234TOC', '1234TOD'], array_column($waypoints, 'identifier'));
         $this->assertSame(['fix', 'fix'], array_column($waypoints, 'kind'));
         $this->assertSame(['00.11', '00.26'], array_column($waypoints, 'total_time'));
+    }
+
+    /** @param list<string> $identifiers */
+    #[DataProvider('primaryHeaderVariants')]
+    public function test_it_ignores_alternate_tables_with_split_or_unavailable_primary_headers(string $header, array $identifiers): void
+    {
+        $source = $this->fixture('primary-header-page-break.txt');
+        $source = preg_replace('/IDENT.*?DSTN/s', $header, $source, 1);
+        $this->assertIsString($source);
+
+        $result = (new WaypointExtractor)->extract($source);
+
+        $this->assertSame($identifiers, array_column($result['data'], 'identifier'));
+        $this->assertStringNotContainsString('22178N', $result['source_fragments']['computed_flight_plan_waypoints'] ?? '');
+        $this->assertStringNotContainsString('VMMC', $result['source_fragments']['computed_flight_plan_waypoints'] ?? '');
+
+        if ($identifiers === []) {
+            $this->assertSame([], $result['source_fragments']);
+        }
+    }
+
+    /** @return array<string, array{string, list<string>}> */
+    public static function primaryHeaderVariants(): array
+    {
+        $primary = 'IDENT DIST MC FL WIND CMP TAS/MAC TIME ETA ATA TBO FRMG EFB';
+        $secondary = 'FRQ DTGO MH W/S OAT G/S T/TME REV REM ABO AFOB DSTN';
+
+        return [
+            'split across pages' => [$primary."\nKALITTA BRIEF PAGE 4 OF 83\nPAGE 4 OF 83\n\n".$secondary, ['35464N', 'ARIES', 'TOC', 'VHHH']],
+            'flattened page labels' => [$primary.'KALITTA BRIEF PAGE 4 OF 83PAGE 4 OF 83'.$secondary, ['35464N', 'ARIES', 'TOC', 'VHHH']],
+            'missing primary header' => ['', []],
+            'incomplete primary header' => [$primary, []],
+        ];
+    }
+
+    #[DataProvider('alternateHeadings')]
+    public function test_it_excludes_alternate_waypoints_and_phase_markers_for_supported_headings(string $heading): void
+    {
+        $source = str_replace('----------------------- ALTERNATE ---------------------', $heading, $this->fixture('primary-header-page-break.txt'));
+
+        $result = (new WaypointExtractor)->extract($source);
+
+        $this->assertSame(['35464N', 'ARIES', 'TOC', 'VHHH'], array_column($result['data'], 'identifier'));
+        $this->assertStringNotContainsString('TOC 001 00.11', $result['source_fragments']['computed_flight_plan_waypoints']);
+        $this->assertStringNotContainsString('TOD', $result['source_fragments']['computed_flight_plan_waypoints']);
+    }
+
+    /** @return array<string, array{string}> */
+    public static function alternateHeadings(): array
+    {
+        return [
+            'dashed' => ['--- ALTERNATE ---'],
+            'standalone' => ['ALTERNATE'],
+            'standalone between page labels' => ['PAGE 9 OF 83ALTERNATEPAGE 10 OF 83'],
+            'route' => ['Alternate Route'],
+            'routing' => ["ALTERNATE\tROUTING"],
+            'waypoint summary' => ['ALTERNATE WAYPOINT SUMMARY'],
+        ];
     }
 
     private function fixture(string $name): string

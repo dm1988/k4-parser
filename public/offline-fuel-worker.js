@@ -234,6 +234,14 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    const contentType = event.request.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase();
+
+    if (contentType === 'multipart/form-data') {
+        // Re-fetching file uploads can lose their body on iPadOS 26.6; leave them to the browser.
+        // https://bugs.webkit.org/show_bug.cgi?id=319396#c7
+        return;
+    }
+
     if (event.request.method === 'GET' && event.request.mode === 'navigate' && isCalculator(url)) {
         event.respondWith(calculatorResponse(event.request));
         return;

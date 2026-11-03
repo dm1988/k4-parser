@@ -3,6 +3,7 @@
 namespace App\Services\FlightPlan\Extractor;
 
 use App\Exceptions\FlightRouteNotFoundException;
+use App\Services\FlightPlan\FlightPlanTextNormalizer;
 use Closure;
 use Fruitcake\LaravelDebugbar\LaravelDebugbar;
 use Illuminate\Contracts\Cache\Repository;
@@ -26,7 +27,7 @@ class FlightPlanTextExtractor
         $cacheKey = $this->cacheKey($filePath);
 
         if ($cacheKey === null) {
-            return $this->read($filePath, $onProgress);
+            return FlightPlanTextNormalizer::normalize($this->read($filePath, $onProgress));
         }
 
         $readFromPdf = false;
@@ -44,7 +45,7 @@ class FlightPlanTextExtractor
             $onProgress?->__invoke('Previously extracted text loaded.');
         }
 
-        return $text;
+        return FlightPlanTextNormalizer::normalize($text);
     }
 
     private function cacheKey(string $filePath): ?string

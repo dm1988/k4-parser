@@ -12,6 +12,11 @@ use Carbon\Exceptions\InvalidFormatException;
 
 final class FlightDutyEvent
 {
+    private const int MAX_LOCAL_UTC_OFFSET_MINUTES = 14 * 60;
+
+    /** A plausibility limit for exported data, not a regulatory duty limit. */
+    private const int MAX_DUTY_MINUTES = 30 * 60;
+
     public function __construct(
         private readonly FlightMapper $flightMapper,
     ) {}
@@ -31,7 +36,7 @@ final class FlightDutyEvent
         $flightStartUtc = $this->parseUtc($event['start'] ?? null);
         $flightEndUtc = $this->parseUtc($event['end'] ?? null);
 
-        if ($flightStartUtc === null || $flightEndUtc === null) {
+        if ($flightStartUtc === null || $flightEndUtc === null || $flightEndUtc->lessThanOrEqualTo($flightStartUtc)) {
             return null;
         }
 
@@ -42,20 +47,30 @@ final class FlightDutyEvent
 
         $flightLocalStart = $this->parseLocalTime($flightLocalStartValue, $flightStartUtc);
         $flightLocalEnd = $this->parseLocalTime($flightLocalEndValue, $flightEndUtc);
-        $dutyLocalStart = $this->parseLocalTime($dutyLocalStartValue, $flightStartUtc);
-        $dutyLocalEnd = $this->parseLocalTime($dutyLocalEndValue, $flightEndUtc);
 
-        if ($flightLocalStart === null || $flightLocalEnd === null || $dutyLocalStart === null || $dutyLocalEnd === null) {
+        if ($flightLocalStart === null || $flightLocalEnd === null
+            || abs($this->minutesBetween($flightStartUtc, $flightLocalStart)) > self::MAX_LOCAL_UTC_OFFSET_MINUTES
+            || abs($this->minutesBetween($flightEndUtc, $flightLocalEnd)) > self::MAX_LOCAL_UTC_OFFSET_MINUTES) {
             return null;
         }
 
-        $flightLocalEnd = $this->shiftForwardAfter($flightLocalEnd, $flightLocalStart);
+        $dutyLocalStart = $this->parseLocalTime($dutyLocalStartValue, $flightLocalStart);
+        $dutyLocalEnd = $this->parseLocalTime($dutyLocalEndValue, $flightLocalEnd);
+
+        if ($dutyLocalStart === null || $dutyLocalEnd === null || $dutyLocalStart->greaterThan($flightLocalStart)) {
+            return null;
+        }
+
         $dutyLocalEnd = $this->shiftForwardAfter($dutyLocalEnd, $flightLocalEnd);
+
+        if ($dutyLocalEnd === null) {
+            return null;
+        }
 
         $dutyStartUtc = $flightStartUtc->subMinutes($this->minutesBetween($dutyLocalStart, $flightLocalStart));
         $dutyEndUtc = $flightEndUtc->addMinutes($this->minutesBetween($flightLocalEnd, $dutyLocalEnd));
 
-        if ($dutyEndUtc->lessThanOrEqualTo($dutyStartUtc)) {
+        if ($this->minutesBetween($dutyStartUtc, $dutyEndUtc) > self::MAX_DUTY_MINUTES) {
             return null;
         }
 
@@ -122,11 +137,33 @@ final class FlightDutyEvent
 
     private function parseLocalTime(mixed $value, CarbonImmutable $reference): ?CarbonImmutable
     {
-        if (! is_string($value) || trim($value) === '') {
+        if (! is_string($value) || trim($value) === '' || str_contains($value, "\0")) {
             return null;
         }
 
-        return CarbonImmutable::createFromFormat('!Y M j H:i', $reference->year.' '.trim($value), 'UTC');
+        $value = trim($value);
+        $closest = null;
+
+        foreach ([$reference->year - 1, $reference->year, $reference->year + 1] as $year) {
+            $input = $year.' '.$value;
+
+            try {
+                $candidate = CarbonImmutable::createFromFormat('!Y M j H:i', $input, 'UTC');
+            } catch (InvalidFormatException) {
+                continue;
+            }
+
+            if ($candidate === null || ($candidate->format('Y M j H:i') !== $input && $candidate->format('Y M d H:i') !== $input)) {
+                continue;
+            }
+
+            if ($closest === null
+                || abs($candidate->getTimestamp() - $reference->getTimestamp()) < abs($closest->getTimestamp() - $reference->getTimestamp())) {
+                $closest = $candidate;
+            }
+        }
+
+        return $closest;
     }
 
     private function minutesBetween(CarbonImmutable $start, CarbonImmutable $end): int
@@ -134,13 +171,13 @@ final class FlightDutyEvent
         return (int) round(($end->getTimestamp() - $start->getTimestamp()) / 60);
     }
 
-    private function shiftForwardAfter(CarbonImmutable $value, CarbonImmutable $reference): CarbonImmutable
+    private function shiftForwardAfter(CarbonImmutable $value, CarbonImmutable $reference): ?CarbonImmutable
     {
-        while ($value->lessThan($reference)) {
+        if ($value->lessThan($reference)) {
             $value = $value->addDay();
         }
 
-        return $value;
+        return $value->lessThan($reference) ? null : $value;
     }
 
     private function formatDuration(float $durationMinutes): string
