@@ -477,6 +477,7 @@ class CrewBidsTest extends TestCase
         $package = BidPackage::factory()->create();
         $payload = $package->payload;
         $payload['lines']['F1']['pairings'] = [['id' => '749', 'date' => '2026-11-29'], ['id' => '749', 'date' => '2026-11-30']];
+        $payload['lines']['F1']['carry_in'] = null;
         $payload['trips']['749'] = [
             'id' => '749', 'start_date' => '2026-11-29', 'end_date' => '2026-12-03',
             'start_city' => 'MIA', 'end_city' => 'MIA', 'report' => '21:00', 'release' => '13:30',
@@ -491,7 +492,7 @@ class CrewBidsTest extends TestCase
 
         $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
             ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['carry_days'] === 3 && count($lines[0]['month']) === 30 && count($lines[0]['trip_details']) === 1 && $lines[0]['trip_details'][0]['minimum_rest'] === '17:30')
-            ->assertSeeHtml('aria-label="3 carry-in days after month-end for F1"')
+            ->assertSeeHtml('aria-label="3 calculated occupied days after month-end for F1"')
             ->assertSee('+3')->assertSee('Trip 749')->assertDontSee('Trip 999')
             ->assertSee('MIA–LUX–ANC–MIA')->assertSee('LUX, ANC')->assertSee('Minimum source rest')
             ->assertSeeHtml('aria-label="Leg timeline for trip 749, UTC"')
@@ -760,6 +761,7 @@ class CrewBidsTest extends TestCase
             $calendar[sprintf('2026-12-%02d', $day)] = ['status' => 'off', 'activity' => 'Off'];
         }
         $payload['lines']['F1']['calendar'] = $calendar;
+        $payload['lines']['F1']['carry_in'] = null;
         $payload['lines']['F1']['pairings'] = [['id' => '749', 'date' => '2026-12-30'], ['id' => '750', 'date' => '2026-12-31']];
         foreach (['749' => '2027-01-02', '750' => '2027-01-03'] as $id => $end) {
             $payload['trips'][$id] = ['id' => (string) $id, 'start_date' => '2026-12-30', 'end_date' => $end, 'start_city' => 'MIA', 'end_city' => 'LUX', 'report' => null, 'release' => '12:00', 'legs' => []];
@@ -769,6 +771,31 @@ class CrewBidsTest extends TestCase
         Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
             ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['carry_days'] === 3 && $lines[0]['days_off'] === 31)
             ->assertDontSee('A leg timeline is unavailable because no dated legs were imported.');
+    }
+
+    public function test_published_carry_count_takes_precedence_over_calculated_days_and_preserves_zero(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['pairings'] = [['id' => '749', 'date' => '2026-11-29']];
+        $payload['lines']['F1']['carry_in'] = 2;
+        $payload['trips']['749'] = [
+            'id' => '749', 'start_date' => '2026-11-29', 'end_date' => '2026-12-03',
+            'start_city' => 'MIA', 'end_city' => 'MIA', 'report' => null, 'release' => '13:30', 'legs' => [],
+        ];
+        $package->update(['payload' => $payload]);
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['carry_days'] === 2 && $lines[0]['carry_basis'] === 'Published carry count')
+            ->assertSeeHtml('aria-label="2 published carry days for F1"')
+            ->assertSee('Published carry count');
+
+        $payload['lines']['F1']['carry_in'] = 0;
+        $package->update(['payload' => $payload]);
+        $page->call('$refresh')
+            ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['carry_days'] === 0 && $lines[0]['carry_basis'] === 'Published carry count')
+            ->assertDontSeeHtml('aria-label="3 calculated occupied days after month-end for F1"')
+            ->assertSee('Published carry count');
     }
 
     /** @param array<string, int|null> $creditFields */
@@ -865,5 +892,13 @@ class CrewBidsTest extends TestCase
         $package->update(['payload' => $payload]);
         Livewire::test(CrewBids::class)->assertViewHas('lines', fn (array $lines): bool => $lines[0]['carry_days'] === null)
             ->assertDontSee('+0')->assertDontSee('+2');
+
+        $payload['trips']['749'] = [
+            'id' => '749', 'start_date' => '2026-11-29', 'end_date' => null,
+            'start_city' => 'MIA', 'end_city' => 'MIA', 'report' => null, 'release' => null, 'legs' => [],
+        ];
+        $package->update(['payload' => $payload]);
+        Livewire::test(CrewBids::class)->assertViewHas('lines', fn (array $lines): bool => $lines[0]['carry_days'] === null)
+            ->assertDontSee('Calculated occupied days after month-end');
     }
 }

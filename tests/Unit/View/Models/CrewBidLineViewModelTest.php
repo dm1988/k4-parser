@@ -64,7 +64,8 @@ class CrewBidLineViewModelTest extends TestCase
 
         $details = array_column($model->detailMetrics, 'value', 'label');
         $this->assertSame('2', $details['Work blocks']);
-        $this->assertSame('0', $details['Carry-in days after month-end']);
+        $this->assertSame('0', $details['Published carry count']);
+        $this->assertSame('published carry days', $model->carryBadgeDescription);
         $this->assertSame('0:00', $details['Carry credit subtotal · before premium · h:mm[:ss]']);
         $this->assertStringContainsString('not total contractual Pay Credit Hours', implode(' ', $model->creditNotes));
         $this->assertNotContains('Work blocks', array_column(CrewBidLineViewModel::fromLine($line)->detailMetrics, 'label'));
@@ -112,7 +113,7 @@ class CrewBidLineViewModelTest extends TestCase
     {
         return array_replace([
             'id' => 'F83', 'type' => 'flying', 'crew' => '2 CA 1 FO', 'credit' => 5415, 'credit_label' => '90:15', 'block' => 4800, 'block_label' => '80:00', 'days_off' => 15,
-            'quick_flags' => [], 'month' => [], 'carry_days' => 0, 'trip_details' => [], 'warnings' => [], 'match_details' => [], 'filter_details' => [],
+            'quick_flags' => [], 'month' => [], 'carry_days' => 0, 'carry_basis' => 'Published carry count', 'trip_details' => [], 'warnings' => [], 'match_details' => [], 'filter_details' => [],
             'source_credit_label' => 'Not available', 'source_block_label' => 'Not available', 'base_credit_label' => 'Not available', 'deadhead_credit_label' => 'Not available', 'carry_credit_label' => 'Not available', 'carry_flying_label' => 'Not available', 'carry_deadhead_credit_label' => 'Not available', 'carry_premium_label' => 'Not available',
         ], $overrides);
     }

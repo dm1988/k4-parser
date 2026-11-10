@@ -25,6 +25,8 @@ final readonly class CrewBidLineViewModel
         public array $quickFlags,
         public array $calendarDays,
         public ?int $carryDays,
+        public ?string $carryBasis,
+        public ?string $carryBadgeDescription,
         public array $trips,
         public string $tripSummaryLabel,
         public bool $singleTrip,
@@ -53,6 +55,12 @@ final readonly class CrewBidLineViewModel
             quickFlags: self::quickFlags($line['quick_flags']),
             calendarDays: self::calendarDays($line['month'], $reserve),
             carryDays: $line['carry_days'],
+            carryBasis: $line['carry_basis'],
+            carryBadgeDescription: match ($line['carry_basis']) {
+                'Published carry count' => 'published carry days',
+                'Calculated occupied days after month-end' => 'calculated occupied days after month-end',
+                default => null,
+            },
             trips: $trips,
             tripSummaryLabel: $tripCount === 1 ? 'Trip '.$trips[0]['id'] : 'Trips ('.$tripCount.')',
             singleTrip: $tripCount === 1,
@@ -142,10 +150,13 @@ final readonly class CrewBidLineViewModel
     private static function detailMetrics(array $line, bool $showBlocks): array
     {
         $metrics = [];
-        foreach (['blocks' => 'Work blocks', 'duty_days' => 'Duty days (source)', 'start_city' => 'Start city', 'crew' => 'Crew complement', 'carry_days' => 'Carry-in days after month-end'] as $key => $label) {
+        foreach (['blocks' => 'Work blocks', 'duty_days' => 'Duty days (source)', 'start_city' => 'Start city', 'crew' => 'Crew complement'] as $key => $label) {
             if (($key !== 'blocks' || $showBlocks) && filled($line[$key] ?? null)) {
                 $metrics[] = ['label' => $label, 'value' => (string) $line[$key], 'valueClasses' => $key === 'crew' ? '' : 'font-mono'];
             }
+        }
+        if ($line['carry_days'] !== null) {
+            $metrics[] = ['label' => $line['carry_basis'], 'value' => (string) $line['carry_days'], 'valueClasses' => 'font-mono'];
         }
         foreach ([
             'source_credit_label' => 'Lines / Overview credit · h:mm',
