@@ -220,7 +220,11 @@ Findings below are ordered by impact. They are static source observations; opera
 
    Validation: Sail focused tests passed (54 tests, 403 assertions): merger unit rules, schedule-upload feature tests, and three existing DTO cache/crew/ICS regressions. Coverage includes exact duplicates, metadata/key-order differences, conflicting observations, unrelated flights sharing a timestamp, later legs, reversed uploads, per-type identities, repeated/unknown events, and warning escaping. Pint and the frontend build passed; one Larastan run passed with zero errors. `git diff HEAD --check` passed. Preserved unrelated changes and existing staging state.
 
+   CI follow-up (2026-11-10): The merge's `source_observations` metadata appeared in flight and non-flight ICS descriptions; the formatter now keeps it out of exported descriptions while retaining it in parsed results. The single-event export test uses deterministic airport data and blocks stray HTTP requests. The aircraft delete test assigns three distinct tail numbers to avoid a factory collision. The focused Sail checks passed (54 tests, 238 assertions); Pint passed, and one Larastan run passed with zero errors.
+
    Commit message: `fix: merge schedule events by semantic identity`
+
+   CI follow-up commit message: `fix: keep merge provenance out of calendar exports`
 
 3. **High — Separate safe upload feedback from exception diagnostics.** [JcaScheduleProcessor.php](app/Services/Schedule/JcaScheduleProcessor.php), `fileFailure()`/`displayedFileFailure()`, passes arbitrary exception messages into `ScheduleExtractor::$failedFiles` and the results modal. Internal paths, parser details, or document fragments can therefore become user-visible when an unexpected exception contains them. Map expected failures to useful public messages/codes and retain unexpected diagnostics in server reporting with request/file-position context. Cover an exception containing a private path or document fragment and verify it is absent from Livewire state and rendered feedback while successful files remain available.
 

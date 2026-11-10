@@ -2,14 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\DTOs\AirportData;
 use App\DTOs\Flight;
 use App\Models\Airline;
 use App\Models\User;
+use App\Services\Clients\AirportLookupClient;
 use App\Services\Schedule\Extractor\ScheduleFormatParser;
 use App\Services\Schedule\JcaScheduleProcessor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
+use UnexpectedValueException;
 
 class RosterParserTest extends TestCase
 {
@@ -469,6 +473,16 @@ TEXT;
 
     public function test_roster_parser_can_export_single_line_item_ics(): void
     {
+        Http::preventStrayRequests();
+        $airportLookup = $this->createMock(AirportLookupClient::class);
+        $airportLookup->method('lookupByIataOrFail')
+            ->willReturnCallback(static fn (string $code): AirportData => match ($code) {
+                'AUS' => new AirportData('KAUS', 'AUS', 'Austin-Bergstrom International Airport', 'Austin', 'Texas', 'United States'),
+                'CVG' => new AirportData('KCVG', 'CVG', 'Cincinnati/Northern Kentucky International Airport', 'Hebron', 'Kentucky', 'United States'),
+                default => throw new UnexpectedValueException("Unexpected airport code: {$code}"),
+            });
+        $this->app->instance(AirportLookupClient::class, $airportLookup);
+
         $text = <<<'TEXT'
         June 2026
         Details

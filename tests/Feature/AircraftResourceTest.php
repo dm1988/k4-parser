@@ -171,7 +171,7 @@ class AircraftResourceTest extends TestCase
     public function test_admins_can_delete_aircraft_from_resource_actions(): void
     {
         $this->actingAs($this->makeAdminUser());
-        $aircraft = Aircraft::factory()->create();
+        $aircraft = Aircraft::factory()->create(['tail_number' => 'N900CK']);
 
         Livewire::test(EditAircraft::class, ['record' => $aircraft->getKey()])
             ->assertActionVisible('delete')
@@ -180,7 +180,10 @@ class AircraftResourceTest extends TestCase
 
         $this->assertModelMissing($aircraft);
 
-        $aircraftToDelete = Aircraft::factory()->count(2)->create();
+        $aircraftToDelete = Aircraft::factory()->count(2)->sequence(
+            ['tail_number' => 'N901CK'],
+            ['tail_number' => 'N902CK'],
+        )->create();
 
         Livewire::test(ListAircraft::class)
             ->assertTableBulkActionVisible('delete')

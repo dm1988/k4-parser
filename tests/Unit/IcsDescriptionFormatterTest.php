@@ -29,6 +29,7 @@ class IcsDescriptionFormatterTest extends TestCase
                     ['name' => 'John Smith', 'role' => 'DH', 'employee_id' => '72446', 'deadheading' => true],
                 ],
                 'raw_lines' => ['Private source text'], 'flightaware_url' => 'https://example.test/flight',
+                'source_observations' => [['event' => ['metadata' => ['origin' => 'Private source text']]]],
             ],
         ]);
 
@@ -157,10 +158,14 @@ TEXT, $description);
     public function test_non_flight_events_keep_their_existing_notes(): void
     {
         $description = app(IcsDescriptionFormatter::class)->format([
-            'type' => 'layover', 'metadata' => ['station' => 'LAX', 'hotel' => 'Airport Hotel'],
+            'type' => 'layover', 'metadata' => [
+                'station' => 'LAX', 'hotel' => 'Airport Hotel',
+                'source_observations' => [['event' => ['metadata' => ['notes' => 'Private source text']]]],
+            ],
         ]);
 
         $this->assertStringContainsString('• Station: LAX', $description);
         $this->assertStringContainsString('• Hotel: Airport Hotel', $description);
+        $this->assertStringNotContainsString('Private source text', $description);
     }
 }

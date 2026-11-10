@@ -44,6 +44,7 @@ class IcsDescriptionFormatter
                 MetadataKey::Destination->value,
                 MetadataKey::LocalStart->value,
                 MetadataKey::LocalEnd->value,
+                'source_observations',
             ], true)) {
                 continue;
             }
@@ -316,7 +317,7 @@ class IcsDescriptionFormatter
             MetadataKey::RawLines->value, MetadataKey::DutyRawLines->value,
             MetadataKey::FlightawareUrl->value, MetadataKey::DownloadId->value, MetadataKey::DownloadUrl->value,
             MetadataKey::Deadhead->value, MetadataKey::DutyType->value,
-            'flight_local_start', 'flight_local_end',
+            'flight_local_start', 'flight_local_end', 'source_observations',
         ];
         $lines = [];
 
