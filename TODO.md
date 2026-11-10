@@ -242,6 +242,46 @@ I'd make page segmentation mode configurable per extraction call.
 
 -------------------------------------------------------
 
+## [x] Completed: Plan crew bid access roles
+
+### Goal
+
+Define who can see K4 Bids in navigation, open its route, save a private bid list, and manage shared packages.
+
+### Current implementation
+
+`User::canUseCrewBids()` grants access to verified admins or, when configured, all verified users. Both nav layouts use that method; `/crew-bids` also has the feature and authorization middleware. Package management is admin-only. The Users resource cannot currently assign a crew-bid-specific grant.
+
+### Problem addressed
+
+The existing all-users switch cannot give selected ordinary users access without opening the workspace to every verified user. The current crew-bid access check also does not consider `is_active`.
+
+Outcome (2026-11-10): The user chose explicit per-user crew-bid grants plus existing admin access, with package management remaining admin-only. Documented the access matrix, route/nav behavior, grant management, rollout, and focused validation in CREW_BIDS.md. This was a documentation-only plan; no access behavior or account data changed. Implementation is recorded in the following task.
+
+Commit message: `docs: plan explicit crew bid access grants`
+
+## [x] Completed: Implement crew bid access roles
+
+### Goal
+
+Give selected ordinary users access to K4 Bids in navigation and at its direct route, while keeping package management with existing admins.
+
+### Current implementation
+
+Before this change, verified admins or every verified user under `features.crew_bids.for_all_users` could enter the workspace. The Users resource had no crew-bid grant control, and inactive accounts were not excluded by the crew-bid gate.
+
+### Problem addressed
+
+The all-users switch could not grant access to selected crew members. It also bypassed the intended explicit access decision when enabled.
+
+Outcome (2026-11-10): Added a false-by-default `users.crew_bids_access` grant, managed and displayed in Filament Users. Active, verified grantees and existing admins can reach K4 Bids; only admins can manage packages. Removed the crew-bid all-users setting. The existing nav and route use the updated shared access check, and revocation blocks an open workspace without deleting its saved list. Deployment needs the new migration and deliberate grants for intended users; no existing accounts were auto-granted.
+
+Verification: 24 focused tests passed (157 assertions), Pint passed, and one Larastan run passed with zero errors. No full suite or manual browser review was run.
+
+Commit-hook follow-up (2026-11-10): The staged-PHP Larastan check exposed 13 type errors in `CrewBidsTest.php` that the earlier application-only analysis did not cover. Kept the test behavior and fixed Livewire helper inference by splitting assertion chains, used Livewire's public `getData()` for snapshot data, and narrowed date-picker nodes to `DOMElement`. The 25 affected focused tests passed (202 assertions), followed by 2 focused tests (15 assertions) after the final chain fix. Pint and file-scoped Larastan passed; the staged pre-commit check passed after this correction.
+
+Commit message: `feat: grant crew bid access per user`
+
 ## [x] Completed: Upgrade bid card depth and header styling
 
 ### Goal

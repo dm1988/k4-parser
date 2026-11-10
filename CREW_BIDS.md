@@ -90,6 +90,25 @@ Source-credit clarification (2026-11-03): The user confirms that **source line c
 
 Private source directory: `storage/app/private/Bid_Packages`. Supported samples include B747 October and B777 November 2026. Other layouts need representative fixtures before support is claimed.
 
+### Completed: Crew bid access roles — 2026-11-10
+
+The user confirmed an explicit per-account crew-bid grant for ordinary users. Existing `admin` and `super_admin` accounts retain package management. This is an application access decision, not a determination of contractual bid eligibility or permission to submit through the company portal.
+
+| Account state | K4 Bids nav and `/crew-bids` | Own preferences and ranked list | Bid package management |
+| --- | --- | --- | --- |
+| Active, verified `user` with crew-bid grant | Yes | Yes | No |
+| Active, verified `user` without crew-bid grant | No | No | No |
+| Active, verified `admin` or `super_admin` | Yes | Yes | Yes, under the existing package policy |
+| Inactive or unverified account, or feature disabled | No | No | No |
+
+The `users.crew_bids_access` boolean is false by default. Authorized admins can assign and revoke it in the existing Filament Users resource and see the raw grant status in the user list; the resource still cannot edit admin roles. Neither a grant nor a saved CA/FO seat changes package-management rights, ownership, or portal-submission eligibility.
+
+`User::canUseCrewBids()` is the shared decision for desktop/mobile navigation and the `use-crew-bids` gate. It requires the global `crew_bids.enabled` switch, an active account, verified email, and either the per-user grant or an existing admin role. The route retains `auth`, `verified`, `feature:crew_bids`, and `can:use-crew-bids`; permitted users reach the workspace directly. An authenticated, verified user without access receives 403 on a direct request; a disabled feature remains 404, while guest and unverified behavior follows the existing authentication middleware. `manage-crew-bids` and `BidPackagePolicy` remain admin-only. Livewire and save actions recheck access after a grant is revoked. The former `features.crew_bids.for_all_users` setting and its example environment entry were removed; `enabled` remains the global shutdown switch.
+
+Deployment requires the `add_crew_bids_access_to_users_table` migration. Before rollout, identify accounts that currently rely on `for_all_users`, agree which should receive grants, and apply those grants deliberately. The migration does not infer grants from existing private workspaces or grant every account. Revocation removes nav and route/action access while retaining the owner's saved data for any later regrant.
+
+Verification: 24 focused tests passed (157 assertions), covering granted and ungranted users, both admin roles, inactive and unverified accounts, the disabled feature, direct route and both nav layouts, admin grant/revoke, package-management denial, owner isolation, and revocation/regrant during an open workspace. No company-portal submission behavior was added. Pint passed after PHP edits, and one Larastan run passed with zero errors. No full suite or manual browser review was run.
+
 ### Bid package management — implemented 2026-11-03
 
 Admins manage packages in **Filament → Bid Packages** (`/admin/bid-packages`). The K4 Bids **Manage package** control opens this resource. Access uses the existing `manage-crew-bids` gate and a `BidPackagePolicy`; disabling crew bidding also disables package management. The list includes drafts, published packages, and archived packages, with month/fleet/revision, importer, line/trip counts, saved-workspace count, and UTC publication time. Search month/revision and filter fleet/status. The preview shows identity, timestamps, counts, and source coverage without displaying users' private preferences or ranked selections.

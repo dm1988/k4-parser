@@ -28,9 +28,15 @@ class CrewBidsTest extends TestCase
         $this->actingAs($user)->get(route('crew-bids.index'))->assertForbidden();
         $this->get(route('dashboard'))->assertDontSee('href="'.route('crew-bids.index').'"', false);
         config(['features.crew_bids.for_all_users' => true]);
+        $this->get(route('crew-bids.index'))->assertForbidden();
+        $user->update(['crew_bids_access' => true]);
         $this->get(route('crew-bids.index'))->assertOk()->assertSee('No bid package available yet')->assertDontSee('Manage package');
+        $this->assertSame(2, substr_count($this->get(route('dashboard'))->getContent(), 'href="'.route('crew-bids.index').'"'));
         $this->assertFalse(Gate::forUser($user)->allows('manage-crew-bids'));
         $this->assertTrue(Gate::forUser($user)->allows('use-crew-bids'));
+        $user->update(['crew_bids_access' => false]);
+        $this->get(route('crew-bids.index'))->assertForbidden();
+        $this->get(route('dashboard'))->assertDontSee('href="'.route('crew-bids.index').'"', false);
         config(['features.crew_bids.enabled' => false]);
         $this->get(route('crew-bids.index'))->assertNotFound();
         $this->assertFalse(Gate::forUser($user)->allows('use-crew-bids'));
@@ -38,7 +44,40 @@ class CrewBidsTest extends TestCase
 
     public function test_unverified_users_cannot_open_the_workspace(): void
     {
-        $this->actingAs(User::factory()->unverified()->create())->get(route('crew-bids.index'))->assertRedirect(route('verification.notice'));
+        $this->actingAs(User::factory()->crewBidsAccess()->unverified()->create())->get(route('crew-bids.index'))->assertRedirect(route('verification.notice'));
+    }
+
+    public function test_inactive_grantees_cannot_open_the_workspace_or_see_navigation(): void
+    {
+        $user = User::factory()->crewBidsAccess()->inactive()->create();
+
+        $this->actingAs($user)->get(route('crew-bids.index'))->assertForbidden();
+        $this->get(route('dashboard'))->assertDontSee('href="'.route('crew-bids.index').'"', false);
+
+        $this->actingAs(User::factory()->admin()->inactive()->create())->get(route('crew-bids.index'))->assertForbidden();
+    }
+
+    public function test_admin_roles_can_use_bids_without_an_explicit_grant(): void
+    {
+        foreach (['admin', 'super_admin'] as $role) {
+            $user = User::factory()->create(['role' => $role]);
+
+            $this->actingAs($user)->get(route('crew-bids.index'))->assertOk()->assertSee('Manage package');
+            $this->assertTrue(Gate::forUser($user)->allows('manage-crew-bids'));
+        }
+    }
+
+    public function test_profile_update_cannot_self_grant_crew_bid_access(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->patch(route('profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'crew_bids_access' => true,
+        ])->assertRedirect(route('profile.edit'));
+
+        $this->assertFalse($user->fresh()->crew_bids_access);
     }
 
     public function test_saved_bid_seat_controls_eligibility_and_keeps_each_seats_workspace(): void
@@ -189,11 +228,12 @@ class CrewBidsTest extends TestCase
     public function test_date_conflicts_exclude_available_lines_but_retain_selected_choices(): void
     {
         BidPackage::factory()->create();
-        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        $page
             ->call('add', 'F1')->call('toggleDate', '2026-11-03')
-            ->assertSet('selections', ['F1'])->assertViewHas('lines', fn (array $lines): bool => count($lines) === 0)
-            ->set('showList', true)->assertSee('Conflicts with requested UTC days off: 2026-11-03')
-            ->call('add', 'R2')->assertHasErrors('workspace')->assertSet('selections', ['F1']);
+            ->assertSet('selections', ['F1'])->assertViewHas('lines', fn (array $lines): bool => count($lines) === 0);
+        $page->set('showList', true)->assertSee('Conflicts with requested UTC days off: 2026-11-03');
+        $page->call('add', 'R2')->assertHasErrors('workspace')->assertSet('selections', ['F1']);
     }
 
     public function test_unknown_dates_remain_visible_with_a_warning_and_cannot_claim_days_off(): void
@@ -202,9 +242,10 @@ class CrewBidsTest extends TestCase
         $payload = $package->payload;
         $payload['lines']['F1']['calendar']['2026-11-20'] = ['status' => 'unknown', 'activity' => 'Unknown'];
         $package->update(['payload' => $payload]);
-        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)->call('toggleDate', '2026-11-20')
-            ->assertSee('Dates incomplete; conflicts unknown')->assertViewHas('lines', fn (array $lines): bool => count($lines) === 1 && $lines[0]['days_off'] === null)
-            ->call('add', 'F1')->assertSet('selections', ['F1']);
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        $page->call('toggleDate', '2026-11-20')
+            ->assertSee('Dates incomplete; conflicts unknown')->assertViewHas('lines', fn (array $lines): bool => count($lines) === 1 && $lines[0]['days_off'] === null);
+        $page->call('add', 'F1')->assertSet('selections', ['F1']);
     }
 
     public function test_calendar_updates_save_all_selected_dates_in_order_and_keep_selected_conflicts(): void
@@ -247,13 +288,14 @@ class CrewBidsTest extends TestCase
         $payload['lines']['F3'] = array_replace($payload['lines']['F1'], ['id' => 'F3', 'credit' => 9999, 'start_city' => 'LAX']);
         $payload['lines']['F3']['calendar']['2026-11-16'] = ['status' => 'occupied', 'activity' => 'Trip / occupied'];
         $package->update(['payload' => $payload]);
-        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        $page
             ->set('goals', ['days_off', 'credit'])->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F1', 'F3'])
             ->assertSee('Why this matched')->assertSee('Priorities in order; each lower goal breaks ties only.')
             ->assertSeeInOrder(['F1', 'Credit', 'Days off', 'Why this matched'])
-            ->assertSeeInOrder(['Maximize days off: 15', 'Maximize credit: 65:00'])
-            ->call('sortGoal', 'credit', 0)->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F3', 'F1'])
-            ->set('startCity', 'ANC')->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F1'])
+            ->assertSeeInOrder(['Maximize days off: 15', 'Maximize credit: 65:00']);
+        $page->call('sortGoal', 'credit', 0)->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F3', 'F1']);
+        $page->set('startCity', 'ANC')->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F1'])
             ->assertSee('Required start city ANC: Matches');
     }
 
@@ -345,10 +387,28 @@ class CrewBidsTest extends TestCase
         $this->assertDatabaseCount('bid_workspaces', 0);
     }
 
-    public function test_non_admin_cannot_import_even_when_general_access_is_enabled(): void
+    public function test_open_workspace_cannot_save_after_crew_bid_grant_is_revoked(): void
     {
-        config(['features.crew_bids.for_all_users' => true]);
-        Livewire::actingAs(User::factory()->create())->test(CrewBids::class)
+        BidPackage::factory()->create();
+        $user = User::factory()->crewBidsAccess()->create();
+        $page = Livewire::actingAs($user)->test(CrewBids::class)
+            ->call('add', 'F1')->assertSet('selections', ['F1']);
+        $user->update(['crew_bids_access' => false]);
+
+        $page->call('remove', 'F1')->assertForbidden();
+
+        $this->assertSame(['F1'], BidWorkspace::query()->where('user_id', $user->id)->sole()->selections);
+
+        $user->update(['crew_bids_access' => true]);
+        Livewire::actingAs($user)->test(CrewBids::class)->assertSet('selections', ['F1']);
+    }
+
+    public function test_crew_bid_grantee_cannot_import_or_manage_packages(): void
+    {
+        $user = User::factory()->crewBidsAccess()->create();
+
+        $this->actingAs($user)->get('/admin/bid-packages')->assertForbidden();
+        Livewire::actingAs($user)->test(CrewBids::class)
             ->assertDontSee('id="bid-package-import"', false)
             ->set('showImport', true)->assertDontSee('id="bid-package-import"', false)
             ->call('previewImport')->assertForbidden();
@@ -366,10 +426,10 @@ class CrewBidsTest extends TestCase
     public function test_source_metadata_is_escaped_and_raw_payload_is_not_in_livewire_state(): void
     {
         BidPackage::factory()->create(['source_revision' => '<script>unsafe()</script>']);
-        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
-            ->assertSee('&lt;script&gt;unsafe()&lt;/script&gt;', false)->assertDontSee('<script>unsafe()</script>', false);
-        $this->assertArrayNotHasKey('payload', $page->snapshot['data']);
-        $this->assertArrayNotHasKey('allLines', $page->snapshot['data']);
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        $page->assertSee('&lt;script&gt;unsafe()&lt;/script&gt;', false)->assertDontSee('<script>unsafe()</script>', false);
+        $this->assertArrayNotHasKey('payload', $page->getData());
+        $this->assertArrayNotHasKey('allLines', $page->getData());
     }
 
     public function test_owner_account_deletion_removes_private_workspace(): void
@@ -416,6 +476,7 @@ class CrewBidsTest extends TestCase
         $pickers = (new \DOMXPath($document))->query('//input[@type="date"]');
         $this->assertCount(2, $pickers);
         foreach ($pickers as $picker) {
+            $this->assertInstanceOf(\DOMElement::class, $picker);
             $this->assertSame($firstDate, $picker->getAttribute('min'));
             $this->assertSame($lastDate, $picker->getAttribute('max'));
         }
@@ -490,7 +551,8 @@ class CrewBidsTest extends TestCase
         $payload['trips']['999'] = array_replace($payload['trips']['749'], ['id' => '999']);
         $package->update(['payload' => $payload]);
 
-        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        $page
             ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['carry_days'] === 3 && count($lines[0]['month']) === 30 && count($lines[0]['trip_details']) === 1 && $lines[0]['trip_details'][0]['minimum_rest'] === '17:30')
             ->assertSeeHtml('aria-label="3 calculated occupied days after month-end for F1"')
             ->assertSee('+3')->assertSee('Trip 749')->assertDontSee('Trip 999')
@@ -548,7 +610,8 @@ class CrewBidsTest extends TestCase
         }
         $package->update(['payload' => $payload]);
 
-        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        $page
             ->assertViewHas('lines', fn (array $lines): bool => array_column($lines[0]['quick_flags'], 'label') === $expectedLabels);
 
         $this->assertSame($expectedLabels === [] ? 0 : 1, substr_count($page->html(), 'aria-label="Trip flags for F1"'));
@@ -785,7 +848,8 @@ class CrewBidsTest extends TestCase
         ];
         $package->update(['payload' => $payload]);
 
-        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        $page
             ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['carry_days'] === 2 && $lines[0]['carry_basis'] === 'Published carry count')
             ->assertSeeHtml('aria-label="2 published carry days for F1"')
             ->assertSee('Published carry count');
@@ -807,7 +871,8 @@ class CrewBidsTest extends TestCase
         $payload['lines'] = ['F1' => array_replace($payload['lines']['F1'], $creditFields)];
         $package->update(['payload' => $payload]);
 
-        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        $page
             ->assertViewHas('lines', function (array $lines) use ($expectedSeconds, $expectedLabel): bool {
                 $this->assertSame($expectedSeconds, $lines[0]['carry_credit_seconds']);
                 $this->assertSame($expectedLabel, $lines[0]['carry_credit_label']);

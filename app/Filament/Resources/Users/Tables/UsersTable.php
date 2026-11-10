@@ -29,6 +29,10 @@ class UsersTable
                     ->label('Active')
                     ->boolean()
                     ->sortable(),
+                IconColumn::make('crew_bids_access')
+                    ->label('K4 Bids grant')
+                    ->boolean()
+                    ->sortable(),
                 IconColumn::make('has_bought_coffee')
                     ->label('Bought coffee')
                     ->boolean()
