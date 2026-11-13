@@ -139,7 +139,7 @@ Deployment requires the `add_package_management_to_bid_packages` migration, whic
 ### Workspace and presentation
 
 - Returning users open saved results; first-time preference setup is skippable. Keep package statistics and source metadata under Package details and admin imports under Manage package.
-- My bid list opens a desktop drawer or mobile full-screen panel. Preserve browsing context and restore focus when it closes.
+- My bid list opens a desktop drawer or mobile full-screen panel. The close button and Escape key dismiss either layout; clicking the workspace backdrop also closes the desktop drawer. Closing preserves browsing context and returns keyboard focus to the control that opened the list, or to the header list button if that control has disappeared.
 - Collapsed line cards fit within 150px without a card scrollbar: metrics/action, full-month calendar, then footer controls. Line and Trip sit inline on the left; Details and the question-mark match disclosure stay on the right. Expanded content may grow.
 - Compact flags beneath the line ID show a common return airport, a common start/end route, or mixed trip endpoints, plus known deadhead presence. Endpoint flags require complete linked-trip endpoint coverage; positive deadhead evidence may still appear with partial coverage. Use icons on narrow screens, labels on larger screens, and full explanations in Details. These flags describe trips, not an assigned crew base.
 - Use one interactive chevron timeline per trip. Exact dated UTC times, block basis, elapsed duration, and available credit/rest information expand at the selected segment. Avoid a duplicate vertical leg list.

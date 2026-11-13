@@ -119,6 +119,40 @@ test('date inspection leaves unrelated and modified keys alone and tolerates an 
     assert.equal(empty.inspected, '');
 });
 
+test('closing the bid list restores its opener after the drawer releases focus', () => {
+    const state = createCrewBidsHeader();
+    const ticks = [];
+    const focused = [];
+    const opener = { isConnected: true, focus: (options) => focused.push(['opener', options]) };
+    state.$wire = { showList: false };
+    state.$refs = { listTrigger: { focus: (options) => focused.push(['header', options]) } };
+    state.$nextTick = (callback) => ticks.push(callback);
+
+    state.openList({ currentTarget: opener });
+    assert.equal(state.$wire.showList, true);
+    state.closeList();
+    assert.equal(state.$wire.showList, false);
+    assert.deepEqual(focused, []);
+    ticks.shift()();
+    assert.deepEqual(focused, [['opener', { preventScroll: true }]]);
+    assert.equal(state.listReturnFocus, null);
+
+    state.closeList();
+    assert.equal(ticks.length, 0);
+});
+
+test('closing the bid list falls back to the header trigger when its opener was removed', () => {
+    const state = createCrewBidsHeader();
+    let focused = '';
+    state.$wire = { showList: false };
+    state.$refs = { listTrigger: { focus: () => { focused = 'header'; } } };
+    state.$nextTick = (callback) => callback();
+
+    state.openList({ currentTarget: { isConnected: false, focus: () => assert.fail('Detached opener received focus') } });
+    state.closeList();
+    assert.equal(focused, 'header');
+});
+
 test('bid actions show progress immediately and ignore duplicate clicks until the request finishes', async () => {
     const state = createBidAction();
     let finish;

@@ -30,6 +30,10 @@ Optionally add references and constraints.
 # Tasks
 ## Crew bidding
 
+Bid list drawer closing completed (2026-11-13): The desktop workspace backdrop now closes My bid list. Escape and the visible Close control use the same close path, with focus returned to the opener or the header list button if the opener was removed. The mobile full-screen panel retains its visible close control. Updated the interaction contract in CREW_BIDS.md. Focused JavaScript checks and the Vite build passed; Larastan passed at integration. Manual browser and touch review remain outstanding.
+
+Commit message: `fix: close bid list drawer from workspace backdrop`
+
 Staged Larastan findings resolved (2026-11-13): Split Livewire and Mockery test chains where intermediate assertions return a different static type, and expressed the database restriction test with an expected exception. The seven affected tests passed (46 assertions); Pint and staged-file Larastan passed at integration.
 
 Commit message: `test: fix static analysis of bid package tests`

@@ -36,6 +36,20 @@ export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeOb
 
     return {
         filtersOpen: false,
+        listReturnFocus: null,
+        openList(event) {
+            this.listReturnFocus = event?.currentTarget ?? null;
+            this.$wire.showList = true;
+        },
+        closeList() {
+            if (!this.$wire.showList) return;
+            this.$wire.showList = false;
+            this.$nextTick(() => {
+                const target = this.listReturnFocus?.isConnected ? this.listReturnFocus : this.$refs.listTrigger;
+                target?.focus({ preventScroll: true });
+                this.listReturnFocus = null;
+            });
+        },
         init() {
             this.$nextTick(() => {
                 if (destroyed) return;
