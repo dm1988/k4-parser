@@ -30,6 +30,10 @@ Optionally add references and constraints.
 # Tasks
 ## Crew bidding
 
+Auto-bidding discovery update (2026-11-13): A user-run read-only command observed 315 editable Choice/Line slots, 43 populated slots, an enabled `btn_update` control, and a Submitted Bid Lines link. This supports an apparently open Bid Sheet but does not verify the account, bid context, deadline, submit event, acceptance, or receipt. No bid was sent. CREW_BIDS.md now records this evidence; reviewed submission remains pending authenticated read-only protocol and report discovery.
+
+Commit message: `docs: record open-window crew bid portal discovery`
+
 Bid list drawer closing completed (2026-11-13): The desktop workspace backdrop now closes My bid list. Escape and the visible Close control use the same close path, with focus returned to the opener or the header list button if the opener was removed. The mobile full-screen panel retains its visible close control. Updated the interaction contract in CREW_BIDS.md. Focused JavaScript checks and the Vite build passed; Larastan passed at integration. Manual browser and touch review remain outstanding.
 
 Commit message: `fix: close bid list drawer from workspace backdrop`
