@@ -51,8 +51,33 @@ class CrewBidsPageDataFactory
             latest: $package === null ? null : BidPackage::query()->whereNotNull('published_at')->whereNull('archived_at')
                 ->where('period', $package->period)->where('fleet', $package->fleet)->where('id', '>', $package->id)->latest('id')->first(),
             copyText: implode("\n", array_map(fn (string $id, int $index): string => ($index + 1).'. '.$id, $criteria->selections, array_keys($criteria->selections))),
+            aiPrompt: $this->aiPrompt($criteria->selections, $browse->allLines),
             goalLabels: ['credit' => 'Maximize credit', 'days_off' => 'Maximize days off', 'blocks' => 'Fewer work blocks'],
         );
+    }
+
+    /**
+     * @param  list<string>  $selections
+     * @param  array<string, array<string, mixed>>  $availableLines
+     */
+    private function aiPrompt(array $selections, array $availableLines): ?string
+    {
+        if ($selections === []) {
+            return null;
+        }
+
+        $values = [];
+        $rows = [];
+        foreach ($selections as $index => $id) {
+            if (! isset($availableLines[$id]) || preg_match('/\A[FQR]([1-9]\d{0,3})\z/', $id, $match) !== 1 || isset($values[(int) $match[1]])) {
+                return null;
+            }
+
+            $values[(int) $match[1]] = true;
+            $rows[] = ($index + 1).' '.$match[1];
+        }
+
+        return 'Fill in the form using the following list where the leading number is the **Rank** (the form field number) and the second number is the **Value** to be entered into that field. The input fields follow the ID pattern `ContentPlaceHolder1_tb_l{Rank}`.'."\n\n".implode("\n", $rows);
     }
 
     /** @return list<array{date: string, day: int, weekday: string}> */

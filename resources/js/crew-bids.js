@@ -9,7 +9,7 @@ export async function copyBidText(field, status, clipboard) {
     } catch {
         field.focus();
         field.select();
-        status.textContent = 'Copy unavailable. Select and copy the list above.';
+        status.textContent = 'Copy unavailable. Select and copy the text above.';
     }
 }
 
@@ -196,7 +196,7 @@ export default function initializeCrewBids() {
     document.addEventListener('click', async (event) => {
         const button = event.target.closest('[data-bid-copy]');
         if (!button) return;
-        const field = document.getElementById('bid-copy-text');
+        const field = document.getElementById(button.dataset.bidCopyTarget || 'bid-copy-text');
         const status = button.parentElement.querySelector('[data-bid-copy-status]');
         await copyBidText(field, status, navigator.clipboard);
     });

@@ -127,11 +127,13 @@ class CrewBidsTest extends TestCase
     {
         $package = BidPackage::factory()->create();
         $user = User::factory()->admin()->create();
-        Livewire::actingAs($user)->test(CrewBids::class)->call('finishSetup')
+        $page = Livewire::actingAs($user)->test(CrewBids::class)->call('finishSetup')
             ->call('add', 'F1')->call('add', 'R2')->call('add', 'F1')->assertSet('selections', ['F1', 'R2'])
             ->call('move', 'R2', 0)->set('sort', 'credit')->assertSet('selections', ['R2', 'F1'])
-            ->set('showList', true)->set('showReview', true)->assertSee("1. R2\n2. F1")
-            ->assertSet('dirty', false);
+            ->set('showList', true)->set('showReview', true)->assertSee("1. R2\n2. F1");
+        $page->assertViewHas('aiPrompt', fn (?string $prompt): bool => $prompt === 'Fill in the form using the following list where the leading number is the **Rank** (the form field number) and the second number is the **Value** to be entered into that field. The input fields follow the ID pattern `ContentPlaceHolder1_tb_l{Rank}`.'."\n\n1 2\n2 1");
+        $page->assertSee('Copy AI prompt')->assertSee('data-bid-copy-target="bid-ai-prompt-text"', false);
+        $page->assertSet('dirty', false);
         $saved = BidWorkspace::query()->where('user_id', $user->id)->sole();
         $this->assertSame($package->id, $saved->bid_package_id);
         $this->assertSame(['R2', 'F1'], $saved->selections);
@@ -151,8 +153,8 @@ class CrewBidsTest extends TestCase
         $user = User::factory()->admin()->create();
         $page = Livewire::actingAs($user)->test(CrewBids::class)
             ->call('add', 'R2')->call('add', 'F1')
-            ->set('minimumCredit', 70)->set('sort', 'credit')
-            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F4', 'F3']);
+            ->set('minimumCredit', 70)->set('sort', 'credit');
+        $page->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F4', 'F3']);
 
         $page->call('addMatching')->assertHasNoErrors()->assertSet('selections', ['R2', 'F1', 'F4', 'F3'])
             ->call('addMatching')->assertSet('selections', ['R2', 'F1', 'F4', 'F3']);

@@ -30,6 +30,14 @@ Optionally add references and constraints.
 # Tasks
 ## Crew bidding
 
+AI form prompt completed (2026-11-13): Review bid list now offers an AI form prompt popout with a copy button. It preserves the saved rank order, converts `F`/`Q`/`R` line IDs to numeric portal values, and withholds the prompt for unavailable, invalid, or repeated portal numbers. The existing numbered-list copy remains available; neither action submits a bid. Four focused PHP tests (44 assertions) and 23 focused JavaScript tests passed. Pint, Larastan (zero errors), and the Vite build passed.
+
+Commit message: `feat: add AI form prompt to bid review`
+
+December B777 portal retrieval completed (2026-11-13): Downloaded the public `Lines.pdf`, `Overview.xlsx`, and `Trips.pdf` links supplied for December 2026 into `storage/app/private/Bid_Packages`. All three returned HTTP 200 with expected document types; the existing focused Filament import test parsed them as one December 777 draft with complete source coverage (1 test, 12 assertions). This was a direct, manual download: the existing portal command only discovers the Bid Sheet, and no package downloader or automatic import was enabled. The running application's packages were not changed.
+
+Commit message: `docs: record December 777 portal retrieval`
+
 Branch integration completed (2026-11-13): Merged `origin/crew-bids` into `crew-bids`, retaining the local typed browsing refactor and dated Overview fix alongside the remote published-carry and per-user access changes. Resolved the TODO-only conflict by retaining the remote cleanup and concise local outcomes. Merge commit `0297a0e` contains both histories; the branch is no longer behind its remote. Preserved existing stashes and concurrent staging.
 
 Validation: Elevated Sail was available. All 145 focused tests passed (1,177 assertions), covering imports including the supplied December files, package management, page-data assembly, browsing, carry precedence and user access. Pint passed, the single Larastan run passed with zero errors, and whitespace checks passed. No full suite or browser review was run.

@@ -42,6 +42,7 @@ class CrewBidsPageDataFactoryTest extends TestCase
         $this->assertSame(0, $viewData['total']);
         $this->assertSame(0, $data->activeFilterCount);
         $this->assertSame('No active browsing filters', $data->activeFilterSummary);
+        $this->assertNull($data->aiPrompt);
     }
 
     public function test_filtered_page_retains_manual_ranks_and_unavailable_selected_choices(): void
@@ -73,9 +74,28 @@ class CrewBidsPageDataFactoryTest extends TestCase
         $this->assertSame(2, $viewData['total']);
         $this->assertSame(['ANC'], $viewData['cities']);
         $this->assertSame("1. missing\n2. R2\n3. F3", $data->copyText);
+        $this->assertNull($data->aiPrompt);
         $this->assertSame(1, $data->activeFilterCount);
         $this->assertSame('Min credit 70h', $data->activeFilterSummary);
         $this->assertSame($payload, $package->fresh()->payload);
+    }
+
+    public function test_ai_form_prompt_rejects_repeated_portal_numbers(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['Q1'] = array_replace($payload['lines']['R2'], ['id' => 'Q1']);
+        $package->update(['payload' => $payload]);
+        $user = User::factory()->admin()->create();
+        $criteria = new CrewBidBrowseCriteria(
+            seat: 'FO',
+            preferences: ['goals' => [], 'days_off' => [], 'start_city' => '', 'initialized' => true],
+            selections: ['F1', 'Q1'],
+        );
+
+        $data = app(CrewBidsPageDataFactory::class)->make($package, $user, $criteria);
+
+        $this->assertNull($data->aiPrompt);
     }
 
     public function test_package_queries_use_the_supplied_users_seat_and_draft_ownership(): void
