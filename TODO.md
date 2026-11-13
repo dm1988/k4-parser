@@ -30,6 +30,12 @@ Optionally add references and constraints.
 # Tasks
 ## Crew bidding
 
+Branch integration completed (2026-11-13): Merged `origin/crew-bids` into `crew-bids`, retaining the local typed browsing refactor and dated Overview fix alongside the remote published-carry and per-user access changes. Resolved the TODO-only conflict by retaining the remote cleanup and concise local outcomes. Merge commit `0297a0e` contains both histories; the branch is no longer behind its remote. Preserved existing stashes and concurrent staging.
+
+Validation: Elevated Sail was available. All 145 focused tests passed (1,177 assertions), covering imports including the supplied December files, package management, page-data assembly, browsing, carry precedence and user access. Pint passed, the single Larastan run passed with zero errors, and whitespace checks passed. No full suite or browser review was run.
+
+Commit message: `docs: record crew-bids merge verification`
+
 Dated Overview worksheet import completed (2026-11-13): The December B777 worksheet is named `777 December 2026 Overview`. The reader now accepts an optional month/year between either supported fleet and `Overview`, preserving existing names and cross-document validation. All 37 focused import/package-management tests passed (372 assertions), including the three supplied December files; Pint and the single Larastan run passed. Original documents remain unchanged.
 
 Commit message: `fix: accept dated bid overview worksheet names`
