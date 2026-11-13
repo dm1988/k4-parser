@@ -30,139 +30,29 @@ Optionally add references and constraints.
 # Tasks
 ## Crew bidding
 
-Dated Overview worksheet import completed (2026-11-13): The December B777 workbook uses the worksheet name `777 December 2026 Overview`, which the importer rejected because it required the fleet number immediately before `Overview`. The reader now accepts an optional month/year between the fleet and `Overview` for both 747 and 777, while retaining existing worksheet names, fleet restrictions, daily-cell period detection and cross-document validation. Added portable worksheet-name acceptance/rejection regressions and a Filament import regression using all three supplied private December files. The original documents remain unchanged and are not committed.
-
-Validation: Elevated Sail was available. The dated worksheet cases and the actual Filament import first reproduced the reported validation error. All 37 focused tests then passed (372 assertions), including the complete December import, existing private 747/777 packages and package-management behavior. Pint passed, the single Larastan run passed with zero errors, and whitespace checks passed. No full suite or browser review was run.
+Dated Overview worksheet import completed (2026-11-13): The December B777 worksheet is named `777 December 2026 Overview`. The reader now accepts an optional month/year between either supported fleet and `Overview`, preserving existing names and cross-document validation. All 37 focused import/package-management tests passed (372 assertions), including the three supplied December files; Pint and the single Larastan run passed. Original documents remain unchanged.
 
 Commit message: `fix: accept dated bid overview worksheet names`
 
-Published guarantee floor enforcement completed (2026-11-03): F55's verified source guarantee was correctly stored as 78:10, but the matching private scenario had custom assumptions enabled with line_guarantee=false. This excluded the published floor and displayed 64 × $166.63 = $10,664.32 despite the known 78:10 × $166.63 = $13,024.91 minimum. Saved profile contexts now always include published line Credit, and writes normalize the legacy field to true. Removed its advanced checkbox so this required minimum cannot be disabled again. Qualified/full-period and unsupported-scenario gates remain intact; missing occupied-day details still withhold a complete total. No personal scenario rows, source packages or bid ranks were rewritten.
-
-Validation: Elevated Sail was available. A new Livewire regression first reproduced the F55 failure, then passed with the fix, exercising legacy custom exclusions, the displayed incomplete minimum, checkbox removal and an attempted false value on save. All 30 focused tests passed (131 assertions) across defaults, private pay editing/privacy/concurrency and view-model presentation. Pay-edit fixtures now explicitly include published guarantees through a factory state while existing legacy fixtures retain missing-source behavior. Pint passed, the single Larastan run passed with zero errors, and staged/unstaged whitespace checks passed. No full suite or browser review was run; frontend assets were unchanged. Updated the existing Estimated pay contract in CREW_BIDS.md.
-
-Commit message: `fix: enforce published credit as the crew pay minimum`
-
-Carry-in line value and included occupied-day resolution completed (2026-11-03): Implemented the user's next-month excess-day planning assumption. Outgoing carry-in pays one whole 1.5× credited-hour payment at each segment's earning/departure UTC-day rate, additional to originating-period base; passenger deadhead first credits 50% of scheduled travel, giving 0.75 paid hours per travel hour. Complete source duty groups and exact reconciliation to published pairing credit are required. Entire transition duties allocate to their receiving compensation month, including January–March exceptions and year rollover, without splitting segments or counting ordinary credit twice. Unreconciled or incomplete sources still show a known minimum rather than a fabricated complete estimate.
-
-Carry-in headlines now say Estimated line value and combine originating-period scheduled gross with the receiving-period excess-day payment. The expanded breakdown shows those allocations separately, and Highest estimated line value sorts on the combined amount. The receiving month's unrelated line pay/guarantee is excluded. Source parser v4 preserves Show Time/Debriefing duty groups; verified enrichment upgrades legacy pay metadata without changing published payloads or bid rankings. Its repeatable included-occupied-day option records date-specific confirmations and preserves matching prior confirmations. Applied verified enrichment to all 104 November 777 lines and recorded the user's F49 November 15 confirmation that its obligation is already included in 89:00; no general waiver for other unlinked occupied days was added.
-
-At FO step 3 ($166.63/h; adjusted longevity 2024-07-29), F83's 90:15 guarantee gives a $15,038.36 November base, with $1,812.10 December excess-day deadhead payment and $16,850.46 combined line value after final-only rounding. F49's 89:00 produces $14,830.07 without adding its already-included occupied day. Updated CREW_BIDS.md with these confirmed policies, worked values, source gates and their status as user-confirmed planning assumptions. The user confirmed the F83 guarantee is now working in the application.
-
-Validation: Elevated Sail was available. Focused pay/default/source/display/sort/page-data integration passed 98 tests (368 assertions); the parser-inclusive focused run passed 68 tests (309 assertions), overlapping arithmetic/source coverage. Regression cases include one-hour deadhead at 0.75 pay, whole-duty allocation with different earning-day rates, January/February/year-end boundaries, duplicate/unreconciled source rejection, pre-midnight report dates, scoped occupied-day confirmations, combined sorting and monthly breakdowns without private setup. Pint passed, the single Larastan run passed with zero errors, and the production Vite build passed. Staged and unstaged whitespace checks passed. No full suite or agent browser review was run. Preserved previous changes and staging.
-
-Commit message: `fix: calculate combined carry-in line value and resolve included duty days`
-
-Estimated pay simplification and source recovery completed (2026-11-03): F-prefixed lines now use hard-line rules and Q-prefixed lines use reserve rules automatically. Qualified hourly Flight Pay, full-period availability and published line Credit as the pay minimum default to yes; deliberate exceptions remain under optional advanced adjustments. Compact pay is shown automatically, routine per-line review/category inputs were removed, and personal longevity/Check Airman settings remain in the profile.
-
-Resolved repeated $10,664.32 minimums in the November 2026 package: its legacy payload lacked contractual source-credit and pairing-credit fields. Added an encrypted, serialization-hidden pay-source supplement and a recovery command that verifies exact original-file fingerprints and package identity before attaching parsed pay facts, without replacing the published payload, selections or ranks. Applied the migration and recovered all 104 lines from the matching original Lines, Trips and Overview files. With FO longevity 2024-07-29, F1 legitimately remains $10,664.32 (64 × $166.63), while F8 calculates $12,761.08 and F9 $14,399.61. Incomplete cases retain a labelled known minimum separately from a complete total; equal minimums are not artificially differentiated.
-
-Removed repeated encrypted-payload reads, reused compensation-period/rate calculations, and deferred detailed pay presentation until its disclosure opens. The 300-line regression read the encrypted payload once and calculated in approximately 0.9 seconds; browsing/calculation for the actual 104-line package measured approximately 0.41 seconds after recovery. These are service measurements, not whole-page/browser timings.
-
-Validation: Elevated Sail was available. The final focused integration run passed 151 tests (752 assertions), covering pay arithmetic, source verification/conflict rejection, defaults, privacy, lazy presentation, sorting and existing browsing behavior. Pint and the production Vite build passed. The single Larastan run found one redundant category `isset()` guard introduced by automatic category derivation; removed the redundant check without suppressions. Larastan was not rerun under the one-pass rule, so no clean post-correction static-analysis result is claimed. After that correction and removing the unused category-choice view-model property, all 23 focused pay validation/presentation tests passed again (98 assertions), followed by Pint. Staged and unstaged whitespace checks passed. No full suite or manual browser review was run. Preserved unrelated changes and existing staging.
-
-Commit message: `fix: simplify and accelerate per-line pay estimates`
-
-Moved personal pay settings to the user profile (2026-11-03): Adjusted pay-longevity date (UTC) and Check Airman override now live under Profile → User preferences → K4 Bids, stored together as encrypted, serialization-hidden user data. The owner-only profile update validates the date/flag, normalizes the checkbox to a boolean, permits clearing longevity to disable totals and preserves values when pay fields are omitted. Estimated pay reads both fields exclusively from the owning user's profile. The comparison editor shows their saved values and links to the profile; its write allow-list rejects the former longevity/override inputs. Package/seat eligibility, display options and line adjustments remain comparison-specific. Removing comparison inputs retains the two personal settings and existing bids.
-
-The migration transfers the old encrypted longevity and consistent package Check Airman choices, removes their old copies and increments comparison revisions. Conflicting flags are retained privately and require a profile choice before complete totals are available. Rollback restores personal values into legacy encrypted settings/scenarios; unresolved conflicts recover their original per-context flags. Updated CREW_BIDS.md to reflect the new settings location and migration behavior. Preserved pre-existing feature changes and staging.
-
-Validation: Elevated Sail was available. All 165 focused tests passed (861 assertions) across profile updates/privacy, pay editing/recalculation, migration/rollback, pay presentation, page-data assembly, workspace behavior and pure pay arithmetic. The migration is confirmed applied locally. Pint, production Vite build and staged/unstaged whitespace checks passed. The single Larastan run reported two findings because User.casts() lacked the exact encrypted-array return metadata used by sibling models; documented the actual cast map to resolve that inference, without suppressions or changing runtime casting. Larastan was not rerun, following the one-pass rule, so a clean post-correction static-analysis result is not claimed. No full suite or manual browser review was run.
-
-Commit message: `feat: move crew pay settings into user profile`
-
-Estimated pay implementation completed (2026-11-03): Delivered the qualified hourly Flight Pay / full-period scheduled gross USD scope. Added version/source/applicability metadata to the unchanged CA/FO rates, adjusted-longevity step resolution with anniversary/leap-day rules, UTC compensation-period boundaries, exact rational calculation with final-only half-up rounding, separate greater-of base candidates and supported additional compensation. Carried credits retain their earning/departure-day rate. Open Time flight on an SDFDO uses the confirmed whole 1.5× additional payment without a separate ordinary-credit payment. Preserved contractual source guarantee independently of adjusted comparison Credit; incomplete source coverage never falls back to a complete guarantee-only estimate.
-
-Added an encrypted owner-only pay profile with package/revision/seat/line scenarios, validated private credit inputs, correction/removal, and optimistic concurrency protection. Complete source pairing totals are deduplicated and accepted only within covered constant-rate compensation periods; reserve/composite, boundary-crossing or incomplete cases require reviewed dated private inputs. Supported entitlements include passenger deadhead, reserve/vacation/short training, taxi-only, tested/CQ CBT, random tests, maintenance started-hour units, minimum Check Airman override and non-Check-Airman simulator instruction. Unsupported applicable branches explicitly prevent complete totals. Assignment de-duplication preserves distinct separately payable rules while excluding repeated ordinary credit and ordinary/Open Time overlap.
-
-Added Pay context and per-line private input editing, optional compact amounts, expanded breakdowns and Highest estimated pay ordering. `CrewBidPayViewModel` prepares pay labels, component amounts and rate intervals; `CrewBidPayEditorViewModel` prepares editor choices, rows and period context. The main view retains its existing page-data factory/DTO path. Saved scenario amounts remain distinct from unsaved edits; validation, concurrency and connection failures retain drafts. Pay sorting and bulk-add share owner context; unknown values sort last with natural Line ID ties. Filters, selected bids, manual ranks and numbered-copy schema are preserved. Updated the existing Estimated pay section and rule/coverage matrix in CREW_BIDS.md, retaining the historical Sections 2/5 review and labelled user-confirmed assumptions.
-
-Validation: Elevated Sail was available. The focused integration run passed 157 tests (872 assertions) across pay calculation/presentation/profile behavior and the affected comparison/page-data/line-view-model regressions. After the final de-duplication refinement, all 58 pay tests passed (171 assertions), and the two affected assignment tests passed again (11 assertions). This represents 158 distinct focused tests across the runs; no full suite was run. Pint, production Vite build, staged/unstaged whitespace checks passed. The single Larastan run passed with zero errors; it was not repeated after the final validation refinement. Sail migration status confirms the new private-pay table migration is applied locally. No dependencies were added. Manual browser layout, native modal/focus/keyboard interaction and network-failure recovery remain unverified. Preserved unrelated working-tree edits and existing staging.
-
-Commit message: `feat: add private scheduled pay estimates and comparisons`
-
-Estimated pay Sections 2/5 review completed (2026-11-03): Read the supplied CBA's complete Section 2 (printed pp. 11–15 / PDF pp. 23–27) and Section 5 including Appendix 5-A (printed pp. 25–32 / PDF pp. 37–44), comparing them with the current pay plan. Added EP1–EP8 under Estimated pay in `CREW_BIDS.md` with clause/page evidence and required implementation gates. Distinguished unverified user-confirmed longevity/anniversary/leap-day/proration/rounding assumptions from express pay branches: new-hire weekly pay/first observation Flight Pay, qualification-date pay-scale changes, off-day clause interactions, taxi/training/miscellaneous pay, overrides, entitlement-unit rules, eligibility cross-references, and biweekly deposit timing. Preserved approved scenario choices while removing the implication that product decisions alone establish CBA correctness. Documented consistent UTC/Month, published-guarantee, greater-of, and transition-allocation structure. No new compensation formula was silently substituted.
-
-Validation: Extracted and read the local PDF pages using Sail's installed PDF parser, checked clause references and plan consistency, and ran documentation whitespace checks. This review changed documentation only; no application tests, Pint, or Larastan were required. Preserved unrelated working-tree and staged changes.
-
-Commit message: `docs: review estimated pay plan against CBA sections 2 and 5`
-
-CrewBids rendering refactor completed (2026-11-03). Goal: Give browsing, revision comparison, and page assembly explicit boundaries and typed data contracts. Current implementation: Added readonly `CrewBidBrowseCriteria`, `CrewBidBrowseResult`, and `CrewBidsPageData` DTOs; extracted `BrowseBidLines` and `CompareBidPackageRevision`; and introduced `CrewBidsPageDataFactory` for page queries, calendar data, summaries, and existing line view models. The Livewire component supplies criteria and delegates through injected services. `addMatching()` uses browsing directly, avoiding unrelated page queries and presentation work. The page DTO exposes the existing Blade variables through a documented array shape.
-
-Problem addressed: `viewData()` combined database queries, eligibility, filters/sorting, selected-choice fallbacks, revision comparisons, and presentation in one broadly typed array. Preserved the existing filtering, precise credit comparisons, seat eligibility, manual rankings, archived-package access, draft ownership, revision confirmation, and private Livewire state behavior.
-
-Validation: Elevated Sail integration passed all 100 focused tests (704 assertions) across `CrewBidsPageDataFactoryTest`, `CrewBidsTest`, `CrewBidAdvancedFiltersTest`, `CrewBidLayoverFiltersTest`, and `CrewBidLineViewModelTest`, using isolated in-memory SQLite. New coverage checks empty DTO output, retained unavailable selections/manual ranks, explicit user/seat query scoping, filtered bulk-add ordering/idempotence, and ordered revision details for unchanged, changed, removed, and seat-unavailable lines. Pint passed; the single Larastan run passed with zero errors. Task-scoped staged and unstaged whitespace checks passed. No full suite or manual browser review was run. Preserved concurrent documentation edits and staging.
+CrewBids rendering refactor completed (2026-11-03): Added typed browsing/page-data DTOs, extracted `BrowseBidLines` and `CompareBidPackageRevision`, and introduced `CrewBidsPageDataFactory`. The Livewire component delegates browsing and page assembly while preserving filters, private rankings, eligibility and revision confirmation. The original focused integration passed 100 tests (704 assertions), Pint and Larastan.
 
 Commit message: `refactor: extract crew bid browsing and typed page data`
 
-Estimated pay planning completed (2026-11-03): Reviewed the existing rate JSON, source guarantee/credit calculations, private workspace/profile conventions, package administration, and documented CBA findings. Expanded the existing Estimated pay section in `CREW_BIDS.md` into eight implementation subtasks with dependencies, acceptance criteria, and suggested commit messages: supported pay contract, versioned rates/longevity, private pay context, payable-credit/period normalization, scheduled gross calculation, workspace display, comparable pay sorting, and integration. User selected scheduled gross pay with supported credits/premiums for the first release and confirmed continued applicability of the supplied rates. Decisions establish a separate adjusted pay-longevity date; step 1 for the first year, annual increases capped permanently at 12, and March 1 anniversaries in non-leap years for a February 29 start; new rates at 0000Z on the anniversary date; MBPG/published guarantees weighted by old/new rate UTC days divided by actual UTC days in the compensation period; one final nearest-cent half-up rounding after exact calculation; private planning inputs with assumptions shown; and USD gross contractual pay before taxes/deductions, excluding per diem/expense reimbursements. The first release includes an optional compact amount, expanded breakdown, and Highest estimated pay sort, retaining manual bid rank. Recorded the guarantee formula, rate intervals, manual-input provenance, and display-rounding reconciliation. All product questions asked in planning are answered. The source-backed category/eligibility matrix, cross-date/transitioned-credit rate attribution, and current carry/credit arithmetic corrections remain explicit implementation work in the plan; dollar estimates are not implemented by this documentation task.
-
-Validation: Documentation/source consistency review and whitespace checks only. This planning task changed no application/PHP files; tests, Pint, and Larastan were not run. Preserved the user's existing removal of the alternate pay-feature name.
-
-Commit message: `docs: plan scheduled gross pay estimates and prerequisites`
-
-Bid package management completed (2026-11-03): Added the Filament Bid Packages list and preview, month/revision search, fleet/status filters, source coverage/counts, importer/publication details, and saved-workspace counts without exposing private rankings. Admins can import, replace their own unused draft sources, preview/publish, archive/restore published packages, and delete their own unused drafts. Shared `ImportBidPackage` handles validation, per-admin rate limiting, fingerprint deduplication, and source cleanup for both Filament and the existing Livewire entry point. Published contents remain fixed; corrections use new revisions and existing crew confirmation. Rechecks under transaction locks protect draft mutations. Archived packages are hidden from new selections and revision notices while existing owners retain their saved workspace for its seat. The migration adds `archived_at` and replaces cascading package deletion with a restrictive workspace foreign key; it was applied to the local Sail app database. Manage package now opens Filament. Documented the workflow, ownership, retention, archive/deletion behavior, and migration/rollback implications in `CREW_BIDS.md`, preserving its pre-existing terminology edits. Automated email/portal intake remains separate.
-
-Validation: Elevated Sail was available. The focused package-management/import/workspace/filter/seat regression run passed (115 tests, 951 assertions); after the final import failure-path correction, the package resource file passed again (17 tests, 190 assertions). Coverage includes import/preview/publication, duplicate imports, draft replacement and failed replacement, parser failure recovery, rate limits/invalid uploads, owner/feature authorization, stale deletion, database workspace protection, archive/restore, seat-specific saved access, archived revision exclusion, navigation, and escaped source labels. Pint, the production Vite build, local migration, and final whitespace checks passed. The single Larastan run reported two `variable.undefined` findings after Filament's void-returning `halt()` call; an explicit return was added to that failure path and the affected resource tests passed. Larastan was not rerun, following the once-only instruction, so a clean static-analysis rerun is not claimed. Manual browser layout, upload interaction, and keyboard checks remain unverified.
-
-Commit message: `feat: manage bid packages in Filament`
-
-Advanced comparison planning outcome (2026-11-03): Expanded the existing `Advanced comparison controls` section in `CREW_BIDS.md` into ten subtasks covering definitions/coverage, grouped controls, credit/crew, duty/carry, work patterns, airports, verified guarantee comparisons, supported sorts, optional display, and later scoring definitions. Recorded current implementation evidence, Any/Only/Exclude and missing-data semantics, dependencies, acceptance criteria, and commit messages. User confirmed hard filters with selected bids retained; explicitly labelled base pairing credit; published carry count with a labelled calculated next-month occupancy fallback only when absent; split detection within the displayed month from known work blocks separated by confirmed off days; first chronological trip report in UTC; final chronological trip endpoint for end city; avoided airports across all leg endpoints including deadheads; country groups; and temporary filters. Long stays and extra views are deferred. Source coverage, precise boundary/window behavior, guarantee applicability/provenance, and optional sort aggregation still require verification before their dependent controls. Implementation remains pending; preserved unrelated edits in `CREW_BIDS.md`.
-
-Validation: Documentation diff review and whitespace checks only; no application code changed, so tests, Pint, and Larastan were not run.
-
-Commit message: `docs: break advanced bid comparison controls into subtasks`
-
-Advanced comparison subtask 2 completed (2026-11-03): Grouped existing browsing filters into independent collapsible Credit & crew, Work pattern, and Airports sections using a reusable Blade disclosure component. Added active-filter counts/summary, group-specific clear actions, inline validation descriptions, and shared reset/loading behavior. Preserved temporary Livewire filter values during browsing, preferences/list panel use, and disclosure changes; package changes clear browsing filters. Group clears retain saved preferences, selected lines, and manual ranks. Sorting and Selected only remain outside the groups. Added the requested credit presets (64h, 70h, 80h) and days-off presets (14, 15, 16), using the existing fields with immediate result updates and active-value highlighting. Credit arithmetic, base-credit ranges, crew filters, and later metrics remain separate tasks.
-
-Validation: Sail was available with elevated access. Focused comparison regression files passed (85 tests, 599 assertions); after the requested quick-entry update, the focused advanced-filter file passed again (7 tests, 133 assertions). Final Pint, production Vite build, whitespace checks, and the single Larastan integration run passed (zero errors). Added coverage for independent group resets, combined filtering and stable ranking across tabs/panels, temporary state, zero-valued filters, reset/error recovery, quick-entry availability, and disclosure/input accessibility markup. Manual browser layout, touch, focus restoration, and native disclosure keyboard interaction remain unverified.
-
-Commit message: `feat: group advanced bid comparison controls`
-
-Advanced comparison subtask 1 completed (2026-11-03): Finished the definition/source-coverage review and recorded the user's answers in `CREW_BIDS.md`. Source line credit in either Lines or Overview is the published contractual guarantee; both present values must agree. Guarantee-relative browsing uses complete base pairing credit minus that separately preserved guarantee, with Below/At/Above and a signed duration. Crew filtering describes published line CA/FO counts, with trip differences shown separately. Published Duty Days remains as supplied; conflicting numeric duty totals block publication. First report and final endpoint use complete linked trips across month boundaries, with inclusive UTC time windows and midnight wrapping. Confirmed Any/Only/Exclude missing-data rules, retained selected bids and the existing incomplete-days-off exception, and preserved the earlier carry fallback, split, country-grouping, and temporary-state decisions.
-
-Recorded a metric/source/coverage table for guarantee, pairing credit, crew, duty/carry counts, occupancy/splits, deadheads/routes, report/endpoints, scheduled gaps/source Rest, and countries. Identified dependent implementation work: source-value omission/conflict handling, duty-total preservation, calculated-first carry fallback, `base_credit` source fallback, per-metric coverage beyond document-presence flags, legacy provenance, and dated trip reconstruction. Deferred features remain explicitly gated; they do not leave this definition task unfinished. Updated dependent task descriptions without changing runtime code or the previous subtask 2 implementation.
-
-Validation: Existing focused `BidPackageImportTest` passed through elevated Sail (12 tests, 151 assertions, no skipped samples), including native B747 October 2026 and B777 November 2026 packages, source-credit preservation, partial Trips totals, Reserve/FO-only normalization, and UTC/year transitions. Documentation consistency/whitespace reviewed. No PHP/application files changed during this definition task; Pint and Larastan were not repeated. Preserved the existing working-tree changes.
-
-Commit message: `docs: define advanced bid comparison semantics and coverage`
-
 ### Goal
 
-Organize K4 Bids within the app and define a clean user-facing workspace for monthly package comparison and bid ranking.
+Prepare the K4 Bids branch for a pull request while keeping published package values, private bid lists, and user-visible source labels consistent.
 
 ### Current implementation
 
-Planning completed (2026-10-26): Reorganized `CREW_BIDS.md` into an app placement, access, import, workspace, preferences, ranking/autosave, pay-preview, and delivery specification. Proposed a separate K4 Bids navigation item after Flight Plan Brief, using existing feature-policy conventions; a two-column browsing/bid-list workspace; progressive filters; mobile and keyboard behavior; and explicit missing-data/save states. Preserved the original feature scope while separating initial delivery from enhancements requiring verified definitions or source rules.
-
-Inspected existing navigation, routes, feature configuration, access methods, and private sample filenames. Samples include multiple document types, fleets, and months; document contents and parsing compatibility remain unverified. The plan records package revision/owner isolation, import failure handling, and unresolved pay/export/source decisions. No application behavior or configuration changed; feature implementation remains pending.
+The branch includes the B747/B777 CA/FO workspace, private ranked lists and preferences, source imports, grouped browsing filters, read-only portal discovery, and Filament package management. The carry badge now uses a published carry count first, including zero; when it is absent, complete linked trips can supply a labelled calculated count of occupied UTC dates after month-end. The detailed product contract and remaining advanced comparison tasks live in CREW_BIDS.md.
 
 ### Problem addressed
 
-The original notes mixed interface requests, example data, compensation assumptions, and advanced features without a clear user flow or implementation boundary. `CREW_BIDS.md` now provides the single implementation reference instead of duplicating its plan here.
+The prior carry badge could replace a published value with a calculated value and did not identify its basis. Historical crew bidding outcomes also obscured the current PR scope in this file.
 
-Validation: Documentation reviewed against the existing app structure and original feature notes. No tests, Pint, or Larastan were run for this documentation-only task.
+Outcome (2026-11-10): Corrected carry precedence and source labels without changing saved package payloads or bid ranks. Consolidated completed crew bidding notes below; the existing commits retain implementation history. The remaining duty/carry comparison filters, source discrepancy indicators, portal submission, and manual browser review are separate work.
 
-Planning clarification (2026-10-26): Confirmed admin-imported shared packages with private user preferences/bid lists; B747 and B777 Captain/FO support in the first usable release; and automatic exclusion of available lines conflicting with selected days off. Already selected choices stay in place with conflict flags and user-controlled removal. Users order several goals by strict priority, with lower goals only breaking ties. All work intervals are converted to UTC calendar dates; any work on a selected UTC date, including reserve, training, deadheads, and carry-in/out, counts as a conflict. A long work block means grouping duty days together with fewer separate blocks. Updated `CREW_BIDS.md` accordingly; source time bases and exact block-counting boundaries still need discovery. Documentation-only; no runtime checks required.
-
-First-release scope confirmed (2026-10-26): Import Lines and Trips PDFs plus Overview spreadsheets; defer other document types. Deliver a numbered bid list for review/copy. Defer estimated pay, keeping credit, days off, preferences, and ranking in the first release. Updated the import, tab, output, and delivery sections in `CREW_BIDS.md`; dedicated Training UI and spreadsheet export are deferred. Documentation diff checks passed.
-
-Occupancy and browsing clarified (2026-10-26): Every UTC date from trip report through release counts as occupied, including full layover/rest days, for days-off conflicts and work-block grouping. Eligible users can browse both fleets/seats. A selected start city excludes nonmatching lines. Recorded these decisions in `CREW_BIDS.md`, distinguishing occupied dates from source duty activity and leaving timestamp endpoints/month-boundary counting for discovery. Documentation diff checks passed.
-
-Revision and list behavior confirmed (2026-10-26): New package revisions offer a change review and require user confirmation before carrying choices forward. Lines with incomplete occupied dates remain visible under days-off filters with `Dates incomplete; conflicts unknown`, without claiming a conflict-free match; confirmed conflicts still exclude them. Flying and reserve choices share one ranking within the same month/fleet/seat/revision. Updated behavior and acceptance criteria in `CREW_BIDS.md`. Documentation diff checks passed; no application code changed.
-
-UI direction confirmed (2026-10-26): Compact rows with monthly timelines and expandable details are the default. A `My bid list` button opens a drawer on desktop, replacing the initially proposed permanent side panel. Preferences use guided setup when opening a package, followed by an editable summary. Updated the workspace sketch and interaction descriptions in `CREW_BIDS.md`; mobile presentation and returning-user setup behavior remain open. Documentation diff checks passed.
-
-Mobile and comparison UX confirmed (2026-10-26): Keep the full month visible on phones using small day markers with tap-to-inspect details. Select UTC days off by individual taps with an optional range selector. Allow multiple expanded line rows for comparison. Updated `CREW_BIDS.md` with these choices and accessible interaction requirements. Documentation diff checks passed; no application code changed.
-
-Setup and selection UX confirmed (2026-10-26): Returning users open results directly with saved preferences and an Edit button; first-visit guided setup is skippable. Adding a line appends it, shows its rank and a brief Undo action, and keeps browsing open. On phones, the bid list uses a full-screen panel with `Back to lines` and restored browsing context. Updated `CREW_BIDS.md`; documentation diff checks passed.
-
-Live filtering and information density confirmed (2026-10-26): Preference/filter edits refresh results immediately with a brief loading indicator and no Apply step. Compact timelines distinguish occupied days from days off, with activity types on date inspection and unknown dates kept distinct. Bid-list entries show rank, Line ID, credit, days off, and conflict/uncertainty warnings. Updated `CREW_BIDS.md`; documentation diff checks passed. No application code or runtime checks changed.
-
-Decluttering review completed (2026-10-26): Reduced the planned default row to Line ID, credit, days off, timeline, and Add/selected rank, retaining actionable warnings. Moved duty/city/trip/crew detail, match explanations, package statistics, revision metadata, secondary sorts, and bulk actions behind contextual details/menus. Removed first-release placeholders for deferred features, duplicate filter/calendar summaries, and competing floating actions. Made empty/import states role-aware and preserved visible uncertainty/conflict/save-failure feedback. Updated the workspace sketch and acceptance criteria in `CREW_BIDS.md`. This refines the documentation only; diff checks passed and no tests, Pint, or Larastan were needed.
-
-User workflow expanded (2026-10-26): Added a dedicated five-stage workflow in `CREW_BIDS.md`, defining admin import/publication, crew package selection, skippable preference setup, compact comparison and shortlist building, manual ranking, and saved review/copy. Each stage describes actions and its outcome, with return visits, revision confirmation, warnings, and save recovery included. Kept the stages as a user journey rather than extra permanent UI navigation. Documentation-only; diff checks passed and no runtime checks were required.
-
-Commit message: `docs: define the K4 Bids user workflow from import to copy`
+Commit message: fix: prefer published carry counts in crew bids
 
 ## Unified upload
 Currently: 2 tabs have 2 different upload points, user has to choose
@@ -359,6 +249,46 @@ I'd make page segmentation mode configurable per extraction call.
 # Completed Tasks
 
 -------------------------------------------------------
+
+## [x] Completed: Plan crew bid access roles
+
+### Goal
+
+Define who can see K4 Bids in navigation, open its route, save a private bid list, and manage shared packages.
+
+### Current implementation
+
+`User::canUseCrewBids()` grants access to verified admins or, when configured, all verified users. Both nav layouts use that method; `/crew-bids` also has the feature and authorization middleware. Package management is admin-only. The Users resource cannot currently assign a crew-bid-specific grant.
+
+### Problem addressed
+
+The existing all-users switch cannot give selected ordinary users access without opening the workspace to every verified user. The current crew-bid access check also does not consider `is_active`.
+
+Outcome (2026-11-10): The user chose explicit per-user crew-bid grants plus existing admin access, with package management remaining admin-only. Documented the access matrix, route/nav behavior, grant management, rollout, and focused validation in CREW_BIDS.md. This was a documentation-only plan; no access behavior or account data changed. Implementation is recorded in the following task.
+
+Commit message: `docs: plan explicit crew bid access grants`
+
+## [x] Completed: Implement crew bid access roles
+
+### Goal
+
+Give selected ordinary users access to K4 Bids in navigation and at its direct route, while keeping package management with existing admins.
+
+### Current implementation
+
+Before this change, verified admins or every verified user under `features.crew_bids.for_all_users` could enter the workspace. The Users resource had no crew-bid grant control, and inactive accounts were not excluded by the crew-bid gate.
+
+### Problem addressed
+
+The all-users switch could not grant access to selected crew members. It also bypassed the intended explicit access decision when enabled.
+
+Outcome (2026-11-10): Added a false-by-default `users.crew_bids_access` grant, managed and displayed in Filament Users. Active, verified grantees and existing admins can reach K4 Bids; only admins can manage packages. Removed the crew-bid all-users setting. The existing nav and route use the updated shared access check, and revocation blocks an open workspace without deleting its saved list. Deployment needs the new migration and deliberate grants for intended users; no existing accounts were auto-granted.
+
+Verification: 24 focused tests passed (157 assertions), Pint passed, and one Larastan run passed with zero errors. No full suite or manual browser review was run.
+
+Commit-hook follow-up (2026-11-10): The staged-PHP Larastan check exposed 13 type errors in `CrewBidsTest.php` that the earlier application-only analysis did not cover. Kept the test behavior and fixed Livewire helper inference by splitting assertion chains, used Livewire's public `getData()` for snapshot data, and narrowed date-picker nodes to `DOMElement`. The 25 affected focused tests passed (202 assertions), followed by 2 focused tests (15 assertions) after the final chain fix. Pint and file-scoped Larastan passed; the staged pre-commit check passed after this correction.
+
+Commit message: `feat: grant crew bid access per user`
 
 ## [x] Completed: Upgrade bid card depth and header styling
 
@@ -790,226 +720,21 @@ Commit message: `fix: standardize delay reporting UTC timestamps`
 
 ### Goal
 
-Organize K4 Bids within the app and define a clean user-facing workspace for monthly package comparison and bid ranking.
+Give eligible crew a private, reviewable workspace for monthly bid packages and ranked choices.
 
 ### Current implementation
 
-Implemented the initial K4 Bids workflow (2026-10-26). Added protected desktop/mobile navigation after Flight Plan Brief, enabled/admin-only feature settings, admin import preview/publication, encrypted shared package payloads, and owner-scoped encrypted preferences/lists. B747/B777 and CA/FO selection follow imported crew complements. Admins can import supported Lines/Trips PDFs and Overview .xlsx files without adding dependencies; temporary source uploads are deleted after preview, while normalized drafts/revisions are retained privately.
+The initial release imports supported Lines/Trips PDFs and Overview spreadsheets into encrypted shared packages. Crew can browse B747/B777 packages by seat, filter available lines, inspect UTC calendars and trip details, set strict ranking goals, and save a numbered bid list with conflict and revision review. Filament manages draft import/replacement, publication, archive/restore, and deletion under policy and database protections. Source files are not retained after import.
 
-Added compact expandable timeline rows, guided/skippable preferences, strict goal priorities, UTC date/range and start-city exclusions, and basic credit/days-off/selected filters. Incomplete dates retain their warning; selected conflicts remain in the list. Flying and reserve choices share accessible manual/drag ordering, autosave with optimistic revisions, save-error recovery, numbered review/copy, and revision-change review before carrying choices forward. Desktop uses a drawer; mobile uses a full-screen list. Reserve identifiers/occupied markers are orange; flying occupancy is blue; unknown dates show `?`. Source times and blank Overview dates were confirmed as UTC and days off respectively.
+Read-only Kalitta portal discovery validates the observed login and Bid Sheet structure using transient credentials. It does not submit bids; the closed-window report and open-window submission/receipt contract remain unverified. CREW_BIDS.md is the product contract for implemented behavior and pending comparisons.
 
 ### Problem addressed
 
-The app previously had no workspace for turning monthly bid packages into private ranked choices. `CREW_BIDS.md` records the agreed workflow, decluttered information hierarchy, and deferred enhancements. The implementation handles null-padded PDF text, multi-page trips, and the Overview reserve sections' shifted date columns.
+K4 Parser previously lacked a shared package workflow and owner-scoped bid ranking. This branch also established source-aware trip display, missing-data handling, keyboard interaction, responsive controls, and admin lifecycle operations.
 
-### Planning history
+Historical validation used focused Sail PHP and JavaScript tests, production asset builds, Pint, and Larastan. Private source samples and manual browser interactions have separate availability and verification limits. Commit history retains the individual implementation and documentation outcomes.
 
-The following notes record the earlier documentation-only decisions; implementation and validation outcomes are recorded below.
-
-Planning clarification (2026-10-26): Confirmed admin-imported shared packages with private user preferences/bid lists; B747 and B777 Captain/FO support in the first usable release; and automatic exclusion of available lines conflicting with selected days off. Already selected choices stay in place with conflict flags and user-controlled removal. Users order several goals by strict priority, with lower goals only breaking ties. All work intervals are converted to UTC calendar dates; any work on a selected UTC date, including reserve, training, deadheads, and carry-in/out, counts as a conflict. A long work block means grouping duty days together with fewer separate blocks. Updated `CREW_BIDS.md` accordingly; source time bases and exact block-counting boundaries still need discovery. Documentation-only; no runtime checks required.
-
-First-release scope confirmed (2026-10-26): Import Lines and Trips PDFs plus Overview spreadsheets; defer other document types. Deliver a numbered bid list for review/copy. Defer estimated pay, keeping credit, days off, preferences, and ranking in the first release. Updated the import, tab, output, and delivery sections in `CREW_BIDS.md`; dedicated Training UI and spreadsheet export are deferred. Documentation diff checks passed.
-
-Occupancy and browsing clarified (2026-10-26): Every UTC date from trip report through release counts as occupied, including full layover/rest days, for days-off conflicts and work-block grouping. Eligible users can browse both fleets/seats. A selected start city excludes nonmatching lines. Recorded these decisions in `CREW_BIDS.md`, distinguishing occupied dates from source duty activity and leaving timestamp endpoints/month-boundary counting for discovery. Documentation diff checks passed.
-
-Revision and list behavior confirmed (2026-10-26): New package revisions offer a change review and require user confirmation before carrying choices forward. Lines with incomplete occupied dates remain visible under days-off filters with `Dates incomplete; conflicts unknown`, without claiming a conflict-free match; confirmed conflicts still exclude them. Flying and reserve choices share one ranking within the same month/fleet/seat/revision. Updated behavior and acceptance criteria in `CREW_BIDS.md`. Documentation diff checks passed; no application code changed.
-
-UI direction confirmed (2026-10-26): Compact rows with monthly timelines and expandable details are the default. A `My bid list` button opens a drawer on desktop, replacing the initially proposed permanent side panel. Preferences use guided setup when opening a package, followed by an editable summary. Updated the workspace sketch and interaction descriptions in `CREW_BIDS.md`; mobile presentation and returning-user setup behavior remain open. Documentation diff checks passed.
-
-Mobile and comparison UX confirmed (2026-10-26): Keep the full month visible on phones using small day markers with tap-to-inspect details. Select UTC days off by individual taps with an optional range selector. Allow multiple expanded line rows for comparison. Updated `CREW_BIDS.md` with these choices and accessible interaction requirements. Documentation diff checks passed; no application code changed.
-
-Setup and selection UX confirmed (2026-10-26): Returning users open results directly with saved preferences and an Edit button; first-visit guided setup is skippable. Adding a line appends it, shows its rank and a brief Undo action, and keeps browsing open. On phones, the bid list uses a full-screen panel with `Back to lines` and restored browsing context. Updated `CREW_BIDS.md`; documentation diff checks passed.
-
-Live filtering and information density confirmed (2026-10-26): Preference/filter edits refresh results immediately with a brief loading indicator and no Apply step. Compact timelines distinguish occupied days from days off, with activity types on date inspection and unknown dates kept distinct. Bid-list entries show rank, Line ID, credit, days off, and conflict/uncertainty warnings. Updated `CREW_BIDS.md`; documentation diff checks passed. No application code or runtime checks changed.
-
-Decluttering review completed (2026-10-26): Reduced the planned default row to Line ID, credit, days off, timeline, and Add/selected rank, retaining actionable warnings. Moved duty/city/trip/crew detail, match explanations, package statistics, revision metadata, secondary sorts, and bulk actions behind contextual details/menus. Removed first-release placeholders for deferred features, duplicate filter/calendar summaries, and competing floating actions. Made empty/import states role-aware and preserved visible uncertainty/conflict/save-failure feedback. Updated the workspace sketch and acceptance criteria in `CREW_BIDS.md`. This refines the documentation only; diff checks passed and no tests, Pint, or Larastan were needed.
-
-User workflow expanded (2026-10-26): Added a dedicated five-stage workflow in `CREW_BIDS.md`, defining admin import/publication, crew package selection, skippable preference setup, compact comparison and shortlist building, manual ranking, and saved review/copy. Each stage describes actions and its outcome, with return visits, revision confirmation, warnings, and save recovery included. Kept the stages as a user journey rather than extra permanent UI navigation. Documentation-only; diff checks passed and no runtime checks were required.
-
-### Integration outcome
-
-- Sail access verified using elevated Docker access. Both new migrations are installed locally; migration status confirmed. No source package was automatically published for users.
-- Focused integration: 31 tests passed (139 assertions), covering Crew bidding and existing route-access behavior. After the final revision-preview/import-recovery refinement, its two focused tests passed (16 assertions), including one additional test. Private B747 October/B777 November package imports passed; synthetic coverage checks reserve-column alignment, FO-only complements, midnight/year boundaries, layover occupancy, strict goals, work blocks, ownership, conflicts, revision migration, save recovery, and failed imports.
-- Three focused JavaScript tests passed for exact clipboard content, manual-copy fallback, and navigation warnings. Production Vite build passed, including the requested reserve colors. Pint passed after PHP edits. One application-wide Larastan run found eight issues in three new files; corrected null handling and redundant checks, then rechecked those files with zero errors. `git diff --check` passed.
-- No manual browser review was performed. Responsive appearance, actual drag/touch interaction, focus restoration, and real clipboard permissions remain to be checked in a browser. Native-text PDFs are supported; OCR/scanned PDFs, extended secondary filters, personal training/vacation imports, pay estimates, and spreadsheet exports remain deferred. No dependencies changed; unrelated TODO edits and `.nvmrc` were preserved.
-
-Commit message: `feat: add crew bidding imports and private ranked bid workspace`
-
-### Follow up #1 outcome (2026-10-27)
-
-Line calendars now have a compact `+N` box for occupied UTC dates after month-end. Linked trip dates determine the count, with duplicate/overlapping dates counted once and the source carry count retained when trip details are unavailable. Monthly days-off and work-block calculations retain their existing scope.
-
-Trip badges below each calendar show start/end airports, source-backed layover airports, and minimum recorded rest. Each badge expands an inline preview with the route, dated UTC legs, overnight arrivals, report/release, deadheads, block times, and rest durations. The line's Details accordion also includes these trip details. Imports now retain per-leg flight identifiers, block times, and rest; previously published packages need reimporting to populate those new fields. Missing trip/hotel information is explicit; the supplied Trips layout contains no hotel details.
-
-Added a keyboard-accessible `Why this matched` disclosure beside line IDs when preferences apply. It explains strict goal priority, actual credit/days-off/block values, and hard-filter results without inventing a percentage score. Follow up #2 remains outside this task.
-
-Validation: Focused Crew Bids feature tests passed (21 tests, 107 assertions), and import tests passed (8 tests, 62 assertions), including private B747 October/B777 November samples, page-spanning trips, missing blocks/rest, duplicate pairings, overlapping carry days, and year boundaries. Production Vite build and Pint passed. One full Larastan run identified an unhandled goal in the new explanation; corrected its fallback, reran the affected priority test (one test, seven assertions), and passed a focused static-analysis recheck with zero errors. No manual browser review was performed. Preserved the user's edits to CREW_BIDS.md.
-
-Commit message: `feat: add carry-day counts and inline crew bid trip previews`
-
-### Follow up #2: Sticky header outcome (2026-10-27)
-
-Made the K4 Bids title, package selector, seat selector, My bid list, and admin Manage package control sticky at the top while scrolling. The wrapping header uses opaque light/dark backgrounds, a subtle divider/shadow, and stays below the bid-list dialog. Sorting/filter controls now scroll normally so they do not overlap the sticky header. Other Follow up #2 items remain pending.
-
-Validation: The focused saved-order/reload feature test passed (one test, nine assertions), production Vite build and Pint passed, and one Larastan run passed with zero errors. No new tests were added for this layout-only change. Manual browser review remains pending. Existing Follow up #1 changes and the user's CREW_BIDS.md edits were preserved.
-
-Commit message: `style: keep crew bidding header visible while scrolling`
-
-### Follow up #2: Flight metrics and match placement outcome (2026-10-27)
-
-Moved `Why this matched` after Credit and Days off, matching the requested card-header order. Its disclosure anchors within the card on narrow screens and aligns to its trigger's right edge on larger screens.
-
-The Trips parser now accepts whitespace between arrival and per-leg block values. Trip previews preserve source blocks and label calculated scheduled blocks when an operating leg has only dated UTC times. Deadhead/identified ground transport retain separate scheduled elapsed durations without inventing an operating block. Existing published trips can show calculated durations without reimporting; reimport is needed to recover original source-only values.
-
-Added airport-specific layover durations from arrival to the next departure, including overnight and year-boundary connections. Source rest remains separate. Zero-length connections remain explicit; overlapping times and airport changes show unavailable layovers with the reason. These changes address missing metrics in line-card trip previews and expanded Details; visual timelines and other Follow up #2 enhancements remain pending.
-
-Validation: 33 focused Crew Bids/import tests passed (190 assertions), including private sample packages, spaced source blocks, legacy payloads, source-value precedence, midnight/year boundaries, zero gaps, invalid connections, transport legs, and card-header order. Production Vite build, Pint, and one Larastan run passed with zero errors. Changed-file diff checks passed. Manual browser review remains pending. Prior work and user edits were preserved.
-
-Commit message: `feat: show crew bid block and layover durations beside clearer match controls`
-
-### Follow up #2: Visual leg timeline outcome (2026-10-27)
-
-Trip previews and expanded line Details now include a horizontal chevron sequence with UTC dates, airport pairs, elapsed durations, and overnight arrival dates. Flying is solid blue, deadheads are striped grey, ground transfers have a separate label, and layovers use pale gold. Native expandable segments reveal exact UTC times, block values, and available source rest. The focusable strip supports horizontal scrolling on narrow screens. Widths are explicitly illustrative; source rest remains separate from layover intervals. Inconsistent connections and absent legs have explicit states. Full textual leg details remain available below the graphic.
-
-Validation: The final focused Crew Bids run passed 25 tests (137 assertions), covering transport classification, midnight/year boundaries, zero layovers, inconsistent connections, empty leg data, and timeline rendering. Production build, Pint, and one Larastan run passed with zero errors. No manual browser review was performed. Prior work and user document edits were preserved.
-
-Commit message: `feat: visualize crew bid trip legs and layovers`
-
-### Follow up #2: Sticky expanded-trip actions outcome (2026-10-27)
-
-The existing line header and Add/Selected control become sticky while a trip or the line's Details accordion is expanded. The bar stays inside its card, below the workspace header and bid-list dialog, with opaque light/dark backgrounds. A ResizeObserver measures the workspace header after initialization and wrapping/context-size changes; Alpine cleanup disconnects it when leaving the component. Native accordion state controls stickiness without duplicating actions or changing saved bid order.
-
-Validation: All five focused JavaScript tests passed, including dynamic header sizing, observer cleanup, and leaving before deferred initialization. The final 25-test Crew Bids run also covered saved-order/reload behavior. Production CSS was checked for the expanded-only sticky selector and measured top offset; build, Pint, Larastan, and changed-file diff checks passed. Manual scrolling/touch/browser review remains pending.
-
-Commit message: `style: keep expanded crew bid actions below the workspace header`
-
-### Follow up #3: Consolidated trip details outcome (2026-10-27)
-
-Replaced stacked trip-detail sections with a compact route/date/metrics summary and three independent tabs: Timeline / Legs, Layovers & Rest, and Pairing Metadata. Long routes truncate in the summary and remain readable in metadata. Leg rows show transport type, route, UTC times, and block duration; exact dates and calculation evidence expand on demand. Layover intervals and source rest now share one compact two-column breakdown rather than repeating below each leg.
-
-The user confirmed an under-three-hour browsing highlight. Connections below 180 minutes appear in the short group with an amber cue; exactly three hours and longer appear separately. Grouping uses duration because domestic/international status is not established by the imported data. Source rest remains distinct from scheduled connection intervals. Tabs support arrow keys, Home/End, roving focus, unique per-preview IDs, and independent state. Existing sticky actions and visual timeline remain available.
-
-Imports now capture source pairing duty days and crew counts for the summary/metadata. Legacy missing values remain explicit. Corrected the earlier reimport guidance: duplicate-source detection previously retained the published payload, so parser-versioned fingerprints now allow a fresh draft revision while preserving the prior published package and private bid lists. Repeated imports with the current parser still reuse the draft. No source files were published automatically.
-
-Validation: 36 focused Crew Bids/import tests passed (225 assertions), including the three-hour boundary, source/legacy metadata, page-spanning trips, and versioned reimport/draft reuse. Seven focused JavaScript tests passed for tab keyboard focus, independent previews, observer cleanup, and existing copy/navigation behavior. Production build, Pint, one Larastan run (zero errors), and changed-file diff checks passed. Manual browser review remains pending. Prior work and the user's document edits were preserved; Follow up #4 was not implemented.
-
-Commit message: `feat: consolidate crew bid trip details into compact tabs`
-
-### Follow up #4: Separate block and credit outcome (2026-10-27)
-
-Line cards, trip summaries, and selected bid entries now distinguish operating Block time from Credit. Highest block time and Highest credit sort independently, retaining manual bid order. Credit goals, filters, and sorting use exact seconds; the display adds seconds only when needed. The contiguous occupied-day metric is explicitly labeled Work blocks.
-
-Complete Trips PDF Block Time and Credit Time totals take priority over Lines/Overview values. Details retain both source values, base credit, deadhead credit, PCH components, and the extra carry-in premium. Deadheads earn 50% of elapsed time and are already included in source trip credit, so their underlying credit is not added twice. Lines-only imports now link pairing IDs directly from the Lines PDF. Duplicate pairing references count once; incomplete linked totals retain source line values and do not apply a partial premium.
-
-The user confirmed that next-month departures determine PCH, replacing the initial UTC-midnight split proposal. Operating legs contribute 100%, deadheads contribute 50%, and ground transfers contribute zero. Adjusted credit adds only 50% of PCH, including credited deadheads, to full Trips base credit. Private November B777 regressions match F83 PCH 7:15, F61 14:30, and F46/F55 7:30. F83 adjusted credit is 101:07:30; F61 104:05; F46 91:37; F55 89:25; F38 91:40; F26 89:45; F23 76:05. The source F23 base totals are Block 74:35 and Credit 75:05.
-
-Marked completed Follow up items with [x] in CREW_BIDS.md and recorded the confirmed examples there. Parser fingerprints now use v3, so reimporting the source documents creates a reviewable draft with these calculations. Existing published packages and private bid lists remain intact until the existing publication/revision-review flow is used. No package was automatically published. Later document requests, including line maximum height and omission of missing metrics, remain outside this task.
-
-Validation: 40 focused Crew Bids/import tests passed (306 assertions), including all seven source examples, next-year departures, a pre-boundary overnight flight, half-credit deadheads, ground exclusions, exact fractional-minute premiums, deduplication, missing pairing totals, independent sorts, and saved bid order. Seven focused JavaScript tests, production Vite build, Pint, one Larastan run (zero errors), and diff checks passed. Database tests ran sequentially in one process. Manual browser review remains pending. Prior work and concurrent user document edits were preserved.
-
-Commit message: `feat: separate crew bid block time and premium-adjusted credit`
-
-### Follow up #4: Compact line height outcome (2026-10-27)
-
-Reorganized collapsed line cards into metrics/action, calendar, and disclosure rows that fit within 150px without a card scrollbar. Credit, Block, and Days off have compact stacked labels; Add/Selected stays beside them. Trips, dates, source details, and match explanations share the footer. Single-trip lines open the trip immediately; multiple trips use a count. Removed duplicate trip previews from source Details. Warning text stays visible in a compact row with full messages in Details; supporting Work blocks move into Details. Date inspection opens the dates disclosure. Expanded cards grow naturally and retain sticky actions.
-
-Validation: 28 focused Crew Bids tests passed (161 assertions). Production build, Pint, one Larastan run (zero errors), and diff checks passed. No new tests were added for this layout change. Manual browser sizing/interaction review remains pending. Prior work was preserved.
-
-Commit message: `style: organize collapsed crew bid cards within 150px`
-
-### Follow up #5: Omit missing metrics outcome (2026-10-27)
-
-Cards, trip summaries/metadata, leg details, the Trips tab, and bid-list entries now omit missing values together with their labels. Removed empty hotel, source-rest, crew, report, block, credit, and carry-credit placeholders. Trip identifiers remain visible when their detailed source record is absent. Empty timelines and absent layover summaries no longer generate placeholder content. Known zeros remain visible; conflict/incomplete-date warnings, inconsistent connection evidence, missing saved choices, and source import diagnostics retain their meaning. Credit provenance appears only for available values. Match explanations omit unavailable credit/days-off/work-block metrics while preserving hard-filter uncertainty messages.
-
-Validation: Missing-data coverage passed in the final 35-test Crew Bids integration run (202 assertions), including omission in cards, match explanations and selected choices, legacy trip values, known zero credit/block/rest/duty counts, retained warnings, and source carry counts. Pint, production build, Larastan (zero errors), and diff checks passed. No parser reimport is needed for this display change. Manual browser review remains pending.
-
-Commit message: `fix: omit missing crew bid metrics and placeholder rows`
-
-### Trip preview refinements A–C outcome (2026-10-27)
-
-Removed the separate vertical leg list. One timeline chevron per leg now opens its dated UTC departure/arrival, source/calculated block basis, scheduled elapsed time, and available deadhead credit/source rest in place. The chevron shows operating block, deadhead credit, or transport elapsed time as appropriate. A rendered regression confirms the source flight identifier is shown once in its preview.
-
-Scheduled layovers below 600 minutes receive amber short-layover chips; those at or above 1,440 minutes receive blue extended-layover chips. Both the timeline and layover table share the classification. Exactly ten hours is untagged and exactly twenty-four hours is extended. Existing under-three-hour grouping remains. Source rest stays independent of these browsing cues; no legal-rest or international classification is inferred. Overlaps and airport changes retain uncertainty messages and receive no duration chip.
-
-Retained the existing compact sticky action header rather than adding another bar. Expanded cards keep their ID, metrics, and Add/Selected action below the measured workspace header, without a card scroll container. The compiled production CSS includes the expanded-only sticky positioning and measured top offset; existing ResizeObserver sizing/cleanup and saved-selection behavior remain covered.
-
-Validation: Final focused Crew Bids tests passed (35 tests, 202 assertions), including exact 10h/24h boundaries, zero gaps, year boundaries, contradictory source-rest duration, invalid connections, unique leg information, missing metrics, and saved bid order. Seven JavaScript tests passed for sticky-header resizing/cleanup, tab keyboard focus/independence, and copy/navigation behavior. Pint, production build, one final Larastan run (zero errors), and diff checks passed. Manual browser sizing/scrolling review remains pending; prior working-tree changes were preserved. CREW_BIDS.md marks A–C and missing-data omission completed.
-
-Commit message: `feat: unify trip timelines and highlight short and extended layovers`
-
-### Line footer alignment outcome (2026-10-27)
-
-Renamed the dates disclosure to Line, updated calendar instructions/accessibility text, and ordered the collapsed footer Line → Trip → Details → Why this matched. Line and Trip sit inline on the left; Details and Why this matched stay on the right. Removed Trip's first-position override and used an automatic margin before Details to separate the groups. Expanded Line/Trip summaries stay left-aligned, with Details/match summaries right-aligned and their contents in normal reading alignment.
-
-Validation: The focused inline-trip preview test passed (one test, 26 assertions). Production build, Pint, one Larastan run (zero errors), and diff checks passed. No new tests were added for this copy/layout-only change. Prior working-tree changes were preserved.
-
-Commit message: `style: rename and align crew bid line footer controls`
-
-### Crew Bids icons outcome (2026-10-27)
-
-Added shopping-cart, plus, check, calendar, airplane, document, and settings icons to the corresponding bid-list, Add/Selected, Line/Trip, Details, and Manage package controls. Why this matched now uses an icon-only question-mark disclosure with an accessible name, screen-reader text, tooltip, and keyboard focus styling. Decorative icons are hidden from assistive technology. Kept Line/Trip on the left and Details/match controls on the right, including the expanded match summary. Compact icon sizes preserve the card rows. Reused installed Blade Heroicons 2.7.0 without dependency changes.
-
-Validation: Three focused Crew Bids tests passed (43 assertions), covering inline previews, matching explanations, and saved flying/reserve selections. Production build, Pint, one Larastan run (zero errors), and diff checks passed. No new tests were added for this presentation-only change. Manual browser review remains pending; existing working-tree changes were preserved.
-
-Commit message: `style: add icons to crew bidding actions and disclosures`
-
-### [x] Planning outcome: Auto bidding feature (2026-10-27)
-
-Expanded the existing Auto bidding section in CREW_BIDS.md into a plan for submitting the user's exact reviewed list to Kalitta's bidding system, as confirmed by the user. Documented transient credentials, read-only preflight and replacement comparison, final confirmation, workspace/portal state binding, one submission attempt, verified receipt/read-back, unknown-outcome reconciliation, and a separate read-only award-discovery workflow. The recommended baseline re-enters credentials for final submission so credentials and portal cookies do not persist between operations. Implementation remains pending; no login or bid submission occurred.
-
-Inspected the supplied private saved-source HTML without recording field values. Observed a Web Forms POST form, fresh-page hidden state/event-validation requirements, 315 Choice/Line input pairs in interleaved visual order, numeric/training-line validation, account/context controls, and a confirmation-label candidate. Recorded the observed Bid Awarded, All Bids Awarded, Submitted Bid Lines, and Days Off and Comp Lines navigation. Explicitly left the submit event, rank/identifier mapping, current authentication behavior, usable capacity, deadlines/time zone, confirmation semantics, and award schema unverified. The public login page was readable through the web tool; authenticated Bid Sheet/All Bids Awarded were inaccessible through that tool. Their contents were not inferred from link names.
-
-The plan separates authenticated discovery, offline adapter/preflight coverage, reviewed submission, and an award-integration decision. Added implementation acceptance cases for mapping/rank preservation, eligibility/capacity, unrelated portal settings, stale/concurrent state, owner isolation, duplicate actions, ambiguous network outcomes, and secret redaction. Kept the existing review/copy workflow and background/autosave behavior intact. No credentials, cookies, raw page state, or private source contents were added to documentation or fixtures.
-
-Validation: Documentation diff checks passed. Only CREW_BIDS.md and TODO.md were edited for this task; existing application/test changes were preserved. No runtime tests, Pint, build, or Larastan were needed for this documentation-only change. Authenticated discovery and submission verification remain future implementation work.
-
-Commit message: `docs: plan reviewed Kalitta bid submission and award discovery`
-
-### Auto bidding implementation outcome (2026-10-28; submission pending)
-
-Goal: Advance the existing auto-bidding task using the supplied portal HTML and confirmed employee-number/password login. The user confirmed that bidding is closed and that F1 → 1, Q99 → 99, and R70/R 70 → 70, with unique numeric IDs.
-
-Current implementation: Added `crew-bids:discover-portal`, a local interactive command with hidden credential prompts and optional `--lines` candidate checking. Its only POST is login; Bid Sheet access uses GET. Fresh login hidden state and split ViewState fields are preserved in memory, redirects are bounded and restricted to the HTTPS portal, and credentials cannot be posted to the Bid Sheet action. An isolated HTTP factory omits application HTTP events/global middleware; cookie jars are operation-local and cleared on success/failure. Safe domain errors omit upstream exception text and do not retain a previous transport exception. Output contains structural counts, supported control names, and a report-link flag, excluding actual choices, account labels, cookies, credentials, and page/state values. Noninteractive credential use is refused. No database, queue, session, cache, browser storage, dependency, or application UI changes were introduced.
-
-The offline adapter pairs Choice/Line fields by suffix, orders them by displayed Choice values, and rejects ambiguous/incomplete layouts. Candidate preparation preserves the supplied sequence across F/Q/R lines, rejects unsupported IDs and numeric collisions, checks runtime slot count/range/training rules, and clears trailing line fields in the candidate without changing unrelated controls. This preparation never submits a bid and does not establish account/context eligibility or an open window. Synthetic fixtures contain invented values rather than copied private page state.
-
-Problem still outstanding: Closed-window HTML does not expose the live submit sequence or receipt/read-back contract. Initial implementation used fake transport; the user subsequently ran authenticated read-only discovery successfully. No live bid write, submitted-report retrieval, or award retrieval was performed. The overall current-focus task remains incomplete. Open-window form evidence, account/month/fleet/seat/revision binding, deadline basis, submitted-report evidence, and the application review/confirmation/attempt/reconciliation flow remain necessary before enabling submission. Existing review/copy behavior and prior working-tree edits were preserved.
-
-Validation: All 39 focused parser, discovery transport, and command tests passed (81 assertions), using only fake HTTP responses with stray-request prevention. Coverage includes rank versus DOM/suffix order, mixed-prefix mapping, maximum/excess/empty choices, trailing clearing, numeric collisions, malformed layouts, training restrictions, hidden login state, unsafe actions/redirects, rejected authentication, no write retries, operation cookie isolation, HTTP-profiler isolation, safe failures, and output redaction. Pint passed after fixes; the single final application-wide Larastan run passed with zero errors; diff whitespace checks passed. No frontend build was needed.
-
-Commit message: `feat: add read-only Kalitta bid discovery and offline line adapter`
-
-Follow-up outcome (2026-10-28): A public GET identified the actual `pages/Login.aspx` action missing from the original allowlist. Added that exact login path and coverage for direct/redirected login forms. Unexpected failures now reveal only their operation step, exception type, and a numeric cURL code or PHP source basename/line; raw messages, full paths, URLs, and previous exceptions stay excluded. The user confirmed the login landing page is `/Redirect.aspx`; discovery now visits it with the same cookies before navigating to Bid Sheet. Fixed legitimate repeated radio-button names being rejected as ambiguous, while retaining duplicate hidden/text/mixed-type rejection. The private saved Bid Sheet now passes the parser smoke test without committing its contents.
-
-The user reported successful authenticated discovery: 315 choice slots, zero editable slots, 21 populated slots, no submission controls, a Submitted Bid Lines link, and no candidate list. This matches the confirmed closed bidding window and establishes read-only access, not submission or receipt verification. The next required evidence is the redacted Submitted Bid Lines report and the open-window form controls.
-
-Follow-up validation: All 51 focused parser/discovery/command tests passed (142 assertions), including the private saved layout, cookie handoff through the landing page, repeated radio groups, unsafe duplicates, and diagnostic redaction. Pint and final Larastan passed with zero static-analysis errors; diff whitespace checks passed. Existing staging and unrelated changes were preserved.
-
-Follow-up commit message: `fix: support Kalitta login landing and radio groups in discovery`
-
-Source-capture follow-up (2026-10-28): Updated the private-layout parser test and documentation to follow the Bid Sheet capture moved into `storage/app/private/Bid_Packages/HTML`. Inspected the newly supplied BidLineDataOutput capture using structural metadata only. It contains the ReportViewer wrapper, Excel/PDF export choices, a `DocMapReport` iframe, and a nested `ReportArea` handler URL. The actual report body and submitted-choice rows are outside the saved top-level source, so the capture cannot yet establish columns, personal-versus-all-crew scope, owner/context matching, ordered read-back, or receipt semantics. Documented the need for an Excel/PDF export or rendered report-frame content, and the requirement to fetch fresh session-dependent report/control identifiers. Private values and captured identifiers were not copied into fixtures or documentation.
-
-Source-capture validation: The focused moved-capture test passed (one test, one assertion), exercising the relocated file rather than skipping it. Pint and final Larastan passed with zero static-analysis errors; diff whitespace checks passed. Existing staging was preserved. The overall auto-bidding task remains open pending report-body evidence and open-window submission controls.
-
-Source-capture commit message: `chore: update private portal capture paths and report discovery notes`
-
-### [x] CREW_BIDS.md cleanup outcome (2026-10-27)
-
-Reorganized CREW_BIDS.md into the current product contract, pending auto-bidding plan, remaining enhancements, open decisions, and verification guidance. Removed completed follow-up/task sections, duplicate first-release workflows and decision lists, historical examples for unimplemented filters, and obsolete implementation scaffolding. Preserved the confirmed UTC/occupancy/ranking/privacy rules and exact Block/base-credit/PCH reference cases as product reference rather than completed tasks. Retained outstanding browser review, quick-glance flags, legal-rest/fatigue work, private tags/notes, advanced filters, additional imports/exports, estimated pay, and personal-data visibility decisions. Corrected stale proposed-route and unverified-credit wording.
-
-Validation: Confirmed the pending auto-bidding plan was preserved verbatim, completed checkbox/follow-up sections were removed, and documentation diff checks passed. Reduced the document from approximately 555 to 217 lines. Only documentation changed; no runtime tests, Pint, build, or Larastan were required. Existing working-tree changes were preserved.
-
-Commit message: `docs: organize crew bidding requirements and remove completed tasks`
-
-### [x] Quick-glance card flags outcome (2026-10-27)
-
-Added compact trip endpoint and deadhead indicators beneath each line ID. A common return airport shows its code, a shared open route shows origin→destination, and differing linked-trip endpoints show Mixed ends. Endpoint claims require every linked trip to have valid known endpoints; missing records/codes suppress that flag. A known deadhead still produces DH when other trip details are missing. Unlinked trips and repeated pairing references do not create extra flags. Endpoints remain available from legacy metadata when leg details are absent, without inferring deadhead absence or an assigned crew base.
-
-Badges use existing Heroicons, compact icons on narrow screens, text labels on larger screens, light/dark styling, accessible image descriptions, and hover titles. Full explanations appear in Details so their meaning is accessible without hover. The badges fit within the existing header row; no new card row or scrollbar was introduced. Flags are derived during presentation, so existing published packages work without reimport and source payloads/ranks are unchanged. Fatigue/time-zone/circumnavigation tags remain deferred pending definitions. Removed the completed current-focus section from CREW_BIDS.md and retained the resulting behavior in its product contract.
-
-Validation: 44 focused Crew Bids tests passed (232 assertions), including common return endpoints across trips, open routes, mixed endpoints, positive deadhead evidence with missing records, absent endpoint/leg data, unlinked deadheads, duplicate references, accessible explanations, unchanged payloads, and existing filtering/ranking behavior. Pint, production Vite build, one Larastan run (zero errors), and diff checks passed. Sail availability and existing Heroicons 2.7.0 were confirmed. Manual browser sizing/interaction review remains pending. Existing documentation edits were preserved.
-
-Commit message: `feat: show trip endpoint and deadhead flags on bid cards`
+Commit message: feat: add crew bidding imports and private ranked bid workspace
 
 ## [x] Completed: Bug: Extracted crew list:
 ## [x] Completed: FP: Fuel Score: Include TOC, TOD

@@ -18,7 +18,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 
 /** @property Carbon|null $email_verification_otp_expires_at */
-#[Fillable(['name', 'email', 'airline_iata_code', 'airline_icao_code', 'flight_tracker_preference', 'crew_bid_seat_preference', 'email_verified_at', 'password', 'remember_token', 'role', 'is_active', 'has_bought_coffee', 'last_admin_login_at', 'stripe_id', 'pm_type', 'pm_last_four', 'trial_ends_at'])]
+#[Fillable(['name', 'email', 'airline_iata_code', 'airline_icao_code', 'flight_tracker_preference', 'crew_bid_seat_preference', 'crew_bids_access', 'email_verified_at', 'password', 'remember_token', 'role', 'is_active', 'has_bought_coffee', 'last_admin_login_at', 'stripe_id', 'pm_type', 'pm_last_four', 'trial_ends_at'])]
 #[Hidden(['password', 'remember_token', 'email_verification_otp_hash'])]
 class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 {
@@ -41,6 +41,7 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
             'email_verified_at' => 'datetime',
             'email_verification_otp_expires_at' => 'datetime',
             'is_active' => 'boolean',
+            'crew_bids_access' => 'boolean',
             'has_bought_coffee' => 'boolean',
             'password' => 'hashed',
         ];
@@ -99,10 +100,10 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 
     public function canUseCrewBids(): bool
     {
-        return $this->hasVerifiedEmail() && $this->canUseConfiguredFeature(
-            enabled: (bool) config('features.crew_bids.enabled', true),
-            forAllUsers: (bool) config('features.crew_bids.for_all_users', false),
-        );
+        return $this->is_active
+            && $this->hasVerifiedEmail()
+            && (bool) config('features.crew_bids.enabled', true)
+            && ($this->crew_bids_access || $this->isAdmin());
     }
 
     public function canUseFlightRelease(): bool

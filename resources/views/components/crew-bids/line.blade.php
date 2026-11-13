@@ -37,7 +37,7 @@
         @endforeach
     </button>
     @if ($line->carryDays > 0)
-        <span class="flex shrink-0 items-center justify-center rounded-md border border-[#C5A059] bg-amber-50 px-2 font-mono text-xs font-semibold text-[#1B365D] dark:bg-amber-950 dark:text-amber-200" aria-label="{{ $line->carryDays }} carry-in days after month-end for {{ $line->id }}">+{{ $line->carryDays }}</span>
+        <span class="flex shrink-0 items-center justify-center rounded-md border border-[#C5A059] bg-amber-50 px-2 font-mono text-xs font-semibold text-[#1B365D] dark:bg-amber-950 dark:text-amber-200" aria-label="{{ $line->carryDays }} {{ $line->carryBadgeDescription }} for {{ $line->id }}">+{{ $line->carryDays }}</span>
     @endif
     </div>
     <p :id="$id('date-help')" class="sr-only">Select a day for its UTC activity. Use Left and Right arrows to move between days, Home and End to jump, and Escape to clear.</p>
