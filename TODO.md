@@ -30,6 +30,18 @@ Optionally add references and constraints.
 # Tasks
 ## Crew bidding
 
+Staged Larastan findings resolved (2026-11-13): Split Livewire and Mockery test chains where intermediate assertions return a different static type, and expressed the database restriction test with an expected exception. The seven affected tests passed (46 assertions); Pint and staged-file Larastan passed at integration.
+
+Commit message: `test: fix static analysis of bid package tests`
+
+Filament portal fetch completed (2026-11-13): Added a “Fetch from CrewBids” action beside Import package on the Bid Packages list. An authorized admin can choose a bid month and B747/B777 fleet; the action runs the existing portal importer and reports published, held revision, unchanged, missing, or failed outcomes. Invalid month/fleet values are rejected before download. Four focused Filament tests passed (40 assertions); Pint and Larastan passed at integration.
+
+Commit message: `feat: fetch portal bid packages from Filament`
+
+Direct portal bid-package imports implemented (2026-11-13): Updated the automated-import plan in CREW_BIDS.md from email-first to the verified direct `/hyperlinks/` source. Added a Sail command and configurable UTC schedule for complete B747/B777 Lines, Trips, and Overview groups. The importer validates bounded HTTPS responses, parser identity, and linked-trip completeness; it uses a per-period/fleet lock and fingerprint deduplication, publishes a first complete package, and holds changed releases as drafts. The checked-in schedule is off by default; local Sail is enabled under the active admin owner, a scheduler worker is running, and `composer run dev` now starts one on future runs. A live December run left B777 unchanged and published B747 as a complete first release; the database now has one published December package for each fleet. Email intake, durable source receipts, and admin import-history/status remain later phases. Nine focused portal tests passed (35 assertions); Pint and Larastan passed at integration.
+
+Commit message: `feat: import complete bid packages from public crew-bids links`
+
 AI form prompt completed (2026-11-13): Review bid list now offers an AI form prompt popout with a copy button. It preserves the saved rank order, converts `F`/`Q`/`R` line IDs to numeric portal values, and withholds the prompt for unavailable, invalid, or repeated portal numbers. The existing numbered-list copy remains available; neither action submits a bid. Four focused PHP tests (44 assertions) and 23 focused JavaScript tests passed. Pint, Larastan (zero errors), and the Vite build passed.
 
 Commit message: `feat: add AI form prompt to bid review`

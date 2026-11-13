@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Actions\CrewBids\DeleteBidPackage;
+use App\Actions\CrewBids\ImportPortalBidPackage;
 use App\Filament\Resources\BidPackages\BidPackageResource;
 use App\Filament\Resources\BidPackages\Pages\ListBidPackages;
 use App\Filament\Resources\BidPackages\Pages\ViewBidPackage;
@@ -27,6 +28,57 @@ use Tests\TestCase;
 class BidPackageResourceTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_admin_fetches_a_portal_package_from_the_bid_packages_page(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $this->actingAs($admin);
+        $this->mock(ImportPortalBidPackage::class)->shouldReceive('handle')->once()
+            ->withArgs(fn (string $period, string $fleet, User $owner): bool => $period === '2026-12' && $fleet === '777' && $owner->id === $admin->id)
+            ->andReturn('published');
+
+        Livewire::test(ListBidPackages::class)->assertActionExists('fetchPortal')
+            ->callAction('fetchPortal', data: ['period' => '2026-12', 'fleet' => '777'])
+            ->assertHasNoActionErrors()->assertNotified('Package published');
+    }
+
+    public function test_portal_fetch_reports_missing_sources_without_importing(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        $this->mock(ImportPortalBidPackage::class)->shouldReceive('handle')->once()->andReturn('missing');
+
+        Livewire::test(ListBidPackages::class)
+            ->callAction('fetchPortal', data: ['period' => '2026-12', 'fleet' => '747'])
+            ->assertHasNoActionErrors()->assertNotified('Package not available yet');
+
+        $this->assertDatabaseCount('bid_packages', 0);
+    }
+
+    public function test_portal_fetch_rejects_invalid_month_and_fleet_before_download(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        $this->mock(ImportPortalBidPackage::class)->shouldNotReceive('handle');
+
+        Livewire::test(ListBidPackages::class)
+            ->callAction('fetchPortal', data: ['period' => '2026-13', 'fleet' => '767'])
+            ->assertHasActionErrors(['period', 'fleet']);
+
+        $this->assertDatabaseCount('bid_packages', 0);
+    }
+
+    public function test_portal_fetch_reports_failures_without_changing_packages(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        Exceptions::fake();
+        $this->mock(ImportPortalBidPackage::class)->shouldReceive('handle')->once()->andThrow(new RuntimeException('Portal unavailable'));
+
+        Livewire::test(ListBidPackages::class)
+            ->callAction('fetchPortal', data: ['period' => '2026-12', 'fleet' => '777'])
+            ->assertNotified('Portal import failed');
+
+        $this->assertDatabaseCount('bid_packages', 0);
+        Exceptions::assertReported(RuntimeException::class);
+    }
 
     public function test_admin_imports_the_private_december_777_package_with_all_three_sources(): void
     {
@@ -210,8 +262,9 @@ class BidPackageResourceTest extends TestCase
         $admin = User::factory()->admin()->create();
         $this->actingAs($admin);
         $draft = BidPackage::factory()->create(['published_at' => null]);
-        Livewire::test(ViewBidPackage::class, ['record' => $draft->id])
-            ->assertOk()->assertActionHidden('replaceSources')->assertActionHidden('publish')->assertActionHidden('delete');
+        $page = Livewire::test(ViewBidPackage::class, ['record' => $draft->id]);
+        $page->assertOk();
+        $page->assertActionHidden('replaceSources')->assertActionHidden('publish')->assertActionHidden('delete');
         $this->expectException(AuthorizationException::class);
         app(DeleteBidPackage::class)->handle($draft->id);
     }
@@ -228,12 +281,12 @@ class BidPackageResourceTest extends TestCase
         $this->assertNotNull($package->fresh()->archived_at);
         $this->assertSame(['F1'], $workspace->fresh()->selections);
 
-        Livewire::actingAs($owner)->test(CrewBids::class)->assertSet('packageId', $package->id)
-            ->assertViewHas('packages', fn ($packages): bool => $packages->contains('id', $package->id))
-            ->call('remove', 'F1')->assertHasNoErrors();
-        Livewire::actingAs($newUser)->test(CrewBids::class)->assertSet('packageId', null)
-            ->assertViewHas('packages', fn ($packages): bool => $packages->isEmpty())
-            ->set('contextPackage', (string) $package->id)->call('changeContext')->assertNotFound();
+        $ownerPage = Livewire::actingAs($owner)->test(CrewBids::class)->assertSet('packageId', $package->id);
+        $ownerPage->assertViewHas('packages', fn ($packages): bool => $packages->contains('id', $package->id));
+        $ownerPage->call('remove', 'F1')->assertHasNoErrors();
+        $newUserPage = Livewire::actingAs($newUser)->test(CrewBids::class)->assertSet('packageId', null);
+        $newUserPage->assertViewHas('packages', fn ($packages): bool => $packages->isEmpty());
+        $newUserPage->set('contextPackage', (string) $package->id)->call('changeContext')->assertNotFound();
 
         Livewire::actingAs($admin)->test(ViewBidPackage::class, ['record' => $package->id])->callAction('restore');
         $this->assertNull($package->fresh()->archived_at);
@@ -243,14 +296,10 @@ class BidPackageResourceTest extends TestCase
     public function test_database_prevents_deletion_of_package_with_saved_workspace(): void
     {
         $package = BidPackage::factory()->create();
-        $workspace = BidWorkspace::factory()->create(['bid_package_id' => $package->id]);
-        try {
-            $package->delete();
-            $this->fail('Package deletion must be restricted.');
-        } catch (QueryException) {
-            $this->assertModelExists($package);
-            $this->assertModelExists($workspace);
-        }
+        BidWorkspace::factory()->create(['bid_package_id' => $package->id]);
+        $this->expectException(QueryException::class);
+
+        $package->delete();
     }
 
     public function test_import_rejects_invalid_files_and_enforces_shared_rate_limit(): void
@@ -286,8 +335,9 @@ class BidPackageResourceTest extends TestCase
         $current = BidPackage::factory()->create();
         $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
         $archived = BidPackage::factory()->create(['source_revision' => 'ARCHIVED_REVISION', 'archived_at' => now()]);
-        $page->assertSet('packageId', $current->id)->call('$refresh')->assertViewHas('latest', null)
-            ->call('reviewRevision', $archived->id)->assertNotFound();
+        $page->assertSet('packageId', $current->id)->call('$refresh');
+        $page->assertViewHas('latest', null);
+        $page->call('reviewRevision', $archived->id)->assertNotFound();
     }
 
     public function test_non_admin_and_disabled_feature_cannot_access_package_management(): void
