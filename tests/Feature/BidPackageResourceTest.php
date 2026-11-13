@@ -28,6 +28,33 @@ class BidPackageResourceTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_admin_imports_the_private_december_777_package_with_all_three_sources(): void
+    {
+        $files = [];
+        foreach (['Overview.xlsx', 'Lines.pdf', 'Trips.pdf'] as $source) {
+            $name = '777 December 2026 '.$source;
+            $path = storage_path('app/private/Bid_Packages/'.$name);
+            if (! is_file($path)) {
+                $this->markTestSkipped('The private December B777 package is unavailable.');
+            }
+            $files[] = UploadedFile::fake()->createWithContent($name, file_get_contents($path));
+        }
+        Storage::fake('local');
+        $this->actingAs(User::factory()->admin()->create());
+
+        Livewire::test(ListBidPackages::class)->callAction('import', data: ['files' => $files])
+            ->assertHasNoActionErrors();
+
+        $package = BidPackage::query()->sole();
+        $this->assertSame('2026-12', $package->period);
+        $this->assertSame('777', $package->fleet);
+        $this->assertNull($package->published_at);
+        $this->assertSame(['overview' => true, 'lines' => true, 'trips' => true], $package->payload['coverage']);
+        $this->assertArrayHasKey('F1', $package->payload['lines']);
+        $this->assertNotEmpty($package->payload['trips']);
+        $this->assertSame([], Storage::disk('local')->allFiles('livewire-tmp'));
+    }
+
     public function test_admin_can_search_filter_and_review_packages_without_private_rankings(): void
     {
         $this->actingAs(User::factory()->admin()->create());

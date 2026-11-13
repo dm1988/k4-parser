@@ -12,6 +12,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\TestWith;
 use Smalot\PdfParser\Document;
 use Smalot\PdfParser\Parser;
 use Tests\TestCase;
@@ -20,6 +21,32 @@ use ZipArchive;
 class BidPackageImportTest extends TestCase
 {
     use RefreshDatabase;
+
+    #[TestWith(['747 Overview', '747'])]
+    #[TestWith(['777 Overview', '777'])]
+    #[TestWith(['747 December 2026 Overview', '747'])]
+    #[TestWith(['777 December 2026 Overview', '777'])]
+    public function test_overview_accepts_fleet_names_with_an_optional_month_and_year(string $sheetName, string $fleet): void
+    {
+        $file = $this->overview($sheetName);
+        $result = app(ReadBidOverview::class)->read($file->getPathname());
+
+        $this->assertSame($fleet, $result['fleet']);
+        $this->assertSame('2026-11', $result['period']);
+        $this->assertCount(2, $result['lines']);
+    }
+
+    #[TestWith(['767 December 2026 Overview'])]
+    #[TestWith(['777 December 2026 Trips'])]
+    #[TestWith(['777 unrelated data Overview'])]
+    public function test_overview_rejects_unsupported_worksheet_names(string $sheetName): void
+    {
+        $file = $this->overview($sheetName);
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage('Select a 747 or 777 Overview workbook.');
+
+        app(ReadBidOverview::class)->read($file->getPathname());
+    }
 
     public function test_overview_normalizes_minutes_dates_reserve_alignment_and_fo_only_complement(): void
     {
@@ -238,13 +265,13 @@ class BidPackageImportTest extends TestCase
         $this->assertNull($line['carry_premium_seconds']);
     }
 
-    private function overview(): UploadedFile
+    private function overview(string $sheetName = '777 Overview'): UploadedFile
     {
         $path = tempnam(sys_get_temp_dir(), 'bid-overview-');
         $zip = new ZipArchive;
         $zip->open($path, ZipArchive::OVERWRITE);
         $zip->addFromString('[Content_Types].xml', '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/></Types>');
-        $zip->addFromString('xl/workbook.xml', '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="777 Overview" sheetId="1" r:id="rId1"/></sheets></workbook>');
+        $zip->addFromString('xl/workbook.xml', '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="'.htmlspecialchars($sheetName, ENT_XML1).'" sheetId="1" r:id="rId1"/></sheets></workbook>');
         $zip->addFromString('xl/_rels/workbook.xml.rels', '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>');
         $header = $this->cell('A1', 'Line Name').$this->cell('B1', 'Crew Complement').$this->cell('C1', 'Credit');
         for ($day = 1; $day <= 30; $day++) {
