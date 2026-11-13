@@ -11,6 +11,54 @@ use Tests\TestCase;
 
 class ReadBidPortalPageTest extends TestCase
 {
+    public function test_reads_open_bid_context_and_update_postback_without_returning_account_identity(): void
+    {
+        $html = str_replace('Closed', 'Open', $this->fixture('bid-sheet'));
+        $html = str_replace('</form>', '<input type="button" name="ctl00$ContentPlaceHolder1$btn_update" id="ContentPlaceHolder1_btn_update" value="Update" onclick="javascript:__doPostBack(&#39;ctl00$ContentPlaceHolder1$btn_update&#39;,&#39;&#39;)" /></form>', $html);
+
+        $context = app(ReadBidPortalPage::class)->context($html, '900000', 104);
+
+        $this->assertSame([
+            'account_matches_input' => true, 'seat' => 'FO', 'fleet' => '777', 'period' => '2026-12',
+            'package_revision' => 0, 'window_status' => 'Open', 'update_postback' => true,
+        ], $context);
+    }
+
+    public function test_reports_an_account_mismatch_without_exposing_the_page_identity(): void
+    {
+        $context = app(ReadBidPortalPage::class)->context($this->fixture('bid-sheet'), '900001', 104);
+
+        $this->assertFalse($context['account_matches_input']);
+        $this->assertSame('Closed', $context['window_status']);
+        $this->assertFalse($context['update_postback']);
+    }
+
+    public function test_rejects_a_bid_context_whose_line_limit_disagrees_with_the_form(): void
+    {
+        $this->expectException(BidPortalException::class);
+        $this->expectExceptionMessage('context values are not supported');
+
+        app(ReadBidPortalPage::class)->context($this->fixture('bid-sheet'), '900000', 103);
+    }
+
+    public function test_does_not_accept_a_different_update_postback(): void
+    {
+        $html = str_replace('</form>', '<input type="button" name="ctl00$ContentPlaceHolder1$btn_update" id="ContentPlaceHolder1_btn_update" value="Update" onclick="javascript:__doPostBack(&#39;other&#39;,&#39;&#39;)" /></form>', $this->fixture('bid-sheet'));
+
+        $context = app(ReadBidPortalPage::class)->context($html, '900000', 104);
+
+        $this->assertFalse($context['update_postback']);
+    }
+
+    public function test_does_not_treat_a_disabled_update_control_as_available(): void
+    {
+        $html = str_replace('</form>', '<input type="button" disabled name="ctl00$ContentPlaceHolder1$btn_update" id="ContentPlaceHolder1_btn_update" value="Update" onclick="javascript:__doPostBack(&#39;ctl00$ContentPlaceHolder1$btn_update&#39;,&#39;&#39;)" /></form>', $this->fixture('bid-sheet'));
+
+        $context = app(ReadBidPortalPage::class)->context($html, '900000', 104);
+
+        $this->assertFalse($context['update_postback']);
+    }
+
     public function test_accepts_repeated_radio_names_without_including_unrelated_settings_in_candidate_fields(): void
     {
         $reader = app(ReadBidPortalPage::class);

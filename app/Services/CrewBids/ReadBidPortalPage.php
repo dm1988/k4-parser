@@ -107,6 +107,66 @@ class ReadBidPortalPage
     }
 
     /**
+     * The page labels describe the visible bid context, not a verified submission receipt.
+     *
+     * @return array{account_matches_input: bool, seat: string, fleet: string, period: string, package_revision: int, window_status: string, update_postback: bool}
+     */
+    public function context(#[SensitiveParameter] string $html, #[SensitiveParameter] string $employee, int $maximumLine): array
+    {
+        $form = $this->form($html);
+        $account = $this->element($form, 'LoginName1');
+        $seat = $this->text($this->element($form, 'ContentPlaceHolder1_lbl_Position'));
+        $fleet = $this->text($this->element($form, 'ContentPlaceHolder1_lbl_Type'));
+        $table = $this->element($form, 'ContentPlaceHolder1_gv_bidpackage');
+        if ($account === null || $table === null || ! in_array($seat, ['CA', 'FO'], true)
+            || ! preg_match('/\A(?:747|777)\z/', $fleet)) {
+            throw new BidPortalException('The portal account or bid context is not supported.');
+        }
+
+        $rows = $table->getElementsByTagName('tr');
+        if ($rows->length !== 2) {
+            throw new BidPortalException('The portal bid context has an unsupported number of rows.');
+        }
+        $headers = [];
+        foreach ($rows->item(0)->getElementsByTagName('th') as $header) {
+            $headers[] = $this->text($header);
+        }
+        if ($headers !== ['Bid Package', 'Month', 'Bid Starting Date', 'Bid Ending Date', 'Revision', 'Bid Lines '.$fleet, 'Status '.$fleet]) {
+            throw new BidPortalException('The portal bid context columns are not supported.');
+        }
+        $cells = [];
+        foreach ($rows->item(1)->getElementsByTagName('td') as $cell) {
+            $cells[] = $this->text($cell);
+        }
+        if (count($cells) !== 7 || ! preg_match('/\A[1-9]\d{0,9}\z/', $cells[0])
+            || ! preg_match('/\A(0?[1-9]|1[0-2])\/(20\d{2})\z/', $cells[1], $month)
+            || ! preg_match('/\A\d{1,2}\/\d{1,2}\/20\d{2}\z/', $cells[2])
+            || ! preg_match('/\A\d{1,2}\/\d{1,2}\/20\d{2}\z/', $cells[3])
+            || ! preg_match('/\A\d{1,3}\z/', $cells[4])
+            || (string) $maximumLine !== $cells[5]) {
+            throw new BidPortalException('The portal bid context values are not supported.');
+        }
+        $button = $this->element($form, 'ContentPlaceHolder1_btn_update');
+        $updatePostback = $button !== null
+            && $button->getAttribute('type') === 'button'
+            && $button->getAttribute('name') === self::PREFIX.'btn_update'
+            && ! $button->hasAttribute('disabled')
+            && ! $this->disabledByFieldset($button)
+            && trim($button->getAttribute('value')) === 'Update'
+            && preg_match('/\A(?:javascript:)?__doPostBack\([\'\"]ctl00\$ContentPlaceHolder1\$btn_update[\'\"],[\'\"][\'\"]\)\s*;?\z/', trim($button->getAttribute('onclick'))) === 1;
+
+        return [
+            'account_matches_input' => $this->text($account) === trim($employee),
+            'seat' => $seat,
+            'fleet' => $fleet,
+            'period' => $month[2].'-'.str_pad($month[1], 2, '0', STR_PAD_LEFT),
+            'package_revision' => (int) $cells[4],
+            'window_status' => in_array($cells[6], ['Open', 'Closed'], true) ? $cells[6] : 'Unknown',
+            'update_postback' => $updatePostback,
+        ];
+    }
+
+    /**
      * An offline candidate does not establish account/context or permission to submit.
      *
      * @param  array{maximum_line: int, training: bool, training_lines: list<int>, slots: list<array{rank: int, line_field: string}>}  $sheet
@@ -216,5 +276,26 @@ class ReadBidPortalPage
         }
 
         return false;
+    }
+
+    private function element(#[SensitiveParameter] DOMElement $form, string $id): ?DOMElement
+    {
+        $found = null;
+        foreach ($form->getElementsByTagName('*') as $element) {
+            if ($element->getAttribute('id') !== $id) {
+                continue;
+            }
+            if ($found !== null) {
+                throw new BidPortalException('The portal contains ambiguous context labels.');
+            }
+            $found = $element;
+        }
+
+        return $found;
+    }
+
+    private function text(?DOMElement $element): string
+    {
+        return $element === null ? '' : trim(preg_replace('/\s+/u', ' ', $element->textContent) ?? '');
     }
 }

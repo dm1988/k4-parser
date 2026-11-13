@@ -31,7 +31,7 @@ class DiscoverBidPortalCommand extends Command
             $selections = is_string($lines) && trim($lines) !== '' ? array_map(trim(...), explode(',', $lines)) : [];
             $report = $discovery->handle($employee, $password, $selections);
             $this->line(json_encode($report, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
-            $this->warn('Discovery is not submission preflight. Account/context, deadline, submit action, and receipt verification remain unverified.');
+            $this->warn('Candidate changes compare Bid Sheet form values only, not a verified submitted bid. Discovery is not submission preflight. Account eligibility, deadline, update acceptance, and receipt verification remain unverified.');
 
             return self::SUCCESS;
         } catch (BidPortalException $exception) {

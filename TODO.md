@@ -30,6 +30,10 @@ Optionally add references and constraints.
 # Tasks
 ## Crew bidding
 
+Auto-bidding read-only comparison and receipt parsing (2026-11-13): Discovery with `--lines` reports additions, removals, and relative reorder against visible Bid Sheet form values without sending a bid. A supplied open-window capture established the Update postback shape and visible account/period/fleet/seat/revision/status labels. Discovery checks the account label without exposing it. An offline parser restores the printed Choice order in the supplied private Submitted Bid Lines PDF and rejects ambiguous reports. The user reports that Update leaves the Bid Sheet visibly unchanged, sends a complete Bid Received email, and the report then shows the same order. A supplied email excerpt has explicit confirmation wording, expected employee/fleet/seat fields, and ranked rows; a synthetic email parser now checks that format. Neither the email nor PDF contains a bid period, and the app does not authenticate or retrieve the receipt email or report. Fresh context-bound read-back remains needed for verified submission. This remains an offline aid, not a submission preflight. Integration: 89 focused tests, 88 passed and one pre-existing private-layout smoke test skipped (186 assertions); Pint passed; one Larastan run found zero errors; `git diff --check` passed.
+
+Commit message: `feat: inspect crew bid portal context and parse submission evidence`
+
 Auto-bidding discovery update (2026-11-13): A user-run read-only command observed 315 editable Choice/Line slots, 43 populated slots, an enabled `btn_update` control, and a Submitted Bid Lines link. This supports an apparently open Bid Sheet but does not verify the account, bid context, deadline, submit event, acceptance, or receipt. No bid was sent. CREW_BIDS.md now records this evidence; reviewed submission remains pending authenticated read-only protocol and report discovery.
 
 Commit message: `docs: record open-window crew bid portal discovery`

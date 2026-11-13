@@ -17,13 +17,13 @@ class DiscoverBidPortal
 
     private const array LOGIN_PATHS = ['/', '/default.aspx', '/login.aspx', '/pages/login.aspx'];
 
-    public function __construct(private BidPortalHttpClient $http, private ReadBidPortalPage $pages) {}
+    public function __construct(private BidPortalHttpClient $http, private ReadBidPortalPage $pages, private ComparePortalBidDraft $compareDraft) {}
 
     /**
      * The only POST in this operation is login. Bid Sheet controls are never posted.
      *
      * @param  list<string>  $selections
-     * @return array{choice_slots: int, editable_slots: int, populated_slots: int, control_names: list<string>, submitted_report_link: bool, candidate_choices: ?int}
+     * @return array{choice_slots: int, editable_slots: int, populated_slots: int, control_names: list<string>, submitted_report_link: bool, candidate_choices: ?int, candidate_draft_changes: ?array{added: int, removed: int, reordered: bool}, context: array{account_matches_input: bool, seat: string, fleet: string, period: string, package_revision: int, window_status: string, update_postback: bool}}
      */
     public function handle(#[SensitiveParameter] string $employee, #[SensitiveParameter] string $password, #[SensitiveParameter] array $selections = []): array
     {
@@ -69,9 +69,15 @@ class DiscoverBidPortal
             if ($this->url($sheetUrl, $sheet['action']) !== self::ORIGIN.'/Pages/BidSheet.aspx') {
                 throw new BidPortalException('The Bid Sheet form destination is not supported.');
             }
+            $step = 'bid context parsing';
+            $context = $this->pages->context($response->body(), $employee, $sheet['maximum_line']);
+            if (! $context['account_matches_input']) {
+                throw new BidPortalException('The authenticated portal account does not match the supplied employee number.');
+            }
+            $draftChanges = null;
             if ($selections !== []) {
                 $step = 'candidate validation';
-                $this->pages->replacement($sheet, $selections);
+                $draftChanges = $this->compareDraft->handle($sheet, $selections);
             }
             $step = 'discovery summary';
             $controls = array_values(array_filter($sheet['controls'], fn (string $name): bool => preg_match('/\Actl00\$ContentPlaceHolder1\$[A-Za-z][A-Za-z0-9_]{0,60}\z/', $name) === 1));
@@ -80,7 +86,8 @@ class DiscoverBidPortal
                 'editable_slots' => count(array_filter($sheet['slots'], fn (array $slot): bool => $slot['editable'])),
                 'populated_slots' => count(array_filter($sheet['slots'], fn (array $slot): bool => $slot['line'] !== null)),
                 'control_names' => $controls, 'submitted_report_link' => $sheet['submitted_report'],
-                'candidate_choices' => $selections === [] ? null : count($selections)];
+                'candidate_choices' => $selections === [] ? null : count($selections),
+                'candidate_draft_changes' => $draftChanges, 'context' => $context];
         } catch (BidPortalException $exception) {
             throw $exception;
         } catch (Throwable $exception) {

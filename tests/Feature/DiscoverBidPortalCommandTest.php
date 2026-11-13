@@ -32,7 +32,7 @@ class DiscoverBidPortalCommandTest extends TestCase
         $this->artisan('crew-bids:discover-portal', ['--lines' => 'F1,Q99,R 70'])
             ->expectsQuestion('Employee number', '900000')
             ->expectsQuestion('Portal password', 'synthetic-password-only')
-            ->expectsOutputToContain('"candidate_choices": 3')
+            ->expectsOutputToContain('"candidate_draft_changes"')
             ->doesntExpectOutputToContain('synthetic-password-only')
             ->doesntExpectOutputToContain('900000')
             ->doesntExpectOutputToContain('synthetic-private-sheet-state')

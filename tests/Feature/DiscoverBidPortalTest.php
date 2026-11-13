@@ -101,7 +101,10 @@ class DiscoverBidPortalTest extends TestCase
         $report = app(DiscoverBidPortal::class)->handle('900000', 'synthetic-password-only', ['F1', 'Q99', 'R70']);
 
         $this->assertSame(['choice_slots' => 3, 'editable_slots' => 0, 'populated_slots' => 3,
-            'control_names' => [], 'submitted_report_link' => true, 'candidate_choices' => 3], $report);
+            'control_names' => [], 'submitted_report_link' => true, 'candidate_choices' => 3,
+            'candidate_draft_changes' => ['added' => 3, 'removed' => 3, 'reordered' => false],
+            'context' => ['account_matches_input' => true, 'seat' => 'FO', 'fleet' => '777', 'period' => '2026-12',
+                'package_revision' => 0, 'window_status' => 'Closed', 'update_postback' => false]], $report);
         $http->assertSentCount(3);
         $http->assertSent(fn (Request $request): bool => $request->method() === 'POST' && $request->url() === self::ORIGIN.'/'
             && $request->data() === [
@@ -166,6 +169,25 @@ class DiscoverBidPortalTest extends TestCase
         $this->expectException(BidPortalException::class);
         $this->expectExceptionMessage('Portal login was not accepted');
         app(DiscoverBidPortal::class)->handle('900000', 'synthetic-password-only');
+    }
+
+    public function test_rejects_a_bid_sheet_for_a_different_employee_without_posting_a_bid(): void
+    {
+        $http = $this->transport();
+        $login = file_get_contents(base_path('tests/Fixtures/crew-bids/portal-login.html'));
+        $sheet = str_replace('900000', '900001', file_get_contents(base_path('tests/Fixtures/crew-bids/portal-bid-sheet.html')));
+        $http->fake([
+            self::ORIGIN.'/' => $http->response($login),
+            self::ORIGIN.'/Pages/BidSheet.aspx' => $http->response($sheet),
+        ]);
+
+        try {
+            app(DiscoverBidPortal::class)->handle('900000', 'synthetic-password-only');
+            $this->fail('A different portal account was accepted.');
+        } catch (BidPortalException $exception) {
+            $this->assertStringContainsString('account does not match', $exception->getMessage());
+            $http->assertNotSent(fn (Request $request): bool => $request->method() === 'POST' && $request->url() === self::ORIGIN.'/Pages/BidSheet.aspx');
+        }
     }
 
     public function test_redacts_transport_exceptions_and_does_not_retry(): void
@@ -249,7 +271,7 @@ class DiscoverBidPortalTest extends TestCase
 
                 return $http->response($login, 200, ['Set-Cookie' => 'session=synthetic-cookie; Path=/; Secure']);
             },
-            self::ORIGIN.'/Pages/BidSheet.aspx' => $http->response($sheet),
+            self::ORIGIN.'/Pages/BidSheet.aspx' => $http->sequence()->push($sheet)->push(str_replace('900000', '900001', $sheet)),
         ]);
         $service = app(DiscoverBidPortal::class);
 
