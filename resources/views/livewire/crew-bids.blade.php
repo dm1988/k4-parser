@@ -119,6 +119,7 @@
                 <p x-show="$wire.sort !== 'best'" x-cloak class="mt-2 rounded-lg bg-[#C5A059]/15 px-3 py-2 text-sm text-[#1B365D] dark:text-amber-200">Done switches to Best match to apply your ranking preferences.</p>
                 <div x-data="bidGoalPreferences(@js($goalLabels))" @bid-goals-changed.debounce.250ms="$wire.$commit()">
                     <fieldset class="mt-3 flex flex-wrap gap-4" @change="$dispatch('bid-goals-changed')"><legend class="mb-2 text-sm font-semibold">1. Choose goals</legend>@foreach ($goalLabels as $value => $label)<label class="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" wire:model="goals" value="{{ $value }}" class="rounded">{{ $label }}</label>@endforeach</fieldset>
+                    <p x-show="$wire.goals.includes('pay')" x-cloak class="mt-2 text-xs text-slate-500 dark:text-slate-400">Maximize pay uses Estimated line value for carry-in lines and Estimated pay for other lines. Complete estimates rank ahead of missing or incomplete estimates when pay is compared.</p>
                     <ol wire:ignore x-sort="sortGoal($item, $el)" class="mt-2 list-decimal space-y-1 ps-6" aria-label="Goal priority order">
                         <template x-for="(goal, index) in $wire.goals" :key="goal">
                             <li x-sort:item="goal" :data-goal="goal">

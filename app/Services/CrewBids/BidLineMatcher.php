@@ -316,7 +316,7 @@ class BidLineMatcher
     public function sort(array $lines, array $goals, string $sort): array
     {
         $keys = match ($sort) {
-            'credit' => ['credit'], 'block' => ['block'], 'days_off' => ['days_off'], 'id' => [], default => $goals,
+            'credit' => ['credit'], 'block' => ['block'], 'days_off' => ['days_off'], 'pay' => ['pay'], 'id' => [], default => $goals,
         };
         usort($lines, function (array $left, array $right) use ($keys): int {
             foreach ($keys as $key) {

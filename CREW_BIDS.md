@@ -170,7 +170,7 @@ Deployment requires the `add_package_management_to_bid_packages` migration, whic
 
 ### Preferences, scheduling, and ranking
 
-- Goals use strict priority: maximize days off, maximize credit, or prefer fewer work blocks. A lower goal only breaks ties in higher goals; Line ID is the stable final tie-break.
+- Goals use strict priority: Maximize credit, Maximize days off, Fewer work blocks, and Maximize pay can all be selected and reordered. A lower goal only breaks ties in higher goals; natural Line ID is the stable final tie-break. Maximize pay uses the existing final rounded complete estimate: Estimated line value for carry-in lines, otherwise Estimated pay. Missing/incomplete values rank after complete values when pay is compared, without overriding a higher-priority goal or using a known minimum as a complete total.
 - Requested UTC days off and selected start city are hard filters. Confirmed conflicts disappear from available results. Already selected choices remain in their manual order with warnings.
 - All supplied package dates/times are UTC. Blank Overview date cells mean days off. Every UTC calendar date from trip report through release is occupied, including full layover/rest days, deadheads, reserve, training, and carry-in/out work.
 - Days off and contiguous work-block counts apply to the selected month. Source duty days are a separate metric. Published carry counts retain their source scope; the calculated fallback counts unique occupied UTC dates after month-end.
@@ -825,7 +825,7 @@ Depends on subtask 5. Commit message: `feat: display private scheduled pay estim
 
 **Problem:** Ordering an incomplete subtotal beside a complete estimate would imply comparable coverage.
 
-Include **Highest estimated pay** in the first release, as confirmed by the user. Sort ready estimates descending by the final rounded USD total in minor units, with the same personal scenario, compensation period, and supported scope. Equal displayed totals use natural Line ID as the stable final tie-break. Place missing/incomplete/unsupported values after ready estimates and visibly identify their status; never treat them as zero or compare different currencies without a separately approved conversion feature. Keep manual rank and the existing strict-priority goals intact; adding a pay ranking goal would require a separate decision.
+Include **Highest estimated pay** in the first release, as confirmed by the user. Sort ready estimates descending by the final rounded USD total in minor units, with the same personal scenario, compensation period, and supported scope. Equal displayed totals use natural Line ID as the stable final tie-break. Place missing/incomplete/unsupported values after ready estimates and visibly identify their status; never treat them as zero or compare different currencies without a separately approved conversion feature. At the user's request (2026-11-15), **Maximize pay** is also available as an ordered Best match goal using the same Estimated line value / Estimated pay amounts. Lower goals break pay ties, and pay only breaks ties when a higher goal precedes it. Manual bid ranks remain independent.
 
 **Acceptance:** Exact ties, unknown values, changed personal context, inconsistent coverage, and selection/rank preservation are covered. All existing sorts remain available.
 

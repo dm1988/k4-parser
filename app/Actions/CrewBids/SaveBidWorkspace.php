@@ -25,8 +25,8 @@ class SaveBidWorkspace
         Validator::make(compact('seat', 'preferences', 'selections'), [
             'seat' => ['required', Rule::in(['CA', 'FO'])],
             'preferences' => ['required', 'array:goals,days_off,start_city,initialized'],
-            'preferences.goals' => ['present', 'array', 'list', 'max:3'],
-            'preferences.goals.*' => ['string', 'distinct', Rule::in(['credit', 'days_off', 'blocks'])],
+            'preferences.goals' => ['present', 'array', 'list', 'max:4'],
+            'preferences.goals.*' => ['string', 'distinct', Rule::in(['credit', 'days_off', 'blocks', 'pay'])],
             'preferences.days_off' => ['present', 'array', 'list', 'max:31'],
             'preferences.days_off.*' => ['date_format:Y-m-d', 'distinct', 'after_or_equal:'.$package->period.'-01', 'before:'.CarbonImmutable::parse($package->period.'-01')->addMonth()->format('Y-m-d')],
             'preferences.start_city' => ['present', 'nullable', 'string', 'regex:/^(?:[A-Z]{3})?$/'],

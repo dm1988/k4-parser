@@ -69,6 +69,9 @@ class CrewBidPaySourceTest extends TestCase
         $page->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F1', 'F2'])
             ->assertViewHas('allLines', fn (array $lines): bool => $lines['F1']['pay_estimate']->cents === 1095592)
             ->assertSee('Estimated line value')->assertSee('$10,955.92')
+            ->set('goals', ['pay'])->call('finishSetup')->assertHasNoErrors()->assertSet('sort', 'best')
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F1', 'F2'])
+            ->assertSee('Maximize pay: Estimated line value · $10,955.92')
             ->call('loadPayDetails', 'F1')->assertHasNoErrors()->assertSee('2026-11 · Scheduled gross pay')
             ->assertSee('$10,830.95')->assertSee('2026-12 · Carry-in excess-day payment only')->assertSee('$124.97')
             ->assertSee('50% of scheduled passenger deadhead')->assertDontSee('A complete total is unavailable');

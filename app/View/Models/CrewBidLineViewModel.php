@@ -39,13 +39,23 @@ final readonly class CrewBidLineViewModel
         public ?CrewBidPayViewModel $payEstimate = null,
     ) {}
 
-    /** @param array<string, mixed> $line */
-    public static function fromLine(array $line, ?int $rank = null, bool $showBlocks = false, bool $payDetails = false): self
+    /** @param array<string, mixed> $line
+     * @param  list<string>  $goals
+     */
+    public static function fromLine(array $line, ?int $rank = null, bool $showBlocks = false, bool $payDetails = false, array $goals = []): self
     {
         $reserve = $line['type'] === 'reserve';
         $trips = $line['trip_details'];
         $tripCount = count($trips);
         $payEstimate = isset($line['pay_estimate']) ? CrewBidPayViewModel::fromEstimate($line['pay_estimate'], $payDetails) : null;
+        $matchDetails = $line['match_details'];
+        $payPosition = array_search('pay', $goals, true);
+        if ($payPosition !== false && $payEstimate !== null) {
+            $precedingGoals = array_slice($goals, 0, $payPosition);
+            $detailPosition = count(array_filter($precedingGoals, static fn (string $goal): bool => ($line[$goal] ?? null) !== null));
+            $payDescription = $payEstimate->ready ? $payEstimate->title.' · '.$payEstimate->label : 'Complete estimate unavailable';
+            array_splice($matchDetails, $detailPosition, 0, ['Maximize pay: '.$payDescription]);
+        }
 
         return new self(
             id: $line['id'],
@@ -70,7 +80,7 @@ final readonly class CrewBidLineViewModel
             creditNotes: self::creditNotes($line),
             warnings: $line['warnings'],
             warningSummary: implode(' · ', $line['warnings']),
-            matchDetails: $line['match_details'],
+            matchDetails: $matchDetails,
             filterDetails: $line['filter_details'],
             payEstimate: $payEstimate,
         );

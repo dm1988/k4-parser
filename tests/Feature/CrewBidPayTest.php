@@ -96,6 +96,55 @@ class CrewBidPayTest extends TestCase
         $page->set('showList', true)->set('showReview', true)->assertSee("1. F1\n2. F2\n3. F10\n4. F3");
     }
 
+    public function test_all_four_goals_can_be_saved_reordered_and_restored_without_changing_bid_ranks(): void
+    {
+        BidPackage::factory()->create();
+        $user = User::factory()->admin()->create();
+        $page = Livewire::actingAs($user)->test(CrewBids::class)->call('add', 'F1');
+
+        $page->set('goals', ['blocks', 'credit', 'days_off', 'pay'])->call('finishSetup')
+            ->assertHasNoErrors()->assertSee('Maximize pay')->call('sortGoal', 'pay', 0)
+            ->assertSet('goals', ['pay', 'blocks', 'credit', 'days_off'])->assertSet('selections', ['F1'])
+            ->assertSee('Maximize pay: Complete estimate unavailable');
+
+        $workspace = BidWorkspace::query()->where('user_id', $user->id)->sole();
+        $this->assertSame(['pay', 'blocks', 'credit', 'days_off'], $workspace->preferences['goals']);
+        $this->assertSame(['F1'], $workspace->selections);
+        Livewire::test(CrewBids::class)->assertSet('goals', ['pay', 'blocks', 'credit', 'days_off']);
+    }
+
+    public function test_pay_goal_respects_priority_order_ready_estimates_natural_ties_and_bulk_add(): void
+    {
+        $package = BidPackage::factory()->withSourceGuarantee()->create();
+        $payload = $package->payload;
+        foreach (['F2', 'F10', 'F3', 'F4', 'F5'] as $id) {
+            $payload['lines'][$id] = array_replace($payload['lines']['F1'], ['id' => $id]);
+        }
+        $payload['lines']['F3']['calendar']['2026-11-16'] = ['status' => 'occupied', 'activity' => 'Trip / occupied'];
+        $payload['lines']['F5']['calendar']['2026-11-16'] = ['status' => 'occupied', 'activity' => 'Trip / occupied'];
+        $payload['lines']['F4']['source_credit'] = 12000;
+        $package->update(['payload' => $payload]);
+        $user = User::factory()->admin()->withCrewPaySettings('2026-01-01')->create();
+        $profile = $this->save($user, $package);
+        foreach (['F2' => '90:00', 'F10' => '90:00', 'F3' => '100:00', 'F5' => '90:00'] as $id => $duration) {
+            $profile = app(SaveCrewBidPayProfile::class)->handle($user, $package, 'FO', $profile->revision, $this->settings(), $this->context(), $id, $this->input($duration));
+        }
+        $page = Livewire::actingAs($user)->test(CrewBids::class)->call('add', 'F1');
+
+        $page->set('goals', ['pay', 'days_off'])->assertHasNoErrors()
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F3', 'F2', 'F10', 'F5', 'F1', 'F4'])
+            ->assertViewHas('allLines', fn (array $lines): bool => $lines['F4']['pay_estimate']->cents === null && $lines['F4']['pay_estimate']->minimumCents === 2340000)
+            ->assertSee('Maximize pay: Estimated pay · $11,700.00')
+            ->set('goals', ['days_off', 'pay'])->assertHasNoErrors()
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F2', 'F10', 'F1', 'F4', 'F3', 'F5'])
+            ->assertViewHas('lineCards', fn (array $cards): bool => $cards[0]->matchDetails === ['Maximize days off: 15', 'Maximize pay: Estimated pay · $10,530.00'])
+            ->set('sort', 'id')->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F1', 'F2', 'F3', 'F4', 'F5', 'F10'])
+            ->call('finishSetup')->assertSet('sort', 'best')->call('addMatching')
+            ->assertSet('selections', ['F1', 'F2', 'F10', 'F4', 'F3', 'F5']);
+
+        $this->assertSame(['F1', 'F2', 'F10', 'F4', 'F3', 'F5'], BidWorkspace::query()->where('user_id', $user->id)->sole()->selections);
+    }
+
     public function test_stale_edit_retains_draft_and_does_not_overwrite_saved_context(): void
     {
         $package = BidPackage::factory()->withSourceGuarantee()->create();

@@ -20,21 +20,12 @@ class BrowseBidLines
         $allLines = $this->eligibleLines($package, $criteria, $payload);
         foreach ($allLines as &$line) {
             $line['pay_estimate'] = $this->pay->calculate($payPayload['lines'][$line['id']] ?? $line, $payPayload['trips'] ?? [], $package->period, $package->fleet, $criteria->seat, $payContext);
+            $line['pay'] = $line['pay_estimate']->cents;
             $line['pay_compact'] = true;
         }
         unset($line);
         $lines = array_values(array_filter($allLines, fn (array $line): bool => $this->matches($line, $criteria)));
-        if ($criteria->sort === 'pay') {
-            usort($lines, static function (array $left, array $right): int {
-                $a = $left['pay_estimate']->cents;
-                $b = $right['pay_estimate']->cents;
-
-                return ($a === null ? 1 : 0) <=> ($b === null ? 1 : 0)
-                    ?: ($b ?? 0) <=> ($a ?? 0) ?: strnatcmp($left['id'], $right['id']);
-            });
-        } else {
-            $lines = $this->matcher->sort($lines, $criteria->preferences['goals'], $criteria->sort);
-        }
+        $lines = $this->matcher->sort($lines, $criteria->preferences['goals'], $criteria->sort);
         $selected = [];
         foreach ($criteria->selections as $id) {
             $selected[] = $allLines[$id] ?? [

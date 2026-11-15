@@ -15,7 +15,7 @@ final readonly class CrewBidsPageData
      * @param  list<array{date: string, day: int, weekday: string}>  $dates
      * @param  array<string, array<string, mixed>>  $trips
      * @param  list<array{id: string, status: string, details: list<string>}>  $revisionChanges
-     * @param  array{credit: string, days_off: string, blocks: string}  $goalLabels
+     * @param  array{credit: string, days_off: string, blocks: string, pay: string}  $goalLabels
      */
     public function __construct(
         public ?BidPackage $package,
@@ -64,7 +64,7 @@ final readonly class CrewBidsPageData
      *     latest: ?BidPackage,
      *     copyText: string,
      *     aiPrompt: ?string,
-     *     goalLabels: array{credit: string, days_off: string, blocks: string}
+     *     goalLabels: array{credit: string, days_off: string, blocks: string, pay: string}
      * }
      */
     public function toViewData(): array

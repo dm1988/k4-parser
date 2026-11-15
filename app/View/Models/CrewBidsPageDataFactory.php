@@ -40,7 +40,7 @@ class CrewBidsPageDataFactory
                 ->where(fn ($query) => $query->whereNull('archived_at')->orWhereHas('workspaces', fn ($query) => $query->where('user_id', $user->id)->where('seat', $criteria->seat)))
                 ->orderByDesc('period')->orderByDesc('id')->get(['id', 'period', 'fleet', 'source_revision']),
             browse: $browse,
-            lineCards: array_map(static fn (array $line): CrewBidLineViewModel => CrewBidLineViewModel::fromLine($line, isset($ranks[$line['id']]) ? $ranks[$line['id']] + 1 : null, $showBlocks, in_array($line['id'], $payDetails, true)), $browse->lines),
+            lineCards: array_map(static fn (array $line): CrewBidLineViewModel => CrewBidLineViewModel::fromLine($line, isset($ranks[$line['id']]) ? $ranks[$line['id']] + 1 : null, $showBlocks, in_array($line['id'], $payDetails, true), $criteria->preferences['goals']), $browse->lines),
             filterSummaries: $filterSummaries,
             activeFilterCount: count($activeFilters),
             activeFilterSummary: $activeFilters === [] ? 'No active browsing filters' : implode(' · ', $activeFilters),
@@ -56,7 +56,7 @@ class CrewBidsPageDataFactory
                 ->where('period', $package->period)->where('fleet', $package->fleet)->where('id', '>', $package->id)->latest('id')->first(),
             copyText: implode("\n", array_map(fn (string $id, int $index): string => ($index + 1).'. '.$id, $criteria->selections, array_keys($criteria->selections))),
             aiPrompt: $this->aiPrompt($criteria->selections, $browse->allLines),
-            goalLabels: ['credit' => 'Maximize credit', 'days_off' => 'Maximize days off', 'blocks' => 'Fewer work blocks'],
+            goalLabels: ['credit' => 'Maximize credit', 'days_off' => 'Maximize days off', 'blocks' => 'Fewer work blocks', 'pay' => 'Maximize pay'],
         );
     }
 
