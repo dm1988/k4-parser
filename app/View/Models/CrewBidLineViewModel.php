@@ -39,12 +39,13 @@ final readonly class CrewBidLineViewModel
         public array $matchDetails,
         public array $filterDetails,
         public ?CrewBidPayViewModel $payEstimate = null,
+        public ?int $submittedRank = null,
     ) {}
 
     /** @param array<string, mixed> $line
      * @param  list<CrewBidGoal>  $goals
      */
-    public static function fromLine(array $line, ?int $rank = null, bool $showBlocks = false, bool $payDetails = false, array $goals = []): self
+    public static function fromLine(array $line, ?int $rank = null, bool $showBlocks = false, bool $payDetails = false, array $goals = [], ?int $submittedRank = null): self
     {
         $reserve = $line['type'] === 'reserve';
         $trips = $line['trip_details'];
@@ -65,6 +66,7 @@ final readonly class CrewBidLineViewModel
             headingClasses: $reserve ? 'text-orange-700 dark:text-orange-300' : 'text-slate-900 dark:text-slate-100',
             crew: filled($line['crew']) ? $line['crew'] : null,
             rank: $rank,
+            submittedRank: $submittedRank,
             summaryMetrics: self::summaryMetrics($line, $payEstimate),
             quickFlags: self::quickFlags($line['quick_flags']),
             calendarDays: self::calendarDays($line['month'], $reserve),

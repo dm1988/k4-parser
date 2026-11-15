@@ -46,11 +46,66 @@ export function createBidAction() {
     };
 }
 
+export function createBidSaveStatus({ now = Date.now } = {}) {
+    let stopIntercepting;
+
+    return {
+        pending: 0,
+        failed: false,
+        checkedAt: now(),
+        saveState() {
+            if (this.pending > 0) return 'saving';
+            if (this.failed || this.$wire.dirty || this.$wire.$dirty(['goals', 'daysOff', 'startCity'])) return 'unsaved';
+            return this.$wire.lastSavedAt ? 'saved' : 'empty';
+        },
+        saveDescription() {
+            const savedAt = Date.parse(this.$wire.lastSavedAt);
+            let lastSaved = 'No saved changes yet';
+            if (Number.isFinite(savedAt)) {
+                const seconds = Math.max(0, Math.floor((this.checkedAt - savedAt) / 1000));
+                const [amount, unit] = seconds < 3600 ? [Math.floor(seconds / 60), 'minute']
+                    : seconds < 86400 ? [Math.floor(seconds / 3600), 'hour'] : [Math.floor(seconds / 86400), 'day'];
+                lastSaved = seconds < 60 ? 'Last saved just now' : `Last saved ${amount} ${unit}${amount === 1 ? '' : 's'} ago`;
+            }
+            if (this.saveState() === 'saving') return `Saving… ${lastSaved}`;
+            if (this.saveState() === 'unsaved') return `Unsaved changes. ${lastSaved}`;
+            return lastSaved;
+        },
+        refreshTimestamp() {
+            this.checkedAt = now();
+        },
+        initSaveStatus() {
+            stopIntercepting = this.$wire.interceptMessage(({ onSend, onSuccess, onError, onFailure, onFinish }) => {
+                let sent = false;
+                let previousSave;
+                let reloading = false;
+                onSend(({ payload }) => {
+                    sent = true;
+                    this.pending++;
+                    previousSave = `${this.$wire.packageId}:${this.$wire.revision}`;
+                    reloading = payload.calls.some((call) => call.method === 'reloadSaved');
+                });
+                onSuccess(({ onSync }) => onSync(() => {
+                    if (reloading || previousSave !== `${this.$wire.packageId}:${this.$wire.revision}`) this.failed = false;
+                    this.refreshTimestamp();
+                }));
+                onError(() => { this.failed = true; });
+                onFailure(() => { this.failed = true; });
+                onFinish(() => { if (sent) this.pending = Math.max(0, this.pending - 1); });
+            });
+        },
+        destroySaveStatus() {
+            stopIntercepting?.();
+        },
+    };
+}
+
 export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeObserver } = {}) {
     let observer;
     let destroyed = false;
 
     return {
+        ...createBidSaveStatus(),
         filtersOpen: false,
         listReturnFocus: null,
         openList(event) {
@@ -67,6 +122,7 @@ export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeOb
             });
         },
         init() {
+            this.initSaveStatus();
             this.$nextTick(() => {
                 if (destroyed) return;
                 const header = this.$refs.workspaceHeader;
@@ -80,6 +136,7 @@ export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeOb
             });
         },
         destroy() {
+            this.destroySaveStatus();
             destroyed = true;
             observer?.disconnect();
         },

@@ -10,6 +10,7 @@ enum CrewBidSort: string
     case DaysOff = 'days_off';
     case Pay = 'pay';
     case LineId = 'id';
+    case Submitted = 'submitted';
 
     public function label(): string
     {
@@ -20,6 +21,7 @@ enum CrewBidSort: string
             self::DaysOff => 'Most days off',
             self::Pay => 'Highest estimated line value',
             self::LineId => 'Line ID',
+            self::Submitted => 'Submitted bid order',
         };
     }
 }

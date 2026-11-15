@@ -37,6 +37,7 @@ final readonly class CrewBidsPageData
         public string $copyText,
         public ?string $aiPrompt,
         public array $goalLabels,
+        public SubmittedBidOrder $submittedOrder,
     ) {}
 
     /**
@@ -64,7 +65,8 @@ final readonly class CrewBidsPageData
      *     latest: ?BidPackage,
      *     copyText: string,
      *     aiPrompt: ?string,
-     *     goalLabels: array<string, string>
+     *     goalLabels: array<string, string>,
+     *     submittedOrder: SubmittedBidOrder
      * }
      */
     public function toViewData(): array
@@ -94,6 +96,7 @@ final readonly class CrewBidsPageData
             'copyText' => $this->copyText,
             'aiPrompt' => $this->aiPrompt,
             'goalLabels' => $this->goalLabels,
+            'submittedOrder' => $this->submittedOrder,
         ];
     }
 }

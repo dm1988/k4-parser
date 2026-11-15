@@ -36,7 +36,9 @@ class ReviewBidSubmission
         $review = $this->portal->review($employee, $password, $workspace->selections);
         $this->context($review, $package, $seat);
         $review += ['workspace_revision' => $workspace->revision, 'workspace_hash' => $this->workspaceHash($workspace, $package),
-            'selections' => $workspace->selections, 'local_revision' => $package->source_revision];
+            'selections' => $workspace->selections, 'local_revision' => $package->source_revision,
+            'local_package_fingerprint' => $package->fingerprint,
+            'local_payload_hash' => hash('sha256', json_encode($package->payload, JSON_THROW_ON_ERROR))];
         $package->refresh();
         $workspace = $this->workspace($user, $package, $seat);
         $this->validateWorkspace($workspace, $package, $revision);

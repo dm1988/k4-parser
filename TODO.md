@@ -28,6 +28,14 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## Completed: Integrate save status into My bid list
+
+Completed (2026-11-15): Goal: Save header space while keeping workspace save status discoverable. Current implementation: Replaced the standalone header Saved badge with an indicator before the cart icon inside My bid list. Confirmed saves show an emerald check; local preference edits, requests and failed saves show an amber outline; workspaces without a saved revision show a neutral outline. The hover tooltip and accessible status describe the actual last saved timestamp, refreshed on hover/focus and successful responses. Confirmed writes update the locked timestamp; reloads restore it and package changes reset it appropriately. Existing list opening and focus restoration remain intact. Problem addressed: A separate text badge consumed toolbar space and did not reflect pending local preference changes.
+
+Validation: Elevated Sail was available. All five focused PHP save/preferences/order/conflict tests passed (53 assertions), and the timestamp regression passed again after formatting (21 assertions). All 48 crew-bid JavaScript tests and the production Vite build passed. Pint passed. The single Larastan pass reported two redundant null-safe accesses in the new timestamp assignment; both were corrected without a second analysis run, following AGENTS.md. Unrelated working-tree edits and staging were preserved. No full suite or manual browser review was run.
+
+Commit message: `ui: integrate save status into bid list button`
+
 ## Completed: Move Pay adjustments into the user menu
 
 Completed (2026-11-15): Goal: Treat pay adjustments as account preferences and free workspace toolbar space for bidding and filtering. Current implementation: Moved Pay adjustments beside Profile in the desktop user dropdown and mobile user settings menu for users with K4 Bids access. With an active bid package, the menu opens the existing pay editor without navigating away, closes the menu and focuses its trigger for dialog focus restoration. Elsewhere, or without a package, the link opens the K4 Bids profile settings. Modified clicks retain native link behavior. Removed the workspace toolbar entry and updated the dialog's fallback focus target. Problem addressed: Profile-level pay controls cluttered the browsing toolbar.

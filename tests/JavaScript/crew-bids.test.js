@@ -2,7 +2,85 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
-import { copyBidText, createBidAction, createBidGoalPreferences, createBidLineCard, createBidPayMenu, createBidTripDetails, createCrewBidsHeader, shouldWarnBeforeLeaving } from '../../resources/js/crew-bids.js';
+import { copyBidText, createBidAction, createBidGoalPreferences, createBidLineCard, createBidPayMenu, createBidSaveStatus, createBidTripDetails, createCrewBidsHeader, shouldWarnBeforeLeaving } from '../../resources/js/crew-bids.js';
+
+test('save indicator follows local preferences, failed saves, and confirmed saves', () => {
+    const status = createBidSaveStatus({ now: () => Date.parse('2026-11-15T12:02:00Z') });
+    let localEdits = false;
+    status.$wire = { dirty: false, lastSavedAt: null, $dirty: () => localEdits };
+    assert.equal(status.saveState(), 'empty');
+    assert.equal(status.saveDescription(), 'No saved changes yet');
+
+    status.$wire.lastSavedAt = '2026-11-15T12:00:00Z';
+    assert.equal(status.saveState(), 'saved');
+    assert.equal(status.saveDescription(), 'Last saved 2 minutes ago');
+    localEdits = true;
+    assert.equal(status.saveState(), 'unsaved');
+    assert.equal(status.saveDescription(), 'Unsaved changes. Last saved 2 minutes ago');
+    localEdits = false;
+    status.$wire.dirty = true;
+    assert.equal(status.saveState(), 'unsaved');
+    status.$wire.dirty = false;
+    assert.equal(status.saveState(), 'saved');
+});
+
+for (const [elapsed, expected] of [[-60, 'just now'], [0, 'just now'], [59, 'just now'], [60, '1 minute ago'], [3599, '59 minutes ago'], [3600, '1 hour ago'], [7200, '2 hours ago'], [86400, '1 day ago'], [172800, '2 days ago']]) {
+    test(`save tooltip describes ${elapsed} seconds and refreshes on interaction`, () => {
+        let time = Date.parse('2026-11-15T12:00:00Z');
+        const status = createBidSaveStatus({ now: () => time });
+        status.$wire = { lastSavedAt: '2026-11-15T12:00:00Z', $dirty: () => false };
+        time += elapsed * 1000;
+
+        status.refreshTimestamp();
+
+        assert.equal(status.saveDescription(), `Last saved ${expected}`);
+    });
+}
+
+for (const failure of ['onFailure', 'onError']) {
+    test(`save indicator stays amber after ${failure} until a save or reload succeeds`, () => {
+        const status = createBidSaveStatus();
+        let intercept;
+        let cleaned = false;
+        status.$wire = { packageId: 1, revision: 2, lastSavedAt: new Date().toISOString(), $dirty: () => false,
+            interceptMessage(callback) { intercept = callback; return () => { cleaned = true; }; } };
+        status.initSaveStatus();
+        const request = (method) => {
+            const hooks = {};
+            intercept(Object.fromEntries(['onSend', 'onSuccess', 'onError', 'onFailure', 'onFinish'].map((name) => [name, (callback) => { hooks[name] = callback; }])));
+            hooks.onSend({ payload: { calls: [{ method }] } });
+            return hooks;
+        };
+        const succeed = (hooks, sync = () => {}) => {
+            let afterSync;
+            hooks.onSuccess({ onSync: (callback) => { afterSync = callback; } });
+            sync();
+            afterSync();
+            hooks.onFinish();
+        };
+
+        const failed = request('move');
+        assert.equal(status.saveState(), 'saving');
+        failed[failure]();
+        failed.onFinish();
+        assert.equal(status.saveState(), 'unsaved');
+        succeed(request('loadPayDetails'));
+        assert.equal(status.saveState(), 'unsaved');
+        succeed(request('retrySave'), () => { status.$wire.revision++; });
+        assert.equal(status.saveState(), 'saved');
+        status.failed = true;
+        succeed(request('reloadSaved'));
+        assert.equal(status.saveState(), 'saved');
+        const first = request('add');
+        const second = request('move');
+        succeed(first, () => { status.$wire.revision++; });
+        assert.equal(status.saveState(), 'saving');
+        succeed(second, () => { status.$wire.revision++; });
+        assert.equal(status.saveState(), 'saved');
+        status.destroySaveStatus();
+        assert.equal(cleaned, true);
+    });
+}
 
 test('pay menu closes and focuses its trigger before opening the workspace pay editor', () => {
     const actions = [];
@@ -298,6 +376,7 @@ test('sticky action offset follows the wrapping workspace header and releases it
     } });
     state.$el = { style: { setProperty: (name, value) => properties.set(name, value) } };
     state.$refs = { workspaceHeader: header };
+    state.$wire = { interceptMessage: () => () => {} };
     state.$nextTick = (callback) => callback();
 
     state.init();
@@ -328,6 +407,7 @@ test('leaving before the header initializes does not attach a stale resize obser
     const state = createCrewBidsHeader({ ResizeObserverClass: class {
         constructor() { constructed = true; }
     } });
+    state.$wire = { interceptMessage: () => () => {} };
     state.$nextTick = (callback) => { initialize = callback; };
 
     state.init();

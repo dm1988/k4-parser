@@ -23,7 +23,26 @@ final readonly class CrewBidBrowseCriteria
         public string $layoverCity = '',
         public bool $extendedLayoversOnly = false,
         public bool $avoidShortLayovers = false,
+        public ?SubmittedBidOrder $submittedOrder = null,
     ) {}
+
+    public function withSubmittedOrder(SubmittedBidOrder $order): self
+    {
+        return new self(
+            seat: $this->seat,
+            preferences: $this->preferences,
+            selections: $this->selections,
+            tab: $this->tab,
+            sort: $this->sort,
+            minimumCredit: $this->minimumCredit,
+            minimumDaysOff: $this->minimumDaysOff,
+            selectedOnly: $this->selectedOnly,
+            layoverCity: $this->layoverCity,
+            extendedLayoversOnly: $this->extendedLayoversOnly,
+            avoidShortLayovers: $this->avoidShortLayovers,
+            submittedOrder: $order,
+        );
+    }
 
     /** @return list<CrewBidGoal> */
     public function rankingGoals(): array

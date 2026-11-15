@@ -22,8 +22,15 @@
                 @if ($packages->isNotEmpty())
                     <a href="{{ route('profile.edit') }}#k4-bids-preferences" title="Change bid seat in user preferences" class="inline-flex min-h-11 items-center rounded-lg px-2 text-sm text-slate-600 underline decoration-slate-300 underline-offset-4 focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-slate-300 dark:decoration-slate-600">{{ $seat === 'CA' ? 'Captain' : 'First Officer' }}</a>
                 @endif
-                <span class="text-xs text-slate-500 dark:text-slate-400" role="status" aria-live="polite"><span wire:loading>Updating…</span><span wire:loading.remove>{{ $dirty ? 'Unsaved changes' : ($revision > 0 ? 'Saved' : '') }}</span></span>
-                <button type="button" x-ref="listTrigger" @click="openList($event)" :aria-expanded="$wire.showList" aria-controls="bid-list-drawer" class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg bg-[#1B365D] px-4 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500"><x-heroicon-o-shopping-cart class="h-5 w-5 shrink-0" aria-hidden="true" /><span>My bid list ({{ count($selections) }})</span></button>
+                <button type="button" x-ref="listTrigger" @click="openList($event)" @mouseenter="refreshTimestamp()" @focus="refreshTimestamp()" :title="saveDescription()" aria-describedby="bid-save-status" :aria-expanded="$wire.showList" aria-controls="bid-list-drawer" class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg bg-[#1B365D] px-4 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-800 dark:hover:bg-slate-700">
+                    <span class="inline-flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden="true">
+                        <x-heroicon-o-check x-cloak x-show="saveState() === 'saved'" class="h-4 w-4 text-emerald-400" />
+                        <span x-show="saveState() !== 'saved'" class="h-2.5 w-2.5 rounded-full border-2" :class="saveState() === 'empty' ? 'border-slate-400' : 'border-amber-400'"></span>
+                    </span>
+                    <x-heroicon-o-shopping-cart class="h-5 w-5 shrink-0" aria-hidden="true" />
+                    <span>My bid list ({{ count($selections) }})</span>
+                    <span id="bid-save-status" class="sr-only" role="status" aria-live="polite" x-text="saveDescription()"></span>
+                </button>
             </div>
         </div>
         @if ($package)
@@ -49,7 +56,7 @@
                             <label for="bid-sort" class="sr-only">Sort lines</label>
                             <select id="bid-sort" wire:model.change.live="sort" class="min-h-11 w-32 shrink-0 rounded-lg border-0 bg-transparent text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900 sm:w-auto">
                                 @foreach (\App\Enums\CrewBidSort::cases() as $option)
-                                    <option value="{{ $option->value }}">{{ $option === \App\Enums\CrewBidSort::BestMatch && $goals === [] ? 'Line ID (no goals set)' : $option->label() }}</option>
+                                    <option value="{{ $option->value }}" @disabled($option === \App\Enums\CrewBidSort::Submitted && ! $submittedOrder->available())>{{ $option === \App\Enums\CrewBidSort::BestMatch && $goals === [] ? 'Line ID (no goals set)' : $option->label() }}{{ $option === \App\Enums\CrewBidSort::Submitted && ! $submittedOrder->available() ? ' — '.$submittedOrder->unavailableReason : '' }}</option>
                                 @endforeach
                             </select>
                         @endif
@@ -59,6 +66,9 @@
                     @endif
                 </div>
             </div>
+            @if ($sort === \App\Enums\CrewBidSort::Submitted->value && $submittedOrder->available())
+                <p class="pb-2 text-xs text-slate-500 dark:text-slate-400" role="status">Submitted order · Kalitta report checked <time datetime="{{ $submittedOrder->checkedAt->toIso8601String() }}">{{ $submittedOrder->checkedAt->utc()->format('Y-m-d H:i:s') }} UTC</time>. This is the last order checked by the app.</p>
+            @endif
         @endif
     </header>
 

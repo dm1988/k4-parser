@@ -5,11 +5,13 @@ namespace App\View\Models;
 use App\DTOs\CrewBidBrowseCriteria;
 use App\DTOs\CrewBidsPageData;
 use App\Enums\CrewBidGoal;
+use App\Enums\CrewBidSort;
 use App\Models\BidPackage;
 use App\Models\CrewBidPayProfile;
 use App\Models\User;
 use App\Services\CrewBids\BrowseBidLines;
 use App\Services\CrewBids\CompareBidPackageRevision;
+use App\Services\CrewBids\ResolveSubmittedBidOrder;
 use Carbon\CarbonImmutable;
 
 class CrewBidsPageDataFactory
@@ -17,11 +19,14 @@ class CrewBidsPageDataFactory
     public function __construct(
         private BrowseBidLines $browseBidLines,
         private CompareBidPackageRevision $compareRevision,
+        private ResolveSubmittedBidOrder $submittedOrder,
     ) {}
 
     /** @param list<string> $payDetails */
     public function make(?BidPackage $package, User $user, CrewBidBrowseCriteria $criteria, ?int $draftId = null, ?int $pendingPackageId = null, array $payDetails = []): CrewBidsPageData
     {
+        $submittedOrder = $criteria->submittedOrder ?? $this->submittedOrder->resolve($user, $package, $criteria->seat);
+        $criteria = $criteria->withSubmittedOrder($submittedOrder);
         $profile = CrewBidPayProfile::query()->where('user_id', $user->id)->first() ?? new CrewBidPayProfile;
         $context = $package === null ? [] : $profile->context($package->id, $criteria->seat, $user);
         $browse = $this->browseBidLines->browse($package, $criteria, $context);
@@ -42,7 +47,14 @@ class CrewBidsPageDataFactory
                 ->where(fn ($query) => $query->whereNull('archived_at')->orWhereHas('workspaces', fn ($query) => $query->where('user_id', $user->id)->where('seat', $criteria->seat)))
                 ->orderByDesc('period')->orderByDesc('id')->get(['id', 'period', 'fleet', 'source_revision']),
             browse: $browse,
-            lineCards: array_map(static fn (array $line): CrewBidLineViewModel => CrewBidLineViewModel::fromLine($line, isset($ranks[$line['id']]) ? $ranks[$line['id']] + 1 : null, $showBlocks, in_array($line['id'], $payDetails, true), $goals), $browse->lines),
+            lineCards: array_map(static fn (array $line): CrewBidLineViewModel => CrewBidLineViewModel::fromLine(
+                line: $line,
+                rank: isset($ranks[$line['id']]) ? $ranks[$line['id']] + 1 : null,
+                showBlocks: $showBlocks,
+                payDetails: in_array($line['id'], $payDetails, true),
+                goals: $goals,
+                submittedRank: $criteria->sort === CrewBidSort::Submitted && $submittedOrder->available() ? ($submittedOrder->ranks[$line['id']] ?? null) : null,
+            ), $browse->lines),
             filterSummaries: $filterSummaries,
             activeFilterCount: count($activeFilters),
             activeFilterSummary: $activeFilters === [] ? 'No active browsing filters' : implode(' · ', $activeFilters),
@@ -59,6 +71,7 @@ class CrewBidsPageDataFactory
             copyText: implode("\n", array_map(fn (string $id, int $index): string => ($index + 1).'. '.$id, $criteria->selections, array_keys($criteria->selections))),
             aiPrompt: $this->aiPrompt($criteria->selections, $browse->allLines),
             goalLabels: CrewBidGoal::options(),
+            submittedOrder: $submittedOrder,
         );
     }
 

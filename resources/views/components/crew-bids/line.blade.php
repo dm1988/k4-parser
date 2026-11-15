@@ -4,6 +4,7 @@
         <div>
             <h3 class="font-mono text-base font-bold {{ $line->headingClasses }}">{{ $line->id }}<span class="sr-only"> · {{ $line->typeLabel }} line</span></h3>
             @if ($line->crew !== null)<span class="block whitespace-nowrap font-mono text-[10px] leading-4 text-slate-600 dark:text-slate-300" aria-label="Crew complement: {{ $line->crew }}">{{ $line->crew }}</span>@endif
+            @if ($line->submittedRank !== null)<span class="block whitespace-nowrap text-[10px] font-semibold leading-4 text-[#1B365D] dark:text-amber-200">Submitted #{{ $line->submittedRank }}</span>@endif
             @if ($line->quickFlags !== [])
                 <div role="group" class="flex items-center gap-0.5" aria-label="Trip flags for {{ $line->id }}">
                     @foreach ($line->quickFlags as $flag)

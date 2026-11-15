@@ -16,6 +16,7 @@ use App\Services\CrewBids\BidLineMatcher;
 use App\Services\CrewBids\BrowseBidLines;
 use App\Services\CrewBids\CalculateCrewBidPay;
 use App\Services\CrewBids\CrewPayPeriod;
+use App\Services\CrewBids\ResolveSubmittedBidOrder;
 use App\View\Models\CrewBidPayEditorViewModel;
 use App\View\Models\CrewBidsPageDataFactory;
 use Carbon\CarbonImmutable;
@@ -42,6 +43,9 @@ class CrewBids extends Component
 
     #[Locked]
     public int $revision = 0;
+
+    #[Locked]
+    public ?string $lastSavedAt = null;
 
     /** @var list<string> */
     #[Locked]
@@ -489,6 +493,7 @@ class CrewBids extends Component
         try {
             $workspace = app(SaveBidWorkspace::class)->handle($this->user(), $this->package(), $this->seat, $this->revision, $this->preferences(), $this->selections);
             $this->revision = $workspace->revision;
+            $this->lastSavedAt = $workspace->updated_at?->toIso8601String();
             $this->dirty = false;
 
             return true;
@@ -514,6 +519,7 @@ class CrewBids extends Component
         $this->contextPackage = (string) $package->id;
         $this->seat = $seat;
         $this->revision = $workspace->revision ?? 0;
+        $this->lastSavedAt = $this->revision > 0 ? $workspace->updated_at?->toIso8601String() : null;
         $this->selections = $workspace->selections ?? [];
         $this->goals = $preferences['goals'] ?? [];
         $this->daysOff = $preferences['days_off'] ?? [];
@@ -577,6 +583,12 @@ class CrewBids extends Component
 
     private function browseCriteria(): CrewBidBrowseCriteria
     {
+        $submittedOrder = app(ResolveSubmittedBidOrder::class)->resolve($this->user(), $this->packageId === null ? null : $this->package(), $this->seat);
+        if ($this->sort === CrewBidSort::Submitted->value && ! $submittedOrder->available()) {
+            $this->sort = CrewBidSort::BestMatch->value;
+            $this->notice = $submittedOrder->unavailableReason.'. Switched to Best match.';
+        }
+
         return new CrewBidBrowseCriteria(
             seat: $this->seat,
             preferences: $this->preferences(),
@@ -589,6 +601,7 @@ class CrewBids extends Component
             layoverCity: $this->layoverCity,
             extendedLayoversOnly: $this->extendedLayoversOnly,
             avoidShortLayovers: $this->avoidShortLayovers,
+            submittedOrder: $submittedOrder,
         );
     }
 

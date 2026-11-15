@@ -4,6 +4,7 @@ namespace App\Services\CrewBids;
 
 use App\DTOs\CrewBidBrowseCriteria;
 use App\DTOs\CrewBidBrowseResult;
+use App\Enums\CrewBidSort;
 use App\Models\BidPackage;
 
 class BrowseBidLines
@@ -25,7 +26,9 @@ class BrowseBidLines
         }
         unset($line);
         $lines = array_values(array_filter($allLines, fn (array $line): bool => $this->matches($line, $criteria)));
-        $lines = $this->matcher->sort($lines, $criteria->rankingGoals(), $criteria->sort);
+        $sort = $criteria->sort === CrewBidSort::Submitted && ! $criteria->submittedOrder?->available()
+            ? CrewBidSort::BestMatch : $criteria->sort;
+        $lines = $this->matcher->sort($lines, $criteria->rankingGoals(), $sort, $criteria->submittedOrder?->ranks ?? []);
         $selected = [];
         foreach ($criteria->selections as $id) {
             $selected[] = $allLines[$id] ?? [

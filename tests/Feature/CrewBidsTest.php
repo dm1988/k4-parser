@@ -608,6 +608,39 @@ class CrewBidsTest extends TestCase
         $this->assertSame(['F1'], BidWorkspace::query()->sole()->selections);
     }
 
+    public function test_save_timestamp_tracks_confirmed_writes_and_survives_reload_and_save_failure(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-15T12:00:00Z'));
+        $package = BidPackage::factory()->create();
+        $user = User::factory()->admin()->create();
+        $page = Livewire::actingAs($user)->test(CrewBids::class)->assertSet('lastSavedAt', null);
+
+        $page->call('add', 'F1')->assertHasNoErrors()->assertSet('lastSavedAt', '2026-11-15T12:00:00+00:00');
+        Livewire::test(CrewBids::class)->assertSet('lastSavedAt', '2026-11-15T12:00:00+00:00');
+
+        $this->travel(2)->minutes();
+        $page->set('goals', ['credit'])->assertHasNoErrors()->assertSet('lastSavedAt', '2026-11-15T12:02:00+00:00');
+        $this->assertSame(['credit'], BidWorkspace::query()->sole()->preferences['goals']);
+        Exceptions::fake();
+        $this->mock(SaveBidWorkspace::class)->shouldReceive('handle')->once()->andThrow(new \RuntimeException('Simulated database outage'));
+        $this->travel(2)->minutes();
+
+        $page->call('add', 'R2')->assertSet('dirty', true)->assertSet('lastSavedAt', '2026-11-15T12:02:00+00:00');
+        Exceptions::assertReported(\RuntimeException::class);
+        $this->assertSame(['F1'], BidWorkspace::query()->sole()->selections);
+        $this->app->forgetInstance(SaveBidWorkspace::class);
+        $page->call('retrySave')->assertSet('dirty', false)->assertSet('lastSavedAt', '2026-11-15T12:04:00+00:00');
+        $this->assertSame(['F1', 'R2'], BidWorkspace::query()->sole()->selections);
+
+        $this->travel(1)->minute();
+        $page->call('move', 'R2', 0)->assertHasNoErrors()->assertSet('lastSavedAt', '2026-11-15T12:05:00+00:00');
+        $this->assertSame(['R2', 'F1'], BidWorkspace::query()->sole()->selections);
+        $page->call('reloadSaved')->assertSet('lastSavedAt', '2026-11-15T12:05:00+00:00');
+        $next = BidPackage::factory()->create(['period' => '2026-10']);
+        $page->set('contextPackage', (string) $next->id)->call('changeContext')->assertSet('lastSavedAt', null);
+        $page->set('contextPackage', (string) $package->id)->call('changeContext')->assertSet('lastSavedAt', '2026-11-15T12:05:00+00:00');
+    }
+
     public function test_date_range_undo_and_unknown_activity_leave_manual_choices_consistent(): void
     {
         BidPackage::factory()->create();

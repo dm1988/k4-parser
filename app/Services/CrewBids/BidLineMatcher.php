@@ -317,9 +317,10 @@ class BidLineMatcher
 
     /** @param list<array<string, mixed>> $lines
      * @param  list<CrewBidGoal>  $goals
+     * @param  array<string, int>  $submittedRanks
      * @return list<array<string, mixed>>
      */
-    public function sort(array $lines, array $goals, CrewBidSort $sort): array
+    public function sort(array $lines, array $goals, CrewBidSort $sort, array $submittedRanks = []): array
     {
         $keys = match ($sort) {
             CrewBidSort::Credit => ['credit'],
@@ -327,12 +328,17 @@ class BidLineMatcher
             CrewBidSort::DaysOff => ['days_off'],
             CrewBidSort::Pay => ['pay'],
             CrewBidSort::LineId => [],
+            CrewBidSort::Submitted => ['submitted_rank'],
             CrewBidSort::BestMatch => array_map(static fn (CrewBidGoal $goal): string => $goal->value, $goals),
         };
-        usort($lines, function (array $left, array $right) use ($keys): int {
+        usort($lines, function (array $left, array $right) use ($keys, $submittedRanks): int {
             foreach ($keys as $key) {
                 $a = $left[$key] ?? null;
                 $b = $right[$key] ?? null;
+                if ($key === 'submitted_rank') {
+                    $a = $submittedRanks[$left['id']] ?? null;
+                    $b = $submittedRanks[$right['id']] ?? null;
+                }
                 if ($key === CrewBidGoal::Credit->value) {
                     $a = $left['credit_seconds'] ?? ($a === null ? null : $a * 60);
                     $b = $right['credit_seconds'] ?? ($b === null ? null : $b * 60);
@@ -340,7 +346,7 @@ class BidLineMatcher
                 if ($a === null || $b === null) {
                     $comparison = ($a === null ? 1 : 0) <=> ($b === null ? 1 : 0);
                 } else {
-                    $comparison = $key === CrewBidGoal::Blocks->value ? $a <=> $b : $b <=> $a;
+                    $comparison = in_array($key, [CrewBidGoal::Blocks->value, 'submitted_rank'], true) ? $a <=> $b : $b <=> $a;
                 }
                 if ($comparison !== 0) {
                     return $comparison;
