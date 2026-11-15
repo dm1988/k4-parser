@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use App\DTOs\CrewBidBrowseCriteria;
 use App\DTOs\CrewBidsPageData;
 use App\Enums\CrewBidSort;
@@ -13,7 +12,9 @@ use App\Models\BidWorkspace;
 use App\Models\User;
 use App\Services\CrewBids\ResolveSubmittedBidOrder;
 use App\View\Models\CrewBidsPageDataFactory;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -28,7 +29,7 @@ class CrewBidSubmittedOrderTest extends TestCase
         Http::preventStrayRequests();
         $workspace = $this->workspace();
         $submission = $this->matched($workspace);
-        $original = $workspace->getAttributes();
+        $original = $workspace->fresh()->getAttributes();
         $review = $submission->review;
 
         $data = $this->page($workspace);
@@ -76,7 +77,7 @@ class CrewBidSubmittedOrderTest extends TestCase
     }
 
     /** @param array<string, mixed> $attributes
-     * @param array<string, mixed> $reviewOverrides
+     * @param  array<string, mixed>  $reviewOverrides
      */
     #[DataProvider('unusableEvidence')]
     public function test_unusable_evidence_does_not_establish_submitted_order(array $attributes, array $reviewOverrides): void
@@ -160,6 +161,30 @@ class CrewBidSubmittedOrderTest extends TestCase
         $this->assertSame(['F3' => 1, 'F10' => 2], $order->ranks);
     }
 
+    public function test_existing_matched_reviews_remain_usable_without_new_package_metadata(): void
+    {
+        $workspace = $this->workspace();
+        $submission = $this->matched($workspace);
+        $review = $submission->review;
+        unset($review['local_package_fingerprint'], $review['local_payload_hash']);
+        $submission->update(['review' => $review]);
+
+        $order = app(ResolveSubmittedBidOrder::class)->resolve(User::findOrFail($workspace->user_id), BidPackage::findOrFail($workspace->bid_package_id), 'FO');
+
+        $this->assertSame(['R2' => 1, 'F10' => 2, 'F99' => 3, 'F4' => 4, 'F3' => 5], $order->ranks);
+    }
+
+    public function test_unreadable_encrypted_evidence_makes_the_source_unavailable(): void
+    {
+        $workspace = $this->workspace();
+        $submission = $this->matched($workspace);
+        DB::table('bid_submissions')->where('id', $submission->id)->update(['review' => 'Unreadable ciphertext']);
+
+        $order = app(ResolveSubmittedBidOrder::class)->resolve(User::findOrFail($workspace->user_id), BidPackage::findOrFail($workspace->bid_package_id), 'FO');
+
+        $this->assertFalse($order->available());
+    }
+
     public function test_sources_are_isolated_by_user_package_seat_and_record_owner(): void
     {
         $workspace = $this->workspace();
@@ -191,6 +216,42 @@ class CrewBidSubmittedOrderTest extends TestCase
         $this->assertSame(7, $workspace->fresh()->revision);
         $this->assertSame(['F3', 'F1'], $workspace->fresh()->selections);
         Http::assertNothingSent();
+    }
+
+    public function test_a_local_save_is_distinct_from_an_unconfirmed_kalitta_submission(): void
+    {
+        config(['crew_bids.submission.enabled' => true]);
+        $workspace = $this->workspace();
+
+        Livewire::actingAs(User::findOrFail($workspace->user_id))->test(CrewBids::class)
+            ->assertSee('Local: saved')->assertSee('Kalitta: unconfirmed')
+            ->assertSee('Saving locally does not submit your bid.')
+            ->assertSee('Retry local save')->assertSee('Open Review / Copy, then Submit to Kalitta')
+            ->assertDontSee('Kalitta: matched');
+
+        $this->assertSame(7, $workspace->fresh()->revision);
+    }
+
+    public function test_submission_status_follows_report_matches_draft_changes_and_uncertain_attempts(): void
+    {
+        $workspace = $this->workspace();
+        $submission = $this->matched($workspace);
+        $review = $submission->review;
+        $review['selections'] = ['F3', 'F1'];
+        $review['numbers'] = [3, 1];
+        $submission->update(['review' => $review]);
+        $component = Livewire::actingAs(User::findOrFail($workspace->user_id))->test(CrewBids::class);
+
+        $component->assertSee('Local: saved')->assertSee('Kalitta: matched')
+            ->assertSee('This list matches the Kalitta report checked 2026-11-15 12:00:00 UTC.');
+        $component->call('move', 'F1', 0)->assertHasNoErrors()
+            ->assertSee('Local: saved')->assertSee('Kalitta: list differs')
+            ->assertSee('Review your current order before submitting it to Kalitta.');
+        $this->matched($workspace, ['status' => 'unknown', 'attempted_at' => now()->addMinute(), 'reconciled_at' => null]);
+        $component->call('$refresh')->assertSee('Kalitta: unconfirmed')->assertDontSee('Kalitta: matched');
+
+        $this->assertSame(['F1', 'F3'], $workspace->fresh()->selections);
+        $this->assertSame('matched', $submission->fresh()->status);
     }
 
     public function test_add_matching_appends_in_submitted_display_order_and_preserves_existing_ranks(): void

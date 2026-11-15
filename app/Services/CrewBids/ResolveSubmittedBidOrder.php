@@ -28,7 +28,8 @@ class ResolveSubmittedBidOrder
             return new SubmittedBidOrder;
         }
         try {
-            $review = $submission->review;
+            /** @throws DecryptException */
+            $review = $submission->getAttribute('review');
         } catch (DecryptException) {
             return new SubmittedBidOrder;
         }

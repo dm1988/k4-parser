@@ -72,6 +72,7 @@ class CrewBidsPageDataFactory
             aiPrompt: $this->aiPrompt($criteria->selections, $browse->allLines),
             goalLabels: CrewBidGoal::options(),
             submittedOrder: $submittedOrder,
+            submissionStatus: CrewBidSubmissionStatusViewModel::fromOrder($submittedOrder, $criteria->selections),
         );
     }
 

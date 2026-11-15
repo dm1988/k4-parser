@@ -53,10 +53,24 @@ export function createBidSaveStatus({ now = Date.now } = {}) {
         pending: 0,
         failed: false,
         checkedAt: now(),
+        hasUnsavedChanges() {
+            return this.failed || this.$wire.$get('dirty') || this.$wire.$dirty(['goals', 'daysOff', 'startCity']);
+        },
         saveState() {
             if (this.pending > 0) return 'saving';
-            if (this.failed || this.$wire.dirty || this.$wire.$dirty(['goals', 'daysOff', 'startCity'])) return 'unsaved';
+            if (this.hasUnsavedChanges()) return 'unsaved';
             return this.$wire.lastSavedAt ? 'saved' : 'empty';
+        },
+        saveLabel() {
+            return { saved: 'Local: saved', empty: 'Local: not saved', saving: 'Local: saving', unsaved: 'Local: unsaved' }[this.saveState()];
+        },
+        saveHelp() {
+            return {
+                saved: 'Your bid list and preferences are saved in this app.',
+                empty: 'Add a line or choose preferences to save your local workspace.',
+                saving: 'Waiting for the request to finish.',
+                unsaved: 'Resolve any validation or conflict message, then retry the local save.',
+            }[this.saveState()];
         },
         saveDescription() {
             const savedAt = Date.parse(this.$wire.lastSavedAt);

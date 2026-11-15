@@ -8,6 +8,7 @@ use App\Models\BidSubmission;
 use App\Models\BidWorkspace;
 use App\Models\User;
 use App\Services\CrewBids\BidPortalHttpClient;
+use App\Services\CrewBids\ResolveSubmittedBidOrder;
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -59,6 +60,7 @@ class CrewBidSubmissionTest extends TestCase
 
         $this->assertSame('matched', $submission->fresh()->status);
         $this->assertNotNull($submission->fresh()->attempted_at);
+        $this->assertSame(['F1' => 1, 'R2' => 2], app(ResolveSubmittedBidOrder::class)->resolve($user, $package, 'FO')->ranks);
         $this->assertSame(['F1', 'R2'], $workspace->fresh()->selections);
         $this->get(route('crew-bids.submissions.show', $submission))->assertOk()->assertSee('fresh Kalitta report matches every choice')->assertDontSee('Submit this bid to Kalitta');
         $this->post(route('crew-bids.submissions.submit', $submission), $this->credentials() + ['confirmed' => 1])->assertRedirect();

@@ -4,6 +4,7 @@ namespace App\DTOs;
 
 use App\Models\BidPackage;
 use App\View\Models\CrewBidLineViewModel;
+use App\View\Models\CrewBidSubmissionStatusViewModel;
 use Illuminate\Database\Eloquent\Collection;
 
 final readonly class CrewBidsPageData
@@ -38,6 +39,7 @@ final readonly class CrewBidsPageData
         public ?string $aiPrompt,
         public array $goalLabels,
         public SubmittedBidOrder $submittedOrder,
+        public CrewBidSubmissionStatusViewModel $submissionStatus,
     ) {}
 
     /**
@@ -66,7 +68,8 @@ final readonly class CrewBidsPageData
      *     copyText: string,
      *     aiPrompt: ?string,
      *     goalLabels: array<string, string>,
-     *     submittedOrder: SubmittedBidOrder
+     *     submittedOrder: SubmittedBidOrder,
+     *     submissionStatus: CrewBidSubmissionStatusViewModel
      * }
      */
     public function toViewData(): array
@@ -97,6 +100,7 @@ final readonly class CrewBidsPageData
             'aiPrompt' => $this->aiPrompt,
             'goalLabels' => $this->goalLabels,
             'submittedOrder' => $this->submittedOrder,
+            'submissionStatus' => $this->submissionStatus,
         ];
     }
 }

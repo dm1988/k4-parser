@@ -4,18 +4,59 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { copyBidText, createBidAction, createBidGoalPreferences, createBidLineCard, createBidPayMenu, createBidSaveStatus, createBidTripDetails, createCrewBidsHeader, shouldWarnBeforeLeaving } from '../../resources/js/crew-bids.js';
 
+test('saved local state and review actions work through Livewire’s reserved dirty alias', async () => {
+    const livewire = await readFile(new URL('../../vendor/livewire/livewire/dist/livewire.esm.js', import.meta.url), 'utf8');
+    const source = livewire.slice(livewire.indexOf('var properties = {};'), livewire.indexOf('import_alpinejs6.default.magic("wire"'));
+    const createWire = vm.runInNewContext(`${source};
+        wireProperty('$dirty', component => () => component.localEdits);
+        wireProperty('$get', component => name => component.state[name]);
+        generateWireObject;
+    `);
+    const component = { localEdits: false, state: { dirty: false, selections: ['F1'], lastSavedAt: '2026-11-15T12:00:00Z' } };
+    const status = createBidSaveStatus();
+    status.$wire = createWire(component, component.state);
+
+    assert.equal(status.saveState(), 'saved');
+    assert.equal(status.hasUnsavedChanges(), false);
+    component.state.dirty = true;
+    assert.equal(status.saveState(), 'unsaved');
+    component.state.dirty = false;
+    component.localEdits = true;
+    assert.equal(status.saveState(), 'unsaved');
+    component.localEdits = false;
+
+    const view = await readFile(new URL('../../resources/views/livewire/crew-bids.blade.php', import.meta.url), 'utf8');
+    const actions = [...view.matchAll(/<button\b[^>]*:disabled="([^"]+)"[^>]*>(?:[\s\S]*?)<\/button>/g)]
+        .filter(([markup]) => /Submit to Kalitta|AI form prompt|Copy AI prompt|Copy numbered list/.test(markup));
+    assert.equal(actions.length, 4);
+    for (const [, expression] of actions) {
+        assert.equal(vm.runInNewContext(expression, { $wire: status.$wire, hasUnsavedChanges: () => status.hasUnsavedChanges() }), false);
+        component.state.dirty = true;
+        assert.equal(vm.runInNewContext(expression, { $wire: status.$wire, hasUnsavedChanges: () => status.hasUnsavedChanges() }), true);
+        component.state.dirty = false;
+        status.failed = true;
+        assert.equal(vm.runInNewContext(expression, { $wire: status.$wire, hasUnsavedChanges: () => status.hasUnsavedChanges() }), true);
+        status.failed = false;
+    }
+});
+
 test('save indicator follows local preferences, failed saves, and confirmed saves', () => {
     const status = createBidSaveStatus({ now: () => Date.parse('2026-11-15T12:02:00Z') });
     let localEdits = false;
-    status.$wire = { dirty: false, lastSavedAt: null, $dirty: () => localEdits };
+    status.$wire = { dirty: false, lastSavedAt: null, $get(name) { return this[name]; }, $dirty: () => localEdits };
     assert.equal(status.saveState(), 'empty');
+    assert.equal(status.saveLabel(), 'Local: not saved');
+    assert.equal(status.saveHelp(), 'Add a line or choose preferences to save your local workspace.');
     assert.equal(status.saveDescription(), 'No saved changes yet');
 
     status.$wire.lastSavedAt = '2026-11-15T12:00:00Z';
     assert.equal(status.saveState(), 'saved');
+    assert.equal(status.saveLabel(), 'Local: saved');
     assert.equal(status.saveDescription(), 'Last saved 2 minutes ago');
     localEdits = true;
     assert.equal(status.saveState(), 'unsaved');
+    assert.equal(status.saveLabel(), 'Local: unsaved');
+    assert.equal(status.saveHelp(), 'Resolve any validation or conflict message, then retry the local save.');
     assert.equal(status.saveDescription(), 'Unsaved changes. Last saved 2 minutes ago');
     localEdits = false;
     status.$wire.dirty = true;
@@ -28,7 +69,7 @@ for (const [elapsed, expected] of [[-60, 'just now'], [0, 'just now'], [59, 'jus
     test(`save tooltip describes ${elapsed} seconds and refreshes on interaction`, () => {
         let time = Date.parse('2026-11-15T12:00:00Z');
         const status = createBidSaveStatus({ now: () => time });
-        status.$wire = { lastSavedAt: '2026-11-15T12:00:00Z', $dirty: () => false };
+        status.$wire = { lastSavedAt: '2026-11-15T12:00:00Z', $get(name) { return this[name]; }, $dirty: () => false };
         time += elapsed * 1000;
 
         status.refreshTimestamp();
@@ -42,7 +83,7 @@ for (const failure of ['onFailure', 'onError']) {
         const status = createBidSaveStatus();
         let intercept;
         let cleaned = false;
-        status.$wire = { packageId: 1, revision: 2, lastSavedAt: new Date().toISOString(), $dirty: () => false,
+        status.$wire = { packageId: 1, revision: 2, lastSavedAt: new Date().toISOString(), $get(name) { return this[name]; }, $dirty: () => false,
             interceptMessage(callback) { intercept = callback; return () => { cleaned = true; }; } };
         status.initSaveStatus();
         const request = (method) => {
@@ -61,6 +102,7 @@ for (const failure of ['onFailure', 'onError']) {
 
         const failed = request('move');
         assert.equal(status.saveState(), 'saving');
+        assert.equal(status.saveLabel(), 'Local: saving');
         failed[failure]();
         failed.onFinish();
         assert.equal(status.saveState(), 'unsaved');
@@ -146,7 +188,7 @@ test('ranking goals dim and strike through immediately for manual sorts and resu
     const $wire = { tab: 'flying', sort: 'best' };
     const evaluate = (expression) => vm.runInNewContext(`(${expression})`, { $wire });
 
-    for (const [sort, expected] of [['best', false], ['credit', true], ['block', true], ['days_off', true], ['pay', true], ['id', true], ['best', false]]) {
+    for (const [sort, expected] of [['best', false], ['credit', true], ['block', true], ['days_off', true], ['pay', true], ['id', true], ['submitted', true], ['best', false]]) {
         $wire.sort = sort;
 
         assert.equal(evaluate(dimmed)['opacity-50'], expected, `${sort}: goal summary dimming`);

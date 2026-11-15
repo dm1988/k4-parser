@@ -132,7 +132,7 @@ Validation: The JavaScript regression reproduced the invalid `Number` method cal
 
 Commit message: `fix: repair bid list position dropdown`
 
-Submitted-order sort planning completed (2026-11-15): The user confirmed that the new sort should follow their last Kalitta-submitted order. Expanded the existing task in CREW_BIDS.md with the confirmed source, current code boundaries, owner/context scoping, report-match availability rules, ranked-first/natural-ID ordering, separate submitted versus editable ranks, shared bulk-add behavior and focused acceptance coverage. The initial source reuses existing matched submission records; uncaptured manual portal bids require separate read-only retrieval. Preserved unrelated document edits. Documentation-only; implementation remains pending.
+Submitted-order sort planning completed (2026-11-15): The user confirmed that the new sort should follow their last Kalitta-submitted order. Expanded the existing task in CREW_BIDS.md with the confirmed source, current code boundaries, owner/context scoping, report-match availability rules, ranked-first/natural-ID ordering, separate submitted versus editable ranks, shared bulk-add behavior and focused acceptance coverage. The initial source reuses existing matched submission records; uncaptured manual portal bids require separate read-only retrieval. Preserved unrelated document edits. This was a documentation-only checkpoint; implementation is now recorded in the completed submitted-order task below.
 
 Commit message: `docs: plan sorting by submitted Kalitta bid order`
 
@@ -401,6 +401,30 @@ I'd make page segmentation mode configurable per extraction call.
 # Completed Tasks
 
 -------------------------------------------------------
+
+## [x] Completed: Distinguish local saves from Kalitta submission status
+
+Goal: Explain whether the bid list is saved locally and whether its order matches the last confirmed Kalitta report, with clear actions for incomplete states.
+
+Current implementation: Replaced the anonymous status dot with document/sync/warning icons and a Local label, alongside a separate paper-plane icon and Kalitta label inside My bid list. Local saves turn green after confirmation. Kalitta is green only when the current ordered choices match the owner's validated report snapshot, amber when the list differs, and neutral when no usable report is available. The drawer explains automatic local saving, retry/recovery, the UTC report-check time and the Review / Copy → Submit to Kalitta path when submission is enabled. Tooltips and accessible announcements describe both states. The corrected shared unsaved-change helper reads the backend property with `$wire.$get('dirty')`, and review/copy/submission controls use it, including protection after failed requests. Saved choices, portal evidence and submissions retain their existing ownership and persistence rules.
+
+Problem addressed: Livewire 4.4.8 reserves `$wire.dirty` as an alias for its built-in `$dirty` function. Treating that function as the application's boolean property made the indicator permanently amber and disabled review actions even after successful saves. The old dot also gave no visible distinction between local saving and Kalitta submission.
+
+Validation: Elevated Sail was available. Recent Debugbar request data showed a successful crew-bids response with no server exceptions. A regression using the installed Livewire proxy first reproduced the saved-to-unsaved misclassification, then passed with the corrected access. All 49 crew-bid JavaScript checks passed, including enabled clean-state review actions and disabled unsaved/failed-state actions. All 55 focused PHP integration tests passed (269 assertions), covering local/report status, draft changes, uncertain attempts, source isolation, page data, save timestamps, failed saves, conflicts and submission UI. Pint, the production Vite build and whitespace checks passed. The single Larastan run found two annotations in the earlier resolver helper; removed that helper and documented the encrypted attribute's exception at its actual access boundary. All 39 affected tests passed afterward (169 assertions). Analysis was not rerun under AGENTS.md's once-per-task rule. Preserved unrelated changes and staging. No full suite, manual browser review or live portal operation was performed.
+
+Commit message: `fix: clarify local save and Kalitta submission status`
+
+## [x] Completed: Sort by user submitted bid order
+
+Goal: Sort line cards by the user's last report-matched Kalitta bid order while keeping submitted and editable ranks distinct.
+
+Current implementation: Added Submitted bid order to CrewBidSort and the dropdown. An owner/workspace/package/seat-scoped resolver validates the latest attempt's matched status, report-check time, authenticated context, local revision and ordered line/report-number mapping. New reviews also bind the package fingerprint and payload hash; existing matched reviews retain their context/revision binding. Newer uncertain or nonmatching attempts invalidate older matches, while unattempted reviews do not replace them. Submitted choices appear first by original rank, followed by natural Line ID order. Eligibility, filters and tabs preserve rank gaps without adding missing cards. Cards show Submitted #N separately from Selected #N, with a UTC report-check timestamp above the list. Missing or unreadable evidence disables the option; losing the source resets Best match with a notice. The dropdown width remains bounded. Rendering and Add all matching share the server-resolved order, and sorting leaves saved ranks, copy output, save timestamps and portal state unchanged. No migration, credentials or portal request is needed; uncaptured manual portal bids still require separate read-only retrieval.
+
+Problem addressed: The editable saved list can differ from the submitted order, so its ranks cannot establish what Kalitta last received.
+
+Validation: Elevated Sail was available. All 85 focused PHP integration tests passed (451 assertions), covering submitted/draft ranks, filtering, flying/reserve tabs, unavailable lines, natural ordering, ambiguous attempts, owner/context isolation, legacy reviews, context changes, bulk-add, existing sorts/pay goals and save status. The real reviewed-submission regression proves its matched record supplies the source. All 48 crew-bid JavaScript tests, the production Vite build, Pint and whitespace checks passed. The single Larastan run reported a redundant nullsafe access under null coalescing and missing decryption-exception documentation at the encrypted model boundary. Both were corrected, then all 37 affected tests passed again after formatting (151 assertions); analysis was not rerun under AGENTS.md's once-per-task rule. Preserved concurrent document edits, working-tree changes and staging. No full suite, manual browser review or live portal operation was performed.
+
+Commit message: `feat: sort crew bid lines by last submitted Kalitta order`
 
 ## [x] Completed: Plan crew bid access roles
 
