@@ -104,7 +104,7 @@ class DiscoverBidPortalTest extends TestCase
             'control_names' => [], 'submitted_report_link' => true, 'candidate_choices' => 3,
             'candidate_draft_changes' => ['added' => 3, 'removed' => 3, 'reordered' => false],
             'context' => ['account_matches_input' => true, 'seat' => 'FO', 'fleet' => '777', 'period' => '2026-12',
-                'package_revision' => 0, 'window_status' => 'Closed', 'update_postback' => false]], $report);
+                'package_id' => 4000, 'package_revision' => 0, 'window_status' => 'Closed', 'update_postback' => false]], $report);
         $http->assertSentCount(3);
         $http->assertSent(fn (Request $request): bool => $request->method() === 'POST' && $request->url() === self::ORIGIN.'/'
             && $request->data() === [

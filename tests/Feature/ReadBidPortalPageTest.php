@@ -20,7 +20,7 @@ class ReadBidPortalPageTest extends TestCase
 
         $this->assertSame([
             'account_matches_input' => true, 'seat' => 'FO', 'fleet' => '777', 'period' => '2026-12',
-            'package_revision' => 0, 'window_status' => 'Open', 'update_postback' => true,
+            'package_id' => 4000, 'package_revision' => 0, 'window_status' => 'Open', 'update_postback' => true,
         ], $context);
     }
 

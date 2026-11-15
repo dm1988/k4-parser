@@ -215,6 +215,11 @@
                     @if ($showReview)
                         <p class="text-sm text-slate-500 dark:text-slate-400">Review your order and warnings. Copying does not submit your bid.</p>
                         <textarea id="bid-copy-text" readonly rows="8" aria-label="Numbered bid list for copying" class="w-full rounded-lg font-mono text-sm dark:bg-slate-900">{{ $copyText }}</textarea>
+                        @if ($package && config('crew_bids.submission.enabled'))
+                            <form method="GET" action="{{ route('crew-bids.submissions.create', ['package' => $package, 'seat' => $seat]) }}">
+                                <button type="submit" wire:loading.attr="disabled" wire:target="move,remove,clearList,addMatching,undoAdd,retrySave" :disabled="$wire.dirty || $wire.$dirty(['goals', 'daysOff', 'startCity']) || $wire.selections.length === 0" @disabled($dirty || $selections === []) class="min-h-11 rounded-lg bg-[#C5A059] px-4 font-semibold text-[#0B0E14] focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50">Submit to Kalitta</button>
+                            </form>
+                        @endif
                         @if ($aiPrompt !== null)
                             <button x-ref="aiPromptTrigger" type="button" @click="$refs.aiPromptDialog.showModal()" aria-haspopup="dialog" aria-controls="bid-ai-prompt" wire:loading.attr="disabled" wire:target="move,remove,clearList,addMatching,undoAdd,retrySave" :disabled="$wire.dirty || $wire.$dirty(['goals', 'daysOff', 'startCity'])" class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#C5A059] px-3 text-sm font-semibold text-[#1B365D] focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50 dark:text-amber-200">AI form prompt</button>
                             <dialog id="bid-ai-prompt" x-ref="aiPromptDialog" wire:ignore.self aria-labelledby="bid-ai-prompt-title" @keydown.escape.stop @click="if ($event.target === $el) $el.close()" @close="$refs.aiPromptTrigger.focus()" class="fixed inset-0 m-auto max-h-[80dvh] w-[calc(100%_-_2rem)] max-w-2xl overflow-y-auto rounded-xl border border-slate-200 bg-white p-0 text-slate-900 shadow-xl backdrop:bg-slate-950/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">

@@ -109,7 +109,7 @@ class ReadBidPortalPage
     /**
      * The page labels describe the visible bid context, not a verified submission receipt.
      *
-     * @return array{account_matches_input: bool, seat: string, fleet: string, period: string, package_revision: int, window_status: string, update_postback: bool}
+     * @return array{account_matches_input: bool, seat: string, fleet: string, period: string, package_id: int, package_revision: int, window_status: string, update_postback: bool}
      */
     public function context(#[SensitiveParameter] string $html, #[SensitiveParameter] string $employee, int $maximumLine): array
     {
@@ -160,6 +160,7 @@ class ReadBidPortalPage
             'seat' => $seat,
             'fleet' => $fleet,
             'period' => $month[2].'-'.str_pad($month[1], 2, '0', STR_PAD_LEFT),
+            'package_id' => (int) $cells[0],
             'package_revision' => (int) $cells[4],
             'window_status' => in_array($cells[6], ['Open', 'Closed'], true) ? $cells[6] : 'Unknown',
             'update_postback' => $updatePostback,
@@ -197,6 +198,61 @@ class ReadBidPortalPage
         foreach ($sheet['slots'] as $slot) {
             $fields[$slot['line_field']] = $ordered[$slot['rank'] - 1] ?? '';
         }
+
+        return $fields;
+    }
+
+    /** @return array<string, string> */
+    public function updateFields(#[SensitiveParameter] string $html): array
+    {
+        $form = $this->form($html);
+        $this->inputs($form);
+        $fields = [];
+        foreach ($form->getElementsByTagName('*') as $input) {
+            $name = $input->getAttribute('name');
+            if ($name === '' || $input->hasAttribute('disabled') || $this->disabledByFieldset($input)) {
+                continue;
+            }
+            if ($input->tagName === 'input') {
+                $type = strtolower($input->getAttribute('type'));
+                if (in_array($type, ['button', 'submit', 'reset', 'image'], true)
+                    || (in_array($type, ['checkbox', 'radio'], true) && ! $input->hasAttribute('checked'))) {
+                    continue;
+                }
+                if (! in_array($type, ['text', 'hidden', 'checkbox', 'radio'], true)) {
+                    throw new BidPortalException('The Bid Sheet has an unsupported input type.');
+                }
+                $value = $input->hasAttribute('value') ? $input->getAttribute('value') : (in_array($type, ['checkbox', 'radio'], true) ? 'on' : '');
+            } elseif ($input->tagName === 'select') {
+                $options = [];
+                foreach ($input->getElementsByTagName('option') as $option) {
+                    if ($option->hasAttribute('selected') && ! $option->hasAttribute('disabled')) {
+                        $options[] = $option;
+                    }
+                }
+                if ($input->hasAttribute('multiple') || count($options) > 1) {
+                    throw new BidPortalException('The Bid Sheet has unsupported selection settings.');
+                }
+                $option = $options[0] ?? $input->getElementsByTagName('option')->item(0);
+                if ($option === null || $option->hasAttribute('disabled')) {
+                    continue;
+                }
+                $value = $option->hasAttribute('value') ? $option->getAttribute('value') : $option->textContent;
+            } elseif ($input->tagName === 'textarea') {
+                $value = $input->textContent;
+            } else {
+                continue;
+            }
+            if (array_key_exists($name, $fields)) {
+                throw new BidPortalException('The Bid Sheet has ambiguous successful controls.');
+            }
+            $fields[$name] = $value;
+        }
+        if (($fields['__VIEWSTATE'] ?? '') === '' || ($fields['__EVENTVALIDATION'] ?? '') === '') {
+            throw new BidPortalException('The Bid Sheet is missing fresh Web Forms state.');
+        }
+        $fields['__EVENTTARGET'] = self::PREFIX.'btn_update';
+        $fields['__EVENTARGUMENT'] = '';
 
         return $fields;
     }

@@ -23,7 +23,7 @@ class DiscoverBidPortal
      * The only POST in this operation is login. Bid Sheet controls are never posted.
      *
      * @param  list<string>  $selections
-     * @return array{choice_slots: int, editable_slots: int, populated_slots: int, control_names: list<string>, submitted_report_link: bool, candidate_choices: ?int, candidate_draft_changes: ?array{added: int, removed: int, reordered: bool}, context: array{account_matches_input: bool, seat: string, fleet: string, period: string, package_revision: int, window_status: string, update_postback: bool}}
+     * @return array{choice_slots: int, editable_slots: int, populated_slots: int, control_names: list<string>, submitted_report_link: bool, candidate_choices: ?int, candidate_draft_changes: ?array{added: int, removed: int, reordered: bool}, context: array{account_matches_input: bool, seat: string, fleet: string, period: string, package_id: int, package_revision: int, window_status: string, update_postback: bool}}
      */
     public function handle(#[SensitiveParameter] string $employee, #[SensitiveParameter] string $password, #[SensitiveParameter] array $selections = []): array
     {

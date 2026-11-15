@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\FlightPlanTask;
+use App\Http\Controllers\CrewBidSubmissionController;
 use App\Http\Controllers\ExtractController;
 use App\Http\Controllers\FlightDelayController;
 use App\Http\Controllers\FlightReleaseController;
@@ -21,6 +22,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('/crew-bids', CrewBids::class)
         ->middleware(['feature:crew_bids', 'can:use-crew-bids'])
         ->name('crew-bids.index');
+    Route::prefix('crew-bids/submissions')->name('crew-bids.submissions.')
+        ->middleware(['feature:crew_bids', 'can:use-crew-bids', 'throttle:10,1'])->group(function () {
+            Route::get('/package/{package}/{seat}', [CrewBidSubmissionController::class, 'create'])->whereNumber('package')->whereIn('seat', ['CA', 'FO'])->name('create');
+            Route::post('/package/{package}/{seat}', [CrewBidSubmissionController::class, 'review'])->whereNumber('package')->whereIn('seat', ['CA', 'FO'])->name('review');
+            Route::get('/{submission}', [CrewBidSubmissionController::class, 'show'])->whereUlid('submission')->name('show');
+            Route::post('/{submission}', [CrewBidSubmissionController::class, 'submit'])->whereUlid('submission')->name('submit');
+            Route::post('/{submission}/reconcile', [CrewBidSubmissionController::class, 'reconcile'])->whereUlid('submission')->name('reconcile');
+        });
     Route::get('/dashboard', [ExtractController::class, 'dashboard'])->name('dashboard');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

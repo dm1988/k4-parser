@@ -2,7 +2,15 @@
 
 K4 Bids helps pilots compare monthly bid packages and prepare a private, ordered bid list. This document records the current product contract and remaining work. Completed implementation tasks, validation history, and commit messages are recorded in [TODO.md](TODO.md).
 
-Status (2026-10-28): Package import/publication, browsing, preferences, manual ranking, review/copy, compact cards, interactive trip timelines, credit calculations, icons, and trip endpoint/deadhead flags are implemented. Auto bidding has read-only discovery and an offline adapter; reviewed submission and the enhancements below remain pending. Manual browser, touch, and keyboard review is still outstanding.
+Status (2026-11-15): Package import/publication, browsing, preferences, manual ranking, review/copy, compact cards, interactive trip timelines, credit calculations, icons, and trip endpoint/deadhead flags are implemented. Reviewed portal submission and fresh report reconciliation are implemented and enabled locally for the user's controlled test. Live acceptance, receipt authentication, and the enhancements below remain pending. Manual browser, touch, and keyboard review is still outstanding.
+
+## View other employees bids
+The page:
+https://crewbids.kalittaair.com/Pages/ViewAllBids.aspx
+contains other employees submitted bids.
+There is a drop down containing a full ist of employees that have bid in the current bid package.
+There is a radio selector for bid position, CA, or FO
+Exportable formats include PDF and excel sheet.
 
 ## CBA accuracy review — 2026-10-29
 
@@ -74,6 +82,8 @@ For bid comparison before work is performed, awarded credit can be shown as a pl
 ### Review disposition
 
 Confirmed from the supplied CBA: UTC Day and Carry-In Days definitions, compensation Month boundaries, Section 5.M's transition-credit allocation, the 64/70 PCH guarantees, the existing rate arrays' 2024 source/order, and the scheduling provisions cited above. The user confirmed the duty-period boundary, per-Z-day greater-of-awarded-or-actual calculation, full-segment departure-day attribution, and conditional premium eligibility as recorded above. The daily greater-of rule is a user-confirmed clarification; this review has not identified a separate clause expressly stating that daily comparison. Unresolved for any future implementation: source coverage identifying duty periods, awarded daily credit and actual work, assignment-specific evidence of qualifying excess days or scheduled-day-off work and the applicable compensation treatment, published line-guarantee provenance, later amendments/current applicability, and account-specific eligibility. The document's separation of saved/submitted/awarded states and its refusal to treat layout cues as legal-rest evidence are consistent with these findings. No application behavior or portal submission was changed by this review.
+## Feat: Bid month's credit gauruntee
+Show the credit gauruntee to the user, the published months gauruntee would be caluculated without carry in days and without premium or overtime credits.
 
 ## Product contract
 
@@ -259,7 +269,9 @@ Before enabling scheduled portal checks, configure an accountable active bid adm
 
 ## Current focus: Auto bidding feature
 
-Implementation status (2026-11-13): Read-only command discovery, offline Choice/Line preparation, and offline Submitted Bid Lines PDF and Bid Received email parsers are implemented with regression coverage. User-run authenticated discovery has reached both a closed-window and an apparently open-window Bid Sheet; live report retrieval, source authentication, and reviewed submission remain pending. The user confirmed that this feature means submitting their reviewed bid list to the airline's bidding system, using employee number/password without MFA, CAPTCHA, or SSO. It does not mean automatically generating preferences or submitting on a schedule. The existing review/copy workflow remains available.
+Implementation status (2026-11-15): The workspace now offers Submit to Kalitta from Review bid list. A native form takes transient credentials, reads a fresh submitted PDF report, compares the complete order, and issues a ten-minute owner-scoped encrypted review. Final submission requires credentials again and explicit confirmation of the exact account/context, package release and bid eligibility. It reauthenticates, checks local and portal bindings, claims a single-use attempt, posts fresh successful controls once and reconciles another fresh report. Unknown outcomes block another submission until an authenticated read-only check. Other pending reviews are superseded after an attempt. A report match is displayed separately from receipt-email acceptance and awards. The user authorized local testing; `CREW_BIDS_SUBMISSION_ENABLED` remains false by default and is true in the private local environment. No scheduled process submits bids, and the existing review/copy workflow remains available.
+
+Live-test notes (2026-11-15): The supplied table identifies the bid period, package ID, revision, fleet line count and Open status; its December starting/ending dates do not provide a submission cutoff or time zone. The implementation rechecks Open status before writing. The user reached comparison and final review; a regression reproduced their false stale-state error when the portal's global users-logged-in field changed between requests. That display value is excluded from the binding while its fresh value is preserved in the post. Credential fields suppress autofill and clear on restoration. A controlled successful Update, receipt-email confirmation and browser review remain user testing work.
 
 The user previously confirmed that bidding was closed when the earlier readonly inputs were observed, and that portal numbers are unique: F1 → 1, Q99 → 99, R70 (also written R 70) → 70. The adapter accepts F/Q/R plus an optional space before a positive number, rejects numeric collisions across prefixes, and uses the displayed Choice values to order paired fields rather than DOM order. Runtime slot count, maximum line, and training rules constrain an offline candidate; it includes blank trailing line fields without changing unrelated settings. This does not prove account/seat eligibility, the bid window, or submission acceptance.
 
@@ -356,7 +368,7 @@ Keep award retrieval read-only and separate from submission. An award must come 
 
 Implementation coverage must include F/Q/R mapping and unsupported identifiers, interleaved input order, mixed flying/reserve ranks, zero/maximum/excess choices, removal of trailing old choices, training restrictions, preservation of other portal settings, expired page state, login/context mismatch, changed local/portal revisions, cross-owner isolation, double clicks, timeout-after-send reconciliation, and credential/cookie/state redaction. Use fake transport and synthetic responses for automated tests; tests must never contact the live submit endpoint. Run focused tests, Pint after PHP changes, and Larastan once at implementation integration.
 
-Remaining decisions are fresh authenticated report retrieval, source/recipient authentication for the Bid Received email, period binding for both receipt and report, deadline/time-zone semantics, and award schema/retention. The prefix-to-number mapping, unchanged Bid Sheet plus complete email behavior, and matching post-Update report are user-reported; the open-window form, email excerpt, and offline Submitted Bid Lines PDF layout have been observed. Do not enable submission until a controlled Update and fresh, context-bound read-back demonstrate the full protocol.
+Remaining verification includes controlled live Update acceptance, source/recipient authentication for the Bid Received email, the report's account/period scope, deadline/time-zone semantics, and award schema/retention. The app now retrieves the report in the authenticated session and checks Bid Sheet context before and after it, but does not label a matching report as an authenticated email receipt or an award. The user explicitly authorized enabling local submission for testing on 2026-11-15; the production/example default remains disabled pending that controlled verification.
 
 ## Remaining enhancements
 
