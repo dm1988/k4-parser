@@ -2,6 +2,8 @@
 
 namespace App\Services\CrewBids;
 
+use App\Enums\CrewBidGoal;
+use App\Enums\CrewBidSort;
 use Carbon\CarbonImmutable;
 
 class BidLineMatcher
@@ -89,15 +91,19 @@ class BidLineMatcher
         $line['carry_credit_label'] = $this->secondsLabel($line['carry_credit_seconds']);
         $line['carry_deadhead_credit_label'] = $this->secondsLabel($line['carry_deadhead_credit_seconds'] ?? null);
         $matchDetails = [];
-        foreach ($preferences['goals'] ?? [] as $goal) {
+        foreach ($preferences['goals'] ?? [] as $goalValue) {
+            $goal = CrewBidGoal::tryFrom($goalValue);
+            if ($goal === null) {
+                continue;
+            }
             $detail = match ($goal) {
-                'credit' => $line['credit'] === null ? null : 'Maximize credit: '.$creditLabel,
-                'days_off' => $unknown ? null : 'Maximize days off: '.$off,
-                'blocks' => $unknown ? null : 'Fewer work blocks: '.$blocks,
-                default => null,
+                CrewBidGoal::Credit => $line['credit'] === null ? null : $creditLabel,
+                CrewBidGoal::DaysOff => $unknown ? null : $off,
+                CrewBidGoal::Blocks => $unknown ? null : $blocks,
+                CrewBidGoal::Pay => null,
             };
             if ($detail !== null) {
-                $matchDetails[] = $detail;
+                $matchDetails[] = $goal->label().': '.$detail;
             }
         }
         $filterDetails = [];
@@ -310,26 +316,31 @@ class BidLineMatcher
     }
 
     /** @param list<array<string, mixed>> $lines
-     * @param  list<string>  $goals
+     * @param  list<CrewBidGoal>  $goals
      * @return list<array<string, mixed>>
      */
-    public function sort(array $lines, array $goals, string $sort): array
+    public function sort(array $lines, array $goals, CrewBidSort $sort): array
     {
         $keys = match ($sort) {
-            'credit' => ['credit'], 'block' => ['block'], 'days_off' => ['days_off'], 'pay' => ['pay'], 'id' => [], default => $goals,
+            CrewBidSort::Credit => ['credit'],
+            CrewBidSort::Block => ['block'],
+            CrewBidSort::DaysOff => ['days_off'],
+            CrewBidSort::Pay => ['pay'],
+            CrewBidSort::LineId => [],
+            CrewBidSort::BestMatch => array_map(static fn (CrewBidGoal $goal): string => $goal->value, $goals),
         };
         usort($lines, function (array $left, array $right) use ($keys): int {
             foreach ($keys as $key) {
                 $a = $left[$key] ?? null;
                 $b = $right[$key] ?? null;
-                if ($key === 'credit') {
+                if ($key === CrewBidGoal::Credit->value) {
                     $a = $left['credit_seconds'] ?? ($a === null ? null : $a * 60);
                     $b = $right['credit_seconds'] ?? ($b === null ? null : $b * 60);
                 }
                 if ($a === null || $b === null) {
                     $comparison = ($a === null ? 1 : 0) <=> ($b === null ? 1 : 0);
                 } else {
-                    $comparison = $key === 'blocks' ? $a <=> $b : $b <=> $a;
+                    $comparison = $key === CrewBidGoal::Blocks->value ? $a <=> $b : $b <=> $a;
                 }
                 if ($comparison !== 0) {
                     return $comparison;

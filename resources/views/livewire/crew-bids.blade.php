@@ -46,7 +46,12 @@
                         </button>
                         <span id="bid-ranking-status" class="sr-only" role="status">@if ($tab === 'trips')Ranking preferences inactive in Trips view.@elseif ($sort !== 'best')Ranking preferences inactive for this sort. Dates off and start city filters still apply.@else Best match uses your selected ranking goals.@endif</span>
                         @if ($tab !== 'trips')
-                            <label for="bid-sort" class="sr-only">Sort lines</label><select id="bid-sort" wire:model.change.live="sort" class="min-h-11 w-32 shrink-0 rounded-lg border-0 bg-transparent text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900 sm:w-auto"><option value="best">{{ $goals === [] ? 'Line ID (no goals set)' : 'Best match' }}</option><option value="credit">Highest credit</option><option value="block">Highest block time</option><option value="days_off">Most days off</option><option value="pay">Highest estimated line value</option><option value="id">Line ID</option></select>
+                            <label for="bid-sort" class="sr-only">Sort lines</label>
+                            <select id="bid-sort" wire:model.change.live="sort" class="min-h-11 w-32 shrink-0 rounded-lg border-0 bg-transparent text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900 sm:w-auto">
+                                @foreach (\App\Enums\CrewBidSort::cases() as $option)
+                                    <option value="{{ $option->value }}">{{ $option === \App\Enums\CrewBidSort::BestMatch && $goals === [] ? 'Line ID (no goals set)' : $option->label() }}</option>
+                                @endforeach
+                            </select>
                         @endif
                     </div>
                     @if ($tab !== 'trips')

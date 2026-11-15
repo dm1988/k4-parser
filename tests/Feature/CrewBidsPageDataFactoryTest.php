@@ -3,16 +3,49 @@
 namespace Tests\Feature;
 
 use App\DTOs\CrewBidBrowseCriteria;
+use App\Enums\CrewBidSort;
 use App\Models\BidPackage;
 use App\Models\BidWorkspace;
 use App\Models\User;
 use App\View\Models\CrewBidsPageDataFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class CrewBidsPageDataFactoryTest extends TestCase
 {
     use RefreshDatabase;
+
+    /** @param list<string> $expectedIds */
+    #[DataProvider('sortModes')]
+    public function test_typed_sort_modes_preserve_their_browsing_order(CrewBidSort $sort, array $expectedIds): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['block'] = 100;
+        $payload['lines']['F3'] = array_replace($payload['lines']['F1'], ['id' => 'F3', 'credit' => 6000, 'block' => 50]);
+        $payload['lines']['F3']['calendar']['2026-11-16'] = ['status' => 'occupied', 'activity' => 'Trip / occupied'];
+        $package->update(['payload' => $payload]);
+        $user = User::factory()->admin()->create();
+        $criteria = new CrewBidBrowseCriteria(seat: 'FO', preferences: ['goals' => ['credit'], 'days_off' => [], 'start_city' => ''], sort: $sort);
+
+        $data = app(CrewBidsPageDataFactory::class)->make($package, $user, $criteria);
+
+        $this->assertSame($expectedIds, array_column($data->browse->lines, 'id'));
+    }
+
+    /** @return array<string, array{CrewBidSort, list<string>}> */
+    public static function sortModes(): array
+    {
+        return [
+            'best match' => [CrewBidSort::BestMatch, ['F3', 'F1']],
+            'credit' => [CrewBidSort::Credit, ['F3', 'F1']],
+            'block' => [CrewBidSort::Block, ['F1', 'F3']],
+            'days off' => [CrewBidSort::DaysOff, ['F1', 'F3']],
+            'unavailable pay' => [CrewBidSort::Pay, ['F1', 'F3']],
+            'line ID' => [CrewBidSort::LineId, ['F1', 'F3']],
+        ];
+    }
 
     public function test_no_package_produces_empty_browsing_and_calendar_data(): void
     {

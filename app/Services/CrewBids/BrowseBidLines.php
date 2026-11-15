@@ -25,7 +25,7 @@ class BrowseBidLines
         }
         unset($line);
         $lines = array_values(array_filter($allLines, fn (array $line): bool => $this->matches($line, $criteria)));
-        $lines = $this->matcher->sort($lines, $criteria->preferences['goals'], $criteria->sort);
+        $lines = $this->matcher->sort($lines, $criteria->rankingGoals(), $criteria->sort);
         $selected = [];
         foreach ($criteria->selections as $id) {
             $selected[] = $allLines[$id] ?? [

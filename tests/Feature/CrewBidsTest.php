@@ -8,6 +8,7 @@ use App\Models\BidPackage;
 use App\Models\BidWorkspace;
 use App\Models\User;
 use App\View\Models\CrewBidLineViewModel;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -219,6 +220,49 @@ class CrewBidsTest extends TestCase
         $workspace = BidWorkspace::query()->where('user_id', $user->id)->sole();
         $this->assertSame(['days_off', 'credit'], $workspace->preferences['goals']);
         $this->assertSame(['F3', 'F1'], $workspace->selections);
+    }
+
+    #[DataProvider('invalidSortValues')]
+    public function test_invalid_sort_values_show_validation_feedback_and_allow_a_valid_selection(string $value, string $message): void
+    {
+        BidPackage::factory()->create();
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+
+        $page->set('sort', $value)->assertHasErrors('sort')->assertSee($message)
+            ->set('sort', 'credit')->assertHasNoErrors()->assertSet('sort', 'credit');
+
+        $this->assertDatabaseCount('bid_workspaces', 0);
+    }
+
+    /** @return array<string, array{string, string}> */
+    public static function invalidSortValues(): array
+    {
+        return [
+            'unknown sort' => ['unknown', 'The selected sort is invalid.'],
+            'goal-only value' => ['blocks', 'The selected sort is invalid.'],
+            'missing sort' => ['', 'The sort field is required.'],
+        ];
+    }
+
+    #[DataProvider('sortOnlyGoalValues')]
+    public function test_sort_only_values_cannot_be_saved_as_ranking_goals(string $value): void
+    {
+        BidPackage::factory()->create();
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+
+        $page->set('goals', [$value])->call('finishSetup')->assertHasErrors('preferences.goals.0');
+
+        $this->assertDatabaseCount('bid_workspaces', 0);
+    }
+
+    /** @return array<string, array{string}> */
+    public static function sortOnlyGoalValues(): array
+    {
+        return [
+            'best match' => ['best'],
+            'block sort' => ['block'],
+            'line ID' => ['id'],
+        ];
     }
 
     public function test_failed_preference_validation_keeps_the_manual_sort_and_dialog_open(): void

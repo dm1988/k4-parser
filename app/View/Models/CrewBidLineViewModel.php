@@ -2,6 +2,8 @@
 
 namespace App\View\Models;
 
+use App\Enums\CrewBidGoal;
+
 final readonly class CrewBidLineViewModel
 {
     /**
@@ -40,7 +42,7 @@ final readonly class CrewBidLineViewModel
     ) {}
 
     /** @param array<string, mixed> $line
-     * @param  list<string>  $goals
+     * @param  list<CrewBidGoal>  $goals
      */
     public static function fromLine(array $line, ?int $rank = null, bool $showBlocks = false, bool $payDetails = false, array $goals = []): self
     {
@@ -49,12 +51,12 @@ final readonly class CrewBidLineViewModel
         $tripCount = count($trips);
         $payEstimate = isset($line['pay_estimate']) ? CrewBidPayViewModel::fromEstimate($line['pay_estimate'], $payDetails) : null;
         $matchDetails = $line['match_details'];
-        $payPosition = array_search('pay', $goals, true);
+        $payPosition = array_search(CrewBidGoal::Pay, $goals, true);
         if ($payPosition !== false && $payEstimate !== null) {
             $precedingGoals = array_slice($goals, 0, $payPosition);
-            $detailPosition = count(array_filter($precedingGoals, static fn (string $goal): bool => ($line[$goal] ?? null) !== null));
+            $detailPosition = count(array_filter($precedingGoals, static fn (CrewBidGoal $goal): bool => ($line[$goal->value] ?? null) !== null));
             $payDescription = $payEstimate->ready ? $payEstimate->title.' · '.$payEstimate->label : 'Complete estimate unavailable';
-            array_splice($matchDetails, $detailPosition, 0, ['Maximize pay: '.$payDescription]);
+            array_splice($matchDetails, $detailPosition, 0, [CrewBidGoal::Pay->label().': '.$payDescription]);
         }
 
         return new self(

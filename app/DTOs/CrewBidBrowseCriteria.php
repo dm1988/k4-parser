@@ -2,6 +2,9 @@
 
 namespace App\DTOs;
 
+use App\Enums\CrewBidGoal;
+use App\Enums\CrewBidSort;
+
 final readonly class CrewBidBrowseCriteria
 {
     /**
@@ -13,7 +16,7 @@ final readonly class CrewBidBrowseCriteria
         public array $preferences,
         public array $selections = [],
         public string $tab = 'flying',
-        public string $sort = 'best',
+        public CrewBidSort $sort = CrewBidSort::BestMatch,
         public ?int $minimumCredit = null,
         public ?int $minimumDaysOff = null,
         public bool $selectedOnly = false,
@@ -21,4 +24,18 @@ final readonly class CrewBidBrowseCriteria
         public bool $extendedLayoversOnly = false,
         public bool $avoidShortLayovers = false,
     ) {}
+
+    /** @return list<CrewBidGoal> */
+    public function rankingGoals(): array
+    {
+        $goals = [];
+        foreach ($this->preferences['goals'] as $value) {
+            $goal = CrewBidGoal::tryFrom($value);
+            if ($goal !== null) {
+                $goals[] = $goal;
+            }
+        }
+
+        return $goals;
+    }
 }

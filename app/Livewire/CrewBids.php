@@ -7,6 +7,7 @@ use App\Actions\CrewBids\PublishBidPackage;
 use App\Actions\CrewBids\SaveBidWorkspace;
 use App\Actions\CrewBids\SaveCrewBidPayProfile;
 use App\DTOs\CrewBidBrowseCriteria;
+use App\Enums\CrewBidSort;
 use App\Models\BidPackage;
 use App\Models\BidWorkspace;
 use App\Models\CrewBidPayProfile;
@@ -65,7 +66,7 @@ class CrewBids extends Component
 
     public string $tab = 'flying';
 
-    public string $sort = 'best';
+    public string $sort = CrewBidSort::BestMatch->value;
 
     public string $startCity = '';
 
@@ -151,7 +152,7 @@ class CrewBids extends Component
             $this->validate([
                 'minimumCredit' => ['nullable', 'integer', 'between:0,300'],
                 'minimumDaysOff' => ['nullable', 'integer', 'between:0,31'],
-                'sort' => ['required', Rule::in(['best', 'credit', 'block', 'days_off', 'id', 'pay'])],
+                'sort' => ['required', Rule::enum(CrewBidSort::class)],
                 'tab' => ['required', Rule::in(['flying', 'reserve', 'trips'])],
                 'layoverCity' => ['nullable', 'regex:/\A[A-Z]{3}\z/'],
             ]);
@@ -223,7 +224,7 @@ class CrewBids extends Component
     {
         $this->initialized = true;
         if ($this->persist()) {
-            $this->sort = 'best';
+            $this->sort = CrewBidSort::BestMatch->value;
             $this->showPreferences = false;
         }
     }
@@ -581,7 +582,7 @@ class CrewBids extends Component
             preferences: $this->preferences(),
             selections: $this->selections,
             tab: $this->tab,
-            sort: $this->sort,
+            sort: CrewBidSort::tryFrom($this->sort) ?? CrewBidSort::BestMatch,
             minimumCredit: $this->minimumCredit,
             minimumDaysOff: $this->minimumDaysOff,
             selectedOnly: $this->selectedOnly,

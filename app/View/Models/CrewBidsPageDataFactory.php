@@ -4,6 +4,7 @@ namespace App\View\Models;
 
 use App\DTOs\CrewBidBrowseCriteria;
 use App\DTOs\CrewBidsPageData;
+use App\Enums\CrewBidGoal;
 use App\Models\BidPackage;
 use App\Models\CrewBidPayProfile;
 use App\Models\User;
@@ -27,7 +28,8 @@ class CrewBidsPageDataFactory
         $month = $package === null ? null : CarbonImmutable::parse($package->period.'-01', 'UTC');
         $target = $pendingPackageId === null ? null : BidPackage::query()->whereNotNull('published_at')->find($pendingPackageId);
         $ranks = array_flip($criteria->selections);
-        $showBlocks = in_array('blocks', $criteria->preferences['goals'], true);
+        $goals = $criteria->rankingGoals();
+        $showBlocks = in_array(CrewBidGoal::Blocks, $goals, true);
         $filterSummaries = $this->filterSummaries($criteria);
         $activeFilters = array_merge(...array_values($filterSummaries));
         if ($criteria->selectedOnly) {
@@ -40,7 +42,7 @@ class CrewBidsPageDataFactory
                 ->where(fn ($query) => $query->whereNull('archived_at')->orWhereHas('workspaces', fn ($query) => $query->where('user_id', $user->id)->where('seat', $criteria->seat)))
                 ->orderByDesc('period')->orderByDesc('id')->get(['id', 'period', 'fleet', 'source_revision']),
             browse: $browse,
-            lineCards: array_map(static fn (array $line): CrewBidLineViewModel => CrewBidLineViewModel::fromLine($line, isset($ranks[$line['id']]) ? $ranks[$line['id']] + 1 : null, $showBlocks, in_array($line['id'], $payDetails, true), $criteria->preferences['goals']), $browse->lines),
+            lineCards: array_map(static fn (array $line): CrewBidLineViewModel => CrewBidLineViewModel::fromLine($line, isset($ranks[$line['id']]) ? $ranks[$line['id']] + 1 : null, $showBlocks, in_array($line['id'], $payDetails, true), $goals), $browse->lines),
             filterSummaries: $filterSummaries,
             activeFilterCount: count($activeFilters),
             activeFilterSummary: $activeFilters === [] ? 'No active browsing filters' : implode(' · ', $activeFilters),
@@ -56,7 +58,7 @@ class CrewBidsPageDataFactory
                 ->where('period', $package->period)->where('fleet', $package->fleet)->where('id', '>', $package->id)->latest('id')->first(),
             copyText: implode("\n", array_map(fn (string $id, int $index): string => ($index + 1).'. '.$id, $criteria->selections, array_keys($criteria->selections))),
             aiPrompt: $this->aiPrompt($criteria->selections, $browse->allLines),
-            goalLabels: ['credit' => 'Maximize credit', 'days_off' => 'Maximize days off', 'blocks' => 'Fewer work blocks', 'pay' => 'Maximize pay'],
+            goalLabels: CrewBidGoal::options(),
         );
     }
 
