@@ -199,6 +199,40 @@ class CrewBidsTest extends TestCase
         Livewire::test(CrewBids::class)->assertSet('showPreferences', false)->assertSet('startCity', 'ANC');
     }
 
+    public function test_saving_preferences_applies_best_match_without_changing_manual_bid_order(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F3'] = array_replace($payload['lines']['F1'], ['id' => 'F3', 'credit' => 6000]);
+        $payload['lines']['F3']['calendar']['2026-11-16'] = ['status' => 'occupied', 'activity' => 'Trip / occupied'];
+        $package->update(['payload' => $payload]);
+        $user = User::factory()->admin()->create();
+        $page = Livewire::actingAs($user)->test(CrewBids::class)
+            ->call('add', 'F3')->call('add', 'F1')->set('goals', ['days_off', 'credit'])
+            ->set('sort', 'credit')->set('showPreferences', true)
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F3', 'F1']);
+
+        $page->call('finishSetup')->assertHasNoErrors()->assertSet('sort', 'best')
+            ->assertSet('showPreferences', false)->assertSet('selections', ['F3', 'F1'])
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F1', 'F3']);
+
+        $workspace = BidWorkspace::query()->where('user_id', $user->id)->sole();
+        $this->assertSame(['days_off', 'credit'], $workspace->preferences['goals']);
+        $this->assertSame(['F3', 'F1'], $workspace->selections);
+    }
+
+    public function test_failed_preference_validation_keeps_the_manual_sort_and_dialog_open(): void
+    {
+        BidPackage::factory()->create();
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->set('sort', 'credit')->set('showPreferences', true)->set('goals', ['invalid']);
+
+        $page->call('finishSetup')->assertHasErrors('preferences.goals.0')
+            ->assertSet('sort', 'credit')->assertSet('showPreferences', true);
+
+        $this->assertDatabaseCount('bid_workspaces', 0);
+    }
+
     public function test_preferences_stay_open_with_the_save_error_inside_the_dialog_after_a_tab_conflict(): void
     {
         BidPackage::factory()->create();
@@ -207,9 +241,9 @@ class CrewBidsTest extends TestCase
         $second = Livewire::test(CrewBids::class);
         $first->call('add', 'F1');
 
-        $second->set('goals', ['credit'])->call('finishSetup')
+        $second->set('sort', 'credit')->set('goals', ['credit'])->call('finishSetup')
             ->assertHasErrors('workspace')->assertSet('showPreferences', true)
-            ->assertSet('dirty', true)->assertSet('goals', ['credit']);
+            ->assertSet('dirty', true)->assertSet('goals', ['credit'])->assertSet('sort', 'credit');
 
         $document = new \DOMDocument;
         @$document->loadHTML($second->html());

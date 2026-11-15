@@ -28,27 +28,31 @@
         </div>
         @if ($package)
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-200 py-2 dark:border-slate-800" data-bid-control-toolbar>
-                <div class="flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                    <button type="button" x-ref="preferencesTrigger" @click="$wire.showPreferences = true" :aria-expanded="$wire.showPreferences" aria-haspopup="dialog" aria-controls="bid-preferences" class="inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-full bg-slate-200/70 px-3 text-slate-700 focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-800 dark:text-slate-200 lg:max-w-80">
-                        <x-heroicon-o-adjustments-horizontal class="h-4 w-4 shrink-0" aria-hidden="true" /><span class="sr-only">Edit preferences: </span><span class="truncate">@forelse ($goals as $goal){{ $goalLabels[$goal] ?? $goal }}{{ $loop->last ? '' : ' → ' }}@empty Preferences @endforelse @if ($daysOff !== []) · {{ count($daysOff) }} dates off (UTC)@endif @if ($startCity) · Start {{ $startCity }}@endif</span>
-                    </button>
-                    <div class="flex shrink-0 items-center gap-2">
-                        <span class="whitespace-nowrap font-mono text-slate-500 dark:text-slate-400" aria-live="polite">@if ($tab === 'trips'){{ count($trips) }} trips @else{{ count($lines) }} matching / {{ $total }}@endif</span>
-                        <label for="bid-view" class="sr-only">Bid package view</label>
-                        <select id="bid-view" wire:model.change.live="tab" wire:loading.attr="disabled" wire:target="tab" class="min-h-11 w-28 rounded-lg border-slate-300 bg-white py-2 ps-3 pe-8 text-xs font-medium text-slate-600 focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                            <option value="flying">Lines</option>
-                            <option value="trips">Trips</option>
-                            <option value="reserve">Reserve</option>
-                        </select>
-                    </div>
+                <div class="flex shrink-0 items-center gap-2 text-xs">
+                    <span class="whitespace-nowrap font-mono text-slate-500 dark:text-slate-400" aria-live="polite">@if ($tab === 'trips'){{ count($trips) }} trips @else{{ count($lines) }} matching / {{ $total }}@endif</span>
+                    <label for="bid-view" class="sr-only">Bid package view</label>
+                    <select id="bid-view" wire:model.change.live="tab" wire:loading.attr="disabled" wire:target="tab" class="min-h-11 w-28 rounded-lg border-slate-300 bg-white py-2 ps-3 pe-8 text-xs font-medium text-slate-600 focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                        <option value="flying">Lines</option>
+                        <option value="trips">Trips</option>
+                        <option value="reserve">Reserve</option>
+                    </select>
                 </div>
-                @if ($tab !== 'trips')
-                    <div class="ms-auto flex max-w-full flex-wrap items-center justify-end gap-2 text-xs">
-                        <button type="button" x-ref="payTrigger" wire:click="openPayEditor" aria-haspopup="dialog" class="min-h-11 rounded-lg px-2 underline focus-visible:ring-2 focus-visible:ring-amber-500">Pay adjustments</button>
-                        <label for="bid-sort" class="sr-only">Sort lines</label><select id="bid-sort" wire:model.change.live="sort" class="min-h-11 w-32 max-w-full rounded-lg text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900 sm:w-auto"><option value="best">{{ $goals === [] ? 'Line ID (no goals set)' : 'Best match' }}</option><option value="credit">Highest credit</option><option value="block">Highest block time</option><option value="days_off">Most days off</option><option value="pay">Highest estimated line value</option><option value="id">Line ID</option></select>
-                        <button type="button" x-ref="filtersTrigger" @click="filtersOpen = ! filtersOpen" :aria-expanded="filtersOpen" aria-controls="bid-filters" class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-slate-300 px-3 font-semibold focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-600"><x-heroicon-o-funnel class="h-4 w-4" aria-hidden="true" /><span>Filters</span><span class="rounded-full bg-[#C5A059]/15 px-1.5 font-mono">{{ $activeFilterCount }}<span class="sr-only"> active browsing filters</span></span></button>
+                <div class="ms-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 text-xs">
+                    <div class="flex min-w-0 max-w-full items-center gap-1 rounded-xl border border-slate-300 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
+                        <button type="button" x-ref="preferencesTrigger" @click="$wire.showPreferences = true" :aria-expanded="$wire.showPreferences" aria-haspopup="dialog" aria-controls="bid-preferences" aria-describedby="bid-ranking-status" :title="$wire.tab === 'trips' ? 'Ranking preferences inactive in Trips view.' : ($wire.sort === 'best' ? 'Edit preferences for Best match.' : 'Ranking preferences inactive for this sort. Dates off and start city filters still apply.')" class="inline-flex min-h-11 min-w-0 max-w-80 items-center gap-1.5 rounded-full px-3 focus-visible:ring-2 focus-visible:ring-amber-500" :class="$wire.sort === 'best' && $wire.tab !== 'trips' ? 'bg-[#C5A059]/20 text-[#1B365D] dark:text-amber-200' : 'bg-slate-200/70 text-slate-700 dark:bg-slate-800 dark:text-slate-200'">
+                            <span class="inline-flex min-w-0 items-center gap-1.5" :class="{ 'opacity-50': $wire.sort !== 'best' || $wire.tab === 'trips' }">
+                                <x-heroicon-o-adjustments-horizontal class="h-4 w-4 shrink-0" aria-hidden="true" /><span class="sr-only">Edit preferences: </span><span class="truncate"><span :class="{ 'line-through': $wire.sort !== 'best' || $wire.tab === 'trips' }">@forelse ($goals as $goal){{ $goalLabels[$goal] ?? $goal }}{{ $loop->last ? '' : ' → ' }}@empty Preferences @endforelse</span> @if ($daysOff !== []) · {{ count($daysOff) }} dates off (UTC)@endif @if ($startCity) · Start {{ $startCity }}@endif</span>
+                            </span>
+                        </button>
+                        <span id="bid-ranking-status" class="sr-only" role="status">@if ($tab === 'trips')Ranking preferences inactive in Trips view.@elseif ($sort !== 'best')Ranking preferences inactive for this sort. Dates off and start city filters still apply.@else Best match uses your selected ranking goals.@endif</span>
+                        @if ($tab !== 'trips')
+                            <label for="bid-sort" class="sr-only">Sort lines</label><select id="bid-sort" wire:model.change.live="sort" class="min-h-11 w-32 shrink-0 rounded-lg border-0 bg-transparent text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900 sm:w-auto"><option value="best">{{ $goals === [] ? 'Line ID (no goals set)' : 'Best match' }}</option><option value="credit">Highest credit</option><option value="block">Highest block time</option><option value="days_off">Most days off</option><option value="pay">Highest estimated line value</option><option value="id">Line ID</option></select>
+                        @endif
                     </div>
-                @endif
+                    @if ($tab !== 'trips')
+                        <button type="button" x-ref="filtersTrigger" @click="filtersOpen = ! filtersOpen" :aria-expanded="filtersOpen" aria-controls="bid-filters" class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-slate-300 px-3 font-semibold focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-600"><x-heroicon-o-funnel class="h-4 w-4" aria-hidden="true" /><span>Filters</span><span class="rounded-full bg-[#C5A059]/15 px-1.5 font-mono">{{ $activeFilterCount }}<span class="sr-only"> active browsing filters</span></span></button>
+                    @endif
+                </div>
             </div>
         @endif
     </header>
@@ -112,6 +116,7 @@
                 </header>
                 <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
                 <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Choose goals, then order them. Lower priorities only break ties. Days off and start city exclude nonmatching lines.</p>
+                <p x-show="$wire.sort !== 'best'" x-cloak class="mt-2 rounded-lg bg-[#C5A059]/15 px-3 py-2 text-sm text-[#1B365D] dark:text-amber-200">Done switches to Best match to apply your ranking preferences.</p>
                 <div x-data="bidGoalPreferences(@js($goalLabels))" @bid-goals-changed.debounce.250ms="$wire.$commit()">
                     <fieldset class="mt-3 flex flex-wrap gap-4" @change="$dispatch('bid-goals-changed')"><legend class="mb-2 text-sm font-semibold">1. Choose goals</legend>@foreach ($goalLabels as $value => $label)<label class="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" wire:model="goals" value="{{ $value }}" class="rounded">{{ $label }}</label>@endforeach</fieldset>
                     <ol wire:ignore x-sort="sortGoal($item, $el)" class="mt-2 list-decimal space-y-1 ps-6" aria-label="Goal priority order">

@@ -2,7 +2,37 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
-import { copyBidText, createBidAction, createBidGoalPreferences, createBidLineCard, createBidTripDetails, createCrewBidsHeader, shouldWarnBeforeLeaving } from '../../resources/js/crew-bids.js';
+import { copyBidText, createBidAction, createBidGoalPreferences, createBidLineCard, createBidPayMenu, createBidTripDetails, createCrewBidsHeader, shouldWarnBeforeLeaving } from '../../resources/js/crew-bids.js';
+
+test('pay menu closes and focuses its trigger before opening the workspace pay editor', () => {
+    const actions = [];
+    const menu = createBidPayMenu({ getWorkspace: () => ({ packageId: 12, openPayEditor: () => actions.push('editor') }) });
+    menu.open = true;
+
+    menu.openPayAdjustments({ button: 0, preventDefault: () => actions.push('prevent navigation') }, { focus: () => actions.push('focus trigger') });
+
+    assert.equal(menu.open, false);
+    assert.deepEqual(actions, ['prevent navigation', 'focus trigger', 'editor']);
+});
+
+for (const workspace of [undefined, { packageId: null }]) {
+    test(`pay menu follows the profile link ${workspace ? 'without a published package' : 'outside the bidding workspace'}`, () => {
+        const menu = createBidPayMenu({ getWorkspace: () => workspace });
+        menu.open = true;
+
+        menu.openPayAdjustments({ button: 0, preventDefault: () => assert.fail('Profile navigation must remain available') });
+
+        assert.equal(menu.open, true);
+    });
+}
+
+for (const modifier of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }, { button: 1 }, { defaultPrevented: true }]) {
+    test(`pay menu preserves native link behavior for ${JSON.stringify(modifier)}`, () => {
+        const menu = createBidPayMenu({ getWorkspace: () => assert.fail('Modified clicks must not open the editor') });
+
+        menu.openPayAdjustments({ button: 0, ...modifier, preventDefault: () => assert.fail('Native navigation must be preserved') });
+    });
+}
 
 test('bid position dropdown sends the selected index to move without calling other component methods', async () => {
     const view = await readFile(new URL('../../resources/views/livewire/crew-bids.blade.php', import.meta.url), 'utf8');
@@ -27,6 +57,27 @@ test('bid position dropdown sends the selected index to move without calling oth
 
         assert.deepEqual(calls, [['F1', position]]);
     }
+});
+
+test('ranking goals dim and strike through immediately for manual sorts and resume for Best match', async () => {
+    const view = await readFile(new URL('../../resources/views/livewire/crew-bids.blade.php', import.meta.url), 'utf8');
+    const button = view.match(/<button\b[^>]*x-ref="preferencesTrigger"[^>]*>([\s\S]*?)<\/button>/);
+    assert.ok(button, 'The preferences control must be available');
+    const dimmed = button[1].match(/:class="([^"]+)"/)[1];
+    const struckThrough = button[1].match(/<span :class="([^"]+)"/)[1];
+    const $wire = { tab: 'flying', sort: 'best' };
+    const evaluate = (expression) => vm.runInNewContext(`(${expression})`, { $wire });
+
+    for (const [sort, expected] of [['best', false], ['credit', true], ['block', true], ['days_off', true], ['pay', true], ['id', true], ['best', false]]) {
+        $wire.sort = sort;
+
+        assert.equal(evaluate(dimmed)['opacity-50'], expected, `${sort}: goal summary dimming`);
+        assert.equal(evaluate(struckThrough)['line-through'], expected, `${sort}: ranking goals struck through`);
+    }
+
+    $wire.tab = 'trips';
+    assert.equal(evaluate(dimmed)['opacity-50'], true);
+    assert.equal(evaluate(struckThrough)['line-through'], true);
 });
 
 test('clicking a bid card background toggles its primary disclosure independently', () => {

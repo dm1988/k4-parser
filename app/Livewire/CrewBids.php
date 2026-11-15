@@ -223,6 +223,7 @@ class CrewBids extends Component
     {
         $this->initialized = true;
         if ($this->persist()) {
+            $this->sort = 'best';
             $this->showPreferences = false;
         }
     }

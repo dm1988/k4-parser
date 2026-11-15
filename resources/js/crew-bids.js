@@ -2,6 +2,22 @@ export function shouldWarnBeforeLeaving(root, pending) {
     return Boolean(root && (pending || root.dataset.dirty === 'true' || root.dataset.preferencesDirty === 'true'));
 }
 
+export function createBidPayMenu({ getWorkspace = () => window.Livewire.getByName('crew-bids')[0] } = {}) {
+    return {
+        open: false,
+        openPayAdjustments(event, trigger) {
+            if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            const workspace = getWorkspace();
+            if (!workspace?.packageId) return;
+
+            event.preventDefault();
+            this.open = false;
+            trigger.focus();
+            return workspace.openPayEditor();
+        },
+    };
+}
+
 export async function copyBidText(field, status, clipboard) {
     try {
         await clipboard.writeText(field.value);
@@ -175,6 +191,7 @@ export default function initializeCrewBids() {
         window.Alpine.data('bidTripDetails', createBidTripDetails);
         window.Alpine.data('bidGoalPreferences', createBidGoalPreferences);
         window.Alpine.data('bidAction', createBidAction);
+        window.Alpine.data('bidPayMenu', createBidPayMenu);
     };
     if (window.Alpine) {
         registerComponents();

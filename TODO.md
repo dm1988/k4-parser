@@ -28,7 +28,21 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## Completed: Move Pay adjustments into the user menu
+
+Completed (2026-11-15): Goal: Treat pay adjustments as account preferences and free workspace toolbar space for bidding and filtering. Current implementation: Moved Pay adjustments beside Profile in the desktop user dropdown and mobile user settings menu for users with K4 Bids access. With an active bid package, the menu opens the existing pay editor without navigating away, closes the menu and focuses its trigger for dialog focus restoration. Elsewhere, or without a package, the link opens the K4 Bids profile settings. Modified clicks retain native link behavior. Removed the workspace toolbar entry and updated the dialog's fallback focus target. Problem addressed: Profile-level pay controls cluttered the browsing toolbar.
+
+Validation: Elevated Sail was available. All 24 focused pay, theme and authorized navigation tests passed (118 assertions) using isolated in-memory SQLite after the initial run encountered concurrent changes to the shared test database. All 36 crew-bid JavaScript tests passed, including nine new menu behavior cases. Pint, the production Vite build, the single Larastan pass and whitespace checks passed. Unrelated staged and ongoing edits were preserved. No full suite or manual browser/touch review was run.
+
+Commit message: `ui: move pay adjustments into the user menu`
+
 ## Crew bidding
+
+Preferences/sort grouping and apply-on-Done completed (2026-11-15): Goal: Make the relationship between ranking preferences and the selected sort clear. Current implementation: Docked the preferences pill immediately before Sort inside one bordered control group. Best match highlights it; manual sorts immediately dim and strike through the ranking goals, including during hover, while keeping the control editable and its focus ring visible. At the user's request, there is no Paused badge. Dates off and start city remain outside the strikethrough and continue filtering lines. A tooltip and accessible status explain the distinction. The dialog explains that Done applies Best match; successful saves switch to that sort, while validation failures and workspace conflicts retain the manual sort and open dialog. Private bid ranks are preserved. Preferences remain accessible but inactive in Trips view. Problem addressed: Hover previously restored full opacity, and successful preference saves left manual sorts overriding the goals. The compact view switcher beside the count is retained.
+
+Validation: Elevated Sail was available. The new save regression first reproduced Done leaving Highest credit selected. All seven focused PHP preference/save/validation/conflict/ranking tests passed (56 assertions). All 36 crew-bid JavaScript tests passed, including immediate dimming and strikethrough for all five manual sorts, restoration for Best match and inactive Trips state. Pint, the final production Vite build, the single Larastan pass and whitespace checks passed. Concurrent pay-menu work and staging were preserved. No full suite or manual browser/touch review was run.
+
+Commit message: `fix: mark overridden ranking goals and apply Best match on save`
 
 Compact view switcher completed (2026-11-15): Goal: Keep Lines as the default and make Trips/Reserve accessible without a wide view-button group beside the primary preferences. Current implementation: Replaced the three navigation buttons with a labelled native dropdown beside the matching count, placed Preferences first, and kept the count and view selector together when the toolbar wraps. The dropdown uses the existing `tab` state with immediate change updates, a loading-disabled state, keyboard support, visible focus and dark-mode styling. Trips shows its imported-trip count; Lines and Reserve retain matching/total counts. Problem addressed: The view buttons consumed prominent horizontal toolbar space.
 
