@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureFeatureIsEnabled;
 use App\Http\Middleware\ManageOfflineFuelScore;
+use App\Http\Middleware\ProtectBidSubmission;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,6 +15,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->prepend(ProtectBidSubmission::class);
+        $middleware->trimStrings(except: ['portal_password']);
         $middleware->web(append: [ManageOfflineFuelScore::class]);
 
         $middleware->alias([
@@ -21,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->dontFlash(['employee', 'portal_password']);
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request): bool => $request->is('api/*') || $request->expectsJson(),
         );

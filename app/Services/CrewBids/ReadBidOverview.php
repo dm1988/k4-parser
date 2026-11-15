@@ -22,7 +22,7 @@ class ReadBidOverview
                 $this->invalid('The Overview uses an unsupported date system.');
             }
             $sheet = $workbook->xpath('//*[local-name()="sheet"]')[0] ?? null;
-            if ($sheet === null || ! preg_match('/\b(747|777)\s+Overview\b/i', (string) $sheet['name'], $fleetMatch)) {
+            if ($sheet === null || ! preg_match('/\b(747|777)\s+(?:[a-z]+\s+\d{4}\s+)?Overview\b/i', (string) $sheet['name'], $fleetMatch)) {
                 $this->invalid('Select a 747 or 777 Overview workbook.');
             }
             $strings = [];

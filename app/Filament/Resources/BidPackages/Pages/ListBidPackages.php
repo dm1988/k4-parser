@@ -11,6 +11,6 @@ class ListBidPackages extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [BidPackageResource::importAction()];
+        return [BidPackageResource::importAction(), BidPackageResource::fetchPortalAction()];
     }
 }

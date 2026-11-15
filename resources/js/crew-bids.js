@@ -9,7 +9,7 @@ export async function copyBidText(field, status, clipboard) {
     } catch {
         field.focus();
         field.select();
-        status.textContent = 'Copy unavailable. Select and copy the list above.';
+        status.textContent = 'Copy unavailable. Select and copy the text above.';
     }
 }
 
@@ -36,6 +36,20 @@ export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeOb
 
     return {
         filtersOpen: false,
+        listReturnFocus: null,
+        openList(event) {
+            this.listReturnFocus = event?.currentTarget ?? null;
+            this.$wire.showList = true;
+        },
+        closeList() {
+            if (!this.$wire.showList) return;
+            this.$wire.showList = false;
+            this.$nextTick(() => {
+                const target = this.listReturnFocus?.isConnected ? this.listReturnFocus : this.$refs.listTrigger;
+                target?.focus({ preventScroll: true });
+                this.listReturnFocus = null;
+            });
+        },
         init() {
             this.$nextTick(() => {
                 if (destroyed) return;
@@ -196,7 +210,7 @@ export default function initializeCrewBids() {
     document.addEventListener('click', async (event) => {
         const button = event.target.closest('[data-bid-copy]');
         if (!button) return;
-        const field = document.getElementById('bid-copy-text');
+        const field = document.getElementById(button.dataset.bidCopyTarget || 'bid-copy-text');
         const status = button.parentElement.querySelector('[data-bid-copy-status]');
         await copyBidText(field, status, navigator.clipboard);
     });

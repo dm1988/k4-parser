@@ -52,13 +52,18 @@ class BidLineMatcher
             if (isset($linkedTrips[$id])) {
                 continue;
             }
-            if (! isset($trips[$id])) {
+            $trip = $trips[$id] ?? null;
+            $startDate = $trip['start_date'] ?? null;
+            $endDate = $trip['end_date'] ?? null;
+            if (! is_string($startDate) || ! is_string($endDate)
+                || ! CarbonImmutable::hasFormat($startDate, 'Y-m-d')
+                || ! CarbonImmutable::hasFormat($endDate, 'Y-m-d')
+                || $endDate < $startDate) {
                 $missingTrips = true;
                 $linkedTrips[$id] = ['id' => $id, 'available' => false];
 
                 continue;
             }
-            $trip = $trips[$id];
             $linkedTrips[$id] = $this->presentTrip($trip, $layoverFilters);
             if ($trip['start_date'] < $nextMonth->format('Y-m-d')) {
                 for ($date = $nextMonth; $date->format('Y-m-d') <= $trip['end_date']; $date = $date->addDay()) {
@@ -68,7 +73,13 @@ class BidLineMatcher
         }
         $line['quick_flags'] = $this->quickFlags(array_values($linkedTrips));
         $line += $this->layoverMatch(array_values($linkedTrips), $layoverFilters);
-        $carryDays = $line['pairings'] !== [] && ! $missingTrips ? count($carryDates) : ($line['carry_in'] ?? null);
+        $publishedCarryDays = $line['carry_in'] ?? null;
+        $carryDays = $publishedCarryDays !== null
+            ? $publishedCarryDays
+            : ($line['pairings'] !== [] && ! $missingTrips ? count($carryDates) : null);
+        $carryBasis = $publishedCarryDays !== null
+            ? 'Published carry count'
+            : ($carryDays !== null ? 'Calculated occupied days after month-end' : null);
         $creditLabel = array_key_exists('credit_seconds', $line) ? $this->secondsLabel($line['credit_seconds']) : $this->timeLabel($line['credit']);
         $blockLabel = $this->timeLabel($line['block'] ?? null);
         if (! array_key_exists('carry_credit_seconds', $line)) {
@@ -97,7 +108,7 @@ class BidLineMatcher
             $filterDetails[] = 'Required start city '.$preferences['start_city'].': '.($cityMismatch ? 'Does not match' : 'Matches');
         }
 
-        return $line + ['days_off' => $unknown ? null : $off, 'blocks' => $unknown ? null : $blocks, 'warnings' => $warnings, 'matches' => $conflicts === [] && ! $cityMismatch, 'credit_label' => $creditLabel, 'block_label' => $blockLabel, 'base_credit_label' => $this->timeLabel($line['base_credit'] ?? $line['credit']), 'deadhead_credit_label' => $this->secondsLabel($line['deadhead_credit_seconds'] ?? null), 'carry_premium_label' => $this->secondsLabel($line['carry_premium_seconds'] ?? null), 'carry_flying_label' => $this->secondsLabel($line['carry_flying_seconds'] ?? null), 'source_credit_label' => $this->timeLabel(array_key_exists('source_credit', $line) ? $line['source_credit'] : $line['credit']), 'source_block_label' => $this->timeLabel(array_key_exists('source_block', $line) ? $line['source_block'] : ($line['block'] ?? null)), 'month' => $month, 'carry_days' => $carryDays, 'trip_details' => array_values($linkedTrips), 'match_details' => $matchDetails, 'filter_details' => $filterDetails];
+        return $line + ['days_off' => $unknown ? null : $off, 'blocks' => $unknown ? null : $blocks, 'warnings' => $warnings, 'matches' => $conflicts === [] && ! $cityMismatch, 'credit_label' => $creditLabel, 'block_label' => $blockLabel, 'base_credit_label' => $this->timeLabel($line['base_credit'] ?? $line['credit']), 'deadhead_credit_label' => $this->secondsLabel($line['deadhead_credit_seconds'] ?? null), 'carry_premium_label' => $this->secondsLabel($line['carry_premium_seconds'] ?? null), 'carry_flying_label' => $this->secondsLabel($line['carry_flying_seconds'] ?? null), 'source_credit_label' => $this->timeLabel(array_key_exists('source_credit', $line) ? $line['source_credit'] : $line['credit']), 'source_block_label' => $this->timeLabel(array_key_exists('source_block', $line) ? $line['source_block'] : ($line['block'] ?? null)), 'month' => $month, 'carry_days' => $carryDays, 'carry_basis' => $carryBasis, 'trip_details' => array_values($linkedTrips), 'match_details' => $matchDetails, 'filter_details' => $filterDetails];
     }
 
     /**

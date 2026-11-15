@@ -22,7 +22,7 @@
         </dl>
         <div>
             @if ($line->rank !== null)
-                <button type="button" @click="$wire.showList = true" aria-label="Selected #{{ $line->rank }}; open my bid list" class="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-amber-500"><x-heroicon-o-check class="h-4 w-4 shrink-0" aria-hidden="true" /><span><span class="hidden sm:inline">Selected </span>#{{ $line->rank }}</span></button>
+                <button type="button" @click="openList($event)" aria-label="Selected #{{ $line->rank }}; open my bid list" class="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-amber-500"><x-heroicon-o-check class="h-4 w-4 shrink-0" aria-hidden="true" /><span><span class="hidden sm:inline">Selected </span>#{{ $line->rank }}</span></button>
             @else
                 <button type="button" x-data="bidAction" @click="run(() => $wire.add('{{ $line->id }}'))" :disabled="pending" :aria-busy="pending" wire:loading.attr="disabled" wire:target="add,remove,move,addMatching,clearList,undoAdd,changeContext,confirmRevision" aria-label="Add {{ $line->id }} to my bid list" class="inline-flex min-h-11 items-center gap-1 rounded-lg bg-[#1B365D] px-3 text-xs font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50"><x-heroicon-o-plus x-show="! pending" class="h-4 w-4 shrink-0" aria-hidden="true" /><x-heroicon-o-arrow-path x-show="pending" x-cloak class="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" /><span x-text="pending ? 'Adding…' : 'Add'" role="status">Add</span></button>
             @endif
@@ -37,7 +37,7 @@
         @endforeach
     </button>
     @if ($line->carryDays > 0)
-        <span class="flex shrink-0 items-center justify-center rounded-md border border-[#C5A059] bg-amber-50 px-2 font-mono text-xs font-semibold text-[#1B365D] dark:bg-amber-950 dark:text-amber-200" aria-label="{{ $line->carryDays }} carry-in days after month-end for {{ $line->id }}">+{{ $line->carryDays }}</span>
+        <span class="flex shrink-0 items-center justify-center rounded-md border border-[#C5A059] bg-amber-50 px-2 font-mono text-xs font-semibold text-[#1B365D] dark:bg-amber-950 dark:text-amber-200" aria-label="{{ $line->carryDays }} {{ $line->carryBadgeDescription }} for {{ $line->id }}">+{{ $line->carryDays }}</span>
     @endif
     </div>
     <p :id="$id('date-help')" class="sr-only">Select a day for its UTC activity. Use Left and Right arrows to move between days, Home and End to jump, and Escape to clear.</p>

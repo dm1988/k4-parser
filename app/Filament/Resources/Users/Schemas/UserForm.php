@@ -31,6 +31,10 @@ class UserForm
                     ->default(true)
                     ->required()
                     ->disabled(fn (?User $record): bool => $record?->getKey() === auth()->id()),
+                Toggle::make('crew_bids_access')
+                    ->label('K4 Bids access')
+                    ->helperText('Grants K4 Bids to a regular user. Admins already have access; only admins can manage packages.')
+                    ->default(false),
                 Toggle::make('has_bought_coffee')
                     ->label('Bought a coffee')
                     ->default(false),

@@ -33,6 +33,7 @@ class UserFactory extends Factory
             'is_active' => true,
             'has_bought_coffee' => false,
             'role' => 'user',
+            'crew_bids_access' => false,
         ];
     }
 
@@ -63,6 +64,13 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'role' => 'admin',
+        ]);
+    }
+
+    public function crewBidsAccess(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'crew_bids_access' => true,
         ]);
     }
 

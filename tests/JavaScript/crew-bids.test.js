@@ -1,6 +1,33 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
 import { copyBidText, createBidAction, createBidGoalPreferences, createBidLineCard, createBidTripDetails, createCrewBidsHeader, shouldWarnBeforeLeaving } from '../../resources/js/crew-bids.js';
+
+test('bid position dropdown sends the selected index to move without calling other component methods', async () => {
+    const view = await readFile(new URL('../../resources/views/livewire/crew-bids.blade.php', import.meta.url), 'utf8');
+    const livewire = await readFile(new URL('../../vendor/livewire/livewire/dist/livewire.esm.js', import.meta.url), 'utf8');
+    const start = livewire.indexOf('function contextualizeExpression(');
+    const evaluator = livewire.slice(start, livewire.indexOf('// js/$wire.js', start));
+    const contextualize = vm.runInNewContext(`${evaluator}; contextualizeExpression`);
+    const directive = view.match(/<select\s+wire:change="(move\([^"]+)"/);
+    assert.ok(directive, 'The bid position dropdown must have a move action');
+    const expression = directive[1].replace("{{ $line['id'] }}", 'F1');
+
+    for (const position of ['0', '1', '10']) {
+        const calls = [];
+        const $wire = new Proxy({}, {
+            get(target, method) {
+                assert.equal(method, 'move', 'The dropdown must only call the move component method');
+                return (...args) => calls.push(args);
+            },
+        });
+
+        vm.runInNewContext(contextualize(expression), { $wire, $event: { target: { value: position } } });
+
+        assert.deepEqual(calls, [['F1', position]]);
+    }
+});
 
 test('clicking a bid card background toggles its primary disclosure independently', () => {
     const state = createBidLineCard({ selectionText: () => '' });
@@ -117,6 +144,40 @@ test('date inspection leaves unrelated and modified keys alone and tolerates an 
     empty.handleDateKey({ key: 'ArrowRight', preventDefault: unexpected });
     empty.inspectDate({ target: { closest: () => null } });
     assert.equal(empty.inspected, '');
+});
+
+test('closing the bid list restores its opener after the drawer releases focus', () => {
+    const state = createCrewBidsHeader();
+    const ticks = [];
+    const focused = [];
+    const opener = { isConnected: true, focus: (options) => focused.push(['opener', options]) };
+    state.$wire = { showList: false };
+    state.$refs = { listTrigger: { focus: (options) => focused.push(['header', options]) } };
+    state.$nextTick = (callback) => ticks.push(callback);
+
+    state.openList({ currentTarget: opener });
+    assert.equal(state.$wire.showList, true);
+    state.closeList();
+    assert.equal(state.$wire.showList, false);
+    assert.deepEqual(focused, []);
+    ticks.shift()();
+    assert.deepEqual(focused, [['opener', { preventScroll: true }]]);
+    assert.equal(state.listReturnFocus, null);
+
+    state.closeList();
+    assert.equal(ticks.length, 0);
+});
+
+test('closing the bid list falls back to the header trigger when its opener was removed', () => {
+    const state = createCrewBidsHeader();
+    let focused = '';
+    state.$wire = { showList: false };
+    state.$refs = { listTrigger: { focus: () => { focused = 'header'; } } };
+    state.$nextTick = (callback) => callback();
+
+    state.openList({ currentTarget: { isConnected: false, focus: () => assert.fail('Detached opener received focus') } });
+    state.closeList();
+    assert.equal(focused, 'header');
 });
 
 test('bid actions show progress immediately and ignore duplicate clicks until the request finishes', async () => {

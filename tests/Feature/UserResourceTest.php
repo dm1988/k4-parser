@@ -76,16 +76,41 @@ class UserResourceTest extends TestCase
         $this->assertTrue((bool) $inactiveUser->fresh()->is_active);
     }
 
-    public function test_users_table_displays_active_and_coffee_statuses(): void
+    public function test_admins_can_grant_and_revoke_crew_bid_access_without_changing_role(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+        $targetUser = User::factory()->create();
+
+        Livewire::test(EditUser::class, ['record' => $targetUser->getKey()])
+            ->fillForm(['crew_bids_access' => true])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertTrue($targetUser->fresh()->crew_bids_access);
+        $this->assertSame('user', $targetUser->role);
+
+        Livewire::test(EditUser::class, ['record' => $targetUser->getKey()])
+            ->fillForm(['crew_bids_access' => false])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertFalse($targetUser->fresh()->crew_bids_access);
+        $this->assertSame('user', $targetUser->role);
+    }
+
+    public function test_users_table_displays_active_crew_bid_and_coffee_statuses(): void
     {
         $this->actingAs($this->makeAdminUser());
         $activeUser = User::factory()->create();
         $inactiveUser = User::factory()->inactive()->create();
         $purchaser = User::factory()->boughtCoffee()->create();
+        $bidder = User::factory()->crewBidsAccess()->create();
 
         Livewire::test(ListUsers::class)
             ->assertTableColumnStateSet('is_active', true, $activeUser)
             ->assertTableColumnStateSet('is_active', false, $inactiveUser)
+            ->assertTableColumnStateSet('crew_bids_access', true, $bidder)
+            ->assertTableColumnStateSet('crew_bids_access', false, $activeUser)
             ->assertTableColumnStateSet('has_bought_coffee', true, $purchaser)
             ->assertTableColumnStateSet('has_bought_coffee', false, $activeUser);
     }
@@ -199,7 +224,7 @@ class UserResourceTest extends TestCase
     public function test_non_admin_users_can_not_access_user_resource_pages(): void
     {
         $targetUser = User::factory()->create();
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->crewBidsAccess()->create());
 
         $this->get('/admin/users')->assertForbidden();
         $this->get('/admin/users/create')->assertForbidden();

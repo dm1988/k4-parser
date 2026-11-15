@@ -35,6 +35,7 @@ final readonly class CrewBidsPageData
         public array $revisionChanges,
         public ?BidPackage $latest,
         public string $copyText,
+        public ?string $aiPrompt,
         public array $goalLabels,
     ) {}
 
@@ -62,6 +63,7 @@ final readonly class CrewBidsPageData
      *     revisionChanges: list<array{id: string, status: string, details: list<string>}>,
      *     latest: ?BidPackage,
      *     copyText: string,
+     *     aiPrompt: ?string,
      *     goalLabels: array{credit: string, days_off: string, blocks: string}
      * }
      */
@@ -90,6 +92,7 @@ final readonly class CrewBidsPageData
             'revisionChanges' => $this->revisionChanges,
             'latest' => $this->latest,
             'copyText' => $this->copyText,
+            'aiPrompt' => $this->aiPrompt,
             'goalLabels' => $this->goalLabels,
         ];
     }
