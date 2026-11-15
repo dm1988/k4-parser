@@ -30,6 +30,12 @@ Optionally add references and constraints.
 # Tasks
 ## Crew bidding
 
+Compact view switcher completed (2026-11-15): Goal: Keep Lines as the default and make Trips/Reserve accessible without a wide view-button group beside the primary preferences. Current implementation: Replaced the three navigation buttons with a labelled native dropdown beside the matching count, placed Preferences first, and kept the count and view selector together when the toolbar wraps. The dropdown uses the existing `tab` state with immediate change updates, a loading-disabled state, keyboard support, visible focus and dark-mode styling. Trips shows its imported-trip count; Lines and Reserve retain matching/total counts. Problem addressed: The view buttons consumed prominent horizontal toolbar space.
+
+Validation: Elevated Sail was available. All seven focused workspace/preferences/page-data tests passed (73 assertions), along with Pint, the production Vite build, the single Larastan pass and whitespace checks. This presentation change required no new tests. No full suite or manual browser/touch review was run.
+
+Commit message: `ui: compact crew bid views beside the matching count`
+
 Crew-bids integration completed (2026-11-15): Goal: Bring `crew-bids-pay-estimate` up to date with `crew-bids` while retaining its three pay-estimate commits. Current implementation: Merged the 14 incoming commits through `f2dc90f`, including portal submission, per-user access, package imports, drawer behavior and the position-dropdown fix. Resolved the user-model conflict by retaining both `crew_bids_access` and encrypted, serialization-hidden `crew_pay_settings`, updated cast metadata and the existing fillable expectation, and combined both branches' task outcomes without duplicating the rendering-refactor entry. Problem addressed: The pay-estimate branch had diverged from current crew-bidding functionality.
 
 Validation: Elevated Sail was available. All 188 focused PHP integration tests passed (1,187 assertions), covering bid workspace/access, private pay/defaults/source recovery, page data, profiles, package imports, submission and view models. All 26 crew-bid JavaScript tests, Pint, the production Vite build and the single Larastan pass passed. Source whitespace checks passed; imported PDF fixtures retain their fixed-width cross-reference rows. No full suite or manual browser review was run. The merge is local; no remote push was performed.

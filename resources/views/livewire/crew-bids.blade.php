@@ -28,14 +28,19 @@
         </div>
         @if ($package)
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-200 py-2 dark:border-slate-800" data-bid-control-toolbar>
-                <nav class="flex shrink-0 gap-1" aria-label="Bid package views">
-                    @foreach (['flying' => 'Lines', 'trips' => 'Trips', 'reserve' => 'Reserve'] as $value => $label)<button type="button" wire:click="$set('tab', '{{ $value }}')" @class(['min-h-11 rounded-lg px-4 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-amber-500', 'bg-[#1B365D] text-white' => $tab === $value, 'text-slate-600 dark:text-slate-300' => $tab !== $value]) aria-current="{{ $tab === $value ? 'page' : 'false' }}">{{ $label }}</button>@endforeach
-                </nav>
                 <div class="flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                    @if ($tab !== 'trips')<span class="whitespace-nowrap font-mono text-slate-500 dark:text-slate-400" aria-live="polite">{{ count($lines) }} matching / {{ $total }}</span>@endif
                     <button type="button" x-ref="preferencesTrigger" @click="$wire.showPreferences = true" :aria-expanded="$wire.showPreferences" aria-haspopup="dialog" aria-controls="bid-preferences" class="inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-full bg-slate-200/70 px-3 text-slate-700 focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-800 dark:text-slate-200 lg:max-w-80">
                         <x-heroicon-o-adjustments-horizontal class="h-4 w-4 shrink-0" aria-hidden="true" /><span class="sr-only">Edit preferences: </span><span class="truncate">@forelse ($goals as $goal){{ $goalLabels[$goal] ?? $goal }}{{ $loop->last ? '' : ' → ' }}@empty Preferences @endforelse @if ($daysOff !== []) · {{ count($daysOff) }} dates off (UTC)@endif @if ($startCity) · Start {{ $startCity }}@endif</span>
                     </button>
+                    <div class="flex shrink-0 items-center gap-2">
+                        <span class="whitespace-nowrap font-mono text-slate-500 dark:text-slate-400" aria-live="polite">@if ($tab === 'trips'){{ count($trips) }} trips @else{{ count($lines) }} matching / {{ $total }}@endif</span>
+                        <label for="bid-view" class="sr-only">Bid package view</label>
+                        <select id="bid-view" wire:model.change.live="tab" wire:loading.attr="disabled" wire:target="tab" class="min-h-11 w-28 rounded-lg border-slate-300 bg-white py-2 ps-3 pe-8 text-xs font-medium text-slate-600 focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                            <option value="flying">Lines</option>
+                            <option value="trips">Trips</option>
+                            <option value="reserve">Reserve</option>
+                        </select>
+                    </div>
                 </div>
                 @if ($tab !== 'trips')
                     <div class="ms-auto flex max-w-full flex-wrap items-center justify-end gap-2 text-xs">
