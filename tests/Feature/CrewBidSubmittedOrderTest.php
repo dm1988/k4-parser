@@ -224,12 +224,33 @@ class CrewBidSubmittedOrderTest extends TestCase
         $workspace = $this->workspace();
 
         Livewire::actingAs(User::findOrFail($workspace->user_id))->test(CrewBids::class)
-            ->assertSee('Local: saved')->assertSee('Kalitta: unconfirmed')
+            ->assertSee('Saved')->assertSee('Kalitta: unconfirmed')
             ->assertSee('Saving locally does not submit your bid.')
             ->assertSee('Retry local save')->assertSee('Open Review / Copy, then Submit to Kalitta')
-            ->assertDontSee('Kalitta: matched');
+            ->assertDontSee('Kalitta: matched')->assertDontSee('Uploaded');
 
         $this->assertSame(7, $workspace->fresh()->revision);
+    }
+
+    public function test_split_list_control_exposes_report_details_without_opening_the_drawer_or_saving(): void
+    {
+        $workspace = $this->workspace();
+        $submission = $this->matched($workspace, ['reconciled_at' => '2026-11-15 18:59:16']);
+
+        $component = Livewire::actingAs(User::findOrFail($workspace->user_id))->test(CrewBids::class)
+            ->assertSee('x-ref="listTrigger"', false)->assertSee('x-ref="statusTrigger"', false)
+            ->assertSee('aria-controls="bid-status-popover"', false)
+            ->assertSee('aria-labelledby="bid-status-title"', false)
+            ->assertSee('Upload differs')->assertDontSee('Uploaded')
+            ->assertSee('Last local save:')->assertSee('2026-11-15 18:59:16 UTC')
+            ->assertSet('showList', false);
+
+        $html = $component->html();
+        $statusPanel = substr($html, strpos($html, 'id="bid-status-popover"'));
+        $statusPanel = substr($statusPanel, 0, strpos($statusPanel, '</section>'));
+        $this->assertStringContainsString('2026-11-15 18:59:16 UTC', $statusPanel);
+        $this->assertSame(7, $workspace->fresh()->revision);
+        $this->assertSame('matched', $submission->fresh()->status);
     }
 
     public function test_submission_status_follows_report_matches_draft_changes_and_uncertain_attempts(): void
@@ -242,10 +263,10 @@ class CrewBidSubmittedOrderTest extends TestCase
         $submission->update(['review' => $review]);
         $component = Livewire::actingAs(User::findOrFail($workspace->user_id))->test(CrewBids::class);
 
-        $component->assertSee('Local: saved')->assertSee('Kalitta: matched')
+        $component->assertSee('Saved')->assertSee('Uploaded')->assertSee('Kalitta: matched')
             ->assertSee('This list matches the Kalitta report checked 2026-11-15 12:00:00 UTC.');
         $component->call('move', 'F1', 0)->assertHasNoErrors()
-            ->assertSee('Local: saved')->assertSee('Kalitta: list differs')
+            ->assertSee('Saved')->assertSee('Upload differs')->assertDontSee('Uploaded')->assertSee('Kalitta: list differs')
             ->assertSee('Review your current order before submitting it to Kalitta.');
         $this->matched($workspace, ['status' => 'unknown', 'attempted_at' => now()->addMinute(), 'reconciled_at' => null]);
         $component->call('$refresh')->assertSee('Kalitta: unconfirmed')->assertDontSee('Kalitta: matched');

@@ -64,6 +64,15 @@ export function createBidSaveStatus({ now = Date.now } = {}) {
         saveLabel() {
             return { saved: 'Local: saved', empty: 'Local: not saved', saving: 'Local: saving', unsaved: 'Local: unsaved' }[this.saveState()];
         },
+        saveBadgeLabel() {
+            return { saved: 'Saved', empty: 'Not saved', saving: 'Saving', unsaved: 'Unsaved' }[this.saveState()];
+        },
+        cloudState(submissionState) {
+            const localState = this.saveState();
+            if (localState === 'saving' || localState === 'unsaved' || submissionState === 'changed') return 'pending';
+            if (localState === 'saved' && submissionState === 'matched') return 'synced';
+            return 'unconfirmed';
+        },
         saveHelp() {
             return {
                 saved: 'Your bid list and preferences are saved in this app.',
@@ -84,6 +93,10 @@ export function createBidSaveStatus({ now = Date.now } = {}) {
             if (this.saveState() === 'saving') return `Saving… ${lastSaved}`;
             if (this.saveState() === 'unsaved') return `Unsaved changes. ${lastSaved}`;
             return lastSaved;
+        },
+        savedTimestamp() {
+            const savedAt = Date.parse(this.$wire.lastSavedAt);
+            return Number.isFinite(savedAt) ? new Date(savedAt).toISOString().slice(0, 19).replace('T', ' ') + ' UTC' : null;
         },
         refreshTimestamp() {
             this.checkedAt = now();
@@ -121,8 +134,26 @@ export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeOb
     return {
         ...createBidSaveStatus(),
         filtersOpen: false,
+        statusOpen: false,
         listReturnFocus: null,
+        toggleStatus() {
+            if (this.statusOpen) {
+                this.closeStatus(true);
+                return;
+            }
+            this.statusOpen = true;
+            this.refreshTimestamp();
+            this.$nextTick(() => {
+                if (!destroyed && this.statusOpen) this.$refs.statusPanel.focus({ preventScroll: true });
+            });
+        },
+        closeStatus(restoreFocus = false) {
+            if (!this.statusOpen) return;
+            this.statusOpen = false;
+            if (restoreFocus) this.$refs.statusTrigger.focus({ preventScroll: true });
+        },
         openList(event) {
+            this.closeStatus();
             this.listReturnFocus = event?.currentTarget ?? null;
             this.$wire.showList = true;
         },

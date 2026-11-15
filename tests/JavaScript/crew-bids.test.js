@@ -40,6 +40,32 @@ test('saved local state and review actions work through Livewire’s reserved di
     }
 });
 
+test('cloud confirmation requires both a local save and a matching Kalitta report', () => {
+    const status = createBidSaveStatus();
+    let localEdits = false;
+    status.$wire = { lastSavedAt: null, $get: () => false, $dirty: () => localEdits };
+
+    assert.equal(status.cloudState('unconfirmed'), 'unconfirmed');
+    assert.equal(status.saveBadgeLabel(), 'Not saved');
+    status.$wire.lastSavedAt = '2026-11-15T12:00:00Z';
+    assert.equal(status.cloudState('unconfirmed'), 'unconfirmed');
+    assert.equal(status.saveBadgeLabel(), 'Saved');
+    assert.equal(status.cloudState('matched'), 'synced');
+    assert.equal(status.cloudState('changed'), 'pending');
+    localEdits = true;
+    assert.equal(status.cloudState('matched'), 'pending');
+    assert.equal(status.saveBadgeLabel(), 'Unsaved');
+    localEdits = false;
+    status.pending = 1;
+    assert.equal(status.cloudState('matched'), 'pending');
+    assert.equal(status.saveBadgeLabel(), 'Saving');
+    status.pending = 0;
+    status.failed = true;
+    assert.equal(status.cloudState('matched'), 'pending');
+    status.failed = false;
+    assert.equal(status.cloudState('matched'), 'synced');
+});
+
 test('save indicator follows local preferences, failed saves, and confirmed saves', () => {
     const status = createBidSaveStatus({ now: () => Date.parse('2026-11-15T12:02:00Z') });
     let localEdits = false;
@@ -64,6 +90,81 @@ test('save indicator follows local preferences, failed saves, and confirmed save
     status.$wire.dirty = false;
     assert.equal(status.saveState(), 'saved');
 });
+
+for (const [savedAt, expected] of [[null, null], ['invalid', null], ['2026-11-15T12:59:16-06:00', '2026-11-15 18:59:16 UTC']]) {
+    test(`status popover formats the recorded local save ${savedAt} in UTC`, () => {
+        const status = createBidSaveStatus();
+        status.$wire = { lastSavedAt: savedAt };
+
+        assert.equal(status.savedTimestamp(), expected);
+    });
+}
+
+test('the status segment opens independently and list access dismisses it without moving focus', () => {
+    const focus = [];
+    const state = createCrewBidsHeader();
+    const listTrigger = { isConnected: true };
+    state.$wire = { showList: false };
+    state.$refs = { statusPanel: { focus: () => focus.push('panel') }, statusTrigger: { focus: () => focus.push('trigger') } };
+    state.$nextTick = (callback) => callback();
+    let refreshed = 0;
+    state.refreshTimestamp = () => refreshed++;
+
+    state.toggleStatus();
+
+    assert.equal(state.statusOpen, true);
+    assert.equal(state.$wire.showList, false);
+    assert.equal(refreshed, 1);
+    assert.deepEqual(focus, ['panel']);
+    state.toggleStatus();
+    assert.equal(state.statusOpen, false);
+    assert.deepEqual(focus, ['panel', 'trigger']);
+    state.toggleStatus();
+    state.openList({ currentTarget: listTrigger });
+    assert.equal(state.statusOpen, false);
+    assert.equal(state.$wire.showList, true);
+    assert.equal(state.listReturnFocus, listTrigger);
+    assert.deepEqual(focus, ['panel', 'trigger', 'panel']);
+});
+
+test('Escape and focus leaving the split control dismiss status with the correct focus behavior', async () => {
+    const view = await readFile(new URL('../../resources/views/livewire/crew-bids.blade.php', import.meta.url), 'utf8');
+    const escape = view.match(/@keydown.escape.window="([^"]+)"/)[1];
+    const focusout = view.match(/data-bid-split-control[^>]*@focusout="([^"]+)"/)[1];
+    const focus = [];
+    const state = createCrewBidsHeader();
+    state.statusOpen = true;
+    state.$refs = { statusTrigger: { focus: () => focus.push('trigger') } };
+    let prevented = false;
+
+    vm.runInNewContext(escape, { statusOpen: true, $event: { preventDefault: () => { prevented = true; } }, closeStatus: state.closeStatus.bind(state) });
+
+    assert.equal(state.statusOpen, false);
+    assert.equal(prevented, true);
+    assert.deepEqual(focus, ['trigger']);
+    state.statusOpen = true;
+    const context = { $el: { contains: (target) => target === 'inside' }, $event: { relatedTarget: 'inside' }, closeStatus: state.closeStatus.bind(state) };
+    vm.runInNewContext(focusout, context);
+    assert.equal(state.statusOpen, true);
+    context.$event.relatedTarget = 'outside';
+    vm.runInNewContext(focusout, context);
+    assert.equal(state.statusOpen, false);
+    assert.deepEqual(focus, ['trigger']);
+});
+
+for (const dismiss of ['closeStatus', 'destroy']) {
+    test(`${dismiss} prevents delayed focus into the status panel`, () => {
+        const state = createCrewBidsHeader();
+        let afterTick;
+        state.refreshTimestamp = () => {};
+        state.$nextTick = (callback) => { afterTick = callback; };
+        state.$refs = { statusPanel: { focus: () => assert.fail('Dismissed status must not take focus') } };
+
+        state.toggleStatus();
+        state[dismiss]();
+        afterTick();
+    });
+}
 
 for (const [elapsed, expected] of [[-60, 'just now'], [0, 'just now'], [59, 'just now'], [60, '1 minute ago'], [3599, '59 minutes ago'], [3600, '1 hour ago'], [7200, '2 hours ago'], [86400, '1 day ago'], [172800, '2 days ago']]) {
     test(`save tooltip describes ${elapsed} seconds and refreshes on interaction`, () => {

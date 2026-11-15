@@ -1,4 +1,4 @@
-<div class="mx-auto max-w-7xl px-3 py-6 sm:px-6" data-crew-bids data-dirty="{{ $dirty ? 'true' : 'false' }}" x-data="crewBidsHeader" @bid-action-failed="$refs.networkError.hidden = false; if ($refs.preferencesNetworkError) $refs.preferencesNetworkError.hidden = false" :data-preferences-dirty="$wire.$dirty(['goals', 'daysOff', 'startCity'])" @keydown.escape.window="if ($wire.showPreferences) { $wire.showPreferences = false } else if ($wire.showList) { $event.preventDefault(); closeList() } else if (filtersOpen) { filtersOpen = false; $refs.filtersTrigger?.focus() }">
+<div class="mx-auto max-w-7xl px-3 py-6 sm:px-6" data-crew-bids data-dirty="{{ $dirty ? 'true' : 'false' }}" x-data="crewBidsHeader" @bid-action-failed="$refs.networkError.hidden = false; if ($refs.preferencesNetworkError) $refs.preferencesNetworkError.hidden = false" :data-preferences-dirty="$wire.$dirty(['goals', 'daysOff', 'startCity'])" @keydown.escape.window="if (statusOpen) { $event.preventDefault(); closeStatus(true) } else if ($wire.showPreferences) { $wire.showPreferences = false } else if ($wire.showList) { $event.preventDefault(); closeList() } else if (filtersOpen) { filtersOpen = false; $refs.filtersTrigger?.focus() }">
     <header x-ref="workspaceHeader" class="sticky top-0 z-30 -mx-3 border-b border-slate-200 bg-gray-100 px-3 shadow-sm dark:border-slate-800 dark:bg-gray-950 sm:-mx-6 sm:px-6">
         <div class="flex flex-wrap items-center gap-3 py-3" data-bid-command-bar>
             <h1 class="shrink-0 text-2xl font-bold text-[#1B365D] dark:text-amber-200">K4 Bids</h1>
@@ -22,27 +22,44 @@
                 @if ($packages->isNotEmpty())
                     <a href="{{ route('profile.edit') }}#k4-bids-preferences" title="Change bid seat in user preferences" class="inline-flex min-h-11 items-center rounded-lg px-2 text-sm text-slate-600 underline decoration-slate-300 underline-offset-4 focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-slate-300 dark:decoration-slate-600">{{ $seat === 'CA' ? 'Captain' : 'First Officer' }}</a>
                 @endif
-                <button type="button" x-ref="listTrigger" @click="openList($event)" @mouseenter="refreshTimestamp()" @focus="refreshTimestamp()" title="Open my bid list" aria-describedby="bid-save-status bid-submission-status" :aria-expanded="$wire.showList" aria-controls="bid-list-drawer" class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg bg-[#1B365D] px-4 py-2 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-800 dark:hover:bg-slate-700">
-                    <x-heroicon-o-shopping-cart class="h-5 w-5 shrink-0" aria-hidden="true" />
-                    <span class="min-w-0 text-start">
-                        <span class="block">My bid list ({{ count($selections) }})</span>
-                        <span class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-medium leading-4">
-                            <span class="inline-flex items-center gap-1" :title="'Local save: ' + saveDescription()" :class="saveState() === 'saved' ? 'text-emerald-300' : (saveState() === 'empty' ? 'text-slate-300' : 'text-amber-300')">
-                                <x-heroicon-o-document-check x-cloak x-show="saveState() === 'saved'" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                                <x-heroicon-o-document-text x-cloak x-show="saveState() === 'empty'" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                                <x-heroicon-o-arrow-path x-cloak x-show="saveState() === 'saving'" class="h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-                                <x-heroicon-o-exclamation-triangle x-cloak x-show="saveState() === 'unsaved'" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                                <span x-text="saveLabel()">{{ $dirty ? 'Local: unsaved' : ($lastSavedAt ? 'Local: saved' : 'Local: not saved') }}</span>
+                <div class="relative inline-flex min-w-0 max-w-full rounded-xl bg-[#1B365D] text-white dark:bg-slate-800" data-bid-split-control @click.outside="closeStatus()" @focusout="if (! $el.contains($event.relatedTarget)) closeStatus()">
+                    <button type="button" x-ref="listTrigger" @click="openList($event)" title="Open my bid list" :aria-expanded="$wire.showList" aria-controls="bid-list-drawer" class="inline-flex min-h-11 min-w-0 items-center gap-2 rounded-s-xl px-3 py-2 text-xs font-semibold hover:bg-white/10 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400 sm:text-sm">
+                        <x-heroicon-o-shopping-cart class="h-5 w-5 shrink-0" aria-hidden="true" />
+                        <span class="truncate">My bid list ({{ count($selections) }})</span>
+                    </button>
+                    <button type="button" x-ref="statusTrigger" @click="toggleStatus()" title="View local save and Kalitta report details" aria-label="View bid list save and submission status" aria-haspopup="dialog" aria-describedby="bid-save-status bid-submission-status" :aria-expanded="statusOpen" aria-controls="bid-status-popover" class="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-e-xl border-s border-white/20 px-2 py-1.5 hover:bg-white/10 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400 sm:px-3">
+                        <span class="relative inline-flex h-6 w-6 shrink-0" :class="{ 'text-emerald-400': cloudState(@js($submissionStatus->state)) === 'synced', 'text-amber-300': cloudState(@js($submissionStatus->state)) === 'pending', 'text-slate-300': cloudState(@js($submissionStatus->state)) === 'unconfirmed' }" aria-hidden="true">
+                            <span x-show="cloudState(@js($submissionStatus->state)) !== 'pending'"><x-heroicon-o-cloud class="h-6 w-6" /></span>
+                            <span x-cloak x-show="cloudState(@js($submissionStatus->state)) === 'pending'"><x-heroicon-o-cloud-arrow-up class="h-6 w-6" /></span>
+                            <span x-cloak x-show="cloudState(@js($submissionStatus->state)) === 'synced'" class="absolute -bottom-0.5 -end-0.5 inline-flex h-3 w-3 items-center justify-center rounded-full bg-emerald-400 text-slate-950 ring-2 ring-[#1B365D] dark:ring-slate-800"><x-heroicon-o-check class="h-2.5 w-2.5" /></span>
+                            <span x-cloak x-show="cloudState(@js($submissionStatus->state)) === 'pending'" class="absolute bottom-0 end-0 h-2 w-2 rounded-full bg-amber-300 ring-2 ring-[#1B365D] dark:ring-slate-800" :class="{ 'animate-pulse motion-reduce:animate-none': saveState() === 'saving' || saveState() === 'unsaved' }"></span>
+                        </span>
+                        <span class="hidden flex-col items-start gap-1 text-[10px] font-medium leading-4 sm:flex">
+                            <span class="inline-flex items-center rounded-full px-2" :title="'Local save: ' + saveDescription()" :class="saveState() === 'saved' ? 'bg-emerald-400/15 text-emerald-300' : (saveState() === 'empty' ? 'bg-slate-500/20 text-slate-300' : 'bg-amber-400/15 text-amber-300')">
+                                <span x-text="saveBadgeLabel()">{{ $dirty ? 'Unsaved' : ($lastSavedAt ? 'Saved' : 'Not saved') }}</span>
                             </span>
-                            <span title="{{ $submissionStatus->description }}" @class(['inline-flex items-center gap-1', 'text-emerald-300' => $submissionStatus->state === 'matched', 'text-amber-300' => $submissionStatus->state === 'changed', 'text-slate-300' => $submissionStatus->state === 'unconfirmed'])>
-                                <x-heroicon-o-paper-airplane class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                                <span>{{ $submissionStatus->label }}</span>
+                            <span title="{{ $submissionStatus->description }}" @class(['inline-flex items-center rounded-full px-2', 'bg-amber-400/15 text-amber-300' => $submissionStatus->state === 'changed', 'bg-slate-500/20 text-slate-300' => $submissionStatus->state !== 'changed'])>
+                                <span>{{ $submissionStatus->state === 'matched' ? 'Uploaded' : ($submissionStatus->state === 'changed' ? 'Upload differs' : 'Unconfirmed') }}</span>
                             </span>
                         </span>
-                    </span>
+                        <x-heroicon-o-chevron-down class="hidden h-3 w-3 shrink-0 sm:block" aria-hidden="true" />
+                    </button>
                     <span id="bid-save-status" class="sr-only" role="status" aria-live="polite" x-text="'Local save: ' + saveDescription() + '. ' + saveHelp()"></span>
                     <span id="bid-submission-status" class="sr-only" role="status" aria-live="polite">{{ $submissionStatus->description }}</span>
-                </button>
+                    <section id="bid-status-popover" x-ref="statusPanel" x-show="statusOpen" x-cloak role="dialog" aria-labelledby="bid-status-title" tabindex="-1" class="absolute end-0 top-full z-50 mt-2 max-h-[70dvh] w-80 max-w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 text-start text-slate-900 shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                        <div class="flex items-center justify-between gap-3"><h2 id="bid-status-title" class="text-sm font-semibold">Bid list status</h2><button type="button" @click="closeStatus(true)" aria-label="Close bid list status" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-amber-500 dark:hover:bg-slate-800"><x-heroicon-o-x-mark class="h-4 w-4" aria-hidden="true" /></button></div>
+                        <div class="space-y-1 text-xs">
+                            <p class="inline-flex rounded-full px-2 py-0.5 font-semibold" :class="saveState() === 'saved' ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300' : (saveState() === 'empty' ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' : 'bg-amber-50 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300')" x-text="saveLabel()">Local workspace</p>
+                            <p class="text-slate-600 dark:text-slate-300" x-text="saveDescription()"></p>
+                            <p x-show="savedTimestamp()" x-cloak class="font-mono text-slate-600 dark:text-slate-300">Last local save: <time :datetime="$wire.lastSavedAt" x-text="savedTimestamp()"></time></p>
+                            <p class="text-slate-600 dark:text-slate-300" x-text="saveHelp()"></p>
+                        </div>
+                        <div class="mt-3 space-y-1 border-t border-slate-200 pt-3 text-xs dark:border-slate-700">
+                            <p @class(['inline-flex rounded-full px-2 py-0.5 font-semibold', 'bg-amber-50 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300' => $submissionStatus->state === 'changed', 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' => $submissionStatus->state !== 'changed'])>{{ $submissionStatus->label }}</p>
+                            <p class="text-slate-600 dark:text-slate-300">{{ $submissionStatus->description }}</p>
+                        </div>
+                    </section>
+                </div>
             </div>
         </div>
         @if ($package)

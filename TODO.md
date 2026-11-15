@@ -402,6 +402,30 @@ I'd make page segmentation mode configurable per extraction call.
 
 -------------------------------------------------------
 
+## [x] Completed: Polish cloud status and compact save badges
+
+Goal: Make save/report status scannable while keeping the header compact on mobile.
+
+Current implementation: The status button uses a cloud with a green check only when the local workspace is saved and the current order matches the confirmed Kalitta report. Local edits, pending requests and differing reports use a cloud-upload icon with amber feedback; local edits and requests pulse the dot with reduced-motion support. Unconfirmed reports remain neutral. Desktop shows a soft emerald Saved badge and a muted slate Uploaded badge for matching reports, with separate unsaved, differing and unconfirmed labels. Below the small breakpoint, only the cloud is visible; tapping or keyboard activation opens the existing diagnostic card. The card retains local-save and report timestamps, details and distinct colored badges. Bid-list access and popover dismissal/focus behavior are preserved.
+
+Problem addressed: Plain status lines and document icons took header space and were harder to distinguish at a glance.
+
+Validation: Elevated Sail was available. All three focused PHP rendering/status tests passed (34 assertions), including Uploaded only for a matching current order and its absence for differing or unconfirmed reports. All 57 crew-bid JavaScript tests, the final production Vite build, Pint and the single Larastan pass (zero errors) passed. Whitespace checks passed. Concurrent edits and staging were retained; the required dirty-file Pint runs also normalized imports/spacing in four concurrently edited employee-bid files. No full suite, manual browser/touch review or live portal operation was performed.
+
+Commit message: `ui: polish cloud status with saved and uploaded badges`
+
+## [x] Completed: Split bid list access from status details
+
+Goal: Keep quick access to My bid list while making local-save and Kalitta report details available by click or keyboard, without relying on hover.
+
+Current implementation: Divided the header control into two sibling buttons with a subtle divider. The left segment retains the cart, count, drawer opening and return-focus behavior. The right segment retains the local/Kalitta icons and labels, adds a disclosure chevron and opens a nonmodal status popover. It refreshes the relative local-save description, shows the exact recorded local timestamp in UTC and displays the validated report-check timestamp/status from the existing Kalitta snapshot. Missing timestamps remain unavailable. The panel supports keyboard activation, focus on opening, Escape/Close focus restoration, outside-click dismissal and dismissal when focus leaves the control. Opening the drawer closes the popover without stealing focus. Delayed focus is cancelled after closure or component destruction. Responsive widths, dark mode, visible focus and accessible status descriptions are retained. Opening status details sends no request and performs no save, report fetch or submission.
+
+Problem addressed: The entire control previously opened the drawer, so clicking its status labels could not reveal report details independently.
+
+Validation: Elevated Sail was available. All 56 crew-bid JavaScript tests passed, including independent actions, dismissal/focus behavior, delayed-focus cancellation, unavailable timestamps and timezone-to-UTC conversion. All four focused PHP rendering/status/save-timestamp tests passed (49 assertions), including the recorded report time inside the popover and unchanged saved revision/submission state. Pint, the production Vite build, the single Larastan run (zero errors) and staged/unstaged whitespace checks passed. Preserved unrelated changes and staging. No full suite, manual browser/touch review or live portal operation was performed.
+
+Commit message: `ui: split bid list access from save and submission details`
+
 ## [x] Completed: Distinguish local saves from Kalitta submission status
 
 Goal: Explain whether the bid list is saved locally and whether its order matches the last confirmed Kalitta report, with clear actions for incomplete states.
