@@ -12,6 +12,39 @@ There is a drop down containing a full ist of employees that have bid in the cur
 There is a radio selector for bid position, CA, or FO
 Exportable formats include PDF and excel sheet.
 
+## Sort: user submitted bid order
+
+### Goal
+
+Add a `Submitted bid order` option to the line-card sort menu, using the user's last Kalitta-submitted order. The user confirmed this source on 2026-11-15. Show the original submitted rank and when its portal report was checked.
+
+### Current implementation
+
+The sort menu supports Best match, Highest credit, Highest block time, Most days off and Line ID. `BrowseBidLines` filters eligible lines and delegates sorting to `BidLineMatcher`; `CrewBidBrowseCriteria` carries the browsing inputs. `CrewBidsPageDataFactory` derives each card's Selected rank from the editable workspace selections. `BidSubmission` retains encrypted reviewed choices and a `matched` status with a report-reconciliation timestamp when the fresh Kalitta report matches the submitted sequence.
+
+### Problem
+
+The editable saved list can differ from the last submitted order. Sorting by workspace selections would show draft ranks as submitted ranks. The sort needs a confirmed portal snapshot, owner/package/seat isolation and explicit handling of missing or uncertain submission evidence.
+
+### Planned behavior
+
+- Use the latest report-matched submission belonging to the authenticated user and active workspace/package/seat. Validate its period, fleet and package context before using its ordered line IDs. Reviewed-only, stale, unknown or nonmatching attempts do not establish a submitted order. A newer unresolved or nonmatching attempt for that context makes an older match unsuitable as the current source.
+- Label the option `Submitted bid order` and show the report-check time in UTC. This represents the last order checked by the app. When no usable snapshot exists, disable the option with `No confirmed submitted order available`. Manual portal submissions without a captured matching record require separate authenticated read-only retrieval before this source becomes available.
+- Preserve eligibility, tabs and browsing filters. Submitted lines appear first in their original rank order; other lines follow in natural Line ID order. Filtering never renumbers submitted ranks. Missing or ineligible submitted lines do not create extra cards.
+- Show a distinct `Submitted #N` rank while this sort is active. Preserve `Selected #N` for the current editable list, since the two ranks can differ.
+- Changing sort leaves saved selections, manual ranks, copy output and portal submissions unchanged. Add all matching continues to append unselected choices in displayed order through the existing explicit action. The sort stays temporary browsing state and triggers no portal login, report fetching or submission.
+
+### Implementation sequence
+
+1. Add an owner-scoped submitted-order resolver using existing submission records and encrypted review data. Return validated ranks, checked-at metadata and an unavailable reason. No migration or additional credential storage is needed for this first version.
+2. Pass the server-resolved order through `CrewBidBrowseCriteria` and the shared browsing path used by page rendering and Add all matching. Keep submission queries out of Blade and client-controlled Livewire state.
+3. Extend `BidLineMatcher` with submitted-rank comparison and natural Line ID fallback, preserving existing sort modes.
+4. Extend page/card view data with submitted-rank/source metadata, validate the new sort value in `CrewBids`, and update the dropdown and card labels. If the source becomes unavailable after a context switch, return to the default sort with an explanatory notice.
+5. Add focused coverage for submitted order differing from the draft; mixed flying/reserve ranks; filtered rank gaps; unsubmitted, missing and ineligible lines; missing or uncertain evidence; newer ambiguous attempts; owner/package/seat isolation; context switches; bulk-add order; and unchanged saved ranks/copy/submission state.
+6. At implementation integration, confirm Sail, run affected browsing/page-data/Livewire/view-model tests, run Pint after PHP changes, run Larastan once and build assets for the UI change. Record actual outcomes in TODO.md. Browser review should confirm rank labels and unavailable-source messaging.
+
+Planned implementation commit message: `feat: sort crew bid lines by last submitted Kalitta order`
+
 ## CBA accuracy review — 2026-10-29
 
 Reviewed against the supplied [2021 CKS CBA](storage/app/private/CBA/2021_CKS%20CBA_Final.pdf), primarily **Part I, Section 5, Compensation**, and **Part I, Section 17, Scheduling**, with related definitions and cross-references. References below give printed pages first and one-based PDF pages in parentheses; printed page 25 is PDF page 37. This is a document comparison, not validation of application code, package totals, live portal behavior, or actual payroll.
