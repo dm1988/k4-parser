@@ -142,6 +142,24 @@ class CrewBidsTest extends TestCase
         Livewire::test(CrewBids::class)->assertSet('selections', ['R2', 'F1'])->assertSet('showPreferences', false);
     }
 
+    public function test_dropdown_positions_save_bid_order_in_both_directions_and_survive_reload(): void
+    {
+        BidPackage::factory()->create();
+        $user = User::factory()->admin()->create();
+        $page = Livewire::actingAs($user)->test(CrewBids::class)
+            ->call('add', 'F1')->call('add', 'R2')->set('showList', true);
+
+        $page->call('move', 'R2', '0')->assertHasNoErrors()->assertSet('selections', ['R2', 'F1']);
+
+        $this->assertSame(['R2', 'F1'], BidWorkspace::query()->where('user_id', $user->id)->sole()->selections);
+        Livewire::test(CrewBids::class)->assertSet('selections', ['R2', 'F1']);
+
+        $page->call('move', 'R2', '1')->assertHasNoErrors()->assertSet('selections', ['F1', 'R2']);
+
+        $this->assertSame(['F1', 'R2'], BidWorkspace::query()->where('user_id', $user->id)->sole()->selections);
+        Livewire::test(CrewBids::class)->assertSet('selections', ['F1', 'R2']);
+    }
+
     public function test_adding_matching_lines_appends_filtered_results_in_sort_order_without_reordering_existing_choices(): void
     {
         $package = BidPackage::factory()->create();

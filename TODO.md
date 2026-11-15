@@ -30,6 +30,12 @@ Optionally add references and constraints.
 # Tasks
 ## Crew bidding
 
+Bid-list position dropdown fixed (2026-11-15): Goal: Move a choice to the selected position in My bid list and retain the saved order. Problem: Livewire 4 contextualized the dropdown's `Number(...)` call as `$wire.Number(...)`, producing a captured HTTP 500 with `MethodNotFoundException`. Current implementation: Pass `$event.target.value` directly to the existing typed, bounds-checked `move` action. Added a JavaScript regression executing the dropdown expression through the installed Livewire contextualizer, plus a feature regression proving numeric-string positions save in both directions and survive reload.
+
+Validation: The JavaScript regression reproduced the invalid `Number` method call before the fix. Through elevated Sail, all 26 crew-bid JavaScript tests and three focused PHP tests passed (25 PHP assertions). Pint passed; the single Larastan run passed with zero errors; whitespace checks passed. No full suite or manual browser review was run. Preserved concurrent documentation changes.
+
+Commit message: `fix: repair bid list position dropdown`
+
 Submitted-order sort planning completed (2026-11-15): The user confirmed that the new sort should follow their last Kalitta-submitted order. Expanded the existing task in CREW_BIDS.md with the confirmed source, current code boundaries, owner/context scoping, report-match availability rules, ranked-first/natural-ID ordering, separate submitted versus editable ranks, shared bulk-add behavior and focused acceptance coverage. The initial source reuses existing matched submission records; uncaptured manual portal bids require separate read-only retrieval. Preserved unrelated document edits. Documentation-only; implementation remains pending.
 
 Commit message: `docs: plan sorting by submitted Kalitta bid order`
