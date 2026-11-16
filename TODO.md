@@ -28,6 +28,42 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Remove implemented work from CREW_BIDS.md
+
+Goal: Keep CREW_BIDS.md focused on remaining work without repeating completed feature plans and implementation history.
+
+Current implementation (2026-11-16): Consolidated the document around remaining advanced comparisons, email intake/import operations, live submission verification, award discovery, unresolved compensation/scheduling rules and deferred enhancements. Removed the completed prediction, employee/seniority, access/admin, manual package-management, workspace/preferences, scheduled portal adapter, estimated-pay implementation and submitted-order-sort plans. Preserved approved comparison definitions, source completeness and privacy constraints, rate/compensation assumptions, CBA clause/page references, explicit unsupported cases and manual verification gaps. Renumbered remaining comparison tasks and updated their dependencies. At the user's explicit request, the restored My bid list section remains with its actual implementation outcome; all other completion history points to TODO.md.
+
+Problem addressed: Implemented features appeared as unfinished work, stale focus headings conflicted with the current application, and repeated plans obscured remaining requirements.
+
+Validation: Compared implementation claims with the current Blade/Livewire header, pay services, source parser and recorded TODO outcomes. Reviewed remaining sections and dependency references, and checked the diff for whitespace errors. This documentation cleanup required no additional application tests, build, Pint or Larastan pass. The preceding layout task records its focused verification. Unrelated working-tree changes were preserved.
+
+Commit message: `docs: remove completed crew bid plans and retain remaining work`
+
+## [x] Completed: Refactor My bid list
+
+Goal: Keep My bid list and its attached cloud/status dropdown at the right edge of the header, immediately after the Captain/First Officer preference link.
+
+Current implementation (2026-11-16): Restored the requested section in CREW_BIDS.md and implemented three independent command-bar groups. The title/package/prediction context flexes on desktop and occupies its own row below the large breakpoint. The Captain/First Officer preference link is now a separate middle control immediately before an independently end-aligned My bid list group containing its notice and attached cloud/status dropdown. Existing button/link styles, responsive spacing, Alpine triggers, focus handling, Livewire state and sticky-header measurement are preserved.
+
+Problem addressed: Source order alone did not implement the requested separation of the middle seat control from the far-right bid-list action group. The earlier verification-only completion was premature; the Blade structure now implements that separation.
+
+Validation: Elevated Sail was available. After the actual layout change, all three focused seat/empty-package/bid-order PHP cases passed (24 assertions) using explicit testing variables and guarded in-memory SQLite; all 10 focused header/status/drawer-focus/sticky-offset JavaScript cases passed. Pint, the production Vite build, the single Larastan pass (zero errors), and whitespace checks passed. No new tests were added for this layout-only change. Manual browser/touch review was not performed. Unrelated portal diagnostics, tests and documentation edits were preserved.
+
+Commit message: `ui: separate the seat control from right-aligned bid list actions`
+
+## [x] Completed: Clarify shared bid refresh context failures
+
+Goal: Make shared-bid refresh failures actionable while preserving the last successful snapshot, and confirm a successful live refresh.
+
+Current implementation (2026-11-16): Replaced the combined unsupported-account/context message with specific static errors for a returned login page, missing signed-in account, missing package table, unsupported/missing CA/FO position and unsupported/missing 747/777 fleet. Existing account/package verification remains enforced. Added parser regressions and a refresh endpoint regression proving that a login page produces actionable feedback, retains the prior encrypted snapshot, does not flash credentials and never proceeds to View All. The supplied private saved Bid Sheet contains all expected labels, so it does not explain the live failure. Protected refresh requests deliberately have no Debugbar records. No live portal login, credential capture or local application database write was performed.
+
+Problem addressed: The same generic error represented several unrelated failures, concealing whether the portal had returned a login page or an unsupported Bid Sheet. The user confirmed the browser shows an open December 2026 package (4219, 777, revision 0, 102 lines). On retry, the user observed “Reading the complete global report…” followed by “Shared bids updated for all K4 Bids users.” The live refresh now succeeds; the earlier failure's exact cause was not established, so the diagnostic change is not attributed as its proven fix.
+
+Validation: Eight targeted regressions reproduced the generic diagnostic before the change. The focused portal parser, snapshot, employee endpoint and report pass verified 110 cases; its new snapshot-preservation test initially compared newly created and reloaded attribute ordering, then passed in isolation after using a reloaded baseline (one test, seven assertions). Pint, one Larastan pass (zero errors), and whitespace checks passed. All database-backed tests used explicit testing variables and guarded in-memory SQLite. The user confirmed a successful authenticated live refresh on 2026-11-16. No full suite or agent-performed live portal login was run. Closing this task changed documentation only; no checks were repeated.
+
+Commit message: `fix: explain portal context failures during shared bid refresh`
+
 ## [x] Completed: Bid prediction UI cleanup
 
 Goal: Move bid predictions into a compact header pill and modal, and replace bulky per-line projection warnings with accessible availability colors.

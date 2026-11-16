@@ -1,104 +1,247 @@
-# K4 Bids
+# K4 Bids: remaining work
 
-K4 Bids helps pilots compare monthly bid packages and prepare a private, ordered bid list. This document records the current product contract and remaining work. Completed implementation tasks, validation history, and commit messages are recorded in [TODO.md](TODO.md).
-
-
-
-Status (2026-11-15): Package import/publication, browsing, preferences, manual ranking, review/copy, compact cards, interactive trip timelines, credit calculations, icons, and trip endpoint/deadhead flags are implemented. Reviewed portal submission and fresh report reconciliation are implemented and enabled locally for the user's controlled test. The read-only employee bid viewer is implemented from supplied authenticated captures. Live portal acceptance, receipt authentication, and manual browser, touch, and keyboard review remain outstanding.
-
-## [x] Completed: Bid prediction UI cleanup
-Please update the bid package interface to refactor the Bid Predictions feature into a header pill modal and clean up individual line card elements by replacing text-based projection warnings with minimal left-edge accent stripes on neutral backgrounds.
-
-### Requirements:
-
-1. **Header Bid Predictions Pill & Pop-Out Modal:**
-   * Add a compact interactive pill to the top header toolbar (near the title or metadata section): chart icon + `F56 · Likely hold`, with short `Unavailable` / `No hold` fallback states.
-   * Show stale data with a subtle amber micro-dot; retain the full prediction name and stale explanation for screen readers and in the hover title. Use subtle borders and a slate-800 dark background.
-   * Clicking this pill should trigger a clean pop-out modal or dropdown displaying detailed prediction stats and senior projection breakdowns.
-
-2. **Line Card Row Color-Coding (Removing Text Warnings):**
-   * Remove the bulky text elements (`"Projected unavailable · 0/2 positions remain..."`, `"Likely hold · 1/2 positions remain..."`, and `"Projected available · 2/2 positions remain..."`) from the individual line cards.
-   * Keep card backgrounds neutral and apply a 4px left accent stripe based on availability:
-     * **Projected Available:** An emerald-500 stripe indicating positions remain after senior projections.
-     * **Likely Hold / Tight Availability:** An amber-500 stripe indicating the likely hold or 1/2 positions remaining.
-     * **Projected Unavailable:** A slate-600 stripe with 60% opacity indicating 0/2 positions remain. Hover and keyboard focus restore full opacity.
-   * Ensure these color codes remain accessible and maintain high contrast in dark mode (`slate-900` / dark themes).
-
-3. **Tech Stack & Frameworks:**
-   * Implement using Tailwind CSS utility classes and Alpine.js for the header modal toggle, keeping consistency with the existing Livewire view architecture.
-
-Outcome (2026-11-16): Predictions now open from the header pill into an Alpine-controlled native modal with source metadata and an all-line remaining-capacity/senior-hold table. Following the accent-stripe refinement, cards retain neutral backgrounds with 4px emerald, amber or slate stripes and labelled icons. Unavailable cards are dimmed until hovered or focused; unknown data stays neutral. Amber indicates a likely hold or only one position remaining out of multiple, rather than a calculated confidence probability. Stale feedback and visible 60-second polling are retained. Focused prediction/JavaScript tests, Pint, the Vite build and one Larastan pass passed; manual browser review remains outstanding. See TODO.md for validation details and the commit message.
-
+This document tracks remaining features, operational verification and unresolved source/rule decisions as of 2026-11-16. Completed implementation tasks, validation history and commit messages belong in [TODO.md](TODO.md). Existing application behavior is documented by its code and focused tests; completed plans are removed from this backlog.
 
 ## Refactor My bid list
+
+Implemented (2026-11-16): The seat link is a separate middle toolbar item, and My bid list plus its cloud/status dropdown occupy an independently right-aligned group. The package/prediction context wraps above them below the large breakpoint. This section is retained at the user's explicit request; validation and the commit message are recorded in TODO.md.
+
 Refactor the top header toolbar layout in the Livewire view to swap the positions of the `First Officer` badge and the `My bid list (43)` action container.
 
-### Requirements:
-1. **Layout Swap:**
-   * Move the `My bid list (43)` button (along with its attached cloud sync/status dropdown component) to the absolute right side of the top header toolbar.
-   * Relocate the `First Officer` role badge to the middle position (just to the left of the bid list container).
-2. **Ergonomic Flow:**
-   * This aligns the primary working drawer trigger (`My bid list`) directly with the right-side edge where the slide-over drawer originates, improving visual hierarchy and interaction flow.
-3. **Styling & Framework:**
-   * Preserve all existing Tailwind CSS classes, responsive spacing, dropdown triggers, and reactive Livewire state bindings.
-## View other employees bids
+## Sync from K4 to My Bid list
+In the My Bid list slideover, under "More actions" and and implement an option to pull already submitted bids from the K4 server into a blank My Bid list. If there are bids in the list, warn of overwrite. 
 
-### Goal
+Clean up UI for existing actions:
+Clear bid list
+Add all 43 matching flying lines
 
-Use the global ViewAllBids report to predict unavailable lines and the likely hold for the logged-in user. Share the latest validated bids with every authorized K4 Bids user, scoped by month/fleet/CA-FO, while keeping private bid lists and submission status separate. Resolve the user's identity through a verified employee-number link and a manually imported seniority list.
+Make the new action similar to the other 2 actions
 
-### Current implementation and evidence
+## Advanced comparison controls
 
-The supplied private ViewAllBids captures (2026-11-15), including selected-employee and View All states with saved report frames, establish the Web Forms contract. The employee selector is `ctl00$ContentPlaceHolder1$ddl_crewMembers`; CA/FO use `RadioButtonList1` with selector postbacks ending in `$0`/`$1`. View All is the shared import source; FE remains outside this feature's scope. The report exposes ReportArea and matching Export URLs for `ViewAllBids`, with observed `PDF` and `Excel` format options. Current Bid Status For groups rows by name, preserves Choice/Line pairs, includes empty-choice employee groups, and prints pagination. The supplied View All state has 84 pages; the importer supports up to 200 pages, 32 MB total report HTML, and a 180-second retrieval budget with bounded individual requests. No real employee identities or live report tokens are copied into committed fixtures.
+The filter groups and definition review are complete. The remaining controls below use the agreed comparison contract. These are browsing comparisons; they must preserve private manual bid order and must not imply legal compliance or payroll correctness.
 
-Shared bids and predictions are available from Package details and the workspace prediction control. Every authorized user reads the same validated snapshot without portal credentials. A native credential form refreshes the global report and atomically replaces the shared snapshot for its month/fleet/position. PDF and legacy Excel exports use the freshly verified global report. The current user's submission status and private list remain separate. Main workspace views check shared state every 60 seconds while visible; the shared report page reads the current stored snapshot when opened or refreshed. Snapshots older than 15 minutes are marked stale.
+### Shared comparison contract
 
-The captured report does not print its own month/fleet context. The service verifies the authenticated Bid Sheet before and after retrieval, checks its month/fleet against the active local package, and rejects a changed portal package/revision. The UI shows portal context separately from the imported source revision; these revision schemes are not equated. Local line labels indicate unique number matches, not proof that the imported and portal revisions are identical.
+**Confirmed comparison rules:**
 
-### Problem
+- Advanced controls are hard filters on available results; saved selections stay in manual order with mismatch/unknown explanations. Best match keeps its existing strict goal priorities. Do not silently turn filters into weighted scoring. The user confirmed this behavior.
+- `Any` imposes no condition. For a Boolean property, `Only` requires positive evidence and `Exclude` requires complete evidence of absence. Unknown is neither false nor zero. For partially known data, a known positive match can satisfy `Only`; a known prohibited occurrence fails `Exclude`. An unknown result cannot satisfy a strict filter. Existing days-off handling of unknown dates remains as already agreed.
+- For categorical sets, use labelled inclusion/exclusion choices: selected values match with OR within a control, different controls combine with AND. `Only selected crew complements` means one of the exact published line CA/FO count pairs. The user selected the line complement as authoritative for this filter; show differing trip complements separately. Lines/Overview disagreement on the published complement blocks publication under the existing import policy.
+- Numeric ranges use inclusive lower/upper bounds, allow either bound to be empty, preserve zero, and reject inverted ranges. Use hour/minute entry where appropriate and preserve underlying seconds. No arbitrary example cutoffs become business rules.
+- Derive categorical choices and coverage from the active package and eligible seat before other filters narrow results, so selected options do not disappear while filtering. Inspect Flying/Reserve availability and explain unsupported metrics. Clear or explicitly reconcile invalid values on context/revision changes.
+- Keep personal calendar availability and split-block detection on UTC dates clipped to the displayed calendar month. Use complete linked pairings for pairing credit, report/end-airport comparisons, routes, and scheduled connections, including dates before month-start or after month-end. Published duty/carry counts retain their published scope. Contractual compensation Months and carry-in duty-day rules remain separate from these browsing scopes.
+- Keep advanced browsing filters temporary, as existing quick filters are; preserve them during browsing and disclosure changes, and clear them on package/seat context changes. The user confirmed that filters do not need to persist across return visits. Existing saved preferences and bid lists retain their persistence behavior.
 
-The original viewer treated each read as an isolated, transient employee report. It neither shared the global bids nor projected awards, so users could not tell which seniors would consume a line's positions or which choice they could likely hold.
+**Confirmed source agreement and guarantee comparison:**
 
-### Product behavior and implementation plan
+- The user identifies both Lines PDF `Credit time` and Overview `Credit` as published contractual Bid Line Guarantee. Accept either when it supplies a value; require exact agreement when both supply values. A missing value is not a conflicting zero. Preserve the source value, package/revision, and contributing source labels. A disagreement blocks publication and preserves the active published package; do not average values or choose a source silently.
+- Keep `source_credit` as the published guarantee. Complete Trips Credit Time totals supply **Base pairing credit**. They must not overwrite the guarantee or silently become a personal pay calculation. If a legacy payload lacks trustworthy original source credit, its recalculated `credit` cannot establish the guarantee; recover it through a reviewed source import/revision.
+- The user selected `difference = base pairing credit − published line guarantee`. Offer Below / At / Above guarantee using the sign of that difference and show the signed duration. Require both values and complete pairing-credit coverage, preserve known zeros, and compare exact normalized durations before display rounding. A signed difference range can use the same value if introduced in subtask 5.
+- This is comparison of published package values. Account-specific eligibility, proration, current agreement amendments, MBPG/composite minima, actual accrued PCH, and payable compensation remain in the separate compensation work. No universal 64/70-hour floor is substituted for a missing published line guarantee.
+- Use source Duty Days as published, without clipping or recomputing it from occupied dates. The user confirmed that conflicting numeric Lines/Overview duty totals block publication; an absent source value must not erase the other source's known value.
 
-The user clarified (2026-11-15) that ViewAllBids is global data, not a private report for the authenticating app user. The user also confirmed that the number preceding a name is award seniority (lower is more senior) and the imported CA/FO crew counts are the available awards per line. This supersedes the earlier decision not to persist employee directories/choices.
+**Metric definitions and source coverage:**
 
-- Read the observed View All selector and every report page, matching each employee group to the fresh directory and its seniority. Publish one encrypted shared snapshot per month/fleet/position only after account/context, selection, identity, rank and pagination checks pass. Preserve repeated line numbers at different choice ranks; reject ambiguous repeated ranks. A failed refresh preserves the last good snapshot. Never combine partial employee reads into an apparently complete global snapshot. Selector actions come only from verified form-control names and a read-only transport allowlist, never from executing or parsing browser handler scripts.
-- All authorized K4 Bids users use the same shared bids without portal credentials. A deliberate authenticated refresh updates the shared dataset for everyone; browser views periodically check shared state. Credentials, cookies and live report tokens remain operation-local. There is no unattended portal login or saved password. Global PDF/Excel exports remain available; the prediction interface shows the current user's result and submitted choices.
-- The user no longer selects a person. A one-time read-only Kalitta login confirms the employee number against the authenticated account before saving its encrypted, serialization-hidden association on the current app user. Names are never used to infer account ownership. Later reads and package/seat changes resolve that number automatically; a `bidder` query parameter cannot change the target. In the workspace, project against that app user's private ordered list; other users' private lists are never included. The portal report supplies all other bidders' current submitted choices.
-- Process more senior bidders in seniority order, awarding each their highest-ranked choice with remaining CA/FO capacity. A bidder consumes at most one position. A senior who listed a line may be awarded an earlier choice elsewhere. Show a compact personal availability label, remaining positions, and the first available line in the user's ordered list as the likely hold. Remove the per-line bidder-count accordion and long employee-name lists.
-- Label results as projections based on the shared snapshot, not official awards or guarantees. Show source time and stale state; changing/missing bids, eligibility/training restrictions and later awards can change the outcome. Missing snapshot, unknown bidder, duplicate seniority, ambiguous line numbers or unknown senior-choice capacity make personalized predictions unavailable rather than falsely green. A bidder absent from the report has unknown future choices.
-- Preserve original ranks and portal line numbers, map local labels only for unique matches, and retain repeated choices internally. Preserve existing access gates, context isolation, published-package rules and fresh verified portal PDF/Excel exports. Report/export rendering-session IDs may differ as in the supplied captures; their widget/control and report stack must match. Read-only package context does not require editable personal bid fields. Personal workspace/submission records remain unchanged by a refresh or prediction.
-- Integrate the shared dataset and prediction status into line cards and a compact predictions control, with a shared report page for details/refresh. Cover allocation cascades, multiple positions, junior isolation, stale/missing/ambiguous inputs, complete global pagination, failed-refresh preservation, cross-user visibility, cross-context isolation and credential non-retention. Use focused tests, Pint, one Larastan integration pass and a frontend build; record actual outcomes in TODO.md.
+| Metric / control | Source and definition | Scope and completeness | Current coverage / implementation gate |
+| --- | --- | --- | --- |
+| Published line guarantee | Original Lines `Credit time` and/or Overview `Credit`, retained as `source_credit`; duration in minutes. | Published line value; Trips not required. Known zero is valid; both absent means unavailable. Both present must agree. | Imported separately from trip totals. Existing conflict checking needs missing-versus-present handling reviewed before relying on it for all partial-source combinations. Guarantee labelling/comparison belongs to subtask 5. |
+| Base pairing credit range | Sum of complete linked Trips `Credit Time` totals, excluding the current added carry premium. | Full pairings across calendar boundaries. Require every linked pairing total; source line guarantee cannot fill a missing trip total. Repeated calendar references to the same pairing do not add its credit again. | `base_credit` alone is insufficient: it can contain source line credit when Trips totals are incomplete. Require `credit_basis = trip_totals` and verified linked-pairing coverage in subtask 1. No pairings does not prove zero flying credit for an unsupported line category. |
+| Crew complement | Exact published line Captain/FO count pair from Lines/Overview; trip `Crew` remains separate evidence. | Active package and eligible seat; filter describes the published line, including FO-only complements. | Source counts are imported for Flying/Reserve rows. Reject contradictory published complements; show trip differences without relabelling the line. subtask 1 adds the filter. |
+| Published duty days | Lines `Duty days` and Overview Flying summary column D. | Use the published total as-is. Unknown is not zero; source totals may differ from calendar occupancy and summed trip duty counts. | Overview Reserve rows omit the summary columns. Lines may independently supply duty days. Current Lines parsing can overwrite an Overview duty value with null; subtask 2 must preserve known values and reject conflicting numeric totals. |
+| Carry comparison | Published Overview Flying summary column F when present; otherwise calculated unique occupied UTC dates after month-end for linked trips continuing from the displayed month. | Preserve a published zero and its scope. Calculated fallback requires complete linked-trip date spans and counts each date once from the next calendar month's first date through release, inclusively. | Published-first precedence and the `Published carry count` / `Calculated occupied days after month-end` labels are implemented. Missing Trips/dates leaves fallback unknown. Reserve summary omission does not prove zero carry. subtask 2 still adds comparison controls, source discrepancy indicators, and separate contractual Transition Days handling. |
+| Days off / occupied blocks | Validated Overview calendar plus trip report-through-release occupancy, including full layover/rest dates. | Displayed UTC calendar month only; report and release calendar dates are included. Unknown dates remain distinct. | Existing date filters retain incomplete dates with the agreed warning. Published duty days and contractual SDFDO are separate metrics. Unsupported/missing calendar coverage is never inferred to be off. |
+| Split line | At least two known occupied blocks separated by at least one complete, confirmed off-date block within the displayed month. | No qualifying gap at the beginning/end alone; additional work blocks still satisfy presence. Unknown dates cannot create an off gap or prove no split. | Calendar data can support the personal preference definition. This is not a contractual construction/compliance test. subtask 3 adds the control. |
+| Deadhead presence / avoided airports | Explicit deadhead leg markers; avoided airports inspect every linked leg origin/destination, including deadheads and ground-transfer endpoints. | Full linked trips. A known prohibited leg proves a conflict; proving absence requires complete relevant leg/route coverage. | Existing positive deadhead flags and leg routes supply evidence. Missing trips, unparsed legs, and incomplete routes cannot establish absence. Presence filtering is defined; count/duration sorts remain deferred. |
+| First report | Earliest dated linked-trip report in UTC. Sort chronologically before taking the time of day; never substitute first departure for missing report. | Full linked trips, including a report before month-start. All potentially earlier reports must be known. Both window bounds are inclusive; lower greater than upper matches times at/after the lower bound OR at/before the upper bound. Equal bounds mean that exact time; an empty bound is open. | Trips supplies report clock and inferred report date. Verify dated reconstruction/rollover and malformed/missing values in subtask 3. A later known report cannot prove the first report when an earlier linked trip is missing. |
+| End airport | Endpoint of the linked trip with the latest dated release/end timestamp, including an endpoint after month-end. | Full linked trips, independent of source list order. Missing potentially last trip, invalid chronology, or tied final timestamps with different airports means unknown. | Trip endpoints/release data exist; subtask 4 must validate chronology. Existing common/mixed endpoint flags describe a different property and must not supply this filter by shortcut. |
+| Scheduled layover airport/duration | Connected same-airport arrival to next departure within a trip; duration from dated UTC timestamps. Source `Rest` is separately labelled. | Full linked trips; airport and duration must match on the same connection. Negative gaps and airport changes are inconsistent connections, not valid same-airport layovers. | Existing layover filters use scheduled gaps, with complete connection coverage required to prove avoidance. Source Rest does not establish the same interval or legal rest. Existing 10h/24h visual/quick-filter rules do not define a new long-stay control. |
+| Country grouping | Existing airport reference country associated with package airport codes. | Group available airport choices by country, derived before other filters narrow results. Keep unresolved codes selectable without a guessed country. | `AirportData` has city/state/country, but no time zone or broader-region taxonomy. Country grouping is defined; broader geographic regions remain deferred. |
 
-Implementation outcomes, validation and the commit message are recorded in TODO.md.
+**Coverage and normalization requirements for dependent tasks:**
 
-### Manual seniority import and account identity
+Package-level `coverage` currently records which document types were imported. It does not prove metric-level completeness. A present Trips file may still lack a linked pairing, credit total, report, or valid route. Evaluate availability per metric and distinguish a supported value, missing source data, incomplete data, conflicting sources, and an unsupported format/category. Keep unavailable controls explained and apply the confirmed unknown-value rules when only some lines have coverage.
 
-The supplied [July 15, 2026 pilot seniority PDF](https://crewbids.kalittaair.com/hyperlinks/Pilot%20Seniority%20List%20as%20of%207.15.26.pdf) contains 987 pilots across 19 roster pages plus a cover page. Its columns distinguish employee number from system seniority. PDF text sometimes joins a seniority number directly to the name; the parser supports that observed spacing and validates contiguous ranks across pages, unique employee numbers, consistent dates, supported columns and page footers.
+Treat repeated calendar cells referencing one pairing as one pairing, leg set, credit total, and date span. If future layouts reuse the same pairing ID for distinct dated occurrences, require an occurrence-aware import format before claiming complete totals; do not guess whether to collapse or multiply them. Source disagreements and absence must remain visible to import review. Do not retrofit these definitions by silently mutating an existing published package or a private ranked list.
 
-An admin opens **Manage package → Update pilot seniority list**, supplies the direct PDF link, and selects **Import seniority PDF**. `ImportPilotSeniority` authorizes the admin and accepts only HTTPS PDF links under Kalitta's `/hyperlinks/` directory, without redirects, credentials or query strings. Downloads have a timeout and an 8 MB limit. Only employee number, name and seniority are retained in an encrypted current shared roster, with effective date, import timestamp, source URL, fingerprint and importing admin. Birth dates, hire dates, management flags, remarks and the original PDF are not retained. There is no scheduled seniority refresh.
+### 1. Add credit ranges and exact crew-complement filters
 
-A complete successful import replaces the current roster atomically. Repeated identical content is unchanged; a newer list preserves account associations by employee number even when names/ranks change. Older effective dates, unsupported/partial layouts, download failures and invalid links leave the prior roster intact. Same-date corrected documents can be imported deliberately. A structurally valid source shortened at a complete final page cannot be distinguished from a shorter published roster because the supplied format provides no total roster count.
+**Goal:** Compare credit bands and staffing arrangements using explicit labels.
 
-Users open **Employee link / shared data → Link your employee number** and verify their own Kalitta login once. This operation reads account context only; it does not retrieve the global report or submit bids. Passwords and session cookies are discarded. A failed login, account mismatch or number absent from the imported roster preserves the previous account link. Users can verify again to correct a link. Other app accounts and their private workspaces are unaffected.
+**Problem:** There is no upper credit bound or exact-complement filter; the existing minimum uses a different credit basis from the newly agreed range.
 
-Personal predictions use ranks from the dated imported roster, joined to global portal choices by employee number. The UI displays the roster date and shared-bid retrieval time separately. Missing account links or roster entries suppress predictions with actionable feedback; missing seniority for any shared bidder blocks projection rather than silently excluding them. A linked pilot with no row in the shared report can still model their local list, assuming no submitted choices for themselves. The roster can be older than the current bid period; admins must supply updated links when ranks change, and projections remain conditional estimates. Successful portal refreshes update shared choices but do not silently replace the manually managed seniority list.
+The user selected **Base pairing credit** for the range. Use complete pairing Credit Time totals, label the range explicitly, and replace the existing quick minimum instead of keeping contradictory minimum controls. Source line credit is the published contractual guarantee and cannot substitute for base pairing credit; show unavailable when complete pairing totals cannot be established. Do not silently change the current Credit sort or goal. Derive complement options from exact published line count pairs for the eligible seat. The user confirmed that the filter describes the line complement; expose differing trip complements separately. Apply the source and completeness rules settled in the comparison contract.
 
+**Acceptance:** Inclusive boundaries, fractional durations/seconds, missing credit versus zero, inverted ranges, eligible-seat options, absent/mixed complements, combined filters, and retained selections are covered. Guarantee comparison remains subtask 5.
 
-## CBA accuracy review — 2026-10-29
+Depends on the comparison contract and existing filter groups.
+
+### 2. Add source duty-day and carry-in comparisons
+
+**Goal:** Compare workload and month transitions without conflating occupancy, duty, and compensation.
+
+**Problem:** The labelled carry value does not yet expose source discrepancies, duty-day comparisons, contractual Transition Days, or obligations entering from a previous award.
+
+Add a labelled source-duty-day range where supported. The user confirmed published duty totals without clipping/recalculation, preservation of a known value when the other source omits it, and blocked publication for conflicting numeric Lines/Overview totals. The user selected **published source carry-in count, or work continuing into the next month when no count is published**. Preserve a published zero; fall back only when absent, not when it fails a filter. Invalid/conflicting published data is not absence and must not trigger a quiet fallback. For the fallback, use the existing calendar-occupancy meaning: unique occupied UTC dates after month-end for trips continuing from the selected month, with complete linked-trip coverage required. The existing display labels the basis `Published carry count` or `Calculated occupied days after month-end`; use those labels in the comparison explanation. Keep both raw values and flag discrepancies when available; contractual Transition Days remain distinct. Provide Any/Only/Exclude presence plus an optional count range if useful. Incoming obligations require evidence from the previous award and are unavailable from a prospective package alone. Source duty-day totals retain their source scope; the fallback alone counts dates beyond the displayed calendar month. No compensation-month boundary or premium inference applies to this calendar fallback.
+
+**Acceptance:** Calendar month/year transitions, compensation-period exceptions where used, duplicate dates, missing pairings, complete zero carry-in, partial coverage, and source/calculated disagreement have focused coverage. No automatic schedule adjustment or premium entitlement is inferred.
+
+Depends on the comparison contract and existing filter groups.
+
+### 3. Add defined work-pattern controls
+
+**Goal:** Filter split lines, deadheads, first report, and scheduled long stays using dependable evidence.
+
+**Problem:** More than one occupied block does not by itself establish a contractual split line; report time differs from first departure; long-stay and rest values require explicit aggregation.
+
+The user defined a **split line** as a work block, an off block, and another work block, and confirmed detection within the displayed month using known occupied blocks separated by at least one confirmed off day. Provide Any/Only/Exclude for that personal comparison definition. Unknown dates do not establish an off block or prove the absence of a split. Do not impose the CBA's contractual split-line construction requirements on this preference or label the result a compliance check.
+
+For deadheads, begin with Any/Only/Exclude presence based on explicit leg markers; absence requires complete linked-leg coverage. Counts/duration can follow only with agreed aggregation. The user selected the **first chronological trip report in UTC across full linked trips**, including reports before month-start; do not use first departure or apply the window to every trip. Preserve the full dated timestamp to establish chronology before comparing time of day. Both time-window bounds are inclusive. A window crossing midnight matches times at/after the lower bound OR at/before the upper bound; equal bounds mean that exact time, and an omitted bound is open. Validate report date reconstruction and coverage under the rules in the comparison contract. Missing report must not silently become departure time. The user deferred long stays until a duration is defined. Keep scheduled gaps, source Rest, legal rest, and fatigue distinct. Do not reuse visual chip thresholds as a new long-stay definition without agreement. Any future city-plus-duration condition must match both on the same stay.
+
+**Acceptance:** Exact duration bounds, midnight/year crossings, first-trip chronology independent of source order, split occupancy around month boundaries, ground transfers, incomplete legs, overlaps, and airport changes produce defined results. Cases needing unresolved definitions stay deferred.
+
+Depends on the comparison contract and existing filter groups and the relevant definitions.
+
+### 4. Add airport inclusion, avoidance, and geographic groups
+
+**Goal:** Compare trip endpoints and stays with package-derived airport choices.
+
+**Problem:** End city could mean the last trip's endpoint or every trip's endpoint; avoided airports could cover stays only or every leg endpoint. Region names have no agreed mapping.
+
+The user selected **the final chronological trip endpoint across full linked trips**, including an endpoint after month-end, **all leg origins/destinations including deadheads** for avoided airports, and **countries** for geographic grouping. Establish the final trip from dated chronology under the comparison contract, with unavailable status if missing trips could change that endpoint. Extend the existing layover selector rather than duplicate it; distinguish scheduled connections from source-rest locations. Avoidance requires complete route coverage to prove no prohibited endpoint is visited. Keep airport codes primary and identify airports sharing a city individually. Derive country groups from existing reference data for airports present in the package; preserve unresolved codes without assigning a guessed country. State/continent/custom-region groupings are outside the agreed first pass. Reuse airport resolution/cache services without a network lookup per rendered row.
+
+**Acceptance:** Mixed endpoints, city/duration correlation, avoided deadhead endpoints, multiple selected airports, unresolved codes, reference-service unavailability, incomplete routes, and package changes have defined behavior.
+
+Depends on the comparison contract and existing filter groups and airport-scope decisions.
+
+### 5. Display the published guarantee and add guarantee-relative comparisons
+
+**Goal:** Compare complete base pairing credit with the published contractual line guarantee.
+
+**Problem:** Pairing totals and adjusted Credit can differ from published guarantee, and incomplete or legacy source data cannot establish every comparison.
+
+Show the bid month’s published guarantee independently of carry-in premiums and overtime, using preserved `source_credit`. Implement the agreed `base pairing credit − published line guarantee` difference, with Below / At / Above guarantee and a signed duration. Require complete pairing totals and a trustworthy published value, compare exact normalized durations, and preserve source/revision evidence. A signed range, if added, uses the same difference. Known zeros are valid; missing values are unavailable. Validate the source-field mapping and conflict handling described in the comparison contract, including partial-source and legacy payloads; never substitute MBPG, composite minima, adjusted Credit, or a trip sum for a missing guarantee. Comparing these package values does not calculate actual accrued PCH, personal payable compensation, or carry-in premiums. Effective compensation rules and personal eligibility remain prerequisites for Estimated pay, not additional unanswered questions about this agreed arithmetic comparison.
+
+**Acceptance:** Positive/zero/negative differences, exact equality and duration precision, conflicting sources, missing/partial values, preserved published zeros, legacy payloads, and line categories with no complete pairing totals are covered. A category with no dependable numerator or guarantee remains unavailable rather than receiving a guessed value.
+
+Depends on the comparison contract and reliable source inputs; independent filters can ship first.
+
+### 6. Add dependable optional sorts
+
+**Goal:** Make the defined comparison metrics available for browsing order.
+
+**Problem:** New sorts need a specific metric, direction, aggregation, and completeness policy.
+
+Add only supported source duty days, chosen carry-in metric, first report, deadhead count/duration, and chosen rest/stay duration. Confirm ascending/descending choices and line-level aggregation, such as shortest scheduled stay versus longest stay; source Rest must have a distinct label. Unknown values remain last in either direction, with natural Line ID as the final tie-break. Partial observations cannot establish a reliable maximum/minimum or zero. Keep existing sorts available, Best match priorities intact, and manual bid order independent.
+
+**Acceptance:** Equal values, zero/missing/partial values, both directions, stable ties, and combined filtering are covered. Do not expose a sort merely because some rows contain the field.
+
+Depends on the corresponding completed metric subtasks.
+
+### 7. Evaluate optional comparison columns or views
+
+**Goal:** Add a display option only when it answers a comparison need beyond the compact timeline.
+
+**Problem:** A second display could duplicate information or lose active browsing state.
+
+The user confirmed **retain the compact timeline and defer extra views**. This subtask remains deferred until users identify fields needing side-by-side comparison. Prefer a small set of optional metrics in the existing layout; add a table/view only if that solves the stated need. Use the same filtered/sorted results, selected lines, add/remove actions, and warnings. Retain filters and selections across any future view changes, preserve the compact default and mobile usability, and define owner-scoped display persistence separately from filter persistence.
+
+**Acceptance:** View changes preserve filter/sort values and manual rank; missing values remain explicit. Review narrow/desktop layouts, both themes, keyboard interactions, and header/action overlap. If no additional value is established, record that outcome without adding a view.
+
+Depends on delivered metrics and a demonstrated display need.
+
+### 8. Define later scoring separately
+
+**Goal:** Establish evidence and definitions for later breakfast, fatigue, long-stay detection, and hazard-pay features.
+
+**Problem:** These features require more than package-derived categorical filters.
+
+Define breakfast location/window, relevant departure/report event, local time zones and DST, plus whether all or some departures qualify. Define fatigue inputs, time basis, model, aggregation, missing-data behavior, and any ranking integration separately. A scheduled-duration filter from subtask 3 does not establish fatigue or a contractual long-stay category. Hazard-pay work needs applicable designation dates, qualifying assignments/layover days, governing amendments, and verified compensation rules. Keep undefined scoring and eligibility unavailable; do not infer them from region grouping or the existing chip colors.
+
+**Acceptance:** A separately reviewed definition and source-coverage decision precedes each implementation task. This is deferred definition work, not a promise to add scoring in the first advanced-controls release.
+
+## Email intake and import operations
+
+The direct portal downloader, configurable schedule and Filament fetch action are implemented. Remaining work concerns reliable manifests, durable intake, email delivery and operational visibility. Preserve the agreed policy: automatically publish complete validated first releases and hold changed releases for admin review.
+
+### Release manifests and delivery decisions
+
+- Inspect a complete work-email package and a correction: establish the real sender, forwarding path, attachment roles and sizes, fleets, revision evidence and organization policy. A connected personal Outlook account does not establish work-mailbox access.
+- Inspect the portal Documents page for a reliable manifest or revision signal. Verify naming and correction behavior beyond the observed December 2026 B747/B777 direct links. An unavailable or renamed required file holds the group; an older release is not a substitute.
+- Choose Outlook forwarding to a receiving provider only after confirming permitted forwarding, provider/domain support and message-size limits. Use Microsoft Graph as a fallback only if portal retrieval/forwarding are unsuitable and organization-approved OAuth access is available.
+- If future portal downloads require authentication, decide an import-specific policy or keep those releases manual. Submission credentials remain transient and are not an unattended-import credential store.
+
+### Durable receipts, classification and cross-source provenance
+
+1. **Receive durably.** Verify the provider signature, freshness/replay rules, configured recipient, and registered forwarding-source policy before accepting an email. Provider authentication proves who delivered the webhook, not that a visible From header is genuine; forwarding provenance needs a sample-based policy using provider authentication results and expected sender/forwarder information. Persist the receipt and bounded attachment data before acknowledging success; retry delivery safely after temporary failures. Queue parsing after the receipt transaction commits. Jobs carry receipt IDs, not email bodies, credentials, or attachment bytes.
+2. **Inventory every attachment.** Record private filename, byte size, content hash, detected format, classification, and reason for exclusion/hold. Classify using PDF content and workbook structure as well as names. Ignore proven inline signature images, but flag unexpected document attachments. Do not equate “ten attachments” with completeness. Detect truncated, encrypted, malformed, oversized, or unsupported files. Bound ZIP expansion/XML processing for XLSX, avoid external references and macros, and never execute document content. `.xls`, `.xlsm`, and scanned PDFs need explicit support decisions; they are not silently treated as supported XLSX/native PDFs.
+3. **Build coherent groups.** Separate sources by period, fleet, revision, and seat where source documents actually distinguish seats; the present package model is period/fleet-based and carries crew complements. Associate each supported group with its Lines, Trips, and Overview. Classify Training Requirements, Bid List, and Vacations without adding their personal contents to shared package payloads. Hold unknown roles for review. Do not combine a new revision's Lines with an earlier revision's Trips or Overview, even when filenames match. A date in an email subject is a hint, not package identity.
+4. **Define a complete automated import.** Proposed initial profile: one native Lines PDF, one native Trips PDF, and one supported Overview XLSX per period/fleet group. Confirm that profile from one full delivery before enabling it. Require matching identity, supported schema, successful parse, expected line/trip references, consistent coverage, and existing source-consistency checks. An Overview may lack a revision marker; it must have coherent delivery provenance and pass cross-file validation rather than being assigned an invented revision. A parser success with partial coverage does not qualify for automatic publication. Extra known unsupported document roles are explicitly excluded; an unexplained missing required role holds that group. Independent fleet groups may publish independently if each is complete; never publish a partially validated group.
+5. **Deduplicate and order revisions.** Use a durable unique receipt identity for delivery retries, attachment hashes, and the existing parser-version/package fingerprint for normalized drafts. Add database uniqueness and per-context locking for simultaneous email/portal arrivals; queue uniqueness alone is insufficient. Identical content is a no-op with additional provenance. Changed content for a previously published period/fleet is a revision even if its printed revision label is unchanged. Different labels or conflicting contents hold for review; receipt time and lexicographic labels do not establish a newer revision. Never infer deletions or replace good files from an incomplete delivery. A partial correction can reference an earlier manifest only through a reviewed, explicit merge.
+6. **Apply publication policy atomically.** With the context locked, recheck completion, registered-source authorization, duplicate status, and whether a published package already exists. A first complete validated package may publish automatically. Any changed package in that context becomes a reviewable draft showing source differences, affected lines, and validation results. Reuse publication behavior through an action with explicit automated-source authority and an accountable configured admin owner; recheck authorization if that owner/source is disabled. Keep interactive ownership and gate checks intact. Publishing a revision must not migrate users' selections or change their manual order; preserve the existing migration review and confirmation.
+
+Proposed durable records are an import receipt with state/source/attempt details, a private attachment manifest, and links from each resulting package to its receipts. Keep normalized `BidPackage` payloads in the existing model. Reuse `ParseBidDocuments`, `ReadBidOverview`, and the publication behavior. Reuse the existing automated-source authority and staging behavior in `ImportPortalBidPackage`; extend it for durable email intake rather than invoking UI methods or assuming an interactive admin. Database schema and migration details belong to implementation after inspecting the schema.
+
+### Email delivery implementation
+
+Create a dedicated receiving subdomain/recipient without replacing the organization's work-mail MX records. Confirm provider support and the largest complete sample message, including encoding overhead, against provider, web-server, PHP, and storage limits. Start with a controlled manual forward into the intake flow, inspect its manifest, then configure the narrow Outlook rule once that works. Include revised-package subjects and provide manual forwarding as recovery.
+
+Prefer a signed multipart attachment webhook if the existing inbound provider supports the actual message sizes. If messages exceed safe request limits, use authenticated provider storage retrieval or private object storage with a small event notification. Download only from verified provider destinations; do not follow arbitrary URLs in email bodies. Treat forwarded-as-attachment `.eml`/`.msg` and cloud-file links as explicit cases: support the observed format or hold with a clear reason rather than pretending there were no attachments.
+
+Proposed staging retention is seven days for raw messages and attachments, including failed/revision-held deliveries, with an expiry notice and a way to supply the source again. Keep only necessary normalized package data and minimal provenance afterward; configure provider-side retention too. Restricted raw training/vacation/bid-list documents remain admin-only during staging. Logs and status notifications contain IDs, counts, and failure categories, not full messages, personal records, credentials, or signed download URLs. Confirm this retention choice before implementation.
+
+### Operational rollout and acceptance
+
+Add an admin import-history view showing source, last successful check separately from last new package, validation holds, missing roles, revision differences and retry/review actions. Persist receipt/attempt outcomes; existing scheduler/cache locks do not replace durable history. Verify deployed scheduler/worker operation and recovery.
+
+For late-arrival monitoring, retain the supplied CBA's 2359Z-on-the-12th publication expectation as configurable, subject to current company timing. Define the notification lead time before the expected 16th close. A failed poll or missing email alone does not establish that the company has not published a package.
+
+Acceptance must cover complete and ten-attachment deliveries, multiple fleets, excluded personal documents, partial/mixed revisions, misleading names, unsupported/corrupt/oversized files, signature/replay failures, retries/concurrent arrivals, identical cross-source content, out-of-order corrections, first-release publication versus revision hold, disabled admin/source authority, worker recovery, staging expiry and preservation of published packages/private rankings.
+
+Reference material retained from the intake plan: [Microsoft forwarding controls](https://learn.microsoft.com/en-us/defender-office-365/outbound-spam-policies-external-email-forwarding), [Mailgun message delivery](https://documentation.mailgun.com/docs/mailgun/user-manual/receive-forward-store/receive-http), [Mailgun signature verification](https://documentation.mailgun.com/docs/mailgun/user-manual/webhooks/securing-webhooks), and [SES receiving](https://docs.aws.amazon.com/ses/latest/dg/receiving-email.html). Provider/domain choice and the proposed seven-day staging retention still need confirmation.
+
+## Portal verification and award discovery
+
+Reviewed submission, read-back reconciliation and shared-bid refresh are implemented. The user confirmed a successful complete shared-bids refresh on 2026-11-16; that does not establish a successful bid Update, authenticated email receipt or award.
+
+### Remaining live submission verification
+
+- Confirm a separately authorized controlled live Update, the complete fresh submitted order and browser/keyboard behavior. Reaching comparison or final review alone is not portal acceptance.
+- Authenticate the Bid Received email's source/recipient delivery path and bind its expected employee/fleet/seat and complete ordered choices. Its observed content lacks a bid period; a parsed excerpt alone is not authenticated receipt evidence.
+- Verify the submitted report's account/period scope and actual live deadline/time-zone behavior. The observed package starting/ending dates are not the submission cutoff. Preserve the distinction between a context-bound report match, receipt acceptance and an awarded line.
+- Keep production submission disabled by default pending controlled verification; the existing local test authorization does not establish production rollout approval. Timeouts after a possible write require read-only reconciliation before another deliberate attempt; never automatically retry the write.
+
+### Bid-award navigation and data discovery
+
+The supplied Bid Sheet navigation includes `Bid Awarded` → `/Pages/BidSheetAward.aspx` and `All Bids Awarded` → `/Pages/AllBidAwards.aspx`. It also links `Submitted Bid Lines` → `/Pages/BidLineDataOutput.aspx` and `Days Off and Comp Lines` → `/Pages/BidCommentsOutput.aspx`. Menu labels and destinations are observed; their contents and update behavior are not yet verified.
+
+The supplied Submitted Bid Lines source confirms a ReportViewer form posting back to `./BidLineDataOutput.aspx`, with Excel and Acrobat (PDF) export choices. The actual report body is outside the saved top-level source: an iframe uses `/Reserved.ReportViewerWebControl.axd` with `OpType=DocMapReport` and a nested report URL using `OpType=ReportArea`. Session-dependent report/control identifiers must come from a fresh authenticated operation, never from this capture. A supplied private PDF export establishes a two-column report containing printed Choice and Line numbers. The offline parser reconstructs the ordered list from those ranks; it does not establish personal-versus-all-crew scope, a report owner, period, receipt semantics, or whether the report reflects the latest Update. Missing report data must not be treated as an empty bid list. Award-page contents remain undiscovered.
+
+After authenticated login, open All Bids Awarded through the portal navigation, then inspect the requested award period/context and any pagination or report links. Document the actual menu path, selectors, column names, supported values, blank states, and update timing using redacted examples. Direct navigation must preserve the authenticated session. Do not assume that Bid Awarded is a personal-only view or that an award is final based on its URL.
+
+The following data inventory is pending discovery, not a claim that these fields exist:
+
+| Data to establish | Required interpretation |
+| --- | --- |
+| Period, fleet, seat, and award round/status | Match the award to a specific bid context and distinguish preliminary/final results if the portal does. |
+| Awarded line and any displayed choice/rank | Map to local identifiers using the same verified mapping as submission; keep absent rank absent. |
+| Person identifiers and seniority, if displayed | Establish owner matching and permitted visibility; avoid retaining other crew members' personal data by default. |
+| Published/updated time and receipt/report links | Preserve the portal's stated time basis and provenance; missing timestamps do not become the current time. |
+| Pagination, filters, downloads, and empty states | Define complete versus partial coverage and distinguish not-yet-published results from an empty award list. |
+
+Keep award retrieval read-only and separate from submission. An award must come from explicit portal evidence; matching a local preference, copying a list, or receiving submission confirmation does not establish an award. Award ingestion/display is a later implementation decision after this inventory is verified.
+
+## Remaining compensation and scheduling review
 
 Reviewed against the supplied [2021 CKS CBA](storage/app/private/CBA/2021_CKS%20CBA_Final.pdf), primarily **Part I, Section 5, Compensation**, and **Part I, Section 17, Scheduling**, with related definitions and cross-references. References below give printed pages first and one-based PDF pages in parentheses; printed page 25 is PDF page 37. This is a document comparison, not validation of application code, package totals, live portal behavior, or actual payroll.
 
-The findings below qualify the product contract and historical examples that follow. **The implemented carry-in credit formula is not established as CBA-correct.** C1's terminology correction is implemented as recorded below; the remaining calculation findings require separate implementation tasks. Product choices such as private ranking, filters, colors, and portal security are not themselves contractual requirements.
+The remaining findings qualify future compensation and scheduling work. The legacy adjusted-Credit comparison formula remains distinct from the separate scheduled-pay engine. Implemented terminology, rate maintenance, pay estimates and UI work are not repeated as tasks here. Product choices such as private ranking, filters, colors and portal security are not themselves contractual requirements.
 
 The supplied agreement's cover states March 1, 2021–March 1, 2025, but Section 28 provides for renewal subject to its notice provisions; do not describe it as automatically expired. Appendix 1, LOA #1 makes the ratification date the effective date, with Sections 5.B and 5.C effective January 1, 2021 subject to ratification. This review does not establish whether later agreements or interpretations change the rules for the October/November 2026 samples. Sources: Section 28, p. 207 (PDF 219); LOA #1, pp. 269–270 (PDF 281–282).
 
-### Compensation discrepancies and missing qualifications
+### Legacy credit and unsupported compensation findings
 
-**C1 — Resolved terminology: distinguish carry-in credit subtotal from PCH.** The application previously labeled next-calendar-month leg credit as PCH. Section 5.C.1 uses PCH to mean **Pay Credit Hours**; Section 5 applies it to flying, reserve, deadhead, vacation, training, and other qualifying activities. The UI now calls the product metric **Carry credit subtotal** and explains that it is not total contractual PCH. New parser results use `carry_credit_seconds`; presentation uses `carry_credit_label`. Previously saved `pch_seconds` values are read as the legacy subtotal without rewriting package payloads. An explicitly present new field, including null or zero, takes precedence. Existing credit amounts, premium arithmetic, fingerprints, and saved rankings are preserved; total contractual PCH is not newly calculated. C2–C6 and S1 remain separate calculation/coverage findings. Sources: Sections 5.C–5.N, pp. 25–29 (PDF 37–41).
-
-**C2 — The blanket extra 50% carry premium is unsupported.** The documented `base credit + 50% of carry credit` formula, including a premium on credited deadheads, is not established by Sections 5.M, 17.D.7, or 17.K. Section 5.L.1.b provides 1.5 times hours flown for an **Open Time duty assignment on a scheduled duty free day off (SDFDO)**, paid above MBPG. Section 5.L.2 specifies a different greater-of rule for non-flight duty on an SDFDO, including reserve, training, and deadhead. Section 17.K.2 permits an election to work excess days for Section 5 compensation, subject to its conditions. Crossing a month boundary alone does not establish these entitlements. The seven November examples below demonstrate the existing arithmetic only; they are not verified contractual credit or pay. Sources: Sections 5.L–5.M, pp. 27–28 (PDF 39–40); 17.D.7, p. 118 (PDF 130); 17.K, pp. 124–125 (PDF 136–137).
+**C2 — The blanket extra 50% carry premium is unsupported.** The documented `base credit + 50% of carry credit` formula, including a premium on credited deadheads, is not established by Sections 5.M, 17.D.7, or 17.K. Section 5.L.1.b provides 1.5 times hours flown for an **Open Time duty assignment on a scheduled duty free day off (SDFDO)**, paid above MBPG. Section 5.L.2 specifies a different greater-of rule for non-flight duty on an SDFDO, including reserve, training, and deadhead. Section 17.K.2 permits an election to work excess days for Section 5 compensation, subject to its conditions. Crossing a month boundary alone does not establish these entitlements. The legacy adjusted-Credit arithmetic is not verified contractual credit or pay. Sources: Sections 5.L–5.M, pp. 27–28 (PDF 39–40); 17.D.7, p. 118 (PDF 130); 17.K, pp. 124–125 (PDF 136–137).
 
 **C3 — Section 5.M defines carry-in credit allocation; the departure-only subtotal does not implement it.** Under 5.M.1, the crewmember completes a duty assignment that originates in the current bid period and is scheduled to transition into the new bid period, and **all PCH for that duty is paid in the new bid period**. Under 5.M.2, **all PCH accrued during a bid-period transition is credited to the Month in which the last duty assignment occurs**, for Monthly Pay under 5.D. These are established allocation rules in the supplied CBA. Section 5.E's segment departure-day rule does not replace this transition rule, and 17.D.7 also credits time flown in the subsequent period to that period. The current calculation that includes only next-calendar-month departures and excludes every earlier departure does not capture all PCH for the transitioning duty. Implementation must identify the covered duty assignments and apply the compensation Month boundaries in S1; whether the imported package supplies those boundaries is a data-coverage question, not an undefined contractual allocation rule. Sources: Sections 5.E and 5.M, pp. 26, 28 (PDF 38, 40); 17.D.7, p. 118 (PDF 130).
 
@@ -106,9 +249,7 @@ The supplied agreement's cover states March 1, 2021–March 1, 2025, but Section
 
 **C5 — The 64-hour guarantee is verified in this CBA, with important exceptions.** Section 5.C.1 sets MBPG at **64 PCH**, prorated for partial-period unavailability as provided in the agreement. Section 5.C.2 sets the composite-line minimum at **70 PCH**. Section 5.D.1 bases monthly pay on the applicable rate and overrides multiplied by the greatest of MBPG, accrued bid-month PCH, and Bid Line Guarantee; additional compensation is addressed separately in 5.D.2–6. Sections 5.F and 17.E impose eligibility/availability/qualification conditions on line guarantee, and 17.E excludes reserve lines from its published flight-hour-value requirement. A reserve day on a published flying line does not itself receive reserve-day value under 17.E. Section 17.P also provides voluntary No Duty Bid Lines with no Section 5 compensation. Thus neither a universal 64-hour floor nor adjusted trip credit alone is a complete pay formula. Sources: Sections 5.C–5.G, pp. 25–26 (PDF 37–38); 17.E, p. 119 (PDF 131); 17.P, p. 129 (PDF 141).
 
-**C6 — Trip PDF totals are not established as the contractual line guarantee.** Giving complete Trips totals precedence over Lines/Overview totals is an import/display policy. Sections 5.F and 17.E require a Company-assigned line value before package distribution, subject to the stated exceptions; Section 5.D.1 treats that guarantee separately from accrued PCH. Retain the published line guarantee independently from summed pairing credit and flag discrepancies instead of assuming a trip sum supersedes it. Flight/deadhead totals also omit other credit: reserve under 5.G is the greater of four PCH per day or actual PCH performed; vacation under 5.I is four PCH per day; 5.N contains training and CBT credit rules; 5.D.6 pays four PCH for each Company-assigned one-in-seven beyond three unpaid ones per bid month. These are completeness gaps for future pay estimates, not a requirement to implement payroll now. Sources: Sections 5.D–5.I and 5.N, pp. 25–29 (PDF 37–41); 17.E, p. 119 (PDF 131).
-
-**C7 — The existing rate arrays have an identifiable CBA source.** Every value in `app/Data/pay_rates.json` matches Appendix 5-A's **January 1, 2024** column: `CA` is Captain, `FO` is First Officer, and array positions 1–12 correspond to longevity years 1–12. The appendix displays dollar hourly rates and has separate columns effective January 1 of 2021, 2022, 2023, and 2024. It does not split these pilot tables by fleet. This resolves the source column and longevity ordering, but the JSON still lacks explicit currency/effective-date metadata and does not prove that these are the applicable 2026 rates. Section 5.B also permits a discretionary first-year rate increase within its stated limit. Sources: Section 5.B, p. 25 (PDF 37); Appendix 5-A, p. 32 (PDF 44).
+**C6 — Preserve the distinction between trip totals and published line guarantee as source coverage grows.** Giving complete Trips totals precedence over Lines/Overview totals is an import/display policy. Sections 5.F and 17.E require a Company-assigned line value before package distribution, subject to the stated exceptions; Section 5.D.1 treats that guarantee separately from accrued PCH. The existing model retains the published line guarantee independently from summed pairing credit. Further source support must preserve that distinction and flag discrepancies instead of assuming a trip sum supersedes it. Flight/deadhead totals also omit other credit: reserve under 5.G is the greater of four PCH per day or actual PCH performed; vacation under 5.I is four PCH per day; 5.N contains training and CBT credit rules; 5.D.6 pays four PCH for each Company-assigned one-in-seven beyond three unpaid ones per bid month. Some categories are already supported by the pay engine; the unsupported cases below remain separate scope. This finding is not a task to recreate implemented pay components. Sources: Sections 5.D–5.I and 5.N, pp. 25–29 (PDF 37–41); 17.E, p. 119 (PDF 131).
 
 **C8 — Hazard-pay rules are partly specified, not wholly undefined.** Section 5.D.4 provides four hours at 150% of the hourly rate above guarantee for qualifying Hostile Area assignments; 5.D.5 provides four PCH in addition to MBPG for each Hostile Area layover day. Section 24.B defines Hostile Areas and the Company's maintained list and dispute process. An international airport, long layover, or generic region tag does not establish eligibility. Record these supplied rules while leaving the applicable designation/date and any later amendments unresolved. Sources: Section 5.D.4–5, p. 26 (PDF 38); 24.B, pp. 179–180 (PDF 191–192).
 
@@ -139,7 +280,6 @@ The user clarified the following for this documentation review. These clarificat
 - **Segment date:** Assign each flight segment's **full credit to its departure Z day**, including a segment that arrives after 0000Z. A duty period with multiple legs can therefore contribute credit to multiple Z days. Do not split a segment at midnight or assign all its duty period's segments to the same date.
 - **Daily valuation and pay-period allocation:** Preserve the departure Z day used for the awarded/actual comparison separately from the compensation period receiving the credit under Section 5.M. Apply that section to the covered transitioning duty after establishing its credit on the daily basis above; crossing the boundary does not duplicate the credit in both periods.
 - **Premium eligibility:** The extra 50% is conditional on carry-in creating qualifying excess days or work on scheduled days off. Carry-in alone does not qualify. Determine the eligible assignment and applicable Section 5 compensation treatment separately from moving its credit into the receiving period. Preserve the distinction between flight-duty treatment under 5.L.1 and non-flight treatment under 5.L.2; this clarification does not authorize adding 50% to every deadhead or every PCH in a qualifying duty period.
-- **Scope:** The carry-in calculation clarifications were documentation-only. The user subsequently authorized C1's code/UI terminology correction; changes to the calculation rules remain separate tasks.
 
 Illustrative daily comparison for two covered carry-in Z days:
 
@@ -149,302 +289,34 @@ Illustrative daily comparison for two covered carry-in Z days:
 | Day 2 | 2:00 | 4:00 | 4:00 |
 | Total | 7:00 | 7:00 | **9:00** |
 
-The daily comparison produces 9:00, even though both aggregate input totals are 7:00. A segment departing at 2300Z and arriving at 0200Z contributes its full applicable credit to the departure Z day; the arrival day receives no separate portion of that segment. These examples describe valuation and date attribution, before any separately eligible premium, and do not recalculate the historical package cases below. The earlier example that simply added two legs' credit has been replaced because it did not demonstrate the awarded-versus-actual daily comparison.
+The daily comparison produces 9:00, even though both aggregate input totals are 7:00. A segment departing at 2300Z and arriving at 0200Z contributes its full applicable credit to the departure Z day; the arrival day receives no separate portion of that segment. These examples describe valuation and date attribution, before any separately eligible premium, and do not establish actual payroll.
 
 For bid comparison before work is performed, awarded credit can be shown as a planning value. Actual worked credit remains unknown until supported by actual records; absence of those records is not zero actual work or a finalized payable amount. Keep the awarded schedule and actual work records distinct, including any relevant work that replaces an awarded assignment.
 
-### Review disposition
+### Rules and coverage still needed beyond supported pay estimates
 
-Confirmed from the supplied CBA: UTC Day and Carry-In Days definitions, compensation Month boundaries, Section 5.M's transition-credit allocation, the 64/70 PCH guarantees, the existing rate arrays' 2024 source/order, and the scheduling provisions cited above. The user confirmed the duty-period boundary, per-Z-day greater-of-awarded-or-actual calculation, full-segment departure-day attribution, and conditional premium eligibility as recorded above. The daily greater-of rule is a user-confirmed clarification; this review has not identified a separate clause expressly stating that daily comparison. Unresolved for any future implementation: source coverage identifying duty periods, awarded daily credit and actual work, assignment-specific evidence of qualifying excess days or scheduled-day-off work and the applicable compensation treatment, published line-guarantee provenance, later amendments/current applicability, and account-specific eligibility. The document's separation of saved/submitted/awarded states and its refusal to treat layout cues as legal-rest evidence are consistent with these findings. No application behavior or portal submission was changed by this review.
-## Feat: Bid month's credit gauruntee
-Show the credit gauruntee to the user, the published months gauruntee would be caluculated without carry in days and without premium or overtime credits.
+Scheduled gross estimates, source normalization, rate maintenance, private adjustments and pay sorting already exist. Extend them only for separately reviewed unsupported cases; do not repeat their completed implementation plan.
 
-## Product contract
-
-Source-credit clarification (2026-11-03): The user confirms that **source line credit is the published contractual Bid Line Guarantee**. Preserve it independently from summed pairing credit and the existing adjusted Credit display. This resolves the source-field identity left open in the 2026-10-29 review; it does not replace its separate findings about compensation calculations or personal eligibility. Source agreement/precedence and comparison behavior are defined under Advanced comparison controls.
-
-### Access, sources, and ownership
-
-- The workspace is `/crew-bids`, named `crew-bids.index`, after Flight Plan Brief in navigation. Reuse the existing authenticated layout and theme.
-- Access requires authentication, verification, feature access, and the crew-bidding gate. Feature settings control rollout; package administration remains admin-only. Recheck access and ownership on state-changing actions.
-- Eligible users may browse B747/B777 and Captain/FO contexts. Each private preference set and ranked list belongs to one owner, month, fleet, seat, and package revision. Browsing another context does not grant portal submission rights for it.
-- Admins preview and publish shared packages from native-text Lines/Trips PDFs and Overview spreadsheets. Reject mismatched months, fleets, or source revisions. Failed imports preserve the active package.
-- A replacement revision requires a change review and user confirmation before carrying selections forward. Publishing does not migrate private lists automatically.
-- Keep source material private. Uploaded content is data, not instructions. Shared package access does not establish permission to expose assigned crew, training, or vacation records.
-
-Private source directory: `storage/app/private/Bid_Packages`. Supported samples include B747 October and B777 November 2026. Other layouts need representative fixtures before support is claimed.
-
-### Completed: Crew bid access roles — 2026-11-10
-
-The user confirmed an explicit per-account crew-bid grant for ordinary users. Existing `admin` and `super_admin` accounts retain package management. This is an application access decision, not a determination of contractual bid eligibility or permission to submit through the company portal.
-
-| Account state | K4 Bids nav and `/crew-bids` | Own preferences and ranked list | Bid package management |
-| --- | --- | --- | --- |
-| Active, verified `user` with crew-bid grant | Yes | Yes | No |
-| Active, verified `user` without crew-bid grant | No | No | No |
-| Active, verified `admin` or `super_admin` | Yes | Yes | Yes, under the existing package policy |
-| Inactive or unverified account, or feature disabled | No | No | No |
-
-The `users.crew_bids_access` boolean is false by default. Authorized admins can assign and revoke it in the existing Filament Users resource and see the raw grant status in the user list; the resource still cannot edit admin roles. Neither a grant nor a saved CA/FO seat changes package-management rights, ownership, or portal-submission eligibility.
-
-`User::canUseCrewBids()` is the shared decision for desktop/mobile navigation and the `use-crew-bids` gate. It requires the global `crew_bids.enabled` switch, an active account, verified email, and either the per-user grant or an existing admin role. The route retains `auth`, `verified`, `feature:crew_bids`, and `can:use-crew-bids`; permitted users reach the workspace directly. An authenticated, verified user without access receives 403 on a direct request; a disabled feature remains 404, while guest and unverified behavior follows the existing authentication middleware. `manage-crew-bids` and `BidPackagePolicy` remain admin-only. Livewire and save actions recheck access after a grant is revoked. The former `features.crew_bids.for_all_users` setting and its example environment entry were removed; `enabled` remains the global shutdown switch.
-
-Deployment requires the `add_crew_bids_access_to_users_table` migration. Before rollout, identify accounts that currently rely on `for_all_users`, agree which should receive grants, and apply those grants deliberately. The migration does not infer grants from existing private workspaces or grant every account. Revocation removes nav and route/action access while retaining the owner's saved data for any later regrant.
-
-Verification: 24 focused tests passed (157 assertions), covering granted and ungranted users, both admin roles, inactive and unverified accounts, the disabled feature, direct route and both nav layouts, admin grant/revoke, package-management denial, owner isolation, and revocation/regrant during an open workspace. No company-portal submission behavior was added. Pint passed after PHP edits, and one Larastan run passed with zero errors. No full suite or manual browser review was run.
-
-### Bid package management — implemented 2026-11-03
-
-Admins manage packages in **Filament → Bid Packages** (`/admin/bid-packages`). The K4 Bids **Manage package** control opens this resource. Access uses the existing `manage-crew-bids` gate and a `BidPackagePolicy`; disabling crew bidding also disables package management. The list includes drafts, published packages, and archived packages, with month/fleet/revision, importer, line/trip counts, saved-workspace count, and UTC publication time. Search month/revision and filter fleet/status. The preview shows identity, timestamps, counts, and source coverage without displaying users' private preferences or ranked selections.
-
-Manual workflow:
-
-1. **Import package:** upload up to three sources, at most one Lines PDF, one Trips PDF, and one Overview XLSX, each at most 12 MiB. Native-text PDFs and supported XLSX layouts remain required. Review the resulting draft's identity, counts, and coverage. Partial manual packages remain supported, with missing sources labelled explicitly.
-2. **Replace draft sources:** the importing admin can regenerate an unused, unpublished draft from a complete replacement file set. Replacement does not merge with old sources, which are no longer retained. Identity and contents are derived from the new sources; there is no free-form metadata or payload editor. Validation failure preserves the draft. If the replacement files belong to another package, open that package instead; the existing draft is preserved.
-3. **Publish shared package:** the importing admin confirms publication after reviewing the preview. Publication does not migrate private rankings. Published contents cannot be edited through package management; corrections are imported as a new revision, retaining the existing crew review/confirmation workflow.
-4. **Archive / Restore package:** any authorized admin can archive a published package or restore its availability. Archiving hides it from new selections and newer-revision notices. Existing saved workspaces remain accessible and editable by their owners in the seat for which they were saved; archiving does not create access to another seat or migrate/delete lists. Restore makes the package selectable again.
-5. **Delete draft:** only the importing admin can delete an unused, unpublished draft, after confirmation. Published packages and drafts with saved workspaces cannot be deleted; bulk deletion is unavailable. A restrictive database foreign key also prevents deleting any package with dependent workspaces.
-
-Both the Filament importer and the retained Livewire import entry point use `ImportBidPackage`, with shared file validation, a five-attempts-per-minute limit per admin, parser-version/content fingerprint deduplication, and temporary-source cleanup. Identical imports reuse the existing package; importing an existing published package opens it without publishing a duplicate or restoring an archived package. Another admin's unpublished draft can be viewed, but not replaced, published, or deleted. Publication, replacement, deletion, and archive/restore recheck authorization; draft mutations lock/recheck the record inside a transaction. Unexpected import failures are reported with a recovery notification and leave stored packages unchanged. Normalized payloads remain encrypted; source files are not retained for download or later reprocessing.
-
-Deployment requires the `add_package_management_to_bid_packages` migration, which adds nullable `archived_at` and changes the workspace package foreign key from cascading deletion to restrictive deletion. Rolling it back discards archive timestamps and restores the former cascade behavior. Automated email/portal intake, receipt history, retained source manifests, and automatic publication remain planned separately below.
-
-### Preferences, scheduling, and ranking
-
-- Goals use strict priority: Maximize credit, Maximize days off, Fewer work blocks, and Maximize pay can all be selected and reordered. A lower goal only breaks ties in higher goals; natural Line ID is the stable final tie-break. Maximize pay uses the existing final rounded complete estimate: Estimated line value for carry-in lines, otherwise Estimated pay. Missing/incomplete values rank after complete values when pay is compared, without overriding a higher-priority goal or using a known minimum as a complete total.
-- Requested UTC days off and selected start city are hard filters. Confirmed conflicts disappear from available results. Already selected choices remain in their manual order with warnings.
-- All supplied package dates/times are UTC. Blank Overview date cells mean days off. Every UTC calendar date from trip report through release is occupied, including full layover/rest days, deadheads, reserve, training, and carry-in/out work.
-- Days off and contiguous work-block counts apply to the selected month. Source duty days are a separate metric. Published carry counts retain their source scope; the calculated fallback counts unique occupied UTC dates after month-end.
-- Incomplete dates remain unknown, with `Dates incomplete; conflicts unknown`; missing data never proves a conflict-free match or a day off.
-- Preference/filter edits refresh results immediately and save independently. Browsing sort and filters never change the saved manual ranking.
-- Flying and reserve choices share one unique, contiguous ordered list for the active context. Add appends a choice and offers Undo; drag/Move controls change rank.
-- Autosave failures retain edits and offer Retry. Concurrent edits require reconciliation. Review/copy uses the persisted order and does not establish Submitted, Awarded, or Projected status.
-
-### Workspace and presentation
-
-- Returning users open saved results; first-time preference setup is skippable. Keep package statistics and source metadata under Package details and admin imports under Manage package.
-- My bid list opens a desktop drawer or mobile full-screen panel. The close button and Escape key dismiss either layout; clicking the workspace backdrop also closes the desktop drawer. Closing preserves browsing context and returns keyboard focus to the control that opened the list, or to the header list button if that control has disappeared.
-- Collapsed line cards fit within 150px without a card scrollbar: metrics/action, full-month calendar, then footer controls. Line and Trip sit inline on the left; Details and the question-mark match disclosure stay on the right. Expanded content may grow.
-- Compact flags beneath the line ID show a common return airport, a common start/end route, or mixed trip endpoints, plus known deadhead presence. Endpoint flags require complete linked-trip endpoint coverage; positive deadhead evidence may still appear with partial coverage. Use icons on narrow screens, labels on larger screens, and full explanations in Details. These flags describe trips, not an assigned crew base.
-- Use one interactive chevron timeline per trip. Exact dated UTC times, block basis, elapsed duration, and available credit/rest information expand at the selected segment. Avoid a duplicate vertical leg list.
-- Keep the workspace header sticky and the expanded card's Add/Selected bar below it. Retain independent previews and keyboard-accessible Timeline / Legs, Layovers & Rest, and Pairing Metadata tabs.
-- Scheduled connections under three hours are grouped separately. Layover chips are amber below 10 hours and blue at 24 hours or more. Exactly 10 hours is not short; exactly 24 hours is extended. Source rest is separate. These cues do not establish legal rest or international status.
-- Omit missing metrics together with their labels, while preserving real zeros, trip identifiers, conflict/incomplete-date warnings, inconsistent-connection evidence, and import diagnostics.
-- Keep airport codes and times prominent. Use existing airport-detail popovers where applicable and reuse the brand palette: Aviation Blue `#1B365D`, Compass Gold `#C5A059`, and existing light/dark tokens.
-- Use the existing cart, plus/check, calendar, airplane, document, cog, and question-mark icons with accessible names. Reserve occupancy is orange, flying occupancy blue, off dates neutral, and unknown dates marked `?`. Do not rely on color alone.
-
-### Block, credit, and PCH definitions
-
-**CBA definitions and user-confirmed calculation rules:**
-
-- Source line credit is the user-confirmed published contractual Bid Line Guarantee (2026-11-03). The importer retains this original value as `source_credit`; complete Trips totals may replace the working `credit`/`base_credit` values but must not replace the published guarantee. Keep the published guarantee, base pairing credit, and adjusted display credit separately labelled.
-- PCH means Pay Credit Hours. Carry-In Days (also called Transition Days) are duty days continuing from the current bid period into the subsequent bid period.
-- Section 5.M.1 pays all PCH for a duty assignment originating in the current period and scheduled to transition into the new period in the new period. Section 5.M.2 credits all PCH accrued during the transition to the Month of the last duty assignment for Monthly Pay under 5.D.
-- The user identifies the transitioning duty assignment as one duty period, potentially containing multiple legs. Calculate its carry-in credit per Z day: assign each flight segment's full credit to its departure Z day, compare awarded and actually worked credit separately for each covered day, and sum the greater daily amounts. Preserve daily attribution separately from the receiving compensation period under Section 5.M.
-- The daily comparison is `sum(max(awarded credit for day, actual worked credit for day))`, not `max(total awarded credit, total actual worked credit)`. Before actual work is known, awarded credit is a planning value, not a finalized payable amount. This daily comparison is user-confirmed; a separate supporting CBA clause has not been identified in this review.
-- Compensation Months follow calendar months except January 1–30, January 31–March 1 for February, and March 2–31 for March. Thus January 31 and March 1 both belong to the February compensation Month.
-- This allocation determines which period receives the credit. It does not itself prescribe an additional 50% premium. Sources: Section 2, pp. 13–14 (PDF 25–26); Section 5.M, p. 28 (PDF 40).
-- The user confirmed that premium eligibility depends on qualifying excess days or scheduled-day-off work. Apply the relevant compensation provision to the eligible assignment; a blanket 50% addition to carry credit remains incorrect.
-
-**Current carry-credit metric — calculation discrepancies remain:** C1's terminology is corrected. The paragraphs and examples below describe the existing arithmetic, not a complete contractual compensation calculation. Findings C2–C6 and S1 identify unsupported premiums, missing credit categories, and allocation/guarantee distinctions. The next-month subtotal is not total contractual PCH or the full allocation required by Section 5.M.
-
-Block and adjusted Credit display and sort independently. Complete Trips PDF Block Time and Credit Time totals take priority over Lines/Overview totals. Preserve source values and the calculation breakdown in Details. Deduplicate pairing references; incomplete linked totals retain recorded line values without a partial premium.
-
-The **Carry credit subtotal** includes only legs departing in the next calendar month in UTC: operating flights at 100% of elapsed time, deadheads at 50%, and ground transfers at zero. A flight departing before calendar month-end contributes nothing to this subtotal even if it arrives next month. The existing formula assumes full Trips base credit already includes underlying flying/deadhead credit, then adds an extra 50% of the subtotal, including credited deadheads, to that base. These are the implementation assumptions under review, not contractual requirements. The terminology correction preserves this arithmetic and does not implement the daily awarded/actual comparison or evaluate premium eligibility. Preserve exact seconds when fractional minutes result; do not use decimal-hour notation.
-
-November B777 historical implementation cases (arithmetic examples; not CBA-validated entitlements):
-
-| Line | Block | Base credit | Carry credit subtotal | Extra 50% | Adjusted credit |
-| --- | --- | --- | --- | --- | --- |
-| F83 | 90:15 | 97:30 | 7:15 | 3:37:30 | 101:07:30 |
-| F61 | 96:50 | 96:50 | 14:30 | 7:15 | 104:05 |
-| F46 | 83:05 | 87:52 | 7:30 | 3:45 | 91:37 |
-| F55 | 85:40 | 85:40 | 7:30 | 3:45 | 89:25 |
-| F38 | 91:10 | 91:40 | 0:00 | 0:00 | 91:40 |
-| F26 | 89:45 | 89:45 | 0:00 | 0:00 | 89:45 |
-| F23 | 74:35 | 75:05 | 2:00 | 1:00 | 76:05 |
-
-References: `storage/app/private/Bid_Packages/777 November 2026 Lines.pdf` and `storage/app/private/Bid_Packages/777 November 2026 Trips.pdf`.
-
-## Plan: Automated bid-package imports — 2026-10-29
-
-### Goal and publication policy
-
-Receive the monthly package without manually downloading and selecting its attachments. The user also receives a work Outlook email with approximately ten PDF/Excel attachments. **Automatically publish complete, validated first packages; hold revisions for admin review.** Direct public HTTPS links for the December B777 Lines, Trips, and Overview sources were verified on 2026-11-13. Portal retrieval is the first implementation path; email intake remains a later adapter pending a real work-email manifest and forwarding/provider decisions.
-
-The portal import uses a configurable admin owner and needs no stored portal credentials for the verified direct links. It does not submit a bid, migrate saved lists, or correct the compensation calculations identified in the CBA review. The checked-in schedule is off by default until an operator enables it with an active, verified admin ID; the local Sail environment was enabled with admin ID 1 after the December import and focused checks.
-
-### Evidence and existing integration points
-
-- Filament package management and `CrewBids::previewImport()` share `ImportBidPackage`, allowing one to three PDF/XLSX files, at most 12 MiB each. `ParseBidDocuments` accepts at most one Overview XLSX, one Lines PDF, and one Trips PDF for a matching month/fleet/revision. It allows partial source coverage for manual imports. Passing all ten attachments directly to this parser would fail.
-- Local samples include Lines, Trips, Overview, Training Requirements, Bid List, and Vacations files across B747/B777 and multiple months. These establish likely document roles, not the complete manifest of any one email. Dedicated training, vacation, and bid-list imports remain deferred.
-- Package payloads are encrypted; the parser fingerprint incorporates sorted source hashes and parser version. Manual import deletes uploaded source files after parsing. Automation needs a short-lived, private staging lifecycle and delivery provenance in addition to the existing package fingerprint.
-- `PublishBidPackage` authorizes `manage-crew-bids`, checks draft ownership through `imported_by`, and publishes in a transaction. Queued automation has no interactive authenticated user; a dedicated source authorization path is required. It must not simply call this action without an actor or bypass authorization.
-- The December B777 files `777 December 2026 Lines.pdf`, `Trips.pdf`, and `Overview.xlsx` returned HTTP 200 with expected document types from `/hyperlinks/` without login. The existing focused Filament import test parsed all three as one complete December package. The corresponding B747 names returned HTTP 200 with expected types; the new command parsed and published the complete December B747 group under admin ID 1, while the existing B777 release was unchanged. Direct links establish these releases' source sets; they do not prove a directory listing, a stable naming contract for every month, or a revision marker in the Overview workbook. `/Pages/Documents.aspx` remains uninspected and the bid-submission discovery command remains separate.
-- The connected Outlook account is personal, not the work mailbox. The actual package message, sender rule, attachment count/size, forwarding behavior, and correction-email format have not been verified. No personal mailbox content is needed for implementation.
-- Laravel 13.34.0 was confirmed through Sail. Existing scheduled work is registered in `routes/console.php`; the project already uses single-server and overlap protection. Mailgun transport/configuration exists, but this does not prove production inbound-mail support is configured.
-
-### Source options
-
-| Source | Plan | Prerequisites and tradeoffs |
-| --- | --- | --- |
-| Scheduled crew-bids download | First adapter: construct only the expected `/hyperlinks/{fleet} {month} {year} {Lines.pdf, Trips.pdf, Overview.xlsx}` URLs, validate all three files, parse, deduplicate, publish a first release, and hold changes. | Direct access is verified for December B747 and B777. Future naming, correction behavior, and source revision metadata must be observed. A renamed or unavailable file holds the group; it is never inferred from an old release. Configure an accountable admin before enabling the schedule. |
-| Outlook forwarding → inbound email provider → Laravel | Later adapter. Match verified sender/subject and correction patterns, classify all attachments, and feed the same package rules. Retain originals in Outlook. | Verify the actual manifest, allowed external forwarding, provider, payload sizes, and receiving domain. Microsoft 365 can block external forwarding. No work-mailbox password is needed in Laravel. |
-| Microsoft Graph mailbox reader | Fallback if forwarding is blocked and the organization permits a mailbox integration. Read a dedicated folder using approved OAuth access and a resumable checkpoint. | Requires work-account app registration/consent and token lifecycle management. The personal Outlook connector is not a production Laravel integration. Do not start with this additional integration unless forwarding and portal access are unsuitable. |
-
-Microsoft documents organization-level [external-forwarding controls](https://learn.microsoft.com/en-us/defender-office-365/outbound-spam-policies-external-email-forwarding). For inbound delivery, first check the existing Mailgun account/domain: [Routes can POST received messages and attachments](https://documentation.mailgun.com/docs/mailgun/user-manual/receive-forward-store/receive-http), with [signature verification](https://documentation.mailgun.com/docs/mailgun/user-manual/webhooks/securing-webhooks). Select and test one supported payload format; signature locations vary by format. If Mailgun receiving is unavailable, [SES receiving](https://docs.aws.amazon.com/ses/latest/dg/receiving-email.html) with private object storage is an alternative, subject to domain/region setup. Choose the provider after checking existing production facilities, message-size limits, and receiving costs; do not add dependencies or infrastructure merely because both alternatives are listed.
-
-### Shared intake and package validation
-
-The target shared flow is: **receive → stage privately → classify attachments → group package sources → validate → create draft → publish first release or hold revision**. The first portal adapter handles one known three-file group at a time: it downloads to private temporary files, validates response type and size, reuses `ParseBidDocuments`, and deletes the temporary files. It uses the existing unique fingerprint and a per-period/fleet lock, then publishes a first package or holds changed content. Durable delivery receipts, cross-source provenance, an admin import-history view, and email-specific classification remain in the next shared-intake phase.
-
-1. **Receive durably.** Verify the provider signature, freshness/replay rules, configured recipient, and registered forwarding-source policy before accepting an email. Provider authentication proves who delivered the webhook, not that a visible From header is genuine; forwarding provenance needs a sample-based policy using provider authentication results and expected sender/forwarder information. Persist the receipt and bounded attachment data before acknowledging success; retry delivery safely after temporary failures. Queue parsing after the receipt transaction commits. Jobs carry receipt IDs, not email bodies, credentials, or attachment bytes.
-2. **Inventory every attachment.** Record private filename, byte size, content hash, detected format, classification, and reason for exclusion/hold. Classify using PDF content and workbook structure as well as names. Ignore proven inline signature images, but flag unexpected document attachments. Do not equate “ten attachments” with completeness. Detect truncated, encrypted, malformed, oversized, or unsupported files. Bound ZIP expansion/XML processing for XLSX, avoid external references and macros, and never execute document content. `.xls`, `.xlsm`, and scanned PDFs need explicit support decisions; they are not silently treated as supported XLSX/native PDFs.
-3. **Build coherent groups.** Separate sources by period, fleet, revision, and seat where source documents actually distinguish seats; the present package model is period/fleet-based and carries crew complements. Associate each supported group with its Lines, Trips, and Overview. Classify Training Requirements, Bid List, and Vacations without adding their personal contents to shared package payloads. Hold unknown roles for review. Do not combine a new revision's Lines with an earlier revision's Trips or Overview, even when filenames match. A date in an email subject is a hint, not package identity.
-4. **Define a complete automated import.** Proposed initial profile: one native Lines PDF, one native Trips PDF, and one supported Overview XLSX per period/fleet group. Confirm that profile from one full delivery before enabling it. Require matching identity, supported schema, successful parse, expected line/trip references, consistent coverage, and existing source-consistency checks. An Overview may lack a revision marker; it must have coherent delivery provenance and pass cross-file validation rather than being assigned an invented revision. A parser success with partial coverage does not qualify for automatic publication. Extra known unsupported document roles are explicitly excluded; an unexplained missing required role holds that group. Independent fleet groups may publish independently if each is complete; never publish a partially validated group.
-5. **Deduplicate and order revisions.** Use a durable unique receipt identity for delivery retries, attachment hashes, and the existing parser-version/package fingerprint for normalized drafts. Add database uniqueness and per-context locking for simultaneous email/portal arrivals; queue uniqueness alone is insufficient. Identical content is a no-op with additional provenance. Changed content for a previously published period/fleet is a revision even if its printed revision label is unchanged. Different labels or conflicting contents hold for review; receipt time and lexicographic labels do not establish a newer revision. Never infer deletions or replace good files from an incomplete delivery. A partial correction can reference an earlier manifest only through a reviewed, explicit merge.
-6. **Apply publication policy atomically.** With the context locked, recheck completion, registered-source authorization, duplicate status, and whether a published package already exists. A first complete validated package may publish automatically. Any changed package in that context becomes a reviewable draft showing source differences, affected lines, and validation results. Reuse publication behavior through an action with explicit automated-source authority and an accountable configured admin owner; recheck authorization if that owner/source is disabled. Keep interactive ownership and gate checks intact. Publishing a revision must not migrate users' selections or change their manual order; preserve the existing migration review and confirmation.
-
-Proposed durable records are an import receipt with state/source/attempt details, a private attachment manifest, and links from each resulting package to its receipts. Keep normalized `BidPackage` payloads in the existing model. Reuse `ParseBidDocuments`, `ReadBidOverview`, and the publication behavior. Manual draft creation now lives in `ImportBidPackage`; automation still needs its own explicit source authority and staging lifecycle rather than invoking UI methods or assuming an authenticated admin. Database schema and migration details belong to implementation after inspecting the schema.
-
-### Email delivery implementation
-
-Create a dedicated receiving subdomain/recipient without replacing the organization's work-mail MX records. Confirm provider support and the largest complete sample message, including encoding overhead, against provider, web-server, PHP, and storage limits. Start with a controlled manual forward into the intake flow, inspect its manifest, then configure the narrow Outlook rule once that works. Include revised-package subjects and provide manual forwarding as recovery.
-
-Prefer a signed multipart attachment webhook if the existing inbound provider supports the actual message sizes. If messages exceed safe request limits, use authenticated provider storage retrieval or private object storage with a small event notification. Download only from verified provider destinations; do not follow arbitrary URLs in email bodies. Treat forwarded-as-attachment `.eml`/`.msg` and cloud-file links as explicit cases: support the observed format or hold with a clear reason rather than pretending there were no attachments.
-
-Proposed staging retention is seven days for raw messages and attachments, including failed/revision-held deliveries, with an expiry notice and a way to supply the source again. Keep only necessary normalized package data and minimal provenance afterward; configure provider-side retention too. Restricted raw training/vacation/bid-list documents remain admin-only during staging. Logs and status notifications contain IDs, counts, and failure categories, not full messages, personal records, credentials, or signed download URLs. Confirm this retention choice before implementation.
-
-### Portal discovery and scheduled checking
-
-The first adapter uses only the verified host and constructed `/hyperlinks/` filenames; it does not follow redirects or crawl portal links. `crew-bids:import-portal` defaults to the next UTC bid month and both fleets, with `--period`, `--fleet`, and `--admin-id` for a bounded operator run. A 404 for any required source means “not yet complete”; login HTML, redirects, bad type, oversized content, and mismatched identities fail closed. Compare a future correction with its work-email copy when available, and inspect `/Pages/Documents.aspx` separately to learn whether there is a reliable manifest or revision signal.
-
-If future downloads require authentication, unattended checking cannot use the bid-submission feature's transient credentials. Choose an import-specific authentication policy or keep those releases manual. The current adapter stores no portal secret and never posts to the bidding portal.
-
-The configured UTC schedule checks hourly on days 8–16 and every six hours otherwise, including after the first release so corrections are detected. It is disabled by default until `CREW_BIDS_PORTAL_IMPORT_ENABLED=true` and `CREW_BIDS_PORTAL_IMPORT_ADMIN_ID` names an active, verified admin. These are polling defaults, not contractual publication dates or verified portal rate limits. The parser requires coherent PDF identity and source coverage; a changed fingerprint for an existing period/fleet is held for admin review even if its printed revision label is unchanged.
-
-The current command runs synchronously under `onOneServer()` and `withoutOverlapping()` with a second per-period/fleet cache lock. GET requests have connection/response timeouts and bounded transient retries. The Filament Bid Packages page also provides an authorized “Fetch from CrewBids” action for a selected month and fleet; it reports published, revision-held, unchanged, missing, and failed outcomes. The manual upload path remains available. Local `composer run dev` now includes `schedule:work`; a separate scheduler worker was started for the current Sail session. A deployed environment still needs its normal once-per-minute `schedule:run` service. The next operational phase must persist last successful check versus last new package, expose failures/retries, and add source history; scheduler locks do not replace those records. Laravel documents [scheduler overlap/single-server controls](https://laravel.com/docs/13.x/scheduling) and [queue uniqueness and retries](https://laravel.com/docs/13.x/queues).
-
-### Delivery sequence and acceptance
-
-| Phase | Result and acceptance |
+| Remaining case | Evidence or rule work required |
 | --- | --- |
-| 1. Direct portal adapter — implemented | Check known three-file groups, reject incomplete/invalid responses, parse matching identity, use a fingerprint for idempotency, publish a first complete release, and hold changed releases as drafts. Keep scheduled use off until an admin owner is configured. |
-| 2. Confirm release and email manifests | Inspect a complete work-email delivery and a correction; establish sender, attachment roles, fleets, revision evidence, and forwarding feasibility. Inspect portal Documents for a stable manifest and confirm naming beyond December B777. |
-| 3. Shared intake and classification | Add durable receipts, source hashes/provenance, short-lived staging, complete grouping, and actionable holds. Existing manual imports continue to work. No partial group replaces a published package. |
-| 4. Email adapter and publication | Verify a controlled forward end to end; classify all attachments and converge identical portal/email content on one package. Enable the narrow Outlook rule only after verification. |
-| 5. Operational rollout | Show import history, last successful check, source, missing roles, revision differences, and retry/review actions in Manage package. Add late-arrival status and verify scheduler/worker operation. |
+| New-hire training/weekly pay and discretionary first-year rate | Section 5.A/5.B, printed p. 25 (PDF 37): establish qualification/first observation dates and any authorized first-year rate within its stated limit. Longevity alone does not establish hourly Flight Pay eligibility. |
+| Partial availability and Type/Crew Class qualification changes | Sections 5.C and 5.T.4, printed pp. 25, 31 (PDF 37, 43): establish unavailable dates, actual qualification-effective date, eligible scale and applicable proration. A browsed seat is not qualification evidence. |
+| Non-flight or training SDFDO | Resolve 5.D.2/5.L.2/5.N.5 interactions and supported worked examples before a complete amount is available. Requested-off dates and calendar gaps do not establish contractual SDFDO. Printed pp. 25–29 (PDF 37–41). |
+| Non-passenger air and nonlocal surface deadhead | Establish actual-block or applicable drive/published-time evidence under 5.H and 19.G.4; distinguish company-directed travel from personal commute and local transportation. Printed pp. 26–27, 142–143 (PDF 38–39, 154–155). |
+| Training of 16 or more days | Implement the Monthly Guarantee branch under 5.N instead of multiplying the short-training daily rule. Printed pp. 28–29 (PDF 40–41). |
+| Hostile-area pay and extra Company-assigned one-in-seven days | Obtain qualifying assignment/designation dates and the current Company list under 24.B; resolve 5.D.4–6 eligibility and separate additions. Printed pp. 26, 179–180 (PDF 38, 191–192). |
+| Sick leave, jury duty and emergency leave | Review the cross-referenced 7.C.3, 12.I and 12.D rules; Sections 2/5 alone do not establish complete valuation. |
+| FAR-limit/non-revenue special cases and higher negotiated overrides | Resolve 5.S and 5.Q scope and supporting facts. A duty-limit flag must not silently erase compensation; declared higher overrides require evidence. Printed pp. 29–30 (PDF 41–42). |
 
-For late-arrival monitoring, use the supplied CBA's 2359Z on the 12th publication deadline as an initial configurable expectation, tied to the target bid period. Show a missing-package warning after it passes and an actionable pre-bid-close warning before the expected 16th close. Confirm current company timing and notification lead time. Neither a failed poll nor a missing email proves that the company has not published a package.
+Preserve the following user-confirmed planning policies as assumptions rather than independently CBA-verified interpretations: adjusted pay-longevity date; steps 1–12 capped at 12; March 1 anniversaries for February 29 in non-leap years; the new rate effective at 0000Z on the anniversary; actual compensation-period-day weighting for guarantees; earning/departure-day rates for allocated credits; and one final nearest-cent half-up USD rounding after exact entitlement calculations.
 
-Focused acceptance coverage should include the ten-attachment classification case; multiple fleets; partial/mismatched revisions; misleading filenames; unsupported Excel/PDF formats; missing required roles; corrupted and oversized files; spoofed or replayed intake; provider retries and concurrent arrivals; identical content across sources; older/out-of-order corrections; first-release automatic publication versus revision hold; disabled source/admin authority; privacy of excluded personal documents; worker failure/recovery; expiry; and preservation of published packages and saved rankings. Portal-specific tests use fake HTTP responses for login expiry, throttling, changed HTML, and interrupted downloads. Follow the testing-best-practices skill, use synthetic fixtures for personal data, and never hit live bid-write endpoints. At implementation integration run focused tests, Pint after PHP edits, and Larastan once.
+For guarantee credit `G`, rate intervals `r_i` and UTC-day counts `d_i` across `D` compensation-period days, preserve `guarantee USD = G × sum(d_i × r_i) / D`. This approved anniversary policy does not define partial-availability or qualification-change proration. Section 2/5 did not independently verify the adjusted-date, leap-day, anniversary weighting or rounding choices; obtain governing interpretations before describing them as contractual payroll rules.
 
-Before enabling scheduled portal checks, configure an accountable active bid admin and verify the deployed cache store supports shared locks. Before email implementation, resolve the real attachment manifest, permitted forwarding and receiving provider/domain, and staging retention. The user has selected automatic publication for complete first releases and review for revisions. Existing CBA credit discrepancies remain documented; import validation does not certify compensation calculations as correct.
+The approved Open Time flight off-day planning policy pays the entire additional `1.5 × hours flown × earning-day rate` above base, with the assignment excluded from ordinary credits. It does not resolve non-flight/training SDFDO pay. The outgoing carry-in line-value scenario assumes the next bid avoids those duties and adds a separately labelled receiving-period excess-day payment; passenger deadhead first credits 50% of scheduled travel, yielding 0.75× travel-hour pay. This scenario is not proof of actual excess-day entitlement, a universal SDFDO multiplier or the next month's complete pay.
 
-## Current focus: Auto bidding feature
+The retained rate table's source is Appendix 5-A's January 1, 2024 CA/FO column, longevity years 1–12, in USD; the user confirmed its intended package applicability on 2026-11-03. Further effective dates/amendments require new provenance. Private scenario facts can fill supported missing inputs, not supply a missing contractual rule. Gross compensation-period estimates do not establish deposit timing, taxes, deductions, per diem or expense reimbursement.
 
-Implementation status (2026-11-15): The workspace now offers Submit to Kalitta from Review bid list. A native form takes transient credentials, reads a fresh submitted PDF report, compares the complete order, and issues a ten-minute owner-scoped encrypted review. Final submission requires credentials again and explicit confirmation of the exact account/context, package release and bid eligibility. It reauthenticates, checks local and portal bindings, claims a single-use attempt, posts fresh successful controls once and reconciles another fresh report. Unknown outcomes block another submission until an authenticated read-only check. Other pending reviews are superseded after an attempt. A report match is displayed separately from receipt-email acceptance and awards. The user authorized local testing; `CREW_BIDS_SUBMISSION_ENABLED` remains false by default and is true in the private local environment. No scheduled process submits bids, and the existing review/copy workflow remains available.
-
-Live-test notes (2026-11-15): The supplied table identifies the bid period, package ID, revision, fleet line count and Open status; its December starting/ending dates do not provide a submission cutoff or time zone. The implementation rechecks Open status before writing. The user reached comparison and final review; a regression reproduced their false stale-state error when the portal's global users-logged-in field changed between requests. That display value is excluded from the binding while its fresh value is preserved in the post. Credential fields suppress autofill and clear on restoration. A controlled successful Update, receipt-email confirmation and browser review remain user testing work.
-
-The user previously confirmed that bidding was closed when the earlier readonly inputs were observed, and that portal numbers are unique: F1 → 1, Q99 → 99, R70 (also written R 70) → 70. The adapter accepts F/Q/R plus an optional space before a positive number, rejects numeric collisions across prefixes, and uses the displayed Choice values to order paired fields rather than DOM order. Runtime slot count, maximum line, and training rules constrain an offline candidate; it includes blank trailing line fields without changing unrelated settings. This does not prove account/seat eligibility, the bid window, or submission acceptance.
-
-Run `vendor/bin/sail artisan crew-bids:discover-portal` interactively for hidden employee-number/password prompts. Optional `--lines='F1,Q99,R70'` checks a candidate against observed numeric/training rules without posting it. It also compares the candidate with the Bid Sheet's visible form values and reports only added/removed counts and whether retained choices changed relative order. Those values are not a verified submitted order. Duplicate existing form numbers make the comparison unavailable. The command sends only the login POST and allowlisted page GETs, never a Bid Sheet POST. It uses a separate HTTP factory without application HTTP events/global middleware, an operation-local memory cookie jar cleared on exit, explicit timeouts, and no retries. Output contains counts, supported control names, and a report-link flag; it omits credentials, cookies, raw page/state values, account labels, and actual bid choices. It neither fetches the submitted report nor verifies context, deadlines, receipt semantics, or account matching. It is a local discovery tool, not an application submission flow.
-
-The public root form's observed `pages/Login.aspx` action and redirected `/Pages/Login.aspx` login forms are supported. When login redirects to the user-confirmed `/Redirect.aspx`, discovery visits that landing page with the same cookie jar before opening Bid Sheet. Repeated radio-button names, such as CBT settings, are accepted without including their values in the candidate; duplicate hidden, text, and mixed-type fields remain rejected. Unexpected failures identify the operation step and exception type, with only a numeric cURL code or PHP source basename/line when available. Raw upstream error messages, URLs, full paths, and previous exceptions remain excluded. An authenticated failure still requires the user-run diagnostic to establish its cause; a successful public GET alone does not verify login.
-
-An earlier user-run command returned 315 choice slots, zero editable slots, 21 populated slots, no submission-control names, and a Submitted Bid Lines link. A subsequent user-run command on 2026-11-13 returned 315 choice slots, 315 editable slots, 43 populated slots, the enabled control name `ctl00$ContentPlaceHolder1$btn_update`, and the same report-link flag. Neither run supplied a candidate list. The later structure is consistent with an open bid window, but the command did not inspect the window or deadline and did not press the control. The control name is an observed candidate for a submit/update action, not evidence of its event, accepted payload, or receipt. The 43 populated slots are counts only; they do not establish the complete submitted order or its account/context. No bid was submitted by discovery.
-
-A later supplied open-window page capture shows one bid-package row with a period, fleet, seat, revision, and displayed Open status. Its Update control calls a Web Forms postback with `ctl00$ContentPlaceHolder1$btn_update` as the event target and an empty event argument. Read-only discovery now parses those labels, checks the displayed employee number against the supplied login without outputting either value, cross-checks the table's line limit with the form, and recognizes the exact enabled Update postback. The displayed status does not establish the closing deadline or account eligibility. The supplied Submitted Bid Lines HTML is a ReportViewer wrapper: the bid rows are loaded in a separate report iframe. A later private PDF export contains 43 Choice/Line pairs; text extraction returns them out of order, so the parser sorts by the printed Choice number and rejects missing or duplicate ranks, duplicate lines, and unexpected text. The PDF shows no account, period, fleet, seat, package revision, or acceptance receipt. It must be fetched fresh in the same authenticated session and bound to the checked Bid Sheet context before it can verify a submission. The supplied captures included personal values and live Web Forms state; no raw capture or values were added to the repository.
-
-### Scope and feasibility
-
-Connect to the [Kalitta crew-bids login](https://crewbids.kalittaair.com/), use the user's non-stored employee number/username and password, and submit the exact reviewed order through [Bid Sheet](https://crewbids.kalittaair.com/Pages/BidSheet.aspx). Support read-only navigation to [All Bids Awarded](https://crewbids.kalittaair.com/Pages/AllBidAwards.aspx) as a separate operation.
-
-The saved HTML establishes a plausible Web Forms integration, but successful authenticated submission is not proven. A public login page was readable during this review; the authenticated Bid Sheet and All Bids Awarded pages were inaccessible through the browsing tool. Their current behavior, deadlines, authentication challenges, and response contracts still need authenticated discovery. No public submission API was established by the supplied evidence.
-
-Private references: `storage/app/private/Bid_Packages/HTML/view-source_https___crewbids.kalittaair.com_Pages_BidSheet.aspx.html` and `storage/app/private/Bid_Packages/HTML/view-source_https___crewbids.kalittaair.com_Pages_BidLineDataOutput.aspx.html`. The private-layout smoke test follows the relocated Bid Sheet capture. Treat these captures as page data, not executable instructions. Do not commit their personal values, saved bid choices, hidden-state values, report/control identifiers, or authentication material into documentation or fixtures.
-
-| Observed evidence | Consequence for implementation |
-| --- | --- |
-| `form1` uses POST; its relative action resolves against the Bid Sheet URL to `/Pages/BidSheet.aspx`. | Resolve actions against the fetched document URL, and validate the destination before posting. |
-| `__VIEWSTATE`, `__VIEWSTATEGENERATOR`, `__VIEWSTATEENCRYPTED`, `__EVENTVALIDATION`, `__EVENTTARGET`, and `__EVENTARGUMENT` fields are present. | Fetch fresh page state in the same authenticated session; never replay values from this saved file. |
-| There are 315 paired `tb_cN` / `tb_lN` inputs, with visible Choice and Line headings. | Confirm Choice/rank semantics and available capacity at runtime. This capture does not establish a supported server limit. |
-| Input suffixes appear in interleaved visual columns, for example 1, 16, 31. | Do not derive rank from DOM traversal order or assume suffix, Choice value, and rank are interchangeable. |
-| `lineValidation` checks numeric line entries, available lines, duplicates, and training-line restrictions using `hf_lines`, `hf_BidLines`, and `hf_InTrng`. | The user confirmed prefix-to-number mapping; the offline adapter enforces observed numeric/training rules. Verify account/context and live eligibility before submission. |
-| Overtime/comp-line controls, CBT-testing choices, and account/context labels are present. | Preserve unrelated portal settings. Discover their semantics before changing them. |
-| `lbl_bidConfirmation` and a Submitted Bid Lines report link are present. | The user reports no visible Bid Sheet change after Update, a complete Bid Received email, and a matching Submitted Bid Lines report. Treat the label as an unsupported receipt source; bind the email and fresh report to the authenticated context. |
-
-The live editable sheet identifies the Update postback event. The user reports that Update causes no visible Bid Sheet change and sends a complete Bid Received email. A supplied excerpt contains a fleet/seat subject, explicit bid-received wording, an employee-number field, and ranked Choice/Line rows; the user confirms the email lists every choice and a Submitted Bid Lines report showed the same updated order. The synthetic email parser checks that structure and the expected employee/fleet/seat without returning the name or account number. The email lacks a bid period and the sender/recipient delivery path has not been authenticated in the app. Do not infer success from the existence of a form, a confirmation-label ID, a redirect, or HTTP 200. Prefer the application's existing HTTP capabilities if an authenticated spike proves the complete protocol. Use browser automation only if the verified login/submission flow requires it; dependency changes need a separate implementation decision.
-
-### User workflow
-
-1. From My bid list, review the saved ordered list, package revision, month, fleet, seat, and existing warnings. Submission uses this exact sequence, independently of browsing sort or the active Lines/Reserve tab. Block unsaved changes and unresolved revision migration.
-2. Choose a future `Submit to Kalitta` action and enter credentials in a transient form. A read-only preflight establishes the authenticated account, active bid context, window/deadline, current submitted choices, valid line mappings, and eligibility. Keep viewing other fleets/seats separate from permission to submit for the authenticated account.
-3. Compare the portal's existing order with the proposed replacement. Show additions, removals, reordering, total choices, and any context discrepancies. Reject unknown mappings, duplicate choices, unsupported eligibility, or excess capacity; never silently truncate a local list, which can currently contain up to 1,000 choices.
-4. Require a deliberate final Submit action for the exact account/context and numbered replacement shown. Bind that review to the local workspace revision and list hash and to a normalized portal-context/current-order hash. The implementation must establish how portal package changes are detected; matching the month alone does not verify the source revision.
-5. On submission, log in/fetch fresh state, recheck those bindings, and send the verified submit action once. Set each Choice/Line pair according to the established mapping. Clear superseded trailing choices only as part of the reviewed replacement; preserve unrelated portal settings. Changed state returns the user to review before any write.
-6. Fetch a fresh report in the authenticated session and reconcile the complete ordered list and context. A Bid Received email can provide separate receipt evidence when its source, expected employee/fleet/seat, and full list are verified. Show `Submitted — verified` only when the established evidence proves acceptance and the stored order matches. Keep the local saved list available on every failure. A submitted bid and an awarded line remain separate states.
-
-This is an explicit, user-initiated operation. Preference edits, package publication, autosave, Add all matching, and background jobs must not submit or overwrite a company bid.
-
-### Credentials, sessions, and attempt records
-
-Neither the portal username/employee number nor its password is persisted, including encrypted storage. Keep credentials out of Livewire public properties/snapshots, database columns, Laravel sessions, Redis/cache, browser storage, queued jobs, URLs, logs, Debugbar/APM payloads, and exception reports. Use a transient HTTPS request form, request-memory credentials, and an isolated in-memory cookie jar for each operation; discard them afterward. Review infrastructure/request logging as well as application logging before enabling this flow.
-
-Recommended baseline: preflight and final submission are separate operations, each requiring credential entry. This allows a real portal comparison without retaining credentials or portal cookies between requests. The final operation reauthenticates and rejects changed preflight state. MFA, CAPTCHA, SSO, or session-binding behavior may require a different interactive design and must be resolved during discovery before promising a one-click workflow.
-
-Reuse owner-scoped K4 Bids access checks and introduce submission access behind a feature setting that remains off until verification is complete. Isolate simultaneous users' portal requests. Allow only established HTTPS portal destinations; do not forward credentials or session cookies to an unexpected redirect target.
-
-Proposed private attempt metadata contains the local owner, package/seat/workspace revision, exact ordered-list fingerprint, attempt identifier, timestamps, and verified outcome/receipt fields when available. Do not retain raw responses, external account identifiers, credentials, cookies, or Web Forms state. Keep any necessary bid snapshot/receipt data owner-scoped and encrypted, following existing workspace conventions. Receipt format and retention still require a concrete design.
-
-### Submission outcomes and recovery
-
-| Outcome | Behavior |
-| --- | --- |
-| Authentication rejected, context mismatch, closed window, or validation failure before submission | Show the specific recoverable issue; retain the local list; do not send a bid. |
-| Another local tab/user action changes the reviewed workspace | Require a fresh review of the new saved order. |
-| Portal choices/context change after preflight | Refresh the comparison and require confirmation of the new replacement. |
-| Authenticated Bid Received evidence and fresh context-bound read-back both match | Record the verified outcome and show the receipt details actually available. An unchanged Bid Sheet alone is insufficient. |
-| Timeout/disconnection after a potentially sent submission, or contradictory read-back | Show `Submission status unknown`; reconcile through a new read-only operation before offering another submission. Never automatically retry the write. |
-| Repeated click or replayed request | Use a per-owner/context operation lock and single-use local attempt token; reconcile any prior attempt before sending another write. A local token does not guarantee remote idempotency. |
-
-Read retry policies and write retry policies must be separate. Verify the live portal deadline and its displayed time zone against the contractual UTC deadlines in finding S6; package timestamps alone do not establish the portal's displayed time basis or actual open window.
-
-### Bid-award navigation and data discovery
-
-The supplied Bid Sheet navigation includes `Bid Awarded` → `/Pages/BidSheetAward.aspx` and `All Bids Awarded` → `/Pages/AllBidAwards.aspx`. It also links `Submitted Bid Lines` → `/Pages/BidLineDataOutput.aspx` and `Days Off and Comp Lines` → `/Pages/BidCommentsOutput.aspx`. Menu labels and destinations are observed; their contents and update behavior are not yet verified.
-
-The supplied Submitted Bid Lines source confirms a ReportViewer form posting back to `./BidLineDataOutput.aspx`, with Excel and Acrobat (PDF) export choices. The actual report body is outside the saved top-level source: an iframe uses `/Reserved.ReportViewerWebControl.axd` with `OpType=DocMapReport` and a nested report URL using `OpType=ReportArea`. Session-dependent report/control identifiers must come from a fresh authenticated operation, never from this capture. A supplied private PDF export establishes a two-column report containing printed Choice and Line numbers. The offline parser reconstructs the ordered list from those ranks; it does not establish personal-versus-all-crew scope, a report owner, period, receipt semantics, or whether the report reflects the latest Update. Missing report data must not be treated as an empty bid list. Award-page contents remain undiscovered.
-
-After authenticated login, open All Bids Awarded through the portal navigation, then inspect the requested award period/context and any pagination or report links. Document the actual menu path, selectors, column names, supported values, blank states, and update timing using redacted examples. Direct navigation must preserve the authenticated session. Do not assume that Bid Awarded is a personal-only view or that an award is final based on its URL.
-
-The following data inventory is pending discovery, not a claim that these fields exist:
-
-| Data to establish | Required interpretation |
-| --- | --- |
-| Period, fleet, seat, and award round/status | Match the award to a specific bid context and distinguish preliminary/final results if the portal does. |
-| Awarded line and any displayed choice/rank | Map to local identifiers using the same verified mapping as submission; keep absent rank absent. |
-| Person identifiers and seniority, if displayed | Establish owner matching and permitted visibility; avoid retaining other crew members' personal data by default. |
-| Published/updated time and receipt/report links | Preserve the portal's stated time basis and provenance; missing timestamps do not become the current time. |
-| Pagination, filters, downloads, and empty states | Define complete versus partial coverage and distinguish not-yet-published results from an empty award list. |
-
-Keep award retrieval read-only and separate from submission. An award must come from explicit portal evidence; matching a local preference, copying a list, or receiving submission confirmation does not establish an award. Award ingestion/display is a later implementation decision after this inventory is verified.
-
-### Delivery sequence and acceptance
-
-| Phase | Reviewable result |
-| --- | --- |
-| 1. Authenticated read-only discovery | Verified login/challenge flow, account/context selectors, Choice/Line mapping, submit event, receipt/read-back contract, deadline basis, and actual award-page inventory. No bid write. |
-| 2. Offline adapter and preflight | Redacted synthetic fixtures, fresh-state parsing, complete rank mapping, eligibility/capacity checks, context comparison, credential-redaction checks, and read-only preview. No bid write. |
-| 3. Reviewed submission | Explicit final confirmation, stale-state protection, one write attempt, receipt/read-back reconciliation, and unknown-outcome recovery. Validate against a test endpoint or a separately authorized controlled live submission. |
-| 4. Award integration decision | Choose the smallest owner-scoped read-only award feature supported by the discovered data; keep wider crew analytics outside the submission feature. |
-
-Implementation coverage must include F/Q/R mapping and unsupported identifiers, interleaved input order, mixed flying/reserve ranks, zero/maximum/excess choices, removal of trailing old choices, training restrictions, preservation of other portal settings, expired page state, login/context mismatch, changed local/portal revisions, cross-owner isolation, double clicks, timeout-after-send reconciliation, and credential/cookie/state redaction. Use fake transport and synthetic responses for automated tests; tests must never contact the live submit endpoint. Run focused tests, Pint after PHP changes, and Larastan once at implementation integration.
-
-Remaining verification includes controlled live Update acceptance, source/recipient authentication for the Bid Received email, the report's account/period scope, deadline/time-zone semantics, and award schema/retention. The app now retrieves the report in the authenticated session and checks Bid Sheet context before and after it, but does not label a matching report as an authenticated email receipt or an award. The user explicitly authorized enabling local submission for testing on 2026-11-15; the production/example default remains disabled pending that controlled verification.
-
-## Remaining enhancements
+## Other remaining enhancements
 
 ### Browser and accessibility review
 
@@ -458,443 +330,11 @@ Define applicable FAA/company rules, effective dates, duty/rest boundaries, time
 
 Add owner-scoped tags such as Top Pick, Backup, or Avoid, with optional notes accessible beside selection actions. Define persistence and package-revision migration behavior before implementation; preserve manual rank and other users' privacy.
 
-### Advanced comparison controls
-
-Planning review and user decisions: 2026-11-03. Implement one subtask at a time after its definitions are settled. Tasks blocked on a source or contractual definition do not block independent controls. The user confirmed hard filters with selected bids retained, base pairing credit, published carry count with a calculated fallback, UTC report times and split detection as described below, final-trip end city, avoidance across all leg endpoints, country grouping, temporary filters, and deferral of long stays and extra views.
-
-#### 1. [x] Completed: Agree on comparison definitions and source coverage
-
-**Goal:** Give each control a documented value, time basis, source, completeness rule, and matching rule.
-
-**Current implementation:** Definition and source-coverage review completed 2026-11-03. Audited `CrewBids`, `BidLineMatcher`, `ParseBidDocuments`, `ReadBidOverview`, `AirportData`, and existing import/matching tests. The user confirmed the comparison rules below, including source line credit as the published contractual guarantee. Existing import tests passed for the B747 October and B777 November native-text packages. Existing runtime controls remain as implemented in subtask 2; this task defines the source contract for subsequent controls and records current normalization gaps rather than changing application behavior.
-
-**Problem:** Some requested controls describe ambiguous or incomplete values. Current displayed Credit includes a carry premium with discrepancies recorded in C2–C6. The user has now confirmed source line credit as the published contractual guarantee; pairing totals and adjusted Credit remain separate. Scheduled connection duration and source Rest are also separate values.
-
-**Confirmed comparison rules:**
-
-- Advanced controls are hard filters on available results; saved selections stay in manual order with mismatch/unknown explanations. Best match keeps its existing strict goal priorities. Do not silently turn filters into weighted scoring. The user confirmed this behavior.
-- `Any` imposes no condition. For a Boolean property, `Only` requires positive evidence and `Exclude` requires complete evidence of absence. Unknown is neither false nor zero. For partially known data, a known positive match can satisfy `Only`; a known prohibited occurrence fails `Exclude`. An unknown result cannot satisfy a strict filter. Existing days-off handling of unknown dates remains as already agreed.
-- For categorical sets, use labelled inclusion/exclusion choices: selected values match with OR within a control, different controls combine with AND. `Only selected crew complements` means one of the exact published line CA/FO count pairs. The user selected the line complement as authoritative for this filter; show differing trip complements separately. Lines/Overview disagreement on the published complement blocks publication under the existing import policy.
-- Numeric ranges use inclusive lower/upper bounds, allow either bound to be empty, preserve zero, and reject inverted ranges. Use hour/minute entry where appropriate and preserve underlying seconds. No arbitrary example cutoffs become business rules.
-- Derive categorical choices and coverage from the active package and eligible seat before other filters narrow results, so selected options do not disappear while filtering. Inspect Flying/Reserve availability and explain unsupported metrics. Clear or explicitly reconcile invalid values on context/revision changes.
-- Keep personal calendar availability and split-block detection on UTC dates clipped to the displayed calendar month. Use complete linked pairings for pairing credit, report/end-airport comparisons, routes, and scheduled connections, including dates before month-start or after month-end. Published duty/carry counts retain their published scope. Contractual compensation Months and carry-in duty-day rules remain separate from these browsing scopes.
-- Keep advanced browsing filters temporary, as existing quick filters are; preserve them during browsing and disclosure changes, and clear them on package/seat context changes. The user confirmed that filters do not need to persist across return visits. Existing saved preferences and bid lists retain their persistence behavior.
-
-**Confirmed source agreement and guarantee comparison:**
-
-- The user identifies both Lines PDF `Credit time` and Overview `Credit` as published contractual Bid Line Guarantee. Accept either when it supplies a value; require exact agreement when both supply values. A missing value is not a conflicting zero. Preserve the source value, package/revision, and contributing source labels. A disagreement blocks publication and preserves the active published package; do not average values or choose a source silently.
-- Keep `source_credit` as the published guarantee. Complete Trips Credit Time totals supply **Base pairing credit**. They must not overwrite the guarantee or silently become a personal pay calculation. If a legacy payload lacks trustworthy original source credit, its recalculated `credit` cannot establish the guarantee; recover it through a reviewed source import/revision.
-- The user selected `difference = base pairing credit − published line guarantee`. Offer Below / At / Above guarantee using the sign of that difference and show the signed duration. Require both values and complete pairing-credit coverage, preserve known zeros, and compare exact normalized durations before display rounding. A signed difference range can use the same value if introduced in subtask 7.
-- This is comparison of published package values. Account-specific eligibility, proration, current agreement amendments, MBPG/composite minima, actual accrued PCH, and payable compensation remain in the separate compensation work. No universal 64/70-hour floor is substituted for a missing published line guarantee.
-- Use source Duty Days as published, without clipping or recomputing it from occupied dates. The user confirmed that conflicting numeric Lines/Overview duty totals block publication; an absent source value must not erase the other source's known value.
-
-**Metric definitions and source coverage:**
-
-| Metric / control | Source and definition | Scope and completeness | Current coverage / implementation gate |
-| --- | --- | --- | --- |
-| Published line guarantee | Original Lines `Credit time` and/or Overview `Credit`, retained as `source_credit`; duration in minutes. | Published line value; Trips not required. Known zero is valid; both absent means unavailable. Both present must agree. | Imported separately from trip totals. Existing conflict checking needs missing-versus-present handling reviewed before relying on it for all partial-source combinations. Guarantee labelling/comparison belongs to subtask 7. |
-| Base pairing credit range | Sum of complete linked Trips `Credit Time` totals, excluding the current added carry premium. | Full pairings across calendar boundaries. Require every linked pairing total; source line guarantee cannot fill a missing trip total. Repeated calendar references to the same pairing do not add its credit again. | `base_credit` alone is insufficient: it can contain source line credit when Trips totals are incomplete. Require `credit_basis = trip_totals` and verified linked-pairing coverage in subtask 3. No pairings does not prove zero flying credit for an unsupported line category. |
-| Crew complement | Exact published line Captain/FO count pair from Lines/Overview; trip `Crew` remains separate evidence. | Active package and eligible seat; filter describes the published line, including FO-only complements. | Source counts are imported for Flying/Reserve rows. Reject contradictory published complements; show trip differences without relabelling the line. Subtask 3 adds the filter. |
-| Published duty days | Lines `Duty days` and Overview Flying summary column D. | Use the published total as-is. Unknown is not zero; source totals may differ from calendar occupancy and summed trip duty counts. | Overview Reserve rows omit the summary columns. Lines may independently supply duty days. Current Lines parsing can overwrite an Overview duty value with null; subtask 4 must preserve known values and reject conflicting numeric totals. |
-| Carry comparison | Published Overview Flying summary column F when present; otherwise calculated unique occupied UTC dates after month-end for linked trips continuing from the displayed month. | Preserve a published zero and its scope. Calculated fallback requires complete linked-trip date spans and counts each date once from the next calendar month's first date through release, inclusively. | Published-first precedence and the `Published carry count` / `Calculated occupied days after month-end` labels are implemented. Missing Trips/dates leaves fallback unknown. Reserve summary omission does not prove zero carry. Subtask 4 still adds comparison controls, source discrepancy indicators, and separate contractual Transition Days handling. |
-| Days off / occupied blocks | Validated Overview calendar plus trip report-through-release occupancy, including full layover/rest dates. | Displayed UTC calendar month only; report and release calendar dates are included. Unknown dates remain distinct. | Existing date filters retain incomplete dates with the agreed warning. Published duty days and contractual SDFDO are separate metrics. Unsupported/missing calendar coverage is never inferred to be off. |
-| Split line | At least two known occupied blocks separated by at least one complete, confirmed off-date block within the displayed month. | No qualifying gap at the beginning/end alone; additional work blocks still satisfy presence. Unknown dates cannot create an off gap or prove no split. | Calendar data can support the personal preference definition. This is not a contractual construction/compliance test. Subtask 5 adds the control. |
-| Deadhead presence / avoided airports | Explicit deadhead leg markers; avoided airports inspect every linked leg origin/destination, including deadheads and ground-transfer endpoints. | Full linked trips. A known prohibited leg proves a conflict; proving absence requires complete relevant leg/route coverage. | Existing positive deadhead flags and leg routes supply evidence. Missing trips, unparsed legs, and incomplete routes cannot establish absence. Presence filtering is defined; count/duration sorts remain deferred. |
-| First report | Earliest dated linked-trip report in UTC. Sort chronologically before taking the time of day; never substitute first departure for missing report. | Full linked trips, including a report before month-start. All potentially earlier reports must be known. Both window bounds are inclusive; lower greater than upper matches times at/after the lower bound OR at/before the upper bound. Equal bounds mean that exact time; an empty bound is open. | Trips supplies report clock and inferred report date. Verify dated reconstruction/rollover and malformed/missing values in subtask 5. A later known report cannot prove the first report when an earlier linked trip is missing. |
-| End airport | Endpoint of the linked trip with the latest dated release/end timestamp, including an endpoint after month-end. | Full linked trips, independent of source list order. Missing potentially last trip, invalid chronology, or tied final timestamps with different airports means unknown. | Trip endpoints/release data exist; subtask 6 must validate chronology. Existing common/mixed endpoint flags describe a different property and must not supply this filter by shortcut. |
-| Scheduled layover airport/duration | Connected same-airport arrival to next departure within a trip; duration from dated UTC timestamps. Source `Rest` is separately labelled. | Full linked trips; airport and duration must match on the same connection. Negative gaps and airport changes are inconsistent connections, not valid same-airport layovers. | Existing layover filters use scheduled gaps, with complete connection coverage required to prove avoidance. Source Rest does not establish the same interval or legal rest. Existing 10h/24h visual/quick-filter rules do not define a new long-stay control. |
-| Country grouping | Existing airport reference country associated with package airport codes. | Group available airport choices by country, derived before other filters narrow results. Keep unresolved codes selectable without a guessed country. | `AirportData` has city/state/country, but no time zone or broader-region taxonomy. Country grouping is defined; broader geographic regions remain deferred. |
-
-**Coverage and normalization requirements for dependent tasks:**
-
-Package-level `coverage` currently records which document types were imported. It does not prove metric-level completeness. A present Trips file may still lack a linked pairing, credit total, report, or valid route. Evaluate availability per metric and distinguish a supported value, missing source data, incomplete data, conflicting sources, and an unsupported format/category. Keep unavailable controls explained and apply the confirmed unknown-value rules when only some lines have coverage.
-
-Treat repeated calendar cells referencing one pairing as one pairing, leg set, credit total, and date span. If future layouts reuse the same pairing ID for distinct dated occurrences, require an occurrence-aware import format before claiming complete totals; do not guess whether to collapse or multiply them. Source disagreements and absence must remain visible to import review. Do not retrofit these definitions by silently mutating an existing published package or a private ranked list.
-
-The private B747 October 2026 and B777 November 2026 imports, partial/missing Trips totals, FO-only/Reserve normalization, and UTC/year transitions are exercised by `BidPackageImportTest`. The 2026-11-03 focused run passed all 12 tests with 151 assertions and no skipped samples. This confirms compatibility of those fixtures and preserved original credit; it does not certify every metric on every line or additional source layouts. Existing code/tests were read for zero and incomplete-data behavior; the gaps above remain explicit work in subtasks 3–8.
-
-**Deferred definitions:** Long stays, extra views, deadhead count/duration and rest aggregation sorts, broader regions, breakfast/fatigue scoring, and hazard-pay eligibility remain deferred as specified in subtasks 5 and 8–10. Available source duty/carry/report sorts may use the definitions above with explicit direction, unknown values last, and natural Line ID tie-breaking when subtask 8 is implemented. Existing Credit, Block, Days off, Best match, and Line ID sorts remain available.
-
-**Acceptance outcome:** Definitions, source agreement, missing-data semantics, units/time scopes, Flying/Reserve limitations, and downstream normalization gaps are recorded. All questions for this definition task were answered. Remaining deferred features have explicit gates and do not block completion of this documentation task. No compensation arithmetic or application behavior changed.
-
-Commit message: `docs: define advanced bid comparison semantics and coverage`
-
-#### 2. [x] Completed: Group advanced controls and share filter state
-
-**Goal:** Keep the compact browsing workspace clear as controls grow.
-
-**Current implementation:** Completed 2026-11-03. The filter area has independent native Credit & crew, Work pattern, and Airports disclosures, active browsing-filter counts/summary, per-group clear actions, inline validation, and Reset filters. Existing Livewire properties remain the shared state; closing disclosures retains values, and package changes clear temporary browsing filters. Selected only and sorting remain outside the groups. Credit quick-entry buttons set 64h, 70h, or 80h; days-off buttons set 14, 15, or 16 days, with the active value highlighted and manual entry retained. Existing credit arithmetic and matching rules remain unchanged; later metrics stay in their own subtasks. Validation outcomes are recorded in TODO.md; manual browser/touch/keyboard review remains pending.
-
-**Problem:** Adding every field to the existing quick-filter row would make browsing harder to scan.
-
-Group secondary controls into collapsible Credit & crew, Work pattern, and Airports sections. Show an active-filter count/summary, per-group clear, and Reset filters. Closing a section must retain its values. Reuse the existing matching, Livewire state, validation, loading/empty/error feedback, and selection flow; keep parsing and airport lookups out of Blade. Keep sort/display choices outside filter groups. Wire only controls whose definitions are ready.
-
-**Acceptance:** Keyboard access, focus and disclosure state, mobile layout, live result changes, reset behavior, and context switching work without changing selected ranks. Add behavior coverage for shared state and validation; review styling/accessibility manually.
-
-Depends on subtask 1. Commit message: `feat: group advanced bid comparison controls`
-
-#### 3. Add credit ranges and exact crew-complement filters
-
-**Goal:** Compare credit bands and staffing arrangements using explicit labels.
-
-**Current implementation:** Minimum Credit uses the existing adjusted value. Lines import Captain/FO counts and retain source/base credit separately.
-
-**Problem:** There is no upper credit bound or exact-complement filter; the existing minimum uses a different credit basis from the newly agreed range.
-
-The user selected **Base pairing credit** for the range. Use complete pairing Credit Time totals, label the range explicitly, and replace the existing quick minimum instead of keeping contradictory minimum controls. Source line credit is the published contractual guarantee and cannot substitute for base pairing credit; show unavailable when complete pairing totals cannot be established. Do not silently change the current Credit sort or goal. Derive complement options from exact published line count pairs for the eligible seat. The user confirmed that the filter describes the line complement; expose differing trip complements separately. Apply the source and completeness rules settled in subtask 1.
-
-**Acceptance:** Inclusive boundaries, fractional durations/seconds, missing credit versus zero, inverted ranges, eligible-seat options, absent/mixed complements, combined filters, and retained selections are covered. Guarantee comparison remains subtask 7.
-
-Depends on subtasks 1–2. Commit message: `feat: add bid credit ranges and crew filters`
-
-#### 4. Add source duty-day and carry-in comparisons
-
-**Goal:** Compare workload and month transitions without conflating occupancy, duty, and compensation.
-
-**Current implementation:** Imported `duty_days` and `carry_in` coexist with a calculated count of unique occupied UTC dates after calendar month-end. The carry display uses the published count, including zero, when present; otherwise it shows a labelled calculated fallback when linked trips are complete.
-
-**Problem:** The labelled carry value does not yet expose source discrepancies, duty-day comparisons, contractual Transition Days, or obligations entering from a previous award.
-
-Add a labelled source-duty-day range where supported. The user confirmed published duty totals without clipping/recalculation, preservation of a known value when the other source omits it, and blocked publication for conflicting numeric Lines/Overview totals. The user selected **published source carry-in count, or work continuing into the next month when no count is published**. Preserve a published zero; fall back only when absent, not when it fails a filter. Invalid/conflicting published data is not absence and must not trigger a quiet fallback. For the fallback, use the existing calendar-occupancy meaning: unique occupied UTC dates after month-end for trips continuing from the selected month, with complete linked-trip coverage required. The existing display labels the basis `Published carry count` or `Calculated occupied days after month-end`; use those labels in the comparison explanation. Keep both raw values and flag discrepancies when available; contractual Transition Days remain distinct. Provide Any/Only/Exclude presence plus an optional count range if useful. Incoming obligations require evidence from the previous award and are unavailable from a prospective package alone. Source duty-day totals retain their source scope; the fallback alone counts dates beyond the displayed calendar month. No compensation-month boundary or premium inference applies to this calendar fallback.
-
-**Acceptance:** Calendar month/year transitions, compensation-period exceptions where used, duplicate dates, missing pairings, complete zero carry-in, partial coverage, and source/calculated disagreement have focused coverage. No automatic schedule adjustment or premium entitlement is inferred.
-
-Depends on subtasks 1–2. Commit message: `feat: add duty-day and carry-in comparisons`
-
-#### 5. Add defined work-pattern controls
-
-**Goal:** Filter split lines, deadheads, first report, and scheduled long stays using dependable evidence.
-
-**Current implementation:** Occupied work blocks, report/release values, deadhead legs, source Rest, and scheduled same-airport arrival-to-next-departure gaps are available to varying degrees. Existing 10h/24h chips are presentation rules.
-
-**Problem:** More than one occupied block does not by itself establish a contractual split line; report time differs from first departure; long-stay and rest values require explicit aggregation.
-
-The user defined a **split line** as a work block, an off block, and another work block, and confirmed detection within the displayed month using known occupied blocks separated by at least one confirmed off day. Provide Any/Only/Exclude for that personal comparison definition. Unknown dates do not establish an off block or prove the absence of a split. Do not impose the CBA's contractual split-line construction requirements on this preference or label the result a compliance check.
-
-For deadheads, begin with Any/Only/Exclude presence based on explicit leg markers; absence requires complete linked-leg coverage. Counts/duration can follow only with agreed aggregation. The user selected the **first chronological trip report in UTC across full linked trips**, including reports before month-start; do not use first departure or apply the window to every trip. Preserve the full dated timestamp to establish chronology before comparing time of day. Both time-window bounds are inclusive. A window crossing midnight matches times at/after the lower bound OR at/before the upper bound; equal bounds mean that exact time, and an omitted bound is open. Validate report date reconstruction and coverage under the rules in subtask 1. Missing report must not silently become departure time. The user deferred long stays until a duration is defined. Keep scheduled gaps, source Rest, legal rest, and fatigue distinct. Do not reuse visual chip thresholds as a new long-stay definition without agreement. Any future city-plus-duration condition must match both on the same stay.
-
-**Acceptance:** Exact duration bounds, midnight/year crossings, first-trip chronology independent of source order, split occupancy around month boundaries, ground transfers, incomplete legs, overlaps, and airport changes produce defined results. Cases needing unresolved definitions stay deferred.
-
-Depends on subtasks 1–2 and the relevant definitions. Commit message: `feat: add defined bid work-pattern filters`
-
-#### 6. Add airport inclusion, avoidance, and geographic groups
-
-**Goal:** Compare trip endpoints and stays with package-derived airport choices.
-
-**Current implementation:** Required start city and a connected-layover airport selector exist. Trips retain individual endpoints and legs; mixed endpoints are already identified. Airport reference data can enrich codes with city/state/country.
-
-**Problem:** End city could mean the last trip's endpoint or every trip's endpoint; avoided airports could cover stays only or every leg endpoint. Region names have no agreed mapping.
-
-The user selected **the final chronological trip endpoint across full linked trips**, including an endpoint after month-end, **all leg origins/destinations including deadheads** for avoided airports, and **countries** for geographic grouping. Establish the final trip from dated chronology under subtask 1's definition, with unavailable status if missing trips could change that endpoint. Extend the existing layover selector rather than duplicate it; distinguish scheduled connections from source-rest locations. Avoidance requires complete route coverage to prove no prohibited endpoint is visited. Keep airport codes primary and identify airports sharing a city individually. Derive country groups from existing reference data for airports present in the package; preserve unresolved codes without assigning a guessed country. State/continent/custom-region groupings are outside the agreed first pass. Reuse airport resolution/cache services without a network lookup per rendered row.
-
-**Acceptance:** Mixed endpoints, city/duration correlation, avoided deadhead endpoints, multiple selected airports, unresolved codes, reference-service unavailability, incomplete routes, and package changes have defined behavior.
-
-Depends on subtasks 1–2 and airport-scope decisions. Commit message: `feat: extend bid airport comparison filters`
-
-#### 7. Verify and add guarantee-relative comparisons
-
-**Goal:** Compare complete base pairing credit with the published contractual line guarantee.
-
-**Current implementation:** Source line credit is retained independently in `source_credit`. On 2026-11-03 the user confirmed that Lines PDF `Credit time` and Overview `Credit` are the published contractual guarantee, accepted either source subject to agreement when both contain values, and selected the signed difference from base pairing credit. Personal compensation eligibility remains outside this descriptive comparison.
-
-**Problem:** Pairing totals and adjusted Credit can differ from published guarantee, and incomplete or legacy source data cannot establish every comparison.
-
-Implement the agreed `base pairing credit − published line guarantee` difference, with Below / At / Above guarantee and a signed duration. Require complete pairing totals and a trustworthy published value, compare exact normalized durations, and preserve source/revision evidence. A signed range, if added, uses the same difference. Known zeros are valid; missing values are unavailable. Validate the source-field mapping and conflict handling described in subtask 1, including partial-source and legacy payloads; never substitute MBPG, composite minima, adjusted Credit, or a trip sum for a missing guarantee. Comparing these package values does not calculate actual accrued PCH, personal payable compensation, or carry-in premiums. Effective compensation rules and personal eligibility remain prerequisites for Estimated pay, not additional unanswered questions about this agreed arithmetic comparison.
-
-**Acceptance:** Positive/zero/negative differences, exact equality and duration precision, conflicting sources, missing/partial values, preserved published zeros, legacy payloads, and line categories with no complete pairing totals are covered. A category with no dependable numerator or guarantee remains unavailable rather than receiving a guessed value.
-
-Depends on subtask 1's completed definitions and reliable source inputs; independent filters can ship first. Commit message: `feat: add verified guarantee-relative bid comparisons`
-
-#### 8. Add dependable optional sorts
-
-**Goal:** Make the defined comparison metrics available for browsing order.
-
-**Current implementation:** Credit, Block, Days off, Best match, and Line ID sorts are available, with natural Line ID tie-breaking and unknown numeric values last.
-
-**Problem:** New sorts need a specific metric, direction, aggregation, and completeness policy.
-
-Add only supported source duty days, chosen carry-in metric, first report, deadhead count/duration, and chosen rest/stay duration. Confirm ascending/descending choices and line-level aggregation, such as shortest scheduled stay versus longest stay; source Rest must have a distinct label. Unknown values remain last in either direction, with natural Line ID as the final tie-break. Partial observations cannot establish a reliable maximum/minimum or zero. Keep existing sorts available, Best match priorities intact, and manual bid order independent.
-
-**Acceptance:** Equal values, zero/missing/partial values, both directions, stable ties, and combined filtering are covered. Do not expose a sort merely because some rows contain the field.
-
-Depends on the corresponding completed metric subtasks. Commit message: `feat: add supported bid comparison sorts`
-
-#### 9. Evaluate optional comparison columns or views
-
-**Goal:** Add a display option only when it answers a comparison need beyond the compact timeline.
-
-**Current implementation:** Compact monthly timelines and expandable details already show route, trip, credit, and stay information.
-
-**Problem:** A second display could duplicate information or lose active browsing state.
-
-The user confirmed **retain the compact timeline and defer extra views**. This subtask remains deferred until users identify fields needing side-by-side comparison. Prefer a small set of optional metrics in the existing layout; add a table/view only if that solves the stated need. Use the same filtered/sorted results, selected lines, add/remove actions, and warnings. Retain filters and selections across any future view changes, preserve the compact default and mobile usability, and define owner-scoped display persistence separately from filter persistence.
-
-**Acceptance:** View changes preserve filter/sort values and manual rank; missing values remain explicit. Review narrow/desktop layouts, both themes, keyboard interactions, and header/action overlap. If no additional value is established, record that outcome without adding a view.
-
-Depends on delivered metrics and a demonstrated display need. Commit message if implemented: `feat: add optional bid comparison display`
-
-#### 10. Define later scoring separately
-
-**Goal:** Establish evidence and definitions for later breakfast, fatigue, long-stay detection, and hazard-pay features.
-
-**Current implementation:** No agreed breakfast window, fatigue model, or general long-stay detector exists. C8 records supplied hostile-area provisions; an airport's region or international status does not prove eligibility.
-
-**Problem:** These features require more than package-derived categorical filters.
-
-Define breakfast location/window, relevant departure/report event, local time zones and DST, plus whether all or some departures qualify. Define fatigue inputs, time basis, model, aggregation, missing-data behavior, and any ranking integration separately. A scheduled-duration filter from subtask 5 does not establish fatigue or a contractual long-stay category. Hazard-pay work needs applicable designation dates, qualifying assignments/layover days, governing amendments, and verified compensation rules. Keep undefined scoring and eligibility unavailable; do not infer them from region grouping or the existing chip colors.
-
-**Acceptance:** A separately reviewed definition and source-coverage decision precedes each implementation task. This is deferred definition work, not a promise to add scoring in the first advanced-controls release.
-
-Commit message: `docs: define prerequisites for later bid scoring`
-
-#### Remaining implementation and deferred-feature gates
-
-- Subtask 1's source semantics are settled: published duty/carry-in counts retain source scope; published line credit is contractual guarantee; conflicting published guarantee/complement/duty values block publication. Dependent implementation tasks must preserve known values and distinguish omitted data, actual zeros, and conflicts.
-- Validate metric-level coverage and report/end timestamp reconstruction for each supported format. First/last-trip scope includes complete linked trips across calendar boundaries; inclusive and midnight-wrapping time-window behavior is defined above.
-- Subtask 7 compares complete base pairing credit with the independently preserved published guarantee. Source mapping, legacy-data handling, and coverage remain implementation checks. Personal pay eligibility and current compensation rules remain separate Estimated pay prerequisites.
-- Define deadhead count/duration and rest aggregation/direction before exposing those optional sorts. Presence filtering can ship independently.
-- Long stays, extra views, breakfast/fatigue scoring, broader regions, and hazard-pay eligibility remain deferred with their definition requirements above.
-
-**Integration checkpoint for implementation:** Require Sail availability before code changes. Confirm installed package versions and use Boost documentation for version-sensitive APIs. Run only focused tests for the delivered subtasks, Pint after PHP edits, and Larastan once at final integration. Cover changed matching decisions, boundary/missing-data failures, context/revision transitions, and private persistence if introduced. Record actual outcomes and a commit message for each completed task in TODO.md. This definition review changes documentation only. Its focused import-test result is recorded above; subsequent implementation requires its own focused behavior coverage.
-
 ### Additional sources and exports
 
 Scanned PDFs/OCR, dedicated Training Requirements PDFs, Bid List spreadsheets, Vacations spreadsheets, and spreadsheet export remain deferred. Confirm retention, ownership, visibility, normalization, and representative layouts before enabling each source. Training already present in supported documents still counts as occupied time; a dedicated Training tab is a separate feature.
 
 A company-compatible spreadsheet export needs an agreed schema and review of the supplied Bid List workbook. Exporting or copying does not submit a company bid. Offline editing remains outside the current scope.
-
-### Current focus: Estimated pay
-
-Planning and Sections 2/5 review completed: 2026-11-03. **Estimated pay calculates automatically from the user profile and package.** Set **Adjusted pay-longevity date (UTC)** and **Check Airman override** under **Profile → User preferences → K4 Bids** once. Compact pay amounts are always shown. The user confirmed **F = hard line, Q = reserve**, with no composite choice in normal bidding, and defaults of qualified hourly pay, full-period availability and **published line Credit as the minimum credit for that line's pay**. No per-line review or setup checklist is required. **Pay adjustments → Advanced adjustments** contains optional exceptions and additional pay. Full breakdowns load only for opened lines. Missing source information can show a clearly labelled minimum, never a complete gross amount; minimum-only results remain after complete estimates in pay sorting. User-confirmed scenario policies remain labelled assumptions. The eight subtasks below retain the rationale and acceptance requirements, as amended by these simpler defaults.
-
-**User-confirmed direction (2026-11-03):** The first release should estimate **scheduled gross contractual pay in USD before taxes/deductions, with supported credits and premiums, excluding per diem and expense reimbursements**. A guarantee-only preview is not the selected first-release scope. The existing `app/Data/pay_rates.json` rates remain applicable. Automatic pay steps use **a separate adjusted pay-longevity date**, rather than assuming hire date, and **the new rate starts on the anniversary date**, including an anniversary within a compensation period. Owners may supply **private planning inputs for missing facts, with assumptions shown**.
-
-**Published minimum is mandatory for supported estimates:** The published line Credit cannot be disabled through advanced adjustments. Reading a saved scenario always includes it, even if an older custom scenario stored `line_guarantee = false`; new saves normalize that legacy field to true. Qualified/full-period and unsupported-scenario gates remain effective. Missing trip or occupied-day details withhold a complete total without lowering the known published floor. For November 2026 F55 at FO step 3 ($166.63/h; longevity 2024-07-29), published **78:10** means **$13,024.91 minimum**, not the 64-hour $10,664.32 floor. Unresolved additional compensation remains separate from that known minimum.
-
-**User-confirmed planning rules for longevity, proration, and rounding:**
-
-- Step 1 covers the first year from the adjusted pay-longevity date. Each anniversary increases the step by one, capped permanently at step 12. A date before the longevity start cannot resolve an eligible pay step and must not default to a zero rate.
-- For a February 29 longevity date, the anniversary is March 1 in non-leap years and February 29 in leap years. Count actual anniversary boundaries rather than dividing elapsed days by 365 or allowing a date library to choose February 28 automatically.
-- An anniversary within the compensation period creates old/new rate intervals. The user confirmed that each applicable MBPG/published line guarantee is weighted by the UTC days before and on/after the anniversary, divided by the **actual number of UTC days in that compensation period**. The new rate starts at **0000Z on the anniversary date**, so that entire date belongs to the new rate. Derive the denominator from the compensation-period boundaries, including the recorded January–March exceptions; do not substitute calendar-month length or a fixed 30-day divisor.
-- Keep exact amounts through component calculations and round **the final USD total once**, to the nearest cent using **half-up** rounding. Do not round each payable component before summing. Component amounts formatted for display must not become calculation inputs; explain any difference between their formatted sum and the rounded final total in the breakdown.
-- Credits moved to a receiving compensation period retain the hourly rate on their **earning/departure UTC day**, including when an anniversary occurs before allocation. Allocation does not move the rate date. Guarantee valuation retains its separate UTC-day weighting rule.
-- Open Time flight duty on an actual scheduled duty-free day adds **1.5 × hours flown × applicable earning-day rate above base as the entire additional off-day payment**, with no separate ordinary-credit payment for that assignment under 5.D.2. Example using an illustrative $100/h rate: a $6,400 base plus 10 qualifying hours produces $7,900, not $8,900. This user-confirmed interaction does not resolve non-flight or training SDFDO pay. Private mode requires the assignment to be omitted from ordinary credits and entered once as Open Time; source mode rejects this adjustment because source totals cannot prove that exclusion.
-- The initial scope requires **qualified hourly Flight Pay and full-period availability**. New-hire weekly pay, partial availability and qualification/crew-class changes remain explicitly unsupported rather than receiving an hourly-rate shortcut.
-
-**Confirmed carry-in comparison policy (2026-11-03):** Assume the pilot bids the next month around the outgoing carry-in days, making those duties excess work. The whole excess-day payment is **1.5 × credited hours × earning/departure-day hourly rate**, additional to the originating month's base. Passenger deadhead first credits 50% of scheduled travel, so one hour of deadhead produces **0.75 hours of pay**, not 1.5 travel hours or a second ordinary-credit payment. This is a user-confirmed planning assumption, distinct from the unresolved generic non-flight SDFDO interpretations in EP4. The headline becomes **Estimated line value** when it includes carry-in, combining originating-period scheduled gross and the separately identified receiving-period carry-in payment. It does not include the receiving month's unrelated bid-line pay or another guarantee. Pay sorting uses this combined value. Guarantees retain their original compensation period and daily weighting; each segment retains its earning/departure UTC-day rate.
-
-Automatic boundary allocation requires source Show Time/Debriefing duty groups covering every segment exactly once and flight block plus half scheduled passenger-deadhead time reconciling exactly to published pairing credit. Allocate the entire duty to the compensation month containing its ending duty date, including pre-boundary segments; do not split a segment at midnight or move its rate date. Missing duty evidence, unreconciled credit or unsupported receiving periods remain incomplete. Whole in-period, constant-rate pairing totals keep their existing supported path.
-
-**F49 source clarification:** For November 2026 / 777 / LINES_4 / 94.PUBLISH, the user confirmed the November 15 occupied obligation is positioning/travel or another obligation already included in the published **89:00**. Record that date-specific confirmation in verified pay-source metadata; it adds no extra credit and does not waive missing information for other dates, lines or packages. At FO step 3 ($166.63/h; longevity 2024-07-29), F49 is **$14,830.07**. F83 has a **$15,038.36** November base (90:15) and **$1,812.10** December excess-day payment (14:30 deadhead × 0.5 × 1.5), producing **$16,850.46** combined line value after final-only rounding.
-
-For an applicable guarantee of `G` PCH, old/new rates `r_old`/`r_new` in USD per hour, `d_old`/`d_new` UTC days in those rate intervals, and `D` actual UTC days in the compensation period, the confirmed guarantee valuation is:
-
-`guarantee USD = G × (d_old × r_old + d_new × r_new) / D`, where `d_old + d_new = D`.
-
-Apply the same day weighting across all applicable rate intervals if more than one change occurs. Determine the applicable guarantee/eligibility first; this anniversary valuation rule does not define how leave or partial availability changes the guarantee itself. Keep each eligible guarantee candidate separate from earned/scheduled-credit valuation and any separately payable premiums.
-
-#### CBA review: Sections 2 and 5 — 2026-11-03
-
-Reviewed the supplied [2021 CKS CBA](storage/app/private/CBA/2021_CKS%20CBA_Final.pdf), Section 2, printed pp. 11–15 (PDF pp. 23–27), and all of Section 5 including Appendix 5-A, printed pp. 25–32 (PDF pp. 37–44). The findings compare this plan with that text; they do not independently establish later amendments or current payroll interpretations. The approved product choices above are preserved. Distinguish an express conflicting pay branch from a rule the supplied sections simply do not establish.
-
-**EP1 — High: The anniversary formula is a planning assumption, not a rule verified in Sections 2/5.** Section 2 defines a UTC Day and compensation Month boundaries, but not an adjusted pay-longevity date or an anniversary valuation algorithm. It defines Date of Hire as commencement of initial Company crewmember training after employment, and Active Service as accumulated time commencing with Date of Hire. Appendix 5-A provides longevity rows 1–12, not an express rule for an adjusted date, March 1 leap-day treatment, permanent capping, or anniversary-date effectiveness. Section 5.C.1 requires MBPG proration for partial-period unavailability; 5.T.4 separately addresses proration for a Type/Crew Class qualification change. Neither supplies the plan's anniversary day-weighting formula for MBPG and published line guarantee. Section 5.D.1 states the greater-of PCH structure, without specifying mixed-anniversary-rate valuation. Final-cent half-up rounding is also not prescribed in these sections. These choices are not expressly prohibited here, so absence of support is not proof of contradiction. Retain them as user-confirmed scenario policies and obtain the governing interpretation before describing those outputs as CBA-verified compensation. Sources: Section 2, pp. 11–14 (PDF 23–26); 5.C and 5.D.1, p. 25 (PDF 37); 5.T.4, p. 31 (PDF 43); Appendix 5-A, p. 32 (PDF 44).
-
-**EP2 — High: Generic step-1 hourly pay would conflict with the new-hire branch.** Section 5.A pays a new hire in training before qualification $600 per week and starts Flight Pay on the first observation flight. Section 5.N.1 explicitly sends new-hire training back to 5.A. Resolving a step from a longevity date does not establish that hourly Flight Pay has begun. The first-release matrix must either support these dates/weekly pay or explicitly exclude that scenario. Section 5.B also permits a Company first-year Flight Pay increase capped at 90% of second-year Flight Pay; a private input cannot turn an arbitrary larger value into a rule supported by this text. Sources: 5.A–5.B, p. 25 (PDF 37); 5.N.1, p. 28 (PDF 40).
-
-**EP3 — High: Browsed seat and longevity cannot substitute for qualification-effective pay changes.** Section 5.T.4 applies when a Type/Crew Class change moves a crewmember to a different pay scale: prorated MBPG uses the Type/Crew Class for which the crewmember is current and qualified, and the pay change takes effect on the qualification date. A profile bid-seat change or selected package alone is not that event. The plan already treats another seat as a scenario; extend its input/rate-interval model with qualification-effective context for actual upgrade/scale-change cases, or mark them unsupported. Do not assume the user-approved anniversary formula also establishes the separate 5.T.4 proration basis. Source: 5.T.4, p. 31 (PDF 43).
-
-**EP4 — High: Off-day pay requires the 5.D.2 and 5.L interaction, not a generic premium multiplier.** Section 5.D.2 makes pay additional to 5.D.1 and distinguishes accrued PCH under Section 5 from additional PCH under 5.L. Section 5.L.1.b states hours flown multiplied by 1.5 above MBPG for awarded Open Time duty on an SDFDO; 5.L.2 uses the greater of four PCH, assignment PCH, or actual duty hours for non-flight SDFDO duty above Monthly Guarantee, subject to its reserve-hour qualification. Training on an SDFDO also has the specific 5.N.5 provision. The plan has not yet defined how the overlapping clauses form the final component amounts. Do not infer either a universal 50% top-up or one universal 1.5 multiplier from them. Its de-duplication requirement must remove repeated source records without erasing separately payable components expressly required by distinct clauses. Resolve the interaction with worked examples before declaring an SDFDO scenario ready. Section 2's SDFDO definition also requires freedom from Company direction, normally at the Resident Airport; a user's requested-off date or a gap between flights does not prove that status. Sources: Section 2, p. 14 (PDF 26); 5.D.2, pp. 25–26 (PDF 37–38); 5.L, pp. 27–28 (PDF 39–40); 5.N.5, p. 29 (PDF 41).
-
-**EP5 — Medium: The generic component matrix needs explicit treatment of the remaining Section 5 categories.** The plan correctly prevents a complete total when an applicable component is unresolved, but its named matrix omits several categories below. Record each as supported, not applicable for a declared scenario, or unsupported; do not let a lack of source data look like zero pay.
-
-| Clause | Requirement to add to the rule/coverage matrix | Printed page (PDF page) |
-| --- | --- | --- |
-| 5.D.4–6 | Hostile-area assignment pay: four hours at 150% above guarantee; hostile-area layover: four PCH in addition to MBPG per layover day; four PCH for each Company-assigned one-in-seven beyond three unpaid ones. Eligibility/designation evidence remains necessary. | 26 (38) |
-| 5.G–5.I | Reserve is the greater of four PCH per day or actual daily PCH; air deadhead distinguishes passenger scheduled block from non-passenger actual block; nonlocal surface deadhead uses actual drive time subject to 19.G.4; vacation is four PCH per day. | 26–27 (38–39) |
-| 5.K | Taxi-only repositioning has an actual-block basis with a minimum of one PCH; repositioning within a flight duty period uses block-to-block credit. | 27 (39) |
-| 5.N.2–5 | Distinguish training below 16 days (four PCH per day), training of at least 16 days (Monthly Guarantee), completed CQ CBT examinations (four PCH above MBPG), special/FAA-required tested CBT (one PCH), and SDFDO training. Do not apply a single daily-training rule to all CBT. | 28–29 (40–41) |
-| 5.O | Maintenance in addition to normal duties pays $25 per hour or fraction thereof, in addition to other compensation. Its specified pay-unit treatment must be preserved. | 29 (41) |
-| 5.Q | Check Airmen receive at least a $15 hourly override for all hours flown or credited, including when not performing Check Airman duties; this participates in 5.D pay. Non-Check-Airman simulator instruction has a separate at-least-$15-per-simulator-hour override including briefing/debriefing. | 29 (41) |
-| 5.R | A random drug/alcohol test pays one hour above MBPG under 5.D.3. | 29 (41) |
-| 5.S | Credit all work performed despite reaching FAR limits; the stated non-revenue-use case pays minimum Monthly Guarantee or hours flown, whichever is greater. Do not turn a flight-limit flag into zero compensation. | 30 (42) |
-| 5.J, 5.P, 5.U | Sick leave, jury duty, and emergency leave expressly refer to 7.C.3, 12.I, and 12.D. Sections 2/5 alone do not establish their complete valuation rules. | 27, 29, 31 (39, 41, 43) |
-
-**EP6 — Medium: Final currency rounding must not override contractual credit/pay units.** Keeping exact arithmetic and rounding the final USD total once is a user-approved money policy, not permission to prorate every entitlement continuously. Section 5.O's hour-or-fraction maintenance unit, the one-PCH minimum in 5.K.1, and fixed PCH awards in 5.N/5.R must be resolved before currency rounding. In particular, do not silently convert maintenance's stated unit into a proportional per-minute payment. Preserve the final-rounding policy while making entitlement units explicit in component rules and tests. Sources: 5.K.1, p. 27 (PDF 39); 5.N, pp. 28–29 (PDF 40–41); 5.O and 5.R, p. 29 (PDF 41).
-
-**EP7 — Medium: Private scenario facts cannot resolve a missing rule or contractual definition.** Section 2 distinguishes Company-directed deadheading from a personal commute, Duty from calendar occupancy, and Flight Segment/block-to-block from FAR Flight Time. Section 5.E pays Actual Block Time and assigns a segment's full Flight Pay to its departure Day; 5.H has different deadhead valuation bases. Source labels/private inputs must retain those distinctions. Section 5.F expressly requires 17.F.1 eligibility for line guarantee; 5.D.4 requires the 24.B hostile-area definition; 5.H.2 refers to 19.G.4. Record permitted owner inputs as scenario facts, while retaining unresolved cross-referenced rules as unsupported until reviewed. Sources: Section 2, pp. 11–14 (PDF 23–26); 5.D.4–5.H, pp. 26–27 (PDF 38–39).
-
-Section 5.M establishes receiving-period allocation for transitioning duty PCH; it does not itself state the plan's per-Z-day greater-of-awarded-or-actual valuation. Preserve that separately as the existing user-confirmed interpretation. Sections 5.E/5.M also do not expressly resolve which hourly-rate date applies when departure-day credit and its receiving compensation period straddle an anniversary. The subsequent user confirmation selects the earning/departure UTC-day rate, independently of guarantee day weighting; retain that as a scenario policy rather than an independently verified clause interpretation. Source: 5.M, p. 28 (PDF 40), read with 5.E, p. 26 (PDF 38).
-
-**EP8 — Low: Compensation-period gross pay is not the deposit schedule.** Section 5.T.1 provides biweekly paychecks and prior-period adjustments, including three-pay-period months. The plan's gross compensation-period estimate is compatible with that distinction, but the breakdown must label its compensation period and must not imply the amount will be deposited during the matching calendar month. This does not require adding a payroll-calendar feature. Source: 5.T.1, p. 30 (PDF 42).
-
-**Consistent parts of the plan:** UTC dates and the January–March compensation boundaries match Section 2. Preserving Company-assigned source line guarantee separately matches 5.F. The greater-of structure with separate additional compensation matches 5.D at the structural level. Recognizing Actual Block Time, deadhead distinctions, and whole-duty transition allocation under 5.E/5.H/5.M is appropriate; the current elapsed-time/departure-only carry arithmetic remains unsuitable as the pay engine. The exclusion of per diem/expenses from this chosen feature scope is explicit, rather than a claim that the agreement does not provide them.
-
-**Review disposition:** No express Section 2/5 prohibition of the user-approved anniversary/leap-day/rounding choices was identified; their contractual basis is unverified in these sections. The plan needs the conditional pay branches and rule matrix above before a complete scheduled gross estimate can be supported. Source attribution, eligibility, distinct pay units, and cross-clause interactions are implementation gates. Preserve approved scenario assumptions with labels; do not silently rewrite them or describe them as independently CBA-validated. This review changes documentation only and does not validate runtime calculations or actual payroll.
-
-**Subsequent implementation disposition (2026-11-03):** The user resolved earning-day rate attribution and the Open Time flight 1.5× whole-payment interaction, and explicitly limited the first scenarios to qualified hourly Flight Pay with full-period availability. EP2/EP3's new-hire/qualification-change branches are excluded; EP4's non-flight/training SDFDO overlap remains unsupported. EP1's user-confirmed policies remain visible assumptions. The reviewed findings above are preserved as the historical contract review, not silently reclassified as verified payroll rules.
-
-#### Feasibility and existing evidence
-
-The application already imports shared Lines/Trips/Overview packages, preserves original line credit as `source_credit`, supports private owner-scoped workspaces, and displays per-line credit breakdowns. The user previously confirmed that source line credit is the published contractual Bid Line Guarantee. These provide a starting point for rates, package comparison, and private context; they do not establish all payable credit or premium eligibility.
-
-`app/Data/pay_rates.json` contains CA and FO arrays with 12 numeric values each. The earlier CBA review identified their source as Appendix 5-A's January 1, 2024 column, ordered by longevity years 1–12 and without separate fleet tables. The user's 2026-11-03 confirmation resolves whether these supplied rates remain applicable for the intended current packages and confirms USD as the estimate currency. Preserve that confirmation as provenance alongside the original table/effective date; do not imply a newly published 2026 rate table or unlimited future applicability. Add metadata for currency, validity, the confirmed step/anniversary policy, and final-only half-up rounding.
-
-The reviewed Section 5.D structure uses the greatest of applicable MBPG, accrued bid-month PCH, and published Bid Line Guarantee, with relevant rate/overrides and separately addressed additional compensation. The 64-PCH MBPG and 70-PCH composite minimum have qualifications recorded in C5. For planning, an eligible scheduled-credit estimate may stand in for future accrued credit only with its scope and assumptions labelled. Never equate the current adjusted Credit field with total PCH, multiply its blanket carry premium into dollars, or treat every line as having a universal 64/70-hour floor. Findings C2–C6 and S1 remain dependencies of the scheduled-pay calculation.
-
-| Input | Available now | Requirement before use in Estimated pay |
-| --- | --- | --- |
-| Hourly rates | CA/FO table, 12 entries each; user confirms continued applicability and USD currency. | Add table identity/source, effective/approved applicability, confirmed currency, pay-step semantics, and precision metadata. |
-| Personal pay context | Encrypted owner-only longevity/Check Airman settings live on the user profile; display settings and package/seat/line scenarios remain in the private comparison profile. | Owner supplies adjusted longevity and eligible qualified/full-period scenario facts; unsupported branches remain unavailable. |
-| Published line guarantee | Original Lines/Overview credit retained separately from pairing totals. | Trustworthy source value and revision, agreement of published sources, and personal applicability; no substitution from recalculated/legacy credit. |
-| Pairing/scheduled credit | Trips credit/block totals and scheduled legs, with variable completeness. | Normalize payable categories and compensation-period allocation; complete pairing totals alone do not establish every bid-period PCH component. |
-| Carry-in credit | Scheduled legs plus the current departure-only subtotal/calculation. | Duty-period boundaries, daily awarded valuation, receiving compensation period, and independently supported premium eligibility. Actual worked amounts remain unknown before work occurs. |
-| Other credits/premiums | Some reserve/training indicators; limited assignment evidence. | Category-specific sources or user-permitted private planning inputs, each labelled with origin/assumptions. Eligibility, above-guarantee treatment, and interaction/deduplication must be defined. |
-| Gross/net/expenses | No implemented deductions, tax, benefits, or per-diem model. | User selected USD gross contractual pay before taxes/deductions. Per diem and expense reimbursements are excluded; no take-home calculation is included. |
-
-#### 1. Set the pay contract and supported first-release cases
-
-**Goal:** Define exactly what scheduled gross pay includes and when the estimate is available.
-
-**Current implementation:** `CalculateCrewBidPay` and `NormalizeCrewBidPay` derive the normal estimate without per-line input. F/Q prefixes establish hard/reserve category. Qualified hourly pay, full availability and the published line minimum default to yes; old unchecked setup values do not disable these defaults. Deliberately changed advanced assumptions retain a marker so real exceptions remain explicit. Unsupported applicable pay prevents a complete total.
-
-**Problem:** A package line does not by itself establish personal eligibility, all payable activities, or actual work.
-
-Use the confirmed USD gross-pay scope, adjusted pay-longevity date with rate changes at 0000Z on anniversaries, steps 1–12, March 1 leap-day treatment, guarantee weighting by actual UTC days in the compensation period, final-only half-up rounding, and private planning-input policy. Settle the remaining category/source coverage and rate attribution for cross-date/transitioned credit in this implementation subtask. Create a rule/coverage matrix for base flying credit, deadheads, reserve, vacation/training, carry-in allocation, and additional duty/off-day/other premiums. Each included component needs a rule reference, source or planning input, date/rate basis, eligibility predicate, and included-versus-above-guarantee treatment. Explicitly defer components that cannot yet be supported; do not silently set them to zero or claim a complete total when an applicable component is unresolved. The first delivery remains scheduled gross pay, even if unsupported personal scenarios must show unavailable.
-
-| Implemented component | Basis, evidence and treatment |
-| --- | --- |
-| MBPG / line guarantee | 5.C/5.D/5.F: F hard lines and Q reserve lines use 64 PCH MBPG. Published guarantee uses independently preserved `source_credit` and is included by default, as the user confirmed. Compare separately valued candidates; never substitute adjusted Credit. Guarantees use confirmed daily rate weighting. Composite is not offered in the normal bid flow. |
-| Source ordinary credits | Complete, deduplicated pairing credit totals apply when trips are wholly within the compensation period at a constant rate. Boundary/rate-change cases use complete source duty groups and reconciled segment credit; otherwise remain incomplete. Known occupied dates outside linked trips require source information or a date-specific user confirmation that their compensation is already included in published Credit; unknown off-day occupancy alone does not invalidate a complete published pairing-credit list. Q reserve lines derive 4-PCH scheduled reserve days from published occupied dates. Actual additional assignments remain optional adjustments. |
-| Outgoing carry-in excess-day scenario | User assumes the next month's bid avoids these carry-in days. Supported source duties allocated to that next compensation month contribute one whole 1.5× credited-hour payment, including 50%-credited passenger deadheads (0.75× travel hours), separately above originating-period base. The combined headline/sort includes both allocations, with monthly amounts in the breakdown. It is not a universal SDFDO rule or the next month's complete pay. |
-| Private ordinary / flight / carry credits | Owner-supplied awarded ordinary PCH or flight block; transitioning duty uses daily greater-of-awarded/entered-actual PCH, with unknown future actuals labelled unknown. Private ordinary inputs replace the source basis. Earning/departure UTC-day rates apply even when the receiving period differs; whole segments are not split at midnight. Owner supplies receiving-period duty allocation; incomplete source duty evidence is not reconstructed by guesswork. |
-| Passenger air deadhead | 5.H: Company-directed passenger travel, 50% of entered scheduled block. Personal commute is not eligible. Non-passenger/surface cases remain unsupported. |
-| Reserve / vacation / short training | 5.G/5.I/5.N: daily reserve is greater of 4 PCH or entered planned daily PCH; vacation and under-16-day training are 4 PCH/day. Repeated daily entitlements are rejected. Sixteen or more training days remain unavailable pending the Monthly Guarantee branch. |
-| Taxi-only / special tested CBT | 5.K/5.N: taxi-only uses greater of 1 PCH or entered block; special tested CBT is 1 PCH. Ordinary-credit contributions, not blanket premiums. |
-| CQ CBT / random test | 5.N/5.R: completed qualifying CQ examinations add 4 PCH; a qualifying random drug/alcohol test adds one hour of pay, separately above selected base. Owner review supplies qualifying completion/assignment facts. |
-| Open Time flight SDFDO | 5.D.2/5.L interaction follows the user's confirmed whole-payment policy: 1.5× hours flown × earning-day rate separately above base; assignment excluded from ordinary credit. Other SDFDO branches remain unsupported. |
-| Maintenance | 5.O: $25 for each started hour, separately above base. Entitlement time units resolve before final currency rounding. |
-| Check Airman / simulator instruction | 5.Q: declared Check Airman scenario applies minimum $15/h override to all flown/credited hours and guarantees. Non-Check-Airman simulator instruction adds minimum $15/h using brief/debrief-inclusive duration; incompatible simultaneous override modes are unavailable. Higher negotiated overrides remain unsupported. |
-| Other applicable compensation | New-hire weekly pay, partial availability, qualification/crew-class changes, discretionary first-year rates, hostile-area pay, extra assigned one-in-seven pay, non-flight/training SDFDO, surface/non-passenger deadhead, longer training, external leave rules and special FAR-limit cases remain unsupported. Owners flag these instead of omitting them. No complete total is shown for an applicable unresolved case. |
-
-The engine uses the existing installed `brick/math` rational arithmetic without adding a dependency. Every component retains exact minor-unit value and source/private basis; only the final total is rounded for comparison. `CrewBidPayViewModel` prepares display labels, component amounts and rate intervals. `CrewBidPayEditorViewModel` supplies editor categories, choices, rows and compensation-period context; Blade does not resolve rules or rates.
-
-**Acceptance:** User decisions and rule evidence are recorded; supported scenarios and their required inputs are finite and testable. No guessed guarantee floor, tax amount, hostile-area designation, or premium entitlement enters the calculation.
-
-Commit message: `docs: define scheduled gross pay inputs and supported rules`
-
-#### 2. Version the applicable rates and longevity rules
-
-**Goal:** Resolve an explainable hourly rate for each supported earning interval.
-
-**Current implementation:** The existing rate JSON now has table/source, USD, 2024 effective-date, fleet and 2026-11-03 applicability-confirmation metadata, preserving its CA/FO values. `CrewPayRates` resolves exact minor-unit rates and approved anniversary/step policies. Catalog changes use repository maintenance; no unrelated admin rate editor was added.
-
-**Problem:** There is no table identity, currency/effective metadata, automatic pay-step rule, or handling of an anniversary/rate-table change inside a period.
-
-Start from the existing approved USD values and add explicit metadata without changing them. Represent monetary rates as exact decimal/minor-unit values during calculation; avoid binary floating-point multiplication. Resolve by seat, applicable date, and pay step derived from the private **adjusted pay-longevity date**: start at step 1, add one for each anniversary reached, and cap at 12. Apply the confirmed March 1 anniversary in non-leap years for a February 29 start. The new rate becomes effective at 0000Z on its anniversary date, so construct multiple dated rate intervals when an anniversary falls inside the compensation period. Do not select one rate only at period-start or postpone the change to the next period. Verify fleet applicability and reject unavailable pre-longevity-date rates explicitly. Cross-date/transitioned-credit rate attribution remains a rule-matrix requirement in subtasks 1 and 4. Preserve the original rate source and the user's applicability confirmation. Published rate versions must remain identifiable for explanations/recalculation; do not silently overwrite the meaning of an old estimate. Rate maintenance is admin-only. Use the existing JSON catalog initially if it meets the agreed update workflow; add a Filament maintenance interface only when that workflow requires it, rather than making an unrelated admin system a prerequisite.
-
-**Acceptance:** First/last steps, invalid/future longevity dates, exact anniversary boundaries, leap-day anniversaries, effective-date gaps/overlaps, seat changes, and any agreed mid-period rate transition have meaningful focused coverage. Missing rate coverage means unavailable.
-
-Depends on subtask 1. Commit message: `feat: version crew pay rates and resolve longevity steps`
-
-#### 3. Add private pay context and planning inputs
-
-**Goal:** Let the owner provide the personal facts required for the supported scenarios.
-
-**Current implementation:** Encrypted, hidden `User.crew_pay_settings` owns the account-wide adjusted longevity date and Check Airman override, edited through the existing owner-only profile form. Blank longevity disables estimates; omitted pay fields preserve saved values. `CrewBidPayProfile` retains encrypted display settings and package/revision/seat/line scenarios with a unique owner and optimistic revision. `SaveCrewBidPayProfile` validates allow-listed comparison fields and cannot write either profile setting. Corrections/removal retain bid preferences and rankings; removing comparison inputs also retains the two personal profile values. New package revisions/seats do not inherit a reviewed scenario. Private context is not added to shared payloads, serialized users or numbered bid copy.
-
-The move-to-profile migration copies existing encrypted longevity and consistent Check Airman values, removes their old copies and increments comparison revisions to invalidate open editors. Conflicting package Check Airman choices are preserved privately and require an explicit profile selection before a complete total is available. Rollback restores personal values into the old encrypted settings/scenarios before dropping the new column; an unresolved conflict retains its original per-context choices. Once an owner resolves a conflict, rollback restores that chosen account-wide value rather than resurrecting superseded choices. Deployment must apply the migration before the new profile fields are used.
-
-**Problem:** Shared package data cannot supply longevity, availability/proration, or individual premium elections/eligibility.
-
-Store the adjusted pay-longevity date privately using the application's encrypted-data conventions; do not substitute hire date. Separate enduring personal context from period/line-specific planning adjustments. Scope every read/write by owner and appropriate period/seat; treat another seat as an explicit comparison scenario rather than proof of qualification. The user permits private planning inputs for missing facts: validate dates, units, eligibility choices, and supported manual amounts, show their assumptions, and retain their origin separately from imported evidence. A manual input supplies a scenario fact, not a new compensation formula or shared source record. If it contradicts imported evidence, retain both origins and require an explicit scenario choice rather than silently replacing the package value. Support correction/removal and keep these data out of package administration, shared payloads, copied numbered bids, and unrelated exports. Reuse existing action/autosave/concurrent-edit patterns without silently expanding the workspace preference allow-list or resetting rankings.
-
-**Acceptance:** Owner isolation, authorization, invalid/incomplete inputs, changed seat/period, save recovery, and concurrent edits are covered. No other package viewer gains access to a pay profile or individualized total.
-
-Depends on subtask 1 and rate-input definitions. Commit message: `feat: add private crew pay context`
-
-#### 4. Normalize payable credit and compensation periods
-
-**Goal:** Supply the calculator with credit components that have defined period and rule bases.
-
-**Current implementation:** `CrewPayPeriod` implements UTC compensation boundaries, including January 1–30, January 31–March 1 for February, and March 2–31. The separate pay normalizer preserves source guarantee, deduplicates pairing references, and uses reviewed dated private inputs when daily credit/allocation is not established. Existing comparison credit/carry display remains separate.
-
-**Problem:** Trip occupancy, elapsed time, pairing credit, contractual PCH, and personal compensation are different quantities; calendar boundaries do not always match compensation Months.
-
-Keep the published guarantee independent. Build normalized planning components with assignment identity, covered Z day, receiving compensation period, credit duration, category, source, and completeness. Deduplicate repeated pairing references. Preserve full-segment departure-Z-day attribution and the user-confirmed daily greater-of-awarded-or-actual rule for covered carry-in duties, while recognizing that future actual work is unavailable. Before actual work exists, explicitly use supported awarded/scheduled planning values; do not call missing actual work zero. Apply the recorded January–March compensation-period exceptions and duty-level transition allocation separately from calendar occupancy.
-
-Support each included category under its verified basis. Air/surface deadhead mode and scheduled/actual credit rules, reserve/vacation/training credit, and premiums need their own inputs. Do not reuse the blanket 50% carry increment or automatically value ground transfers at zero. Correct compensation inputs in a focused path while preserving the current comparison display until a separately reviewed change replaces it. Published packages remain fixed; source corrections/reimports follow revision review.
-
-**Acceptance:** Multi-leg duties, departure across midnight, month/year and January–March boundaries, duplicate references, missing duties/awarded credit, actual-versus-scheduled distinction, and carry credit already included in base amounts are covered. Unknown coverage stays unknown.
-
-Depends on the supported rule matrix in subtask 1. Commit message: `feat: normalize scheduled pay credits and period allocation`
-
-#### 5. Calculate scheduled gross pay and supported premiums
-
-**Goal:** Produce an exact, explainable amount for a supported personal scenario.
-
-**Current implementation:** `CalculateCrewBidPay` returns `CrewBidPayEstimate` with ready/incomplete/unsupported/unconfigured status, exact component values, selected greater-of base, separate additions, rate intervals, period/version, assumptions and missing inputs. It does not produce a complete total from a guarantee-only or incomplete credit scenario.
-
-**Problem:** Applying a rate to that metric would duplicate or misallocate credits and can award unsupported premiums.
-
-Use a focused calculation service with explicit inputs and a structured result. Resolve the applicable base-pay candidates under the reviewed greater-of structure, then add supported compensation that is payable separately. Apply overrides and premium multipliers only to their eligible components. Each component must state whether it contributes to the greater-of base or is added above it; enforce one contribution per assignment/rule rather than adding the same carry/deadhead credit again. Value each applicable MBPG/published-guarantee candidate with the confirmed UTC-day weighting across rate intervals and actual compensation-period denominator. An anniversary takes effect at 0000Z, including that day at the new rate. Scheduled-credit rate attribution, including transitioned credit, follows the category rules established in subtasks 1 and 4; do not apply `max(hours) × one rate` to a mixed-rate period by shortcut.
-
-Keep duration precision and exact monetary arithmetic through the final sum, then round the final USD total once to the nearest cent with half-up rounding. Include fractional proration and premium amounts without intermediate monetary rounding. Return currency, exact/display component subtotals, final rounded amount, selected base candidate, hourly rate/pay step, compensation dates, source and rule versions, assumptions, exclusions, and missing inputs. Explain any display-rounding reconciliation without changing the calculation. Distinguish ready, incomplete, and unsupported scenarios. A known-components subtotal can be shown only with that limited label; unresolved applicable compensation must not be presented as a complete gross total. A genuine zero requires supporting data, not a default.
-
-**Acceptance:** Each greater-of candidate winning/tie case, missing versus zero, exact fractional durations, premium stacking/exclusions, above-guarantee treatment, duplicated carry credit, proration/eligibility where supported, and final-only half-up rounding have focused tests based on agreed examples. Cover anniversaries at period-start/end and inside the period, old/new rate days summing to the actual denominator, leap-day anniversaries, capped rates, and January–March compensation-period boundaries. No payroll/tax or actual-work claim is inferred from a scheduled estimate.
-
-Depends on subtasks 1–4. Commit message: `feat: calculate scheduled gross crew pay`
-
-#### 6. Present the estimate in the existing comparison workspace
-
-**Goal:** Add useful pay comparison without crowding the compact timeline or exposing personal context.
-
-**Current implementation:** Compact estimates are always visible. Pay adjustments displays personal profile values and normal assumptions, with optional controls inside one Advanced adjustments disclosure. Category and review checklists and the compact-display toggle have been removed. Only opened pay breakdowns prepare and render detailed components. Typed view models prepare the presentation; filters/selections/ranks remain intact.
-
-**Problem:** A single dollar value can hide unresolved coverage or imply an actual paycheck; a new view could duplicate controls or reorder bids.
-
-The latest user direction supersedes the original optional-display/setup plan: always show the compact Estimated pay amount, use the normal defaults automatically and retain the expanded breakdown and Highest estimated pay sort. Put source/rate details on demand in existing line details. Refresh when profile, source or optional adjustments change, preserving filters, selections and manual ranking. A minimum-only amount is labelled and is not treated as a complete comparable total.
-
-**Acceptance:** Valid/missing/partial/unsupported states, rate/profile updates, both themes, narrow screens, keyboard use, focus restoration, and owner-specific rendering are checked. Numbered bid copy retains its agreed line-only schema.
-
-Depends on subtask 5. Commit message: `feat: display private scheduled pay estimates`
-
-#### 7. Add pay sorting only for comparable estimates
-
-**Goal:** Make scheduled-pay comparison available without changing manual bid rank or Best match semantics.
-
-**Current implementation:** Highest estimated pay sorts ready final rounded USD cents descending, unknowns last, with natural Line ID ties. Bulk-add uses the same private context/order. Existing Credit, Block, Days off, Best match and Line ID sorts remain available, and manual ranks remain unchanged.
-
-**Problem:** Ordering an incomplete subtotal beside a complete estimate would imply comparable coverage.
-
-Include **Highest estimated pay** in the first release, as confirmed by the user. Sort ready estimates descending by the final rounded USD total in minor units, with the same personal scenario, compensation period, and supported scope. Equal displayed totals use natural Line ID as the stable final tie-break. Place missing/incomplete/unsupported values after ready estimates and visibly identify their status; never treat them as zero or compare different currencies without a separately approved conversion feature. At the user's request (2026-11-15), **Maximize pay** is also available as an ordered Best match goal using the same Estimated line value / Estimated pay amounts. Lower goals break pay ties, and pay only breaks ties when a higher goal precedes it. Manual bid ranks remain independent.
-
-**Acceptance:** Exact ties, unknown values, changed personal context, inconsistent coverage, and selection/rank preservation are covered. All existing sorts remain available.
-
-Depends on subtask 5; first-release inclusion is confirmed. Commit message: `feat: add comparable estimated pay sorting`
-
-#### 8. Integrate and release the supported scheduled-pay scope
-
-**Goal:** Deliver the selected scheduled gross-pay release with evidence for each supported component.
-
-**Current implementation:** Focused pure-calculation/view-model and feature coverage exercises pay arithmetic, input validation, owner privacy, package/seat isolation, optimistic revisions, rendering, sorting and retained manual bid order. Integration results and remaining manual-browser checks are recorded in TODO.md.
-
-**Problem:** Correct arithmetic alone cannot establish source completeness, owner privacy, or a clear explanation of what is estimated.
-
-Review agreed representative Flying/Reserve and any supported composite/training cases, source disagreements, and deliberately incomplete packages. Verify that every visible amount traces to its inputs, versions, and scope, and that unavailable cases explain what is needed. Add calculator unit coverage for pure arithmetic and focused feature coverage for profile ownership, rate maintenance authorization, Livewire state, package revisions, and rendering. Use synthetic fixtures for private scenarios; do not add real personal dates to the repository. Review browser behavior manually. Require Sail before code changes, use installed APIs, run only focused tests, Pint after PHP edits, and Larastan once at final integration. Update TODO.md with actual outcomes and each completed task's commit message.
-
-**Acceptance:** The agreed gross-pay cases calculate with supported credit/premium rules; unresolved cases remain explicit. The feature does not silently fall back to the unselected guarantee-only release. No new dependencies, automatic payments, external payroll integration, or tax engine are included in this plan.
-
-Depends on the implemented release scope above. Commit message: `feat: release supported scheduled pay comparisons`
-
-#### Confirmed plan and implementation gates
-
-Confirmed: scheduled gross contractual pay in USD before taxes/deductions, excluding per diem and expense reimbursements; current applicability of the supplied rate values; a separate adjusted pay-longevity date; step 1 for the first year, annual increases capped at 12, March 1 non-leap-year anniversaries for a February 29 start; rate changes at 0000Z on the anniversary date; MBPG/line guarantees weighted by old/new rate UTC days divided by actual days in the compensation period; exact calculations with one final nearest-cent half-up rounding; private planning inputs with assumptions shown; automatic compact amounts, expanded breakdowns, and Highest estimated line value ordering. The confirmed carry-in policy combines originating-period pay with the separately shown next-period excess-day payment, including 0.75× passenger-deadhead travel hours.
-
-All product questions asked during planning are answered, including earning/departure-day rates for allocated credits, the whole 1.5× Open Time flight off-day payment and the qualified/full-period first scope. The supported implementation follows the rule/coverage matrix above. The Sections 2/5 review still qualifies the contract-support status of user policies; excluded branches remain unavailable, and product approval does not independently establish contractual correctness. Final integration outcomes and the task's commit message are recorded in TODO.md rather than duplicated here.
-
-**Performance and legacy sources:** Browsing decrypts the published payload once, reuses compensation-period dates/rate intervals and prepares detailed pay presentation only for opened rows. Legacy packages can lack `source_credit` and pairing credit/block totals even when their original PDFs were imported. Server maintenance command `crew-bids:enrich-pay-source {package} {files*}` accepts only original files whose combined hashes match the published package fingerprint and whose parsed identity agrees. It stores separately encrypted, hidden `pay_source` metadata, leaving the published payload, fingerprint, timestamps and rankings intact. Browsing uses this metadata only while its recorded package fingerprint matches. New imports already contain these fields. Rollback of the metadata-column migration removes only the recoverable enrichment. Do not manufacture unique dollar values when multiple lines legitimately fall below the same MBPG; resolve missing source data and compare each actual line independently.
-
-Parser v4 additionally preserves source duty groups for boundary/rate allocation. Re-running verified enrichment upgrades old pay metadata. The repeatable `--included-occupied-day=LINE:YYYY-MM-DD` option records an explicitly confirmed already-included occupied obligation, requiring published Credit and an occupied date in the originating compensation period. Matching prior confirmations survive enrichment while their source Credit is unchanged. F49's November 15 confirmation is attached this way rather than hardcoded into calculation or applied to other unknown days.
 
 ### Personal-data visibility
 
@@ -902,64 +342,12 @@ Resolve access to assigned crew, vacations, and training records within shared p
 
 ## Open decisions
 
-- Which additional source periods/layout revisions need support beyond the validated native-text samples?
-- Advanced comparison definitions are settled in subtask 1, including published line guarantee, signed base-credit comparison, source conflicts, crew authority, UTC/month scope, and missing-data rules. Remaining gates are implementation coverage/normalization checks and explicitly deferred sort, long-stay/scoring/display definitions.
-- What source evidence and effective rules support legal-rest/fatigue indicators and compensation calculations?
-- What visibility, retention, and revision behavior apply to personal records, tags, and notes?
-- What spreadsheet schema and external evidence can establish exported, submitted, awarded, or projected states?
-
-Portal-specific decisions and delivery phases are recorded under Auto bidding feature. Resolve dependent definitions before implementing the corresponding enhancement.
+- Which additional source periods and layouts need representative fixtures beyond validated samples?
+- Which current agreement amendments, company interpretations and assignment evidence support the unresolved compensation and legal-rest cases above?
+- What visibility, retention and package-revision behavior apply to personal crew, vacation, training, tags and notes?
+- What schema should company-compatible spreadsheet exports use, and what explicit portal evidence establishes award status?
+- What definitions support deferred long-stay thresholds, deadhead count/duration and rest aggregation, broader regions, extra comparison views and later breakfast/fatigue scoring?
 
 ## Verification for future changes
 
-Use existing Laravel/Livewire, action/service, Blade, and owner-scoped persistence conventions. Do not introduce abstractions or dependencies solely because they appeared in an older proposal.
-
-Run focused regression coverage for the changed behavior: source normalization and failures, UTC/month/year boundaries, exact credit arithmetic, filtering/ranking, persistence/concurrent edits, revision migration, access isolation, and missing versus zero values. Keep live portal writes out of automated tests. Run Pint after PHP edits and Larastan once at integration, and record actual outcomes in TODO.md. Manual browser review remains necessary for layout and interaction claims.
-
-## Completed
-
----------------------
-## [x] Completed: Set preferences pop out
-Problem: if a user is not at the top of the page, the Set preferences opens when a user is out of view. The user needs to scroll up to set preferences. Perfer a pop out or full page preferences view
-
-Element:
-```html
-<button type="button" @click="$wire.showPreferences = ! $wire.showPreferences" :aria-expanded="$wire.showPreferences" aria-controls="bid-preferences" class="inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-full bg-slate-200/70 px-3 text-slate-700 focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-800 dark:text-slate-200 lg:max-w-80" aria-expanded="false">
-                        <svg aria-hidden="true" class="h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" data-slot="icon">
-  <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"></path>
-</svg><span class="sr-only">Edit preferences: </span><span class="truncate"><!--[if BLOCK]><![endif]-->Maximize days off → Maximize credit<!--[if ENDBLOCK]><![endif]--> <!--[if BLOCK]><![endif]--> · 8 dates off (UTC)<!--[if ENDBLOCK]><![endif]--> <!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]--></span>
-                    </button>
-```
-
-## Sort: user submitted bid order
-
-### Goal
-
-Add a `Submitted bid order` option to the line-card sort menu, using the user's last Kalitta-submitted order. The user confirmed this source on 2026-11-15. Show the original submitted rank and when its portal report was checked.
-
-### Current implementation
-
-The sort menu supports Best match, Highest credit, Highest block time, Most days off and Line ID. `BrowseBidLines` filters eligible lines and delegates sorting to `BidLineMatcher`; `CrewBidBrowseCriteria` carries the browsing inputs. `CrewBidsPageDataFactory` derives each card's Selected rank from the editable workspace selections. `BidSubmission` retains encrypted reviewed choices and a `matched` status with a report-reconciliation timestamp when the fresh Kalitta report matches the submitted sequence.
-
-### Problem
-
-The editable saved list can differ from the last submitted order. Sorting by workspace selections would show draft ranks as submitted ranks. The sort needs a confirmed portal snapshot, owner/package/seat isolation and explicit handling of missing or uncertain submission evidence.
-
-### Planned behavior
-
-- Use the latest report-matched submission belonging to the authenticated user and active workspace/package/seat. Validate its period, fleet and package context before using its ordered line IDs. Reviewed-only, stale, unknown or nonmatching attempts do not establish a submitted order. A newer unresolved or nonmatching attempt for that context makes an older match unsuitable as the current source.
-- Label the option `Submitted bid order` and show the report-check time in UTC. This represents the last order checked by the app. When no usable snapshot exists, disable the option with `No confirmed submitted order available`. Manual portal submissions without a captured matching record require separate authenticated read-only retrieval before this source becomes available.
-- Preserve eligibility, tabs and browsing filters. Submitted lines appear first in their original rank order; other lines follow in natural Line ID order. Filtering never renumbers submitted ranks. Missing or ineligible submitted lines do not create extra cards.
-- Show a distinct `Submitted #N` rank while this sort is active. Preserve `Selected #N` for the current editable list, since the two ranks can differ.
-- Changing sort leaves saved selections, manual ranks, copy output and portal submissions unchanged. Add all matching continues to append unselected choices in displayed order through the existing explicit action. The sort stays temporary browsing state and triggers no portal login, report fetching or submission.
-
-### Implementation sequence
-
-1. Add an owner-scoped submitted-order resolver using existing submission records and encrypted review data. Return validated ranks, checked-at metadata and an unavailable reason. No migration or additional credential storage is needed for this first version.
-2. Pass the server-resolved order through `CrewBidBrowseCriteria` and the shared browsing path used by page rendering and Add all matching. Keep submission queries out of Blade and client-controlled Livewire state.
-3. Extend `BidLineMatcher` with submitted-rank comparison and natural Line ID fallback, preserving existing sort modes.
-4. Extend page/card view data with submitted-rank/source metadata, validate the new sort value in `CrewBids`, and update the dropdown and card labels. If the source becomes unavailable after a context switch, return to the default sort with an explanatory notice.
-5. Add focused coverage for submitted order differing from the draft; mixed flying/reserve ranks; filtered rank gaps; unsubmitted, missing and ineligible lines; missing or uncertain evidence; newer ambiguous attempts; owner/package/seat isolation; context switches; bulk-add order; and unchanged saved ranks/copy/submission state.
-6. At implementation integration, confirm Sail, run affected browsing/page-data/Livewire/view-model tests, run Pint after PHP changes, run Larastan once and build assets for the UI change. Record actual outcomes in TODO.md. Browser review should confirm rank labels and unavailable-source messaging.
-
-Planned implementation commit message: `feat: sort crew bid lines by last submitted Kalitta order`
+Follow [AGENTS.md](AGENTS.md) for execution and integration rules. Keep live portal writes out of automated tests. Match focused coverage to delivered behavior, including source failures, UTC/compensation boundaries, missing versus zero values, exact arithmetic, private-state isolation and revision handling. Manual browser/touch/keyboard review remains outstanding where stated above. Record completion outcomes and commit messages in [TODO.md](TODO.md), then remove completed tasks from this backlog.

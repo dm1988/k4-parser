@@ -114,13 +114,26 @@ class ReadBidPortalPage
     public function context(#[SensitiveParameter] string $html, #[SensitiveParameter] string $employee, ?int $maximumLine = null): array
     {
         $form = $this->form($html);
+        foreach ($form->getElementsByTagName('input') as $input) {
+            if ($input->getAttribute('name') === 'Login1$Password') {
+                throw new BidPortalException('The portal returned a login page instead of an authenticated Bid Sheet. Check your portal login and try again.');
+            }
+        }
         $account = $this->element($form, 'LoginName1');
         $seat = $this->text($this->element($form, 'ContentPlaceHolder1_lbl_Position'));
         $fleet = $this->text($this->element($form, 'ContentPlaceHolder1_lbl_Type'));
         $table = $this->element($form, 'ContentPlaceHolder1_gv_bidpackage');
-        if ($account === null || $table === null || ! in_array($seat, ['CA', 'FO'], true)
-            || ! preg_match('/\A(?:747|777)\z/', $fleet)) {
-            throw new BidPortalException('The portal account or bid context is not supported.');
+        if ($account === null) {
+            throw new BidPortalException('The Bid Sheet did not identify the signed-in portal account.');
+        }
+        if ($table === null) {
+            throw new BidPortalException('The Bid Sheet package table was not found. Check the current Bid Sheet layout in Kalitta.');
+        }
+        if (! in_array($seat, ['CA', 'FO'], true)) {
+            throw new BidPortalException('The Bid Sheet did not provide a supported CA/FO position.');
+        }
+        if (! preg_match('/\A(?:747|777)\z/', $fleet)) {
+            throw new BidPortalException('The Bid Sheet did not provide a supported 747/777 fleet.');
         }
 
         $rows = $table->getElementsByTagName('tr');

@@ -33,6 +33,37 @@ class ReadBidPortalPageTest extends TestCase
         $this->assertFalse($context['update_postback']);
     }
 
+    #[DataProvider('unsupportedContexts')]
+    public function test_identifies_the_unsupported_context_field_without_exposing_page_values(string $find, string $replace, string $message): void
+    {
+        $html = str_replace($find, $replace, $this->fixture('bid-sheet'));
+
+        $this->expectException(BidPortalException::class);
+        $this->expectExceptionMessage($message);
+
+        app(ReadBidPortalPage::class)->context($html, '900000');
+    }
+
+    public static function unsupportedContexts(): array
+    {
+        return [
+            'missing account' => ['id="LoginName1"', 'id="MissingAccount"', 'The Bid Sheet did not identify the signed-in portal account.'],
+            'missing package' => ['id="ContentPlaceHolder1_gv_bidpackage"', 'id="MissingPackage"', 'The Bid Sheet package table was not found. Check the current Bid Sheet layout in Kalitta.'],
+            'missing position' => ['id="ContentPlaceHolder1_lbl_Position"', 'id="MissingPosition"', 'The Bid Sheet did not provide a supported CA/FO position.'],
+            'unsupported position' => ['>FO<', '>synthetic-private-position<', 'The Bid Sheet did not provide a supported CA/FO position.'],
+            'missing fleet' => ['id="ContentPlaceHolder1_lbl_Type"', 'id="MissingFleet"', 'The Bid Sheet did not provide a supported 747/777 fleet.'],
+            'unsupported fleet' => ['>777<', '>synthetic-private-fleet<', 'The Bid Sheet did not provide a supported 747/777 fleet.'],
+        ];
+    }
+
+    public function test_identifies_a_login_page_returned_in_place_of_the_authenticated_bid_sheet(): void
+    {
+        $this->expectException(BidPortalException::class);
+        $this->expectExceptionMessage('The portal returned a login page instead of an authenticated Bid Sheet. Check your portal login and try again.');
+
+        app(ReadBidPortalPage::class)->context($this->fixture('login'), '900000');
+    }
+
     public function test_rejects_a_bid_context_whose_line_limit_disagrees_with_the_form(): void
     {
         $this->expectException(BidPortalException::class);

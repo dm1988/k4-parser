@@ -137,6 +137,24 @@ class CrewBidEmployeeTest extends TestCase
         $http->assertNotSent(fn (Request $request): bool => $request->method() === 'POST' && str_contains($request->url(), '/Pages/'));
     }
 
+    public function test_login_page_during_refresh_explains_the_failure_and_preserves_the_last_snapshot(): void
+    {
+        $user = User::factory()->crewBidsAccess()->create();
+        $package = BidPackage::factory()->create(['period' => '2026-12']);
+        $snapshot = CrewBidSnapshot::factory()->create(['period' => '2026-12']);
+        $before = $snapshot->fresh()->getRawOriginal();
+        $http = SharedBidPortal::fake('expired-login');
+
+        $this->actingAs($user)->post(route('crew-bids.employees.read', $package), $this->credentials())
+            ->assertRedirect()->assertSessionHas('crew_bid_sync_error', 'The portal returned a login page instead of an authenticated Bid Sheet. Check your portal login and try again.')
+            ->assertSessionMissing('_old_input');
+
+        $this->assertSame($before, $snapshot->fresh()->getRawOriginal());
+        $this->assertDatabaseCount('crew_bid_snapshots', 1);
+        $this->assertDatabaseCount('bid_submissions', 0);
+        $http->assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/Pages/ViewAllBids.aspx'));
+    }
+
     public function test_portal_employee_names_are_escaped_in_the_current_users_report(): void
     {
         $user = User::factory()->crewBidsAccess()->create();

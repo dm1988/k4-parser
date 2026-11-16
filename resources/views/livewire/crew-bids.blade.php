@@ -1,35 +1,37 @@
 <div class="mx-auto max-w-7xl px-3 py-6 sm:px-6" data-crew-bids data-dirty="{{ $dirty ? 'true' : 'false' }}" x-data="crewBidsHeader" @bid-action-failed="$refs.networkError.hidden = false; if ($refs.preferencesNetworkError) $refs.preferencesNetworkError.hidden = false" :data-preferences-dirty="$wire.$dirty(['goals', 'daysOff', 'startCity'])" @keydown.escape.window="if (statusOpen) { $event.preventDefault(); closeStatus(true) } else if ($wire.showPreferences) { $wire.showPreferences = false } else if ($wire.showList) { $event.preventDefault(); closeList() } else if (filtersOpen) { filtersOpen = false; $refs.filtersTrigger?.focus() }">
     <header x-ref="workspaceHeader" class="sticky top-0 z-30 -mx-3 border-b border-slate-200 bg-gray-100 px-3 shadow-sm dark:border-slate-800 dark:bg-gray-950 sm:-mx-6 sm:px-6">
         <div class="flex flex-wrap items-center gap-3 py-3" data-bid-command-bar>
-            <h1 class="shrink-0 text-2xl font-bold text-[#1B365D] dark:text-amber-200">K4 Bids</h1>
-            @if ($packages->isNotEmpty())
-                <div class="flex min-w-0 max-w-full items-center gap-1">
-                    <div class="flex min-w-0 items-center rounded-full border border-slate-300 bg-white pe-2 dark:border-slate-700 dark:bg-slate-900">
-                        <label class="sr-only" for="bid-package">Bid package</label>
-                        <select id="bid-package" wire:model="contextPackage" wire:change="changeContext" wire:loading.attr="disabled" wire:target="changeContext" class="min-h-11 min-w-0 max-w-full flex-1 rounded-full border-0 bg-transparent font-mono text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900 sm:text-sm">
-                            @foreach ($packages as $option)<option value="{{ $option->id }}">{{ $option->period }} · B{{ $option->fleet }} · {{ $option->source_revision }}</option>@endforeach
-                        </select>
-                        @if ($package)<span class="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ $package->archived_at ? 'Archived' : 'Published' }}</span>@endif
-                        @can('manage-crew-bids')<a href="{{ route('filament.admin.resources.bid-packages.index') }}" aria-label="Manage package" title="Manage package" class="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-slate-400 dark:hover:bg-slate-800"><x-heroicon-o-cog-6-tooth class="h-4 w-4" aria-hidden="true" /></a>@endcan
-                    </div>
-                    @if ($package)<button type="button" x-ref="packageDetailsTrigger" @click="$refs.packageDetails.showModal()" aria-label="Open package details" aria-haspopup="dialog" aria-controls="bid-package-details" title="Package details" class="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-200 focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-slate-400 dark:hover:bg-slate-800"><x-heroicon-o-information-circle class="h-5 w-5" aria-hidden="true" /></button>@endif
-                </div>
-            @else
-                @can('manage-crew-bids')<a href="{{ route('filament.admin.resources.bid-packages.index') }}" class="inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-300 px-3 text-sm focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-600"><x-heroicon-o-cog-6-tooth class="h-4 w-4 shrink-0" aria-hidden="true" /><span>Manage package</span></a>@endcan
-            @endif
-            @if ($package)
-                <button type="button" x-ref="predictionsTrigger" @click="$refs.predictions.showModal()" wire:poll.60s.visible aria-haspopup="dialog" aria-controls="bid-predictions" title="Bid predictions{{ $prediction['stale'] ? ' · Stale shared bids; refresh recommended' : '' }}" class="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border border-slate-300 bg-white px-2.5 text-xs font-medium text-[#1B365D] hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
-                    <x-heroicon-o-chart-bar class="h-4 w-4 shrink-0 text-[#C5A059]" aria-hidden="true" />
-                    <span class="sr-only">Bid predictions: </span>
-                    <span class="whitespace-nowrap">@if (! $prediction['available'])Unavailable @elseif ($prediction['likely'])<span class="font-mono font-semibold">{{ $prediction['likely'] }}</span> · Likely hold @else No hold @endif</span>
-                    @if ($prediction['stale'])<span class="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400" aria-hidden="true"></span><span class="sr-only"> · Stale shared bids; refresh recommended.</span>@endif
-                </button>
-            @endif
-            <div class="ms-auto flex max-w-full flex-wrap items-center justify-end gap-3">
-                @if ($notice)<span wire:key="bid-notice-{{ md5($notice) }}" x-data="{ visible: true }" x-show="visible" x-init="setTimeout(() => visible = false, 8000)" class="min-w-0 text-xs text-slate-600 dark:text-slate-300" role="status" aria-live="polite">{{ $notice }} @if ($undoId)<button type="button" wire:click="undoAdd" class="min-h-11 font-semibold underline focus-visible:ring-2 focus-visible:ring-amber-500" wire:loading.attr="disabled" wire:target="undoAdd"><span wire:loading.remove wire:target="undoAdd">Undo addition</span><span wire:loading wire:target="undoAdd" role="status">Undoing…</span></button>@endif</span>@endif
+            <div class="flex min-w-0 basis-full flex-wrap items-center gap-3 lg:flex-1 lg:basis-0" data-bid-context>
+                <h1 class="shrink-0 text-2xl font-bold text-[#1B365D] dark:text-amber-200">K4 Bids</h1>
                 @if ($packages->isNotEmpty())
-                    <a href="{{ route('profile.edit') }}#k4-bids-preferences" title="Change bid seat in user preferences" class="inline-flex min-h-11 items-center rounded-lg px-2 text-sm text-slate-600 underline decoration-slate-300 underline-offset-4 focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-slate-300 dark:decoration-slate-600">{{ $seat === 'CA' ? 'Captain' : 'First Officer' }}</a>
+                    <div class="flex min-w-0 max-w-full items-center gap-1">
+                        <div class="flex min-w-0 items-center rounded-full border border-slate-300 bg-white pe-2 dark:border-slate-700 dark:bg-slate-900">
+                            <label class="sr-only" for="bid-package">Bid package</label>
+                            <select id="bid-package" wire:model="contextPackage" wire:change="changeContext" wire:loading.attr="disabled" wire:target="changeContext" class="min-h-11 min-w-0 max-w-full flex-1 rounded-full border-0 bg-transparent font-mono text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900 sm:text-sm">
+                                @foreach ($packages as $option)<option value="{{ $option->id }}">{{ $option->period }} · B{{ $option->fleet }} · {{ $option->source_revision }}</option>@endforeach
+                            </select>
+                            @if ($package)<span class="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ $package->archived_at ? 'Archived' : 'Published' }}</span>@endif
+                            @can('manage-crew-bids')<a href="{{ route('filament.admin.resources.bid-packages.index') }}" aria-label="Manage package" title="Manage package" class="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-slate-400 dark:hover:bg-slate-800"><x-heroicon-o-cog-6-tooth class="h-4 w-4" aria-hidden="true" /></a>@endcan
+                        </div>
+                        @if ($package)<button type="button" x-ref="packageDetailsTrigger" @click="$refs.packageDetails.showModal()" aria-label="Open package details" aria-haspopup="dialog" aria-controls="bid-package-details" title="Package details" class="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-200 focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-slate-400 dark:hover:bg-slate-800"><x-heroicon-o-information-circle class="h-5 w-5" aria-hidden="true" /></button>@endif
+                    </div>
+                @else
+                    @can('manage-crew-bids')<a href="{{ route('filament.admin.resources.bid-packages.index') }}" class="inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-300 px-3 text-sm focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-600"><x-heroicon-o-cog-6-tooth class="h-4 w-4 shrink-0" aria-hidden="true" /><span>Manage package</span></a>@endcan
                 @endif
+                @if ($package)
+                    <button type="button" x-ref="predictionsTrigger" @click="$refs.predictions.showModal()" wire:poll.60s.visible aria-haspopup="dialog" aria-controls="bid-predictions" title="Bid predictions{{ $prediction['stale'] ? ' · Stale shared bids; refresh recommended' : '' }}" class="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border border-slate-300 bg-white px-2.5 text-xs font-medium text-[#1B365D] hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+                        <x-heroicon-o-chart-bar class="h-4 w-4 shrink-0 text-[#C5A059]" aria-hidden="true" />
+                        <span class="sr-only">Bid predictions: </span>
+                        <span class="whitespace-nowrap">@if (! $prediction['available'])Unavailable @elseif ($prediction['likely'])<span class="font-mono font-semibold">{{ $prediction['likely'] }}</span> · Likely hold @else No hold @endif</span>
+                        @if ($prediction['stale'])<span class="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400" aria-hidden="true"></span><span class="sr-only"> · Stale shared bids; refresh recommended.</span>@endif
+                    </button>
+                @endif
+            </div>
+            @if ($packages->isNotEmpty())
+                <a href="{{ route('profile.edit') }}#k4-bids-preferences" title="Change bid seat in user preferences" class="inline-flex min-h-11 items-center rounded-lg px-2 text-sm text-slate-600 underline decoration-slate-300 underline-offset-4 focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-slate-300 dark:decoration-slate-600">{{ $seat === 'CA' ? 'Captain' : 'First Officer' }}</a>
+            @endif
+            <div class="ms-auto flex max-w-full flex-wrap items-center justify-end gap-3" data-bid-list-actions>
+                @if ($notice)<span wire:key="bid-notice-{{ md5($notice) }}" x-data="{ visible: true }" x-show="visible" x-init="setTimeout(() => visible = false, 8000)" class="min-w-0 text-xs text-slate-600 dark:text-slate-300" role="status" aria-live="polite">{{ $notice }} @if ($undoId)<button type="button" wire:click="undoAdd" class="min-h-11 font-semibold underline focus-visible:ring-2 focus-visible:ring-amber-500" wire:loading.attr="disabled" wire:target="undoAdd"><span wire:loading.remove wire:target="undoAdd">Undo addition</span><span wire:loading wire:target="undoAdd" role="status">Undoing…</span></button>@endif</span>@endif
                 <div class="relative inline-flex min-w-0 max-w-full rounded-xl bg-[#1B365D] text-white dark:bg-slate-800" data-bid-split-control @click.outside="closeStatus()" @focusout="if (! $el.contains($event.relatedTarget)) closeStatus()">
                     <button type="button" x-ref="listTrigger" @click="openList($event)" title="Open my bid list" :aria-expanded="$wire.showList" aria-controls="bid-list-drawer" class="inline-flex min-h-11 min-w-0 items-center gap-2 rounded-s-xl px-3 py-2 text-xs font-semibold hover:bg-white/10 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400 sm:text-sm">
                         <x-heroicon-o-shopping-cart class="h-5 w-5 shrink-0" aria-hidden="true" />
