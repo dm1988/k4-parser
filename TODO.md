@@ -28,6 +28,20 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Sync from K4 to My Bid list
+
+Goal: Pull already submitted K4 bids into My bid list, warn before overwriting existing choices, and give the drawer's More actions controls a consistent presentation.
+
+Current implementation (2026-11-16): Added Sync from K4 alongside matching full-width, icon-labelled Add all matching lines and Clear bid list controls. Sync opens a protected native credential form with package/seat context and a required replacement checkbox for populated lists. It reuses the authenticated Submitted Bid Lines PDF reader, verifies stable portal context, maps every report number to one eligible package line, and saves the complete original order through the existing optimistic workspace save. Preferences remain intact; mismatches, missing/ambiguous lines, failed reports and concurrent workspace/package changes preserve saved choices. Credentials are discarded and never bound to Livewire state or flashed as input. Reading works with a closed bid window or disabled outbound submission feature. Successful sync reopens the imported package/seat in the list drawer with a status message. Removed this completed section from CREW_BIDS.md.
+
+Problem addressed: Users could submit their local choices but could not populate or replace a private list from their existing K4 submission; the existing secondary actions lacked a consistent layout.
+
+Validation: Elevated Sail was available. The focused integration pass passed 66 PHP tests with one unavailable private-report fixture skipped (321 assertions); the final strengthened sync file passed all 24 cases (149 assertions), bringing distinct passing PHP coverage to 67 cases. Coverage includes report order differing from form drafts, new/empty/populated lists, replacement confirmation, preserved preferences, seat restoration, context/line rejection, failed reads, access restrictions and concurrent edits. All 13 focused drawer/status/focus JavaScript checks, Pint, the production Vite build and whitespace checks passed. The user confirmed live sync works after an initial unsupported-Bid-Sheet response; that initial response's cause was not established. The Debugbar troubleshooting check found no captured sync requests; the protected credential routes disable profiling. No full suite or agent-performed live portal login was run.
+
+Static analysis: The single final Larastan pass completed with zero errors.
+
+Commit message: `feat: sync submitted K4 bids into My bid list`
+
 ## [x] Completed: Remove implemented work from CREW_BIDS.md
 
 Goal: Keep CREW_BIDS.md focused on remaining work without repeating completed feature plans and implementation history.

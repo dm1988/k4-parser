@@ -8,15 +8,6 @@ Implemented (2026-11-16): The seat link is a separate middle toolbar item, and M
 
 Refactor the top header toolbar layout in the Livewire view to swap the positions of the `First Officer` badge and the `My bid list (43)` action container.
 
-## Sync from K4 to My Bid list
-In the My Bid list slideover, under "More actions" and and implement an option to pull already submitted bids from the K4 server into a blank My Bid list. If there are bids in the list, warn of overwrite. 
-
-Clean up UI for existing actions:
-Clear bid list
-Add all 43 matching flying lines
-
-Make the new action similar to the other 2 actions
-
 ## Advanced comparison controls
 
 The filter groups and definition review are complete. The remaining controls below use the agreed comparison contract. These are browsing comparisons; they must preserve private manual bid order and must not imply legal compliance or payroll correctness.

@@ -12,6 +12,16 @@ class SubmitPortalBid
 {
     public function __construct(private BidPortalSession $session, private ReadBidPortalPage $pages, private ReadSubmittedBidReport $reports) {}
 
+    /** @return array{context: array<string, mixed>, numbers: list<int>} */
+    public function readSubmitted(#[SensitiveParameter] string $employee, #[SensitiveParameter] string $password): array
+    {
+        return $this->session->run($employee, $password, function (string $html, Closure $get) use ($employee): array {
+            $snapshot = $this->snapshot($html, $employee, $get, false);
+
+            return ['context' => $snapshot['context'], 'numbers' => $snapshot['current']];
+        });
+    }
+
     /** @param list<string> $selections
      * @return array<string, mixed>
      */

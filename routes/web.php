@@ -3,6 +3,7 @@
 use App\Enums\FlightPlanTask;
 use App\Http\Controllers\CrewBidEmployeeController;
 use App\Http\Controllers\CrewBidSubmissionController;
+use App\Http\Controllers\CrewBidSyncController;
 use App\Http\Controllers\ExtractController;
 use App\Http\Controllers\FlightDelayController;
 use App\Http\Controllers\FlightReleaseController;
@@ -30,6 +31,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
     Route::prefix('crew-bids/submissions')->name('crew-bids.submissions.')
         ->middleware(['feature:crew_bids', 'can:use-crew-bids', 'throttle:10,1'])->group(function () {
+            Route::get('/package/{package}/{seat}/sync', [CrewBidSyncController::class, 'create'])->whereNumber('package')->whereIn('seat', ['CA', 'FO'])->name('sync.create');
+            Route::post('/package/{package}/{seat}/sync', [CrewBidSyncController::class, 'store'])->whereNumber('package')->whereIn('seat', ['CA', 'FO'])->name('sync.store');
             Route::get('/package/{package}/{seat}', [CrewBidSubmissionController::class, 'create'])->whereNumber('package')->whereIn('seat', ['CA', 'FO'])->name('create');
             Route::post('/package/{package}/{seat}', [CrewBidSubmissionController::class, 'review'])->whereNumber('package')->whereIn('seat', ['CA', 'FO'])->name('review');
             Route::get('/{submission}', [CrewBidSubmissionController::class, 'show'])->whereUlid('submission')->name('show');

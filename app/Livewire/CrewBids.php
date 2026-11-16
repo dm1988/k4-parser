@@ -144,6 +144,18 @@ class CrewBids extends Component
 
     public function mount(): void
     {
+        $imported = session()->pull('crew_bid_import_context');
+        if (is_array($imported) && in_array($imported['seat'] ?? null, ['CA', 'FO'], true)) {
+            $package = BidPackage::query()->whereNotNull('published_at')->whereNull('archived_at')->find($imported['package_id'] ?? null);
+            if ($package !== null) {
+                $this->loadPackage($package, $imported['seat']);
+                $this->showPreferences = false;
+                $this->showList = true;
+                $this->notice = 'Submitted bids synced from K4 in their original order.';
+
+                return;
+            }
+        }
         $this->seat = $this->user()->crew_bid_seat_preference;
         $last = BidWorkspace::query()->where('user_id', Auth::id())->latest('updated_at')->first();
         $package = $last === null ? null : BidPackage::query()->whereNotNull('published_at')->find($last->bid_package_id);
