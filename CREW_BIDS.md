@@ -4,56 +4,6 @@ This document tracks remaining features, operational verification and unresolved
 
 K4 bid workflows use direct portal documents and authenticated portal reports for ingestion, validation, submission read-back, shared bids, predictions and future award retrieval. Do not introduce Outlook/company-mailbox access, forwarding, Microsoft Graph, inbound email providers or bid-email receipt validation. Existing account verification and password-reset emails remain supported, as confirmed by the user.
 
-## UI Refactoring: Header CTA and Element Relocation
-
-**Context**
-A series of layout adjustments and element relocations were performed on a Laravel/Livewire/Tailwind-based application. The primary goals were to reorganize filter elements and add a new "Add all" call-to-action (CTA) button within the main navigation/filter area.
-
-**Diagnostics**
-The following elements were identified as key reference points for relocation and styling:
-
-| Element | Selector Reference | Key Attributes |
-| :--- | :--- | :--- |
-| **Info Button** | `button.shrink-0.items-center.rounded-full` | `text-slate-500`, `min-h-11` |
-| **Border Container** | `.rounded-full.border-slate-300` | `flex`, `bg-white`, `pe-2` |
-| **Filter Group** | `.rounded-xl.border-slate-300` | Parent of `#bid-view` and `#bid-sort` |
-| **Primary CTA** | `button.bg-amber-500` | `rounded-full`, `font-bold` |
-
-**Code Fixes**
-The following DOM modifications were identified to achieve the requested layout:
-
-*   **Info Button Nesting:** The info button was moved inside the `rounded-full border-slate-300` container to group it with related text/icons.
-*   **Secondary Pill Relocation:** A button pill (previously between select menus) was moved outside and to the left of the main `rounded-xl` filter container.
-*   **CTA Insertion:** A new "Add all" button was added to the right of the filter group. This button adds all bids in the view to the My bid list.
-
-
-`````js
-/* Illustrative DOM modifications for the live page */
-
-// Move Info Button into its sibling container
-const container = document.querySelector('.rounded-full.border-slate-300');
-const infoBtn = document.querySelector('button.text-slate-500');
-container.appendChild(infoBtn);
-
-// Add primary "Add all" CTA after the filters
-const filterGroup = document.querySelector('.rounded-xl.border-slate-300');
-const addAllBtn = document.createElement('button');
-addAllBtn.className = 'inline-flex min-h-11 items-center px-6 rounded-full bg-amber-500 text-white font-bold ml-2';
-addAllBtn.textContent = 'Add all';
-filterGroup.after(addAllBtn);
-
-`````
-
-
-**Actionable Recommendations**
-For the source code implementation in Laravel/Livewire, follow this strategy:
-
-*   **Structural Update:** In the Blade template, move the **Info Button** component inside the `div` containing the `border-slate-300` class. Ensure `pe-2` or `gap` utilities are adjusted to prevent crowding.
-*   **CTA Implementation:** Add the "Add all" button to the end of the flex container: `.ms-auto.flex.items-center.justify-end`.
-*   **Tailwind Consistency:** Use the `bg-amber-500` and `rounded-full` utilities to maintain parity with existing primary buttons. Ensure `wire:click="addAll"` and `wire:loading` attributes are applied to handle the Livewire backend logic.
-
-*Note: The code fixes and findings above were identified on a live page in DevTools. When applying them to your codebase, please adapt them to your project's specific technical stack (e.g., Tailwind CSS classes, CSS modules, framework components) rather than applying them as literal CSS overrides.*
-
 ## Zero-trust crewbids.kalittaair.com credential storage
 Plan zero trust credential storage using stored salt against a user's password
 

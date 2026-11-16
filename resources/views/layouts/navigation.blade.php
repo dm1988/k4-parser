@@ -43,7 +43,12 @@
                         <button
                             type="button" x-ref="userMenuTrigger" data-pay-menu-trigger
                             class="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-hidden dark:bg-gray-900 dark:text-gray-300 dark:hover:text-white">
-                            <div>{{ Auth::user()->name }}</div>
+                            <span class="flex flex-col gap-1 text-start">
+                                <span>{{ Auth::user()->name }}</span>
+                                @if (Auth::user()->canUseCrewBids())
+                                    <span class="text-xs font-normal text-gray-500 dark:text-gray-400">{{ Auth::user()->crew_bid_seat_preference === 'CA' ? __('Captain') : __('First Officer') }}</span>
+                                @endif
+                            </span>
 
                             <div class="ms-1">
                                 <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg"
@@ -69,6 +74,9 @@
                         </x-dropdown-link>
 
                         @if (Auth::user()?->canUseCrewBids())
+                        <x-dropdown-link :href="route('profile.edit').'#k4-bids-preferences'">
+                            {{ __('Bid preferences') }}
+                        </x-dropdown-link>
                         <x-dropdown-link :href="route('profile.edit').'#k4-bids-preferences'"
                             @click="openPayAdjustments($event, $refs.userMenuTrigger)"
                             class="min-h-11 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-500">
@@ -143,6 +151,9 @@
         <div class="border-t border-gray-200 pb-1 pt-4 dark:border-gray-700">
             <div class="px-4">
                 <div class="text-base font-medium text-gray-800 dark:text-gray-100">{{ Auth::user()->name }}</div>
+                @if (Auth::user()->canUseCrewBids())
+                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ Auth::user()->crew_bid_seat_preference === 'CA' ? __('Captain') : __('First Officer') }}</div>
+                @endif
                 <div class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ Auth::user()->email }}</div>
             </div>
 
@@ -156,6 +167,9 @@
                 </x-responsive-nav-link>
 
                 @if (Auth::user()?->canUseCrewBids())
+                <x-responsive-nav-link :href="route('profile.edit').'#k4-bids-preferences'">
+                    {{ __('Bid preferences') }}
+                </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('profile.edit').'#k4-bids-preferences'"
                     @click="openPayAdjustments($event, $refs.mobileMenuTrigger)"
                     class="min-h-11 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-500">

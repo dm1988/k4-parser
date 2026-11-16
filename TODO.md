@@ -28,6 +28,30 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Move bid position beneath the profile name
+
+Goal: Show First Officer or Captain as profile-name subtext and remove the separate position link from the bids header.
+
+Current implementation (2026-11-16): Desktop and mobile navigation show the saved bid position beneath the user's name for accounts with K4 Bids access. Added Bid preferences links to both profile menus to retain access to position settings. Removed the old workspace-header position link. Existing seat eligibility and separate saved workspaces remain covered by their integration test.
+
+Problem addressed: Bid position occupied a separate control next to My bid list instead of appearing with the user's identity.
+
+Validation: Updated the existing preferences-link assertion to check the full page containing navigation, and verified both Captain and First Officer after changing the saved preference. Five focused Sail cases passed (35 assertions), the production Vite build and Pint passed, and one Larastan pass returned zero errors. Whitespace checks passed; no live-browser visual comparison was performed.
+
+Commit message: `refactor: show bid position beneath the profile name`
+
+## [x] Completed: UI Refactoring: Header CTA and Element Relocation
+
+Goal: Apply the supplied header layout and keep the Add all CTA consistent with the app's primary styling.
+
+Current implementation (2026-11-16): Nested package information inside the package pill and moved predictions beside the ranking controls in the second toolbar row. Added a rightmost Add all CTA for flying and reserve views using the existing addMatching action, with a matching-count accessible label, loading feedback and disabled empty state. Ranking text truncates within a flexible group and toolbar controls wrap on smaller screens. Following screenshot feedback, the CTA matches the existing line-card Add buttons: Aviation Blue background, white text, rounded-lg corners, identical spacing/type, the same h-4 plus icon and a matching loading spinner. Removed the completed request from CREW_BIDS.md.
+
+Problem addressed: Package information and predictions occupied the wrong header groups, and bulk adding matching lines required opening the bid-list actions menu. The initial gold pill CTA diverged from the line-card Add buttons; it now uses their styling and icons.
+
+Validation: Initial focused Sail checks passed: 3 PHP cases (31 assertions) covering sorted, duplicate-safe bulk additions and accessible prediction rendering, plus 67 existing bid-workspace JavaScript cases. After the button styling correction, the focused bulk-add case passed again (6 assertions), the production Vite build and Pint passed, and one Larastan pass returned zero errors. Whitespace checks passed. Styling was checked against the existing line-card Add markup and supplied screenshot; no live-browser visual comparison was performed.
+
+Commit message: `refactor: align bid header controls and add bulk CTA`
+
 ## [x] Completed: Resolve seven reported test failures
 
 Goal: Recheck and fix the seven failures in the supplied test output without weakening their assertions.

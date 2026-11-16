@@ -93,11 +93,14 @@ class CrewBidsTest extends TestCase
 
         Livewire::actingAs($user)->test(CrewBids::class)->assertSet('seat', 'CA')->assertSet('selections', ['F1'])
             ->assertViewHas('allLines', fn (array $lines): bool => array_column($lines, 'id') === ['F1'])
-            ->assertDontSee('id="bid-seat"', false)->assertSee(route('profile.edit').'#k4-bids-preferences', false);
+            ->assertDontSee('id="bid-seat"', false);
+        $this->get(route('crew-bids.index'))->assertOk()->assertSeeText('Captain')
+            ->assertSee(route('profile.edit').'#k4-bids-preferences', false)->assertSeeText('Bid preferences');
 
         $this->patch(route('profile.update'), ['name' => $user->name, 'email' => $user->email, 'crew_bid_seat_preference' => 'FO'])
             ->assertSessionHasNoErrors();
         Livewire::actingAs($user->refresh())->test(CrewBids::class)->assertSet('seat', 'FO')->assertSet('selections', ['R2']);
+        $this->get(route('crew-bids.index'))->assertOk()->assertSeeText('First Officer');
         $this->assertSame(['F1'], BidWorkspace::query()->where('user_id', $user->id)->where('seat', 'CA')->sole()->selections);
     }
 
