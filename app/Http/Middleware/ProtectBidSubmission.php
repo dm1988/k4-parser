@@ -15,7 +15,7 @@ class ProtectBidSubmission
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->is('crew-bids/submissions*')) {
+        if (! $request->is('crew-bids/submissions*', 'crew-bids/employees*')) {
             return $next($request);
         }
         abort_unless($request->isSecure() || app()->environment('local', 'testing'), 403);

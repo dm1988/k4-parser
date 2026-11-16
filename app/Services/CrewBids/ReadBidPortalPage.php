@@ -111,7 +111,7 @@ class ReadBidPortalPage
      *
      * @return array{account_matches_input: bool, seat: string, fleet: string, period: string, package_id: int, package_revision: int, window_status: string, update_postback: bool}
      */
-    public function context(#[SensitiveParameter] string $html, #[SensitiveParameter] string $employee, int $maximumLine): array
+    public function context(#[SensitiveParameter] string $html, #[SensitiveParameter] string $employee, ?int $maximumLine = null): array
     {
         $form = $this->form($html);
         $account = $this->element($form, 'LoginName1');
@@ -143,7 +143,8 @@ class ReadBidPortalPage
             || ! preg_match('/\A\d{1,2}\/\d{1,2}\/20\d{2}\z/', $cells[2])
             || ! preg_match('/\A\d{1,2}\/\d{1,2}\/20\d{2}\z/', $cells[3])
             || ! preg_match('/\A\d{1,3}\z/', $cells[4])
-            || (string) $maximumLine !== $cells[5]) {
+            || ! preg_match('/\A[1-9]\d{0,3}\z/', $cells[5])
+            || ($maximumLine !== null && (string) $maximumLine !== $cells[5])) {
             throw new BidPortalException('The portal bid context values are not supported.');
         }
         $button = $this->element($form, 'ContentPlaceHolder1_btn_update');

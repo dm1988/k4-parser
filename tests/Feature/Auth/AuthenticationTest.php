@@ -55,4 +55,23 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
         $response->assertRedirect('/');
     }
+
+    public function test_app_login_and_logout_preserve_the_verified_employee_link(): void
+    {
+        $user = User::factory()->crewBidsAccess()->create();
+        $user->forceFill(['crew_bid_employee_number' => '900000', 'crew_bid_employee_verified_at' => now()])->save();
+        $before = $user->fresh()->getRawOriginal('crew_bid_employee_number');
+
+        $this->post('/login', ['email' => $user->email, 'password' => 'password'])->assertRedirect();
+        $this->assertAuthenticatedAs($user);
+        $this->post('/logout')->assertRedirect('/');
+        $this->assertGuest();
+        $this->post('/login', ['email' => $user->email, 'password' => 'wrong-password'])->assertSessionHasErrors('email');
+        $this->assertGuest();
+        $this->post('/login', ['email' => $user->email, 'password' => 'password'])->assertRedirect();
+        $this->assertAuthenticatedAs($user);
+        $this->assertSame($before, $user->fresh()->getRawOriginal('crew_bid_employee_number'));
+        $this->assertSame('900000', $user->fresh()->crew_bid_employee_number);
+        $this->assertNotNull($user->fresh()->crew_bid_employee_verified_at);
+    }
 }

@@ -2,15 +2,64 @@
 
 K4 Bids helps pilots compare monthly bid packages and prepare a private, ordered bid list. This document records the current product contract and remaining work. Completed implementation tasks, validation history, and commit messages are recorded in [TODO.md](TODO.md).
 
-Status (2026-11-15): Package import/publication, browsing, preferences, manual ranking, review/copy, compact cards, interactive trip timelines, credit calculations, icons, and trip endpoint/deadhead flags are implemented. Reviewed portal submission and fresh report reconciliation are implemented and enabled locally for the user's controlled test. Live acceptance, receipt authentication, and the enhancements below remain pending. Manual browser, touch, and keyboard review is still outstanding.
 
+
+Status (2026-11-15): Package import/publication, browsing, preferences, manual ranking, review/copy, compact cards, interactive trip timelines, credit calculations, icons, and trip endpoint/deadhead flags are implemented. Reviewed portal submission and fresh report reconciliation are implemented and enabled locally for the user's controlled test. The read-only employee bid viewer is implemented from supplied authenticated captures. Live portal acceptance, receipt authentication, and manual browser, touch, and keyboard review remain outstanding.
+
+## Refactor My bid list
+Refactor the top header toolbar layout in the Livewire view to swap the positions of the `First Officer` badge and the `My bid list (43)` action container.
+
+### Requirements:
+1. **Layout Swap:**
+   * Move the `My bid list (43)` button (along with its attached cloud sync/status dropdown component) to the absolute right side of the top header toolbar.
+   * Relocate the `First Officer` role badge to the middle position (just to the left of the bid list container).
+2. **Ergonomic Flow:**
+   * This aligns the primary working drawer trigger (`My bid list`) directly with the right-side edge where the slide-over drawer originates, improving visual hierarchy and interaction flow.
+3. **Styling & Framework:**
+   * Preserve all existing Tailwind CSS classes, responsive spacing, dropdown triggers, and reactive Livewire state bindings.
 ## View other employees bids
-The page:
-https://crewbids.kalittaair.com/Pages/ViewAllBids.aspx
-contains other employees submitted bids.
-There is a drop down containing a full ist of employees that have bid in the current bid package.
-There is a radio selector for bid position, CA, or FO
-Exportable formats include PDF and excel sheet.
+
+### Goal
+
+Use the global ViewAllBids report to predict unavailable lines and the likely hold for the logged-in user. Share the latest validated bids with every authorized K4 Bids user, scoped by month/fleet/CA-FO, while keeping private bid lists and submission status separate. Resolve the user's identity through a verified employee-number link and a manually imported seniority list.
+
+### Current implementation and evidence
+
+The supplied private ViewAllBids captures (2026-11-15), including selected-employee and View All states with saved report frames, establish the Web Forms contract. The employee selector is `ctl00$ContentPlaceHolder1$ddl_crewMembers`; CA/FO use `RadioButtonList1` with selector postbacks ending in `$0`/`$1`. View All is the shared import source; FE remains outside this feature's scope. The report exposes ReportArea and matching Export URLs for `ViewAllBids`, with observed `PDF` and `Excel` format options. Current Bid Status For groups rows by name, preserves Choice/Line pairs, includes empty-choice employee groups, and prints pagination. The supplied View All state has 84 pages; the importer supports up to 200 pages, 32 MB total report HTML, and a 180-second retrieval budget with bounded individual requests. No real employee identities or live report tokens are copied into committed fixtures.
+
+Shared bids and predictions are available from Package details and the workspace prediction control. Every authorized user reads the same validated snapshot without portal credentials. A native credential form refreshes the global report and atomically replaces the shared snapshot for its month/fleet/position. PDF and legacy Excel exports use the freshly verified global report. The current user's submission status and private list remain separate. Main workspace views check shared state every 60 seconds while visible; the shared report page reads the current stored snapshot when opened or refreshed. Snapshots older than 15 minutes are marked stale.
+
+The captured report does not print its own month/fleet context. The service verifies the authenticated Bid Sheet before and after retrieval, checks its month/fleet against the active local package, and rejects a changed portal package/revision. The UI shows portal context separately from the imported source revision; these revision schemes are not equated. Local line labels indicate unique number matches, not proof that the imported and portal revisions are identical.
+
+### Problem
+
+The original viewer treated each read as an isolated, transient employee report. It neither shared the global bids nor projected awards, so users could not tell which seniors would consume a line's positions or which choice they could likely hold.
+
+### Product behavior and implementation plan
+
+The user clarified (2026-11-15) that ViewAllBids is global data, not a private report for the authenticating app user. The user also confirmed that the number preceding a name is award seniority (lower is more senior) and the imported CA/FO crew counts are the available awards per line. This supersedes the earlier decision not to persist employee directories/choices.
+
+- Read the observed View All selector and every report page, matching each employee group to the fresh directory and its seniority. Publish one encrypted shared snapshot per month/fleet/position only after account/context, selection, identity, rank and pagination checks pass. Preserve repeated line numbers at different choice ranks; reject ambiguous repeated ranks. A failed refresh preserves the last good snapshot. Never combine partial employee reads into an apparently complete global snapshot. Selector actions come only from verified form-control names and a read-only transport allowlist, never from executing or parsing browser handler scripts.
+- All authorized K4 Bids users use the same shared bids without portal credentials. A deliberate authenticated refresh updates the shared dataset for everyone; browser views periodically check shared state. Credentials, cookies and live report tokens remain operation-local. There is no unattended portal login or saved password. Global PDF/Excel exports remain available; the prediction interface shows the current user's result and submitted choices.
+- The user no longer selects a person. A one-time read-only Kalitta login confirms the employee number against the authenticated account before saving its encrypted, serialization-hidden association on the current app user. Names are never used to infer account ownership. Later reads and package/seat changes resolve that number automatically; a `bidder` query parameter cannot change the target. In the workspace, project against that app user's private ordered list; other users' private lists are never included. The portal report supplies all other bidders' current submitted choices.
+- Process more senior bidders in seniority order, awarding each their highest-ranked choice with remaining CA/FO capacity. A bidder consumes at most one position. A senior who listed a line may be awarded an earlier choice elsewhere. Show a compact personal availability label, remaining positions, and the first available line in the user's ordered list as the likely hold. Remove the per-line bidder-count accordion and long employee-name lists.
+- Label results as projections based on the shared snapshot, not official awards or guarantees. Show source time and stale state; changing/missing bids, eligibility/training restrictions and later awards can change the outcome. Missing snapshot, unknown bidder, duplicate seniority, ambiguous line numbers or unknown senior-choice capacity make personalized predictions unavailable rather than falsely green. A bidder absent from the report has unknown future choices.
+- Preserve original ranks and portal line numbers, map local labels only for unique matches, and retain repeated choices internally. Preserve existing access gates, context isolation, published-package rules and fresh verified portal PDF/Excel exports. Report/export rendering-session IDs may differ as in the supplied captures; their widget/control and report stack must match. Read-only package context does not require editable personal bid fields. Personal workspace/submission records remain unchanged by a refresh or prediction.
+- Integrate the shared dataset and prediction status into line cards and a compact predictions control, with a shared report page for details/refresh. Cover allocation cascades, multiple positions, junior isolation, stale/missing/ambiguous inputs, complete global pagination, failed-refresh preservation, cross-user visibility, cross-context isolation and credential non-retention. Use focused tests, Pint, one Larastan integration pass and a frontend build; record actual outcomes in TODO.md.
+
+Implementation outcomes, validation and the commit message are recorded in TODO.md.
+
+### Manual seniority import and account identity
+
+The supplied [July 15, 2026 pilot seniority PDF](https://crewbids.kalittaair.com/hyperlinks/Pilot%20Seniority%20List%20as%20of%207.15.26.pdf) contains 987 pilots across 19 roster pages plus a cover page. Its columns distinguish employee number from system seniority. PDF text sometimes joins a seniority number directly to the name; the parser supports that observed spacing and validates contiguous ranks across pages, unique employee numbers, consistent dates, supported columns and page footers.
+
+An admin opens **Manage package → Update pilot seniority list**, supplies the direct PDF link, and selects **Import seniority PDF**. `ImportPilotSeniority` authorizes the admin and accepts only HTTPS PDF links under Kalitta's `/hyperlinks/` directory, without redirects, credentials or query strings. Downloads have a timeout and an 8 MB limit. Only employee number, name and seniority are retained in an encrypted current shared roster, with effective date, import timestamp, source URL, fingerprint and importing admin. Birth dates, hire dates, management flags, remarks and the original PDF are not retained. There is no scheduled seniority refresh.
+
+A complete successful import replaces the current roster atomically. Repeated identical content is unchanged; a newer list preserves account associations by employee number even when names/ranks change. Older effective dates, unsupported/partial layouts, download failures and invalid links leave the prior roster intact. Same-date corrected documents can be imported deliberately. A structurally valid source shortened at a complete final page cannot be distinguished from a shorter published roster because the supplied format provides no total roster count.
+
+Users open **Employee link / shared data → Link your employee number** and verify their own Kalitta login once. This operation reads account context only; it does not retrieve the global report or submit bids. Passwords and session cookies are discarded. A failed login, account mismatch or number absent from the imported roster preserves the previous account link. Users can verify again to correct a link. Other app accounts and their private workspaces are unaffected.
+
+Personal predictions use ranks from the dated imported roster, joined to global portal choices by employee number. The UI displays the roster date and shared-bid retrieval time separately. Missing account links or roster entries suppress predictions with actionable feedback; missing seniority for any shared bidder blocks projection rather than silently excluding them. A linked pilot with no row in the shared report can still model their local list, assuming no submitted choices for themselves. The roster can be older than the current bid period; admins must supply updated links when ranks change, and projections remain conditional estimates. Successful portal refreshes update shared choices but do not silently replace the manually managed seniority list.
 
 
 ## CBA accuracy review — 2026-10-29

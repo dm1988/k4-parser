@@ -30,6 +30,28 @@ class BidPortalSession
      */
     public function run(#[SensitiveParameter] string $employee, #[SensitiveParameter] string $password, Closure $operation): array
     {
+        return $this->authenticated($employee, $password, $operation, false);
+    }
+
+    /**
+     * @template TResult of array<string, mixed>
+     *
+     * @param  Closure(string, Closure(string): string, Closure(array<string, string>): string): TResult  $operation
+     * @return TResult
+     */
+    public function viewEmployees(#[SensitiveParameter] string $employee, #[SensitiveParameter] string $password, Closure $operation): array
+    {
+        return $this->authenticated($employee, $password, $operation, true);
+    }
+
+    /**
+     * @template TResult of array<string, mixed>
+     *
+     * @param  Closure(string, Closure(string): string, Closure): TResult  $operation
+     * @return TResult
+     */
+    private function authenticated(#[SensitiveParameter] string $employee, #[SensitiveParameter] string $password, Closure $operation, bool $viewEmployees): array
+    {
         $cookies = new CookieJar;
         try {
             if (! preg_match('/\A\d{1,20}\z/', $employee) || $password === '') {
@@ -55,8 +77,15 @@ class BidPortalSession
             if ($sheetUrl !== self::ORIGIN.'/Pages/BidSheet.aspx') {
                 throw new BidPortalException('Portal login was not accepted or the session expired.');
             }
-            $get = function (#[SensitiveParameter] string $reference) use ($cookies, $sheetUrl): string {
-                [$url, $response] = $this->get($this->destination($sheetUrl, $reference), $cookies);
+            $get = function (#[SensitiveParameter] string $reference) use ($cookies, $sheetUrl, $viewEmployees): string {
+                $destination = $this->destination($sheetUrl, $reference);
+                if ($viewEmployees && ! in_array(strtolower((new Uri($destination))->getPath()), ['/pages/bidsheet.aspx', '/pages/viewallbids.aspx', '/reserved.reportviewerwebcontrol.axd'], true)) {
+                    throw new BidPortalException('The employee report supplied an unexpected destination.');
+                }
+                [$url, $response] = $this->get($destination, $cookies);
+                if ($viewEmployees && $url !== $destination) {
+                    throw new BidPortalException('The employee report redirected or the portal session expired.');
+                }
                 if (in_array(strtolower((new Uri($url))->getPath()), self::LOGIN_PATHS, true)) {
                     throw new BidPortalException('The portal session expired.');
                 }
@@ -69,6 +98,26 @@ class BidPortalSession
                     throw new BidPortalException('The portal update response could not be verified.');
                 }
             };
+            if ($viewEmployees) {
+                $post = function (#[SensitiveParameter] array $fields) use ($cookies): string {
+                    $prefix = 'ctl00$ContentPlaceHolder1$';
+                    $allowed = ['__VIEWSTATE', '__VIEWSTATEGENERATOR', '__EVENTVALIDATION', '__LASTFOCUS', '__EVENTTARGET', '__EVENTARGUMENT',
+                        'ctl00$tb_usersLoggedIn', $prefix.'RadioButtonList1', $prefix.'ddl_crewMembers'];
+                    if (array_diff(array_keys($fields), $allowed) !== []
+                        || ! in_array($fields['__EVENTTARGET'] ?? '', [$prefix.'ddl_crewMembers', $prefix.'RadioButtonList1$0', $prefix.'RadioButtonList1$1'], true)
+                        || ($fields['__EVENTARGUMENT'] ?? '') !== ''
+                        || ! in_array($fields[$prefix.'RadioButtonList1'] ?? '', ['CA', 'FO'], true)
+                        || ($fields['__VIEWSTATE'] ?? '') === '' || ($fields['__EVENTVALIDATION'] ?? '') === '') {
+                        throw new BidPortalException('The employee selection postback is not supported.');
+                    }
+                    $response = $this->request('POST', self::ORIGIN.'/Pages/ViewAllBids.aspx', $cookies, $fields);
+                    if (! $response->successful()) {
+                        throw new BidPortalException('The employee selection failed or the portal session expired.');
+                    }
+
+                    return $response->body();
+                };
+            }
 
             return $operation($response->body(), $get, $post);
         } catch (BidPortalException $exception) {
@@ -104,7 +153,7 @@ class BidPortalSession
         $uri = UriResolver::resolve(new Uri($base), new Uri($reference));
         if ($uri->getScheme() !== 'https' || $uri->getHost() !== 'crewbids.kalittaair.com'
             || $uri->getPort() !== null || $uri->getUserInfo() !== '' || $uri->getFragment() !== ''
-            || ! in_array(strtolower($uri->getPath()), [...self::LOGIN_PATHS, '/redirect.aspx', '/pages/bidsheet.aspx', '/pages/bidlinedataoutput.aspx', '/reserved.reportviewerwebcontrol.axd'], true)) {
+            || ! in_array(strtolower($uri->getPath()), [...self::LOGIN_PATHS, '/redirect.aspx', '/pages/bidsheet.aspx', '/pages/viewallbids.aspx', '/pages/bidlinedataoutput.aspx', '/reserved.reportviewerwebcontrol.axd'], true)) {
             throw new BidPortalException('The portal supplied an unexpected destination.');
         }
 

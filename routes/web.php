@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\FlightPlanTask;
+use App\Http\Controllers\CrewBidEmployeeController;
 use App\Http\Controllers\CrewBidSubmissionController;
 use App\Http\Controllers\ExtractController;
 use App\Http\Controllers\FlightDelayController;
@@ -22,6 +23,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('/crew-bids', CrewBids::class)
         ->middleware(['feature:crew_bids', 'can:use-crew-bids'])
         ->name('crew-bids.index');
+    Route::prefix('crew-bids/employees')->name('crew-bids.employees.')
+        ->middleware(['feature:crew_bids', 'can:use-crew-bids', 'throttle:10,1'])->group(function () {
+            Route::get('/package/{package}', [CrewBidEmployeeController::class, 'index'])->whereNumber('package')->name('index');
+            Route::post('/package/{package}', [CrewBidEmployeeController::class, 'read'])->whereNumber('package')->name('read');
+        });
     Route::prefix('crew-bids/submissions')->name('crew-bids.submissions.')
         ->middleware(['feature:crew_bids', 'can:use-crew-bids', 'throttle:10,1'])->group(function () {
             Route::get('/package/{package}/{seat}', [CrewBidSubmissionController::class, 'create'])->whereNumber('package')->whereIn('seat', ['CA', 'FO'])->name('create');

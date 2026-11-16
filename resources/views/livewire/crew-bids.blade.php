@@ -106,11 +106,27 @@
             <section class="p-5">
                 <div class="flex items-center justify-between gap-3"><h2 id="bid-package-details-title" class="text-lg font-semibold">Package details</h2><button type="button" autofocus @click="$refs.packageDetails.close()" aria-label="Close package details" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-amber-500 dark:hover:bg-slate-800"><x-heroicon-o-x-mark class="h-5 w-5" aria-hidden="true" /></button></div>
                 <div class="mt-2 space-y-2 text-sm text-slate-600 dark:text-slate-300"><p>{{ $monthLabel }} · B{{ $package->fleet }} · {{ $seat }} · {{ $package->source_revision }}</p><p>{{ count($allLines) }} eligible lines · {{ count($trips) }} imported trips</p>@foreach ($package->payload['coverage'] as $source => $present)<p>{{ ucfirst($source) }}: {{ $present ? 'Imported' : 'Not imported' }}</p>@endforeach</div>
+                <a href="{{ route('crew-bids.employees.index', ['package' => $package, 'seat' => $seat]) }}" class="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-semibold hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-700 dark:hover:bg-slate-800"><x-heroicon-o-users class="h-4 w-4" aria-hidden="true" />My predictions / shared data</a>
             </section>
         </dialog>
     @endif
 
     <x-crew-bids.pay-editor :editor="$payEditor" />
+
+    @if ($package)
+        <details wire:poll.60s.visible class="my-4 rounded-xl border border-slate-200 bg-white p-4 text-sm dark:border-slate-700 dark:bg-slate-900">
+            <summary class="min-h-7 cursor-pointer rounded font-semibold focus-visible:ring-2 focus-visible:ring-amber-500">Bid predictions{{ $prediction['likely'] ? ' · Likely hold '.$prediction['likely'] : '' }}</summary>
+            <div class="mt-3 space-y-3">
+                <p>{{ $prediction['reason'] }}</p>
+                @if ($prediction['checked_at'])<p class="font-mono text-xs">Shared bids: {{ $prediction['checked_at'] }}{{ $prediction['stale'] ? ' · Stale—refresh recommended' : '' }}</p>@endif
+                @if ($prediction['seniority_date'])<p class="font-mono text-xs">Seniority list: {{ $prediction['seniority_date'] }}</p>@endif
+                <div class="flex flex-wrap items-end gap-3">
+                    <a href="{{ route('crew-bids.employees.index', ['package' => $package, 'seat' => $seat]) }}" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-3 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-700">Employee link / shared data</a>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400">{{ $prediction['basis'] }}. Projections use your verified employee number, the dated seniority list and {{ $seat }} capacity. These are estimates, not official awards.</p>
+            </div>
+        </details>
+    @endif
 
     @if ($dirty)
     <div class="mt-2 flex flex-wrap gap-3 text-sm" role="status" aria-live="polite">
@@ -123,6 +139,13 @@
     @can('manage-crew-bids')
         <section id="bid-package-import" wire:show="showImport" x-cloak class="my-4 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900" aria-label="Manage bid package">
             <h2 class="text-lg font-semibold">Import a bid package</h2>
+            <form wire:submit="importSeniority" class="mt-4 space-y-3 border-b border-slate-200 pb-4 dark:border-slate-700">
+                <label for="seniority-url" class="block text-sm font-semibold">Update pilot seniority list</label>
+                <input id="seniority-url" type="url" wire:model="seniorityUrl" required maxlength="2048" placeholder="https://crewbids.kalittaair.com/hyperlinks/…pdf" class="block w-full rounded-lg text-sm dark:bg-slate-950">
+                <p class="text-xs text-slate-500 dark:text-slate-400">Manual updates only. Import the complete dated PDF using its direct Kalitta link. Employee links are preserved.</p>
+                <button type="submit" wire:loading.attr="disabled" wire:target="importSeniority" class="min-h-11 rounded-lg bg-[#1B365D] px-4 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50"><span wire:loading.remove wire:target="importSeniority">Import seniority PDF</span><span wire:loading wire:target="importSeniority" role="status">Importing seniority…</span></button>
+                @error('seniorityUrl')<p role="alert" class="text-sm text-amber-800 dark:text-amber-200">{{ $message }}</p>@enderror
+            </form>
             <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Lines PDF, Trips PDF, Overview .xlsx. Up to 3 files, 12 MB each. Partial packages identify unavailable details.</p>
             <form wire:submit="previewImport" class="mt-4 flex flex-col items-start gap-4">
                 <label class="text-sm">Package files<input type="file" wire:model="files" wire:loading.attr="disabled" wire:target="previewImport,publishImport" multiple accept=".pdf,.xlsx" class="mt-1 block max-w-full text-sm"></label>
@@ -257,7 +280,7 @@
             <p wire:loading.delay wire:target="tab,sort,daysOff,goals,startCity,minimumCredit,minimumDaysOff,layoverCity,extendedLayoversOnly,avoidShortLayovers,selectedOnly,changeContext,resetFilters,clearCreditFilters,clearWorkPatternFilters,clearLayoverFilters,clearDates,addRange" role="status" class="mb-2 text-xs text-slate-500 dark:text-slate-400">Updating matching lines…</p>
             <p class="mb-3 text-xs text-slate-500 dark:text-slate-400">Credit h:mm[:ss] · Block h:mm · UTC · Blue: flying trip (includes layover/rest) · Orange: reserve · Light: off · ?: unknown</p>
             <section class="space-y-3" aria-label="Available lines" wire:loading.class="opacity-60" wire:target="tab,sort,daysOff,goals,startCity,minimumCredit,minimumDaysOff,layoverCity,extendedLayoversOnly,avoidShortLayovers,selectedOnly,changeContext,resetFilters,clearCreditFilters,clearWorkPatternFilters,clearLayoverFilters,clearDates,addRange">
-                @forelse ($lineCards as $line)<x-crew-bids.line :line="$line" wire:key="bid-line-{{ $packageId }}-{{ $line->id }}" />
+                @forelse ($lineCards as $line)<x-crew-bids.line :line="$line" :prediction="$prediction['lines'][$line->id] ?? null" wire:key="bid-line-{{ $packageId }}-{{ $line->id }}" />
                 @empty<div class="rounded-xl border border-slate-200 p-5 dark:border-slate-700"><p>No lines match these filters.</p><button type="button" wire:click="resetFilters" class="min-h-11 font-semibold underline" wire:loading.attr="disabled" wire:target="resetFilters"><span wire:loading.remove wire:target="resetFilters">Reset filters</span><span wire:loading wire:target="resetFilters" role="status">Resetting…</span></button></div>@endforelse
             </section>
         @endif

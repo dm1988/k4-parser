@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Actions\CrewBids\ImportBidPackage;
+use App\Actions\CrewBids\ImportPilotSeniority;
 use App\Actions\CrewBids\PublishBidPackage;
 use App\Actions\CrewBids\SaveBidWorkspace;
 use App\Actions\CrewBids\SaveCrewBidPayProfile;
@@ -11,11 +12,13 @@ use App\Enums\CrewBidSort;
 use App\Models\BidPackage;
 use App\Models\BidWorkspace;
 use App\Models\CrewBidPayProfile;
+use App\Models\CrewBidSnapshot;
 use App\Models\User;
 use App\Services\CrewBids\BidLineMatcher;
 use App\Services\CrewBids\BrowseBidLines;
 use App\Services\CrewBids\CalculateCrewBidPay;
 use App\Services\CrewBids\CrewPayPeriod;
+use App\Services\CrewBids\PredictCrewBidLines;
 use App\Services\CrewBids\ResolveSubmittedBidOrder;
 use App\View\Models\CrewBidPayEditorViewModel;
 use App\View\Models\CrewBidsPageDataFactory;
@@ -29,6 +32,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
+use RuntimeException;
 use Throwable;
 
 class CrewBids extends Component
@@ -126,6 +130,8 @@ class CrewBids extends Component
     public array $payInput = [];
 
     public string $notice = '';
+
+    public string $seniorityUrl = '';
 
     /** @var list<TemporaryUploadedFile> */
     public array $files = [];
@@ -447,6 +453,21 @@ class CrewBids extends Component
         $this->payInput = [];
     }
 
+    public function importSeniority(ImportPilotSeniority $importer): void
+    {
+        Gate::authorize('manage-crew-bids');
+        $this->validate(['seniorityUrl' => ['required', 'string', 'url:https', 'max:2048']]);
+        try {
+            $list = $importer->handle($this->seniorityUrl, $this->user());
+            $this->notice = 'Seniority list updated: '.$list->effective_date->format('Y-m-d').' · '.count($list->pilots).' pilots.';
+            $this->seniorityUrl = '';
+        } catch (RuntimeException $exception) {
+            $this->addError('seniorityUrl', $exception->getMessage());
+        } catch (Throwable) {
+            $this->addError('seniorityUrl', 'Seniority import failed. The previous list is unchanged.');
+        }
+    }
+
     public function previewImport(): void
     {
         Gate::authorize('manage-crew-bids');
@@ -605,7 +626,7 @@ class CrewBids extends Component
         );
     }
 
-    public function render(CrewBidsPageDataFactory $pageDataFactory): View
+    public function render(CrewBidsPageDataFactory $pageDataFactory, PredictCrewBidLines $predictions): View
     {
         $data = $pageDataFactory->make(
             package: $this->packageId === null ? null : $this->package(),
@@ -617,6 +638,7 @@ class CrewBids extends Component
         );
 
         return view('livewire.crew-bids', $data->toViewData() + [
+            'prediction' => $predictions->forUser($data->package, $data->package === null ? null : CrewBidSnapshot::forPackage($data->package, $this->seat), $this->seat, $this->user(), $this->selections),
             'payEditor' => CrewBidPayEditorViewModel::fromInput($this->showPayEditor, $this->payLineId, $this->payInput, $data->package?->period, $this->seat, $this->user()->crew_pay_settings ?? []),
         ])->layout('layouts.app');
     }
