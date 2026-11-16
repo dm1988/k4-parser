@@ -8,6 +8,31 @@ use Tests\TestCase;
 
 class IcsDescriptionFormatterTest extends TestCase
 {
+    #[DataProvider('provenanceEventTypes')]
+    public function test_internal_source_observations_stay_out_of_export_notes(string $type): void
+    {
+        $event = ['type' => $type, 'metadata' => [
+            'origin' => 'AUS', 'destination' => 'CVG', 'notes' => 'Bring passport',
+            'source_observations' => [[
+                'source_id' => 'private-source-id', 'event_index' => 0,
+                'event' => ['metadata' => ['origin' => 'AUS', 'destination' => 'CVG', 'raw_lines' => ['Private source text']]],
+            ]],
+        ]];
+
+        $description = app(IcsDescriptionFormatter::class)->format($event);
+
+        $this->assertStringContainsString('Bring passport', $description);
+        foreach (['Source observations', 'private-source-id', 'Private source text', 'Origin: AUS', 'Destination: CVG'] as $internal) {
+            $this->assertStringNotContainsString($internal, $description);
+        }
+        $this->assertSame('Private source text', $event['metadata']['source_observations'][0]['event']['metadata']['raw_lines'][0]);
+    }
+
+    public static function provenanceEventTypes(): array
+    {
+        return [['flight'], ['duty']];
+    }
+
     public function test_it_formats_compact_flight_notes_and_omits_airport_enrichment(): void
     {
         $description = app(IcsDescriptionFormatter::class)->format([

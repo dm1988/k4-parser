@@ -28,6 +28,18 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Resolve seven reported test failures
+
+Goal: Recheck and fix the seven failures in the supplied test output without weakening their assertions.
+
+Current implementation (2026-11-16): Excluded internal source_observations from flight and other calendar descriptions, preserving operational notes and stored provenance. Limited each Tesseract subprocess to one OpenMP thread with a child-only environment setting to reduce CPU contention; rasterization and OCR timeouts, OCR-required page handling and cleanup remain enforced. Added regressions for both calendar-description paths and subprocess/parent environment isolation. The five reported CrewBidEmployeeTest failures already pass with the current queued-refresh assertions and worker execution; their pasted output used older synchronous expectations, with mismatched source-line excerpts.
+
+Problem addressed: Calendar metadata reconciliation introduced nested source observations which the notes formatter flattened back into origin/destination/raw-source fields. The large private PDF's OCR failure was intermittent: logs identify a Tesseract timeout on an image-only page; the same upload passed in isolation before changes. Tesseract's documented single-thread option limits per-process contention without increasing the timeout or skipping image pages.
+
+Validation: All seven reported cases passed across focused Sail runs using isolated in-memory SQLite. The five bid cases passed unchanged; the calendar-export case reproduced before the fix. All three new regression cases failed before implementation. After implementation, 27 calendar/ICS/OCR and export cases passed (183 assertions), and the supplied private PDF upload passed with real OCR (7 assertions), for 33 distinct passing cases including the five bid cases. The PDF case took 49.81 seconds before and 38.43 seconds after the change in these individual runs; this is not a controlled performance benchmark or a guarantee under arbitrary load. Pint, whitespace checks and the single Larastan pass (zero errors) passed. Debugbar had no recent captured CLI issue summaries. No full suite was rerun.
+
+Commit message: `fix: omit calendar provenance and bound OCR thread usage`
+
 ## [x] Completed: Verify and recover nonconsecutive global choice ranks
 
 Goal: Refresh shared bids when global report ranks have gaps without publishing conflicting data or silently changing the portal's printed ranks.

@@ -45,6 +45,7 @@ class PdfImagePageTextExtractor
                 '--psm',
                 '6',
             ]);
+            $process->setEnv(['OMP_THREAD_LIMIT' => '1']);
             $process->setTimeout(30);
             $process->mustRun();
 

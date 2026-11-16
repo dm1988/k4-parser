@@ -36,6 +36,7 @@ class IcsDescriptionFormatter
                 MetadataKey::RawLines->value,
                 MetadataKey::FlightawareUrl->value,
                 MetadataKey::DutyRawLines->value,
+                'source_observations',
                 'crew',
                 MetadataKey::CrewCount->value,
                 MetadataKey::OperatingCrewCount->value,
@@ -316,7 +317,7 @@ class IcsDescriptionFormatter
             MetadataKey::RawLines->value, MetadataKey::DutyRawLines->value,
             MetadataKey::FlightawareUrl->value, MetadataKey::DownloadId->value, MetadataKey::DownloadUrl->value,
             MetadataKey::Deadhead->value, MetadataKey::DutyType->value,
-            'flight_local_start', 'flight_local_end',
+            'flight_local_start', 'flight_local_end', 'source_observations',
         ];
         $lines = [];
 
