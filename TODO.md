@@ -28,6 +28,18 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Document Artisan commands, jobs, workers and queues
+
+Goal: Provide the application's command and background-process operating reference in README.md.
+
+Current implementation (2026-11-16): Added all nine application-defined Artisan commands with arguments/options, requirements, outcomes and examples; an index of all 208 registered development-installation commands; the complete application job/message and queue inventory; exact default, broadcasts and shared-bid worker commands; timeout/reservation and credential-expiry behavior; development process groups, production supervision/restarts, pause/resume, failure recovery, UTC scheduler frequencies and conditions, and troubleshooting. Documented retained account/system email and portal-only K4 workflows. Replaced unsupported AeroDataBox examples and corrected test commands to use the base test class's required in-memory SQLite environment. Configuration refresh guidance preserves the distinction between configuration caches and broader application-cache clearing.
+
+Problem addressed: The README omitted the dedicated bid worker, broadcasts queue, custom command options, schedule conditions and background-job recovery steps, leaving operators without a complete startup/runbook reference.
+
+Validation: Compared the README with application command signatures, job/message classes, configuration, development registration and scheduler source. Inspected Artisan's installed command registry, help output and schedule:list through Sail without executing imports, cleanup, mail sends or queued work. Verified all 208 visible command names and documented Artisan examples against that registry. Whitespace checks passed. Documentation-only changes; tests, Pint and Larastan were not needed. Existing implementation changes remain untouched.
+
+Commit message: `docs: document Artisan commands jobs queues and worker operations`
+
 ## [x] Completed: Queue shared-bid refreshes and portal exports
 
 Goal: Return immediately when updating shared bids, with progress and failure feedback while Kalitta is read in the background.
