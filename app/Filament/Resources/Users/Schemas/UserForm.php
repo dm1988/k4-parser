@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Utilities\Get;
@@ -26,6 +28,12 @@ class UserForm
                     ->unique(ignoreRecord: true)
                     ->maxLength(255),
                 DateTimePicker::make('email_verified_at'),
+                Select::make('role')
+                    ->options(fn (?User $record): array => $record?->role === 'super_admin'
+                        ? ['super_admin' => 'Super admin'] : ['user' => 'User', 'admin' => 'Admin'])
+                    ->required()
+                    ->disabled(fn (?User $record): bool => $record === null || ! UserResource::canChangeRole($record))
+                    ->helperText('Admins can change other users between User and Admin. Your own role and super-admin roles remain protected.'),
                 Toggle::make('is_active')
                     ->label('Active')
                     ->default(true)
@@ -35,6 +43,17 @@ class UserForm
                     ->label('K4 Bids access')
                     ->helperText('Grants K4 Bids to a regular user. Admins already have access; only admins can manage packages.')
                     ->default(false),
+                TextInput::make('crew_bid_employee_number')
+                    ->label('Verified employee number')
+                    ->formatStateUsing(fn (?User $record): ?string => $record?->crew_bid_employee_number)
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->helperText('The user verifies this number with their own Kalitta login. Unlink it to allow a fresh verification.'),
+                DateTimePicker::make('crew_bid_employee_verified_at')
+                    ->label('Employee verified at (UTC)')
+                    ->timezone('UTC')
+                    ->disabled()
+                    ->dehydrated(false),
                 Toggle::make('has_bought_coffee')
                     ->label('Bought a coffee')
                     ->default(false),

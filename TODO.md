@@ -28,6 +28,16 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## Current focus: Manage seniority and shared bids in Filament
+
+Goal: Give admins Filament controls for manual seniority imports, roster and shared snapshot inspection, verified employee-link management, and explicitly authorized user/admin role changes.
+
+Current implementation: Extending the existing resources and guarded import action. Preserve portal verification for employee links, restrict snapshot/roster editing to validated imports, and keep database records unchanged during development.
+
+Problem: These features currently require the crew workspace or command line for administration. The user explicitly authorized user/admin role changes in Filament; super-admin promotion remains outside scope.
+
+Commit message: `feat: manage crew bid seniority and access in Filament`
+
 ## [x] Completed: Import seniority and personalize bid predictions
 
 Goal: Manually ingest a supplied seniority PDF link, associate each account with its verified employee number, and show predictions only for that account without a name selector or long per-line bidder expansion.
