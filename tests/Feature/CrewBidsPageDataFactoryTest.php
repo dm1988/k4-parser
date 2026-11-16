@@ -44,6 +44,7 @@ class CrewBidsPageDataFactoryTest extends TestCase
             'days off' => [CrewBidSort::DaysOff, ['F1', 'F3']],
             'unavailable pay' => [CrewBidSort::Pay, ['F1', 'F3']],
             'line ID' => [CrewBidSort::LineId, ['F1', 'F3']],
+            'empty bid list' => [CrewBidSort::MyBidList, ['F1', 'F3']],
         ];
     }
 

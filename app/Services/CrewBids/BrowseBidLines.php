@@ -28,7 +28,7 @@ class BrowseBidLines
         $lines = array_values(array_filter($allLines, fn (array $line): bool => $this->matches($line, $criteria)));
         $sort = $criteria->sort === CrewBidSort::Submitted && ! $criteria->submittedOrder?->available()
             ? CrewBidSort::BestMatch : $criteria->sort;
-        $lines = $this->matcher->sort($lines, $criteria->rankingGoals(), $sort, $criteria->submittedOrder->ranks ?? []);
+        $lines = $this->matcher->sort($lines, $criteria->rankingGoals(), $sort, $criteria->submittedOrder->ranks ?? [], array_flip($criteria->selections));
         $selected = [];
         foreach ($criteria->selections as $id) {
             $selected[] = $allLines[$id] ?? [

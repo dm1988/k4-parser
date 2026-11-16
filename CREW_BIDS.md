@@ -1,12 +1,28 @@
 # K4 Bids: remaining work
 
 This document tracks remaining features, operational verification and unresolved source/rule decisions as of 2026-11-16. Completed implementation tasks, validation history and commit messages belong in [TODO.md](TODO.md). Existing application behavior is documented by its code and focused tests; completed plans are removed from this backlog.
+Please add a multi-select and bulk actions feature to the "My Bid List" slide-over drawer (`My bid list (43)`).
 
-## Refactor My bid list
+### My bid list: multi select / bulk actions
+Requirements:
 
-Implemented (2026-11-16): The seat link is a separate middle toolbar item, and My bid list plus its cloud/status dropdown occupy an independently right-aligned group. The package/prediction context wraps above them below the large breakpoint. This section is retained at the user's explicit request; validation and the commit message are recorded in TODO.md.
+1. **Select / Edit Mode & Draggable Area Replacement:**
+   * Add a toggle button at the top of the slide-over drawer (e.g., "Edit Mode" or "Select").
+   * When Edit Mode is active, replace the standard drag handle / reordering grips on each line item row with clean selection checkboxes.
 
-Refactor the top header toolbar layout in the Livewire view to swap the positions of the `First Officer` badge and the `My bid list (43)` action container.
+2. **Fixed Sticky Toolbar & Selection Count:**
+   * Introduce a fixed sticky toolbar that appears (or activates) inside the drawer when items are selected.
+   * Clearly display the total count of currently selected items (e.g., "5 selected") in the toolbar.
+
+3. **Persistent Selection Behavior:**
+   * After executing a bulk action (such as removing items or moving them), keep the selected items checked so the user can easily perform secondary follow-up actions without re-selecting.
+
+4. **Bulk Actions Included:**
+   * **Remove Selected:** Batch delete checked items from the bid list.
+   * **Move to Top / Bottom:** Quickly shift the selected block of lines to the very top or bottom of the sequence.
+
+5. **Styling & Tech Stack:**
+   * Maintain consistency with the existing Livewire/Alpine.js architecture and Tailwind CSS dark theme aesthetic (`bg-slate-800`, `slate-900`, clean borders, and smooth transitions).
 
 ## Advanced comparison controls
 

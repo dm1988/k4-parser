@@ -76,6 +76,77 @@ class CrewBidSubmittedOrderTest extends TestCase
         $this->assertSame([null, null, null, null], array_column($data->lineCards, 'submittedRank'));
     }
 
+    public function test_my_bid_list_sort_uses_manual_order_then_unselected_line_ids_independently_of_submitted_order(): void
+    {
+        Http::preventStrayRequests();
+        $workspace = $this->workspace();
+        $submission = $this->matched($workspace);
+        $original = $workspace->fresh()->getAttributes();
+
+        $data = $this->page($workspace, sort: CrewBidSort::MyBidList);
+
+        $this->assertSame(['F3', 'F1', 'F10', 'F20'], array_column($data->lineCards, 'id'));
+        $this->assertSame([1, 2, null, null], array_column($data->lineCards, 'rank'));
+        $this->assertSame([null, null, null, null], array_column($data->lineCards, 'submittedRank'));
+        $this->assertSame("1. F3\n2. F1", $data->copyText);
+        $this->assertSame($original, $workspace->fresh()->getAttributes());
+        $this->assertSame('matched', $submission->fresh()->status);
+        Http::assertNothingSent();
+    }
+
+    public function test_my_bid_list_sort_respects_filters_tabs_and_selected_only_without_renumbering_choices(): void
+    {
+        $workspace = $this->workspace();
+        $workspace->update(['selections' => ['R2', 'F10', 'F3', 'F1', 'F99', 'F4']]);
+
+        $filtered = $this->page($workspace, minimumCredit: 70, sort: CrewBidSort::MyBidList);
+        $reserve = $this->page($workspace, tab: 'reserve', sort: CrewBidSort::MyBidList);
+        $selected = $this->page($workspace, selectedOnly: true, sort: CrewBidSort::MyBidList);
+
+        $this->assertSame(['F3'], array_column($filtered->lineCards, 'id'));
+        $this->assertSame(3, $filtered->lineCards[0]->rank);
+        $this->assertSame(['R2'], array_column($reserve->lineCards, 'id'));
+        $this->assertSame(1, $reserve->lineCards[0]->rank);
+        $this->assertSame(['F10', 'F3', 'F1'], array_column($selected->lineCards, 'id'));
+        $this->assertSame([2, 3, 4], array_column($selected->lineCards, 'rank'));
+        $this->assertSame(['R2', 'F10', 'F3', 'F1', 'F99', 'F4'], array_column($selected->browse->selected, 'id'));
+    }
+
+    public function test_livewire_my_bid_list_option_precedes_submitted_order_and_follows_manual_reordering(): void
+    {
+        $workspace = $this->workspace();
+        $component = Livewire::actingAs(User::findOrFail($workspace->user_id))->test(CrewBids::class)
+            ->assertSeeInOrder(['My Bid List', 'Submitted bid order'])
+            ->set('sort', 'my_bid_list')->assertHasNoErrors()->assertSet('sort', 'my_bid_list');
+
+        $this->assertSame(['F3', 'F1', 'F10', 'F20'], array_column($component->viewData('lineCards'), 'id'));
+        $this->assertSame(7, $workspace->fresh()->revision);
+        $component->call('move', 'F1', 0)->assertHasNoErrors()->assertSet('sort', 'my_bid_list');
+        $this->assertSame(['F1', 'F3', 'F10', 'F20'], array_column($component->viewData('lineCards'), 'id'));
+        $this->assertSame(['F1', 'F3'], $workspace->fresh()->selections);
+        $component->call('clearList')->assertHasNoErrors()->assertSet('sort', 'my_bid_list');
+        $this->assertSame(['F1', 'F3', 'F10', 'F20'], array_column($component->viewData('lineCards'), 'id'));
+        $this->assertSame([], $workspace->fresh()->selections);
+        $this->assertDatabaseCount('bid_submissions', 0);
+    }
+
+    public function test_my_bid_list_sort_uses_the_active_package_workspace_after_context_changes(): void
+    {
+        $workspace = $this->workspace();
+        $package = BidPackage::factory()->create(['period' => '2026-12']);
+        $payload = $package->payload;
+        $payload['lines']['F3'] = array_replace($payload['lines']['F1'], ['id' => 'F3']);
+        $package->update(['payload' => $payload]);
+        BidWorkspace::factory()->create(['user_id' => $workspace->user_id, 'bid_package_id' => $package->id, 'selections' => ['F1', 'F3'], 'updated_at' => now()->subDay()]);
+
+        $component = Livewire::actingAs(User::findOrFail($workspace->user_id))->test(CrewBids::class)->set('sort', 'my_bid_list')
+            ->set('contextPackage', (string) $package->id)->call('changeContext')->assertHasNoErrors()->assertSet('sort', 'my_bid_list');
+
+        $this->assertSame(['F1', 'F3'], array_column($component->viewData('lineCards'), 'id'));
+        $this->assertSame(['F3', 'F1'], $workspace->fresh()->selections);
+        $this->assertSame(7, $workspace->fresh()->revision);
+    }
+
     /** @param array<string, mixed> $attributes
      * @param  array<string, mixed>  $reviewOverrides
      */

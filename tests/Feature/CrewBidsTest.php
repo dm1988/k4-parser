@@ -262,6 +262,7 @@ class CrewBidsTest extends TestCase
             'best match' => ['best'],
             'block sort' => ['block'],
             'line ID' => ['id'],
+            'my bid list' => ['my_bid_list'],
             'submitted order' => ['submitted'],
         ];
     }

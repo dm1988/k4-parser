@@ -28,6 +28,18 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Sort options: Add My Bid List
+
+Goal: Add My Bid List immediately above Submitted bid order and display saved choices in their manual order in the workspace.
+
+Current implementation (2026-11-16): Added the My Bid List sort option. As confirmed by the user, matching saved choices appear first in manual rank order, followed by other matching lines in natural Line ID order. Empty lists use Line ID order. Existing filters, tabs and Selected only remain independent; filtered choices keep their original ranks. The sort follows manual reordering and the active package workspace without changing saved choices, preferences or submission records. Removed the completed section from CREW_BIDS.md while preserving the user's prior removal of the Refactor My bid list section.
+
+Problem addressed: The workspace could sort by published values or confirmed submitted order but could not follow the user's current private bid-list order.
+
+Validation: All 20 focused sort, page-data and goal-validation cases passed through elevated Sail using guarded in-memory SQLite (85 assertions). Coverage includes independent local/submitted ordering, unchanged saved choices, natural ordering of unselected lines, filters/tabs, retained ranks, manual moves, cleared lists and package-context changes. Pint, the single Larastan pass (zero errors) and whitespace checks passed. No full suite, manual browser review or frontend build was needed; existing enum-driven Blade rendering exposes the new option without asset changes.
+
+Commit message: `feat: sort crew bid lines by My Bid List order`
+
 ## [x] Completed: Sync from K4 to My Bid list
 
 Goal: Pull already submitted K4 bids into My bid list, warn before overwriting existing choices, and give the drawer's More actions controls a consistent presentation.
