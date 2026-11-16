@@ -11,6 +11,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -22,9 +24,9 @@ class PortalBidPackageImportTest extends TestCase
     {
         Http::preventStrayRequests();
         Http::fake([
-            '*/777%20December%202026%20Lines.pdf' => Http::response('%PDF-lines', 200, ['Content-Type' => 'application/pdf']),
-            '*/777%20December%202026%20Trips.pdf' => Http::response('%PDF-trips', 200, ['Content-Type' => 'application/pdf']),
-            '*/777%20December%202026%20Overview.xlsx' => Http::response("PK\x03\x04overview", 200, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']),
+            'https://crewbids.kalittaair.com/hyperlinks/777%20December%202026%20Lines.pdf' => Http::response('%PDF-lines', 200, ['Content-Type' => 'application/pdf']),
+            'https://crewbids.kalittaair.com/hyperlinks/777%20December%202026%20Trips.pdf' => Http::response('%PDF-trips', 200, ['Content-Type' => 'application/pdf']),
+            'https://crewbids.kalittaair.com/hyperlinks/777%20December%202026%20Overview.xlsx' => Http::response("PK\x03\x04overview", 200, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']),
         ]);
 
         $files = app(DownloadPortalBidPackage::class)->download('2026-12', '777');
@@ -71,6 +73,8 @@ class PortalBidPackageImportTest extends TestCase
     public function test_first_complete_package_publishes_duplicate_is_unchanged_and_revision_is_held(): void
     {
         $owner = User::factory()->admin()->create();
+        Mail::fake();
+        Notification::fake();
         $files = [UploadedFile::fake()->create('Lines.pdf', 1, 'application/pdf')];
         $downloader = $this->mock(DownloadPortalBidPackage::class);
         $downloader->shouldReceive('download')->times(3)->andReturn($files);
@@ -88,6 +92,8 @@ class PortalBidPackageImportTest extends TestCase
         $this->assertNotNull(BidPackage::query()->where('fingerprint', 'first-fingerprint')->sole()->published_at);
         $this->assertNull(BidPackage::query()->where('fingerprint', 'changed-fingerprint')->sole()->published_at);
         $this->assertSame($owner->id, BidPackage::query()->where('fingerprint', 'changed-fingerprint')->sole()->imported_by);
+        Mail::assertNothingOutgoing();
+        Notification::assertNothingSent();
     }
 
     public function test_incomplete_or_mismatched_package_is_not_saved(): void

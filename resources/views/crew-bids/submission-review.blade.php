@@ -7,7 +7,7 @@
         @if (session('bid_submission_error'))<p role="alert" class="rounded-lg bg-amber-50 p-3 text-amber-900 dark:bg-amber-950 dark:text-amber-200">{{ session('bid_submission_error') }}</p>@endif
         @if ($submission->status === 'matched')
             <p role="status" class="rounded-lg bg-emerald-50 p-3 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">The fresh Kalitta report matches every choice in your reviewed order.</p>
-            <p class="text-sm">This verifies the report order. Receipt email and awarded line are separate; check Kalitta's Bid Received email for acceptance confirmation.</p>
+            <p class="text-sm">This verifies the order in Kalitta's submitted report. Awarded lines are checked separately in the portal.</p>
         @elseif ($submission->status === 'not_matched')
             <p role="status">The fresh report contains a different order. Review it in Kalitta, then start a new comparison before another update.</p>
         @elseif ($submission->status === 'unknown')

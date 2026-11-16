@@ -16,6 +16,8 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -42,6 +44,8 @@ class CrewBidSubmissionTest extends TestCase
     public function test_owner_compares_saved_choices_then_deliberately_submits_once_without_retaining_credentials(): void
     {
         [$user, $package, $workspace] = $this->workspace();
+        Mail::fake();
+        Notification::fake();
         $http = $this->portal();
         $this->actingAs($user)->get($this->createUrl($package))->assertOk()->assertSee(['Submit to Kalitta', 'F1', 'R2']);
 
@@ -62,7 +66,10 @@ class CrewBidSubmissionTest extends TestCase
         $this->assertNotNull($submission->fresh()->attempted_at);
         $this->assertSame(['F1' => 1, 'R2' => 2], app(ResolveSubmittedBidOrder::class)->resolve($user, $package, 'FO')->ranks);
         $this->assertSame(['F1', 'R2'], $workspace->fresh()->selections);
-        $this->get(route('crew-bids.submissions.show', $submission))->assertOk()->assertSee('fresh Kalitta report matches every choice')->assertDontSee('Submit this bid to Kalitta');
+        $this->get(route('crew-bids.submissions.show', $submission))->assertOk()->assertSee('fresh Kalitta report matches every choice')
+            ->assertSee('This verifies the order in Kalitta\'s submitted report.', false)
+            ->assertSee('Awarded lines are checked separately in the portal.')
+            ->assertDontSee('Bid Received')->assertDontSee('Receipt email')->assertDontSee('Submit this bid to Kalitta');
         $this->post(route('crew-bids.submissions.submit', $submission), $this->credentials() + ['confirmed' => 1])->assertRedirect();
         $this->assertCount(1, $this->writes($http));
         $stored = DB::table('bid_submissions')->where('id', $submission->id)->value('review');
@@ -74,6 +81,8 @@ class CrewBidSubmissionTest extends TestCase
         $this->assertStringNotContainsString('900000', $session);
         $this->assertStringNotContainsString('synthetic-password', $session);
         $this->assertFalse(config('debugbar.enabled'));
+        Mail::assertNothingOutgoing();
+        Notification::assertNothingSent();
     }
 
     public function test_final_confirmation_and_fresh_credentials_are_required_before_any_bid_update(): void
