@@ -3,6 +3,10 @@
 This document tracks remaining features, operational verification and unresolved source/rule decisions as of 2026-11-16. Completed implementation tasks, validation history and commit messages belong in [TODO.md](TODO.md). Existing application behavior is documented by its code and focused tests; completed plans are removed from this backlog.
 
 K4 bid workflows use direct portal documents and authenticated portal reports for ingestion, validation, submission read-back, shared bids, predictions and future award retrieval. Do not introduce Outlook/company-mailbox access, forwarding, Microsoft Graph, inbound email providers or bid-email receipt validation. Existing account verification and password-reset emails remain supported, as confirmed by the user.
+
+## Zero-trust crewbids.kalittaair.com credential storage
+Plan zero trust credential storage using stored salt against a user's password
+
 ## Advanced comparison controls
 
 The filter groups and definition review are complete. The remaining controls below use the agreed comparison contract. These are browsing comparisons; they must preserve private manual bid order and must not imply legal compliance or payroll correctness.

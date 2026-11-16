@@ -43,7 +43,7 @@
                 <button type="submit" :disabled="busy" class="min-h-11 rounded-lg bg-[#1B365D] px-4 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50"><span x-show="!busy">Verify & link my employee number</span><span x-show="busy" x-cloak role="status">Verifying…</span></button>
             </form>
         </section>
-        <details class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
+        <details id="refresh-shared-bids" x-data x-init="$el.open = window.location.hash === '#refresh-shared-bids'" class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
             <summary class="min-h-7 cursor-pointer rounded font-semibold focus-visible:ring-2 focus-visible:ring-amber-500">Refresh shared bids / portal exports</summary>
             <p class="mt-3 text-sm text-slate-600 dark:text-slate-300">A refresh reads every page of the global {{ $seat }} report and updates it for all users. Large reports can take a few minutes. Failed refreshes keep the previous snapshot.</p>
             <form method="POST" action="{{ route('crew-bids.employees.read', $package) }}" autocomplete="off" class="mt-4 space-y-4" x-data="{ busy: false }" @pageshow.window="busy = false" @submit="if (busy) { $event.preventDefault(); return; } busy = true; const form = $el; const download = $event.submitter?.name === 'format'; setTimeout(() => { form.elements.employee.value = ''; form.elements.portal_password.value = ''; if (download) busy = false; }, 0)">

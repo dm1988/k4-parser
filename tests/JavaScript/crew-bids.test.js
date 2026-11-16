@@ -562,6 +562,100 @@ test('closing warns for unsaved edits or an in-flight request on the bids page',
     assert.equal(shouldWarnBeforeLeaving(null, true), false);
 });
 
+for (const property of ['showList', 'showPreferences', 'showPayEditor', 'showImport']) {
+    test(`automatic refresh waits while ${property} is open and resumes after closing`, () => {
+        const state = createCrewBidsHeader();
+        state.$wire = { $get: () => false, $dirty: () => false };
+        state.$el = { ownerDocument: { querySelectorAll: () => [] } };
+        assert.equal(state.shouldPauseRefresh(), false);
+
+        state.$wire[property] = true;
+        assert.equal(state.shouldPauseRefresh(), true);
+        state.$wire[property] = false;
+        assert.equal(state.shouldPauseRefresh(), false);
+    });
+}
+
+test('automatic refresh waits for visible native dialogs and popups but ignores hidden overlays', () => {
+    const state = createCrewBidsHeader();
+    state.$wire = { $get: () => false, $dirty: () => false };
+    let visible = false;
+    state.$el = { ownerDocument: { querySelectorAll: () => [{ getClientRects: () => visible ? [{}] : [] }] } };
+
+    assert.equal(state.shouldPauseRefresh(), false);
+    visible = true;
+    assert.equal(state.shouldPauseRefresh(), true);
+    visible = false;
+    assert.equal(state.shouldPauseRefresh(), false);
+    state.statusOpen = true;
+    assert.equal(state.shouldPauseRefresh(), true);
+    state.statusOpen = false;
+    state.filtersOpen = true;
+    assert.equal(state.shouldPauseRefresh(), true);
+});
+
+test('automatic refresh preserves unsaved edits and waits for deliberate requests to finish', () => {
+    const state = createCrewBidsHeader();
+    let dirty = true;
+    state.$wire = { $get: () => dirty, $dirty: () => false };
+    state.$el = { ownerDocument: { querySelectorAll: () => [] } };
+
+    assert.equal(state.shouldPauseRefresh(), true);
+    dirty = false;
+    state.pending = 1;
+    assert.equal(state.shouldPauseRefresh(), true);
+    state.pending = 0;
+    assert.equal(state.shouldPauseRefresh(), false);
+});
+
+test('the installed Livewire poll is cancelled behind overlays while deliberate actions remain available', async () => {
+    const livewire = await readFile(new URL('../../vendor/livewire/livewire/dist/livewire.esm.js', import.meta.url), 'utf8');
+    const source = livewire.slice(livewire.indexOf('function triggerComponentRequest('), livewire.indexOf('function poll('));
+    const state = createCrewBidsHeader();
+    let intercept;
+    let metadata;
+    let cancelled = 0;
+    let removed = false;
+    state.$wire = {
+        showList: true, $get: () => false, $dirty: () => false,
+        intercept: callback => { intercept = callback; return () => { removed = true; }; },
+        interceptMessage: () => () => {},
+    };
+    state.$nextTick = () => {};
+    const poll = vm.runInNewContext(`${source}; triggerComponentRequest`, {
+        setNextActionOrigin() {},
+        setNextActionMetadata(value) { metadata = value; },
+        evaluateActionExpression() { intercept({ action: { metadata, cancel: () => cancelled++ } }); },
+    });
+    state.init();
+
+    poll({}, { expression: '' }, {});
+
+    assert.equal(cancelled, 1);
+    intercept({ action: { name: 'move', metadata: {}, cancel: () => assert.fail('Deliberate saves must remain available') } });
+    intercept({ action: { name: '$refresh', metadata: {}, cancel: () => assert.fail('Deliberate refreshes must remain available') } });
+    state.$wire.showList = false;
+    state.$el = { ownerDocument: { querySelectorAll: () => [] } };
+    poll({}, { expression: '' }, {});
+    assert.equal(cancelled, 1);
+    assert.equal(state.pending, 0);
+    assert.equal(state.failed, false);
+    state.destroy();
+    assert.equal(removed, true);
+});
+
+test('shared-bid refresh links open the destination credential form', async () => {
+    const view = await readFile(new URL('../../resources/views/crew-bids/employees.blade.php', import.meta.url), 'utf8');
+    const details = view.match(/<details id="refresh-shared-bids"[^>]*>/)[0];
+    const expression = details.match(/x-init="([^"]+)"/)[1];
+    const element = { open: false };
+
+    vm.runInNewContext(expression, { $el: element, window: { location: { hash: '#refresh-shared-bids' } } });
+    assert.equal(element.open, true);
+    vm.runInNewContext(expression, { $el: element, window: { location: { hash: '' } } });
+    assert.equal(element.open, false);
+});
+
 test('sticky action offset follows the wrapping workspace header and releases its observer', () => {
     const properties = new Map();
     let height = 70.4;
@@ -576,7 +670,7 @@ test('sticky action offset follows the wrapping workspace header and releases it
     } });
     state.$el = { style: { setProperty: (name, value) => properties.set(name, value) } };
     state.$refs = { workspaceHeader: header };
-    state.$wire = { interceptMessage: () => () => {} };
+    state.$wire = { intercept: () => () => {}, interceptMessage: () => () => {} };
     state.$nextTick = (callback) => callback();
 
     state.init();
@@ -607,7 +701,7 @@ test('leaving before the header initializes does not attach a stale resize obser
     const state = createCrewBidsHeader({ ResizeObserverClass: class {
         constructor() { constructed = true; }
     } });
-    state.$wire = { interceptMessage: () => () => {} };
+    state.$wire = { intercept: () => () => {}, interceptMessage: () => () => {} };
     state.$nextTick = (callback) => { initialize = callback; };
 
     state.init();

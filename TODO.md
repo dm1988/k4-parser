@@ -28,6 +28,18 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Use portal-only K4 bid workflows
+
+Goal: Use direct portal documents and authenticated reports for K4 bid ingestion and verification while retaining account email, as clarified by the user.
+
+Current implementation (2026-11-16): Reviewed the existing direct downloader, scheduled import, admin fetch and submission read-back paths. Removed the unused bid-email receipt parser and its obsolete tests, replaced the submission screen's email-confirmation instruction with portal-report and award guidance, and added assertions that package publication/revision handling and bid submission send no mail or notifications. Rewrote CREW_BIDS.md around portal manifests, fetch history, document validation, private staging and in-app operational notices. Removed the Outlook/forwarding/Graph/provider intake plan and email-receipt verification dependency. Existing account verification/password-reset behavior remains available.
+
+Problem addressed: The backlog and submitted-bid screen directed core bid workflows toward company email despite the implemented portal downloader and authenticated report reader.
+
+Validation: An earlier Sail test request was blocked by automatic approval review because its usage limit was exhausted. After access recovered, all six focused portal-download/publication/submission/reconciliation and account-email checks passed in guarded in-memory SQLite (75 assertions). The code changes had already been integrated into the working baseline; this completion record preserves the user's subsequent credential-storage backlog addition.
+
+Commit message: `refactor: use portal-only K4 bid ingestion and verification`
+
 ## [x] Completed: My bid list: multi select / bulk actions
 
 Goal: Add checkbox selection and bulk removal/reordering to the My bid list drawer with persistent selection and controls that stay visible while scrolling.

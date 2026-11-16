@@ -135,6 +135,12 @@
                 <p id="bid-predictions-reason" class="text-sm">{{ $prediction['reason'] }}</p>
                 @if ($prediction['employee_seniority'] !== null)<p class="font-mono text-xs">Your seniority: {{ $prediction['employee_seniority'] }}</p>@endif
                 @if ($prediction['checked_at'])<p class="font-mono text-xs">Shared bids: {{ $prediction['checked_at'] }}{{ $prediction['stale'] ? ' · Stale—refresh recommended' : '' }}</p>@endif
+                @if ($prediction['stale'])
+                    <div class="space-y-2">
+                        <a href="{{ route('crew-bids.employees.index', ['package' => $package, 'seat' => $seat]) }}#refresh-shared-bids" class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#1B365D] px-4 text-sm font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-800"><x-heroicon-o-arrow-path class="h-4 w-4 shrink-0" aria-hidden="true" />Update submitted bids</a>
+                        <p class="text-xs text-slate-600 dark:text-slate-300">Refresh shared bids from Kalitta for this package and position.</p>
+                    </div>
+                @endif
                 @if ($prediction['seniority_date'])<p class="font-mono text-xs">Seniority list: {{ $prediction['seniority_date'] }}</p>@endif
                 @if ($prediction['available'])
                     <ul class="flex flex-wrap gap-x-4 gap-y-2 text-xs" aria-label="Prediction color key">
@@ -407,7 +413,7 @@
                                     @if ($line['block_label'] !== 'Not available')<span>Block {{ $line['block_label'] }}</span>@endif
                                     @if (isset($line['days_off']))<span>Days off {{ $line['days_off'] }}</span>@endif
                                     @unless ($editingList)
-                                        <details class="ms-auto"><summary class="cursor-pointer py-2 underline">Move</summary><div class="flex flex-wrap gap-2">
+                                        <details data-block-bid-refresh class="ms-auto"><summary class="cursor-pointer py-2 underline">Move</summary><div class="flex flex-wrap gap-2">
                                             @if ($index > 0)<button type="button" wire:click="move('{{ $line['id'] }}', {{ $index - 1 }})" class="min-h-11 underline" aria-label="Move {{ $line['id'] }} up" wire:loading.attr="disabled" wire:target="move"><span wire:loading.remove wire:target="move">Up</span><span wire:loading wire:target="move" role="status">Saving order…</span></button>@endif
                                             @if ($index < count($selected) - 1)<button type="button" wire:click="move('{{ $line['id'] }}', {{ $index + 1 }})" class="min-h-11 underline" aria-label="Move {{ $line['id'] }} down" wire:loading.attr="disabled" wire:target="move"><span wire:loading.remove wire:target="move">Down</span><span wire:loading wire:target="move" role="status">Saving order…</span></button>@endif
                                             <label class="text-xs">Position<select wire:change="move('{{ $line['id'] }}', $event.target.value)" wire:loading.attr="disabled" wire:target="move" class="rounded-lg text-sm dark:bg-slate-800">@foreach ($selected as $position => $choice)<option value="{{ $position }}" @selected($position === $index)>{{ $position + 1 }}</option>@endforeach</select></label>
@@ -436,7 +442,7 @@
                         </div>
                         <div class="relative shrink-0" x-data="{ open: false }" @click.outside="open = false" @focusout="if (!$el.contains($event.relatedTarget)) open = false" @keydown.escape="if (open) { $event.stopPropagation(); open = false; $refs.moreActionsTrigger.focus() }" x-effect="if (!$wire.showList) open = false">
                             <button x-ref="moreActionsTrigger" type="button" @click="open = !open" :aria-expanded="open" aria-controls="bid-list-more-actions" aria-label="More actions" title="More actions" class="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-semibold hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700"><x-heroicon-o-ellipsis-horizontal class="h-5 w-5 shrink-0" aria-hidden="true" /><span class="hidden sm:inline">More actions</span></button>
-                        <div id="bid-list-more-actions" x-cloak x-show="open" x-transition role="group" aria-label="More bid list actions" class="absolute bottom-full end-0 z-10 mb-2 w-72 max-w-[calc(100vw_-_2rem)] space-y-1 rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                        <div id="bid-list-more-actions" data-block-bid-refresh x-cloak x-show="open" x-transition role="group" aria-label="More bid list actions" class="absolute bottom-full end-0 z-10 mb-2 w-72 max-w-[calc(100vw_-_2rem)] space-y-1 rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900">
                             @if ($package && $package->archived_at === null)
                                 <form method="GET" action="{{ route('crew-bids.submissions.sync.create', ['package' => $package, 'seat' => $seat]) }}">
                                     <button type="submit" wire:loading.attr="disabled" :disabled="hasUnsavedChanges() || pending > 0" @disabled($dirty) class="inline-flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-start font-medium text-[#1B365D] hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50 dark:text-slate-200 dark:hover:bg-slate-900"><x-heroicon-o-arrow-down-tray class="h-5 w-5 shrink-0" aria-hidden="true" /><span>Sync from K4</span></button>

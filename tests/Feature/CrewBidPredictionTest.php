@@ -180,7 +180,7 @@ class CrewBidPredictionTest extends TestCase
     {
         $this->freezeTime();
         $user = User::factory()->crewBidsAccess()->create();
-        $this->package();
+        $package = $this->package();
         PilotSeniorityList::factory()->create();
         CrewBidSnapshot::factory()->create(['retrieved_at' => now()->subMinutes(16)]);
 
@@ -188,6 +188,8 @@ class CrewBidPredictionTest extends TestCase
             ->assertSee('Unavailable')->assertSee('Stale')
             ->assertSee('Link your employee number once')
             ->assertSee('Employee link / shared data')
+            ->assertSee('Update submitted bids')
+            ->assertSee(route('crew-bids.employees.index', ['package' => $package, 'seat' => 'FO']).'#refresh-shared-bids', false)
             ->assertDontSee('Likely hold');
 
         $document = new DOMDocument;
@@ -196,6 +198,20 @@ class CrewBidPredictionTest extends TestCase
         $this->assertSame(1, $xpath->query('//dialog[@id="bid-predictions"]//p[@id="bid-predictions-reason" and contains(., "Link your employee number once")]')->length);
         $this->assertSame(0, $xpath->query('//dialog[@id="bid-predictions"]//table')->length);
         $this->assertSame(0, $xpath->query('//article//span[@role="img" and contains(@aria-label, "Projected available")]')->length);
+    }
+
+    public function test_fresh_shared_bids_hide_the_stale_refresh_action_without_changing_the_private_list(): void
+    {
+        $this->freezeTime();
+        $package = $this->package();
+        $user = User::factory()->crewBidsAccess()->create();
+        $workspace = BidWorkspace::factory()->create(['user_id' => $user->id, 'bid_package_id' => $package->id, 'selections' => ['F3', 'F1'], 'revision' => 3]);
+        CrewBidSnapshot::factory()->create(['retrieved_at' => now()]);
+
+        Livewire::actingAs($user)->test(CrewBids::class)->assertDontSee('Update submitted bids')->assertSet('selections', ['F3', 'F1']);
+
+        $this->assertSame(['F3', 'F1'], $workspace->fresh()->selections);
+        $this->assertSame(3, $workspace->fresh()->revision);
     }
 
     public function test_imported_seniority_updates_apply_by_employee_number_without_mutating_shared_bids(): void

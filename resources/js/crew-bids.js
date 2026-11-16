@@ -130,12 +130,21 @@ export function createBidSaveStatus({ now = Date.now } = {}) {
 export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeObserver } = {}) {
     let observer;
     let destroyed = false;
+    let stopRefreshGuard;
 
     return {
         ...createBidSaveStatus(),
         filtersOpen: false,
         statusOpen: false,
         listReturnFocus: null,
+        shouldPauseRefresh() {
+            if (this.statusOpen || this.filtersOpen || this.pending > 0 || this.$wire.showList
+                || this.$wire.showPreferences || this.$wire.showPayEditor || this.$wire.showImport
+                || this.hasUnsavedChanges()) return true;
+
+            return [...this.$el.ownerDocument.querySelectorAll('dialog[open], [role="dialog"], [role="menu"], [popover], [aria-controls][aria-expanded="true"], [data-block-bid-refresh]:not(details), details[data-block-bid-refresh][open]')]
+                .some(element => element.getClientRects().length > 0);
+        },
         toggleStatus() {
             if (this.statusOpen) {
                 this.closeStatus(true);
@@ -167,6 +176,9 @@ export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeOb
             });
         },
         init() {
+            stopRefreshGuard = this.$wire.intercept(({ action }) => {
+                if (action.metadata.type === 'poll' && this.shouldPauseRefresh()) action.cancel();
+            });
             this.initSaveStatus();
             this.$nextTick(() => {
                 if (destroyed) return;
@@ -181,6 +193,7 @@ export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeOb
             });
         },
         destroy() {
+            stopRefreshGuard?.();
             this.destroySaveStatus();
             destroyed = true;
             observer?.disconnect();
