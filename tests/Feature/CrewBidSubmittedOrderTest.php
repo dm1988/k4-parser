@@ -363,8 +363,7 @@ class CrewBidSubmittedOrderTest extends TestCase
         $workspace = $this->workspace();
 
         Livewire::actingAs(User::findOrFail($workspace->user_id))->test(CrewBids::class)
-            ->assertSee('value="submitted" disabled', false)
-            ->assertSee('No confirmed submitted order available')
+            ->assertSee('<option value="submitted" disabled>Submitted bid order</option>', false)
             ->set('sort', 'submitted')->assertSet('sort', 'best')
             ->assertSee('No confirmed submitted order available. Switched to Best match.');
 

@@ -28,6 +28,30 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Group and compact the workspace line controls
+
+Goal: Group preferences, filters and sorting as controls for workspace results, with compact spacing and a separate Add all action.
+
+Current implementation: Replaced the expanding nested toolbar wrapper with a single wrapping row. Preferences, Sort and Filters share one outlined Workspace line controls group in that order. The prediction pill follows this group, before the separate right-aligned Add all action, matching the user's configure/sort/filter/review/add flow. The group fits its contents and wraps internally on narrow screens, with reduced inset padding and a 44px outer minimum height matching adjacent controls. Standardized gaps between groups to 8px and prediction horizontal padding to 12px. Matching count/view controls can wrap, ranking text retains truncation, and the filter count/expanded state remain available. The sort option uses its short label and the detailed fallback notice is restored. Prediction polling, stale feedback, modal opening and focus restoration retain their existing bindings.
+
+Problem addressed: Preferences and Filters controlled the same workspace results but appeared as unrelated controls with a large gap between them. Flex growth also left blank space beyond the dropdown, nested padding made the ranking group taller than neighboring controls, and the previous breakpoint forced unnecessary row separation.
+
+Validation: Initial compact-layout verification passed five focused PHP cases (40 assertions). After regrouping, four focused Sail PHP cases for preferences, sorting, filtering and bulk addition passed (30 assertions), plus all 67 existing workspace JavaScript cases. After moving predictions, three focused prediction-rendering/bulk-add cases passed (31 assertions), the production Vite build and Pint passed, and the single Larastan pass returned zero errors. Whitespace checks passed. No live-browser visual comparison was performed; unrelated CREW_BIDS.md changes were preserved.
+
+Commit message: `refactor: order workspace controls before bid predictions`
+
+## [x] Completed: Shorten the submitted bid order dropdown label
+
+Goal: Show only the sort label in the Submitted bid order dropdown option.
+
+Current implementation: Removed the appended unavailable reason from the Submitted bid order option while retaining its disabled state when no confirmed order is available. Restored the detailed Best match fallback notice after the user clarified the requested label. The existing rendering assertion now verifies the exact disabled option text.
+
+Problem addressed: The detailed reason made the dropdown option unnecessarily long.
+
+Validation: Both focused Sail cases passed (9 assertions), Pint passed, and one Larastan pass returned zero errors. Whitespace checks passed; unrelated CREW_BIDS.md edits were preserved.
+
+Commit message: `fix: shorten the submitted bid order sort label`
+
 ## [x] Completed: Move bid position beneath the profile name
 
 Goal: Show First Officer or Captain as profile-name subtext and remove the separate position link from the bids header.

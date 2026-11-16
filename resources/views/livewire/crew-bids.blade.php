@@ -62,8 +62,8 @@
             </div>
         </div>
         @if ($package)
-            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-200 py-2 dark:border-slate-800" data-bid-control-toolbar>
-                <div class="flex shrink-0 items-center gap-2 text-xs">
+            <div class="flex flex-wrap items-center gap-2 border-t border-slate-200 py-2 text-xs dark:border-slate-800" data-bid-control-toolbar>
+                <div class="flex min-w-0 max-w-full flex-wrap items-center gap-2">
                     <span class="whitespace-nowrap font-mono text-slate-500 dark:text-slate-400" aria-live="polite">@if ($tab === 'trips'){{ count($trips) }} trips @else{{ count($lines) }} matching / {{ $total }}@endif</span>
                     <label for="bid-view" class="sr-only">Bid package view</label>
                     <select id="bid-view" wire:model.change.live="tab" wire:loading.attr="disabled" wire:target="tab" class="min-h-11 w-28 rounded-lg border-slate-300 bg-white py-2 ps-3 pe-8 text-xs font-medium text-slate-600 focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
@@ -72,39 +72,37 @@
                         <option value="reserve">Reserve</option>
                     </select>
                 </div>
-                <div class="ms-auto flex min-w-0 max-w-full flex-1 basis-full flex-wrap items-center justify-end gap-2 text-xs xl:basis-0">
-                    <button type="button" x-ref="predictionsTrigger" @click="$refs.predictions.showModal()" wire:poll.60s.visible aria-haspopup="dialog" aria-controls="bid-predictions" title="Bid predictions{{ $prediction['stale'] ? ' · Stale shared bids; refresh recommended' : '' }}" class="inline-flex min-h-11 max-w-full shrink-0 items-center gap-1.5 rounded-full border border-slate-300 bg-white px-2.5 text-xs font-medium text-[#1B365D] hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
-                        <x-heroicon-o-chart-bar class="h-4 w-4 shrink-0 text-[#C5A059]" aria-hidden="true" />
-                        <span class="sr-only">Bid predictions: </span>
-                        <span class="whitespace-nowrap">@if (! $prediction['available'])Unavailable @elseif ($prediction['likely'])<span class="font-mono font-semibold">{{ $prediction['likely'] }}</span> · Likely hold @else No hold @endif</span>
-                        @if ($prediction['stale'])<span class="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400" aria-hidden="true"></span><span class="sr-only"> · Stale shared bids; refresh recommended.</span>@endif
+                <div role="group" aria-label="Workspace line controls" class="flex min-h-11 min-w-0 max-w-full flex-wrap items-center gap-1 rounded-xl border border-slate-300 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900">
+                    <button type="button" x-ref="preferencesTrigger" @click="$wire.showPreferences = true" :aria-expanded="$wire.showPreferences" aria-haspopup="dialog" aria-controls="bid-preferences" aria-describedby="bid-ranking-status" :title="$wire.tab === 'trips' ? 'Ranking preferences inactive in Trips view.' : ($wire.sort === 'best' ? 'Edit preferences for Best match.' : 'Ranking preferences inactive for this sort. Dates off and start city filters still apply.')" class="inline-flex min-h-9 min-w-0 max-w-80 flex-1 basis-40 items-center gap-1.5 rounded-full px-3 focus-visible:ring-2 focus-visible:ring-amber-500" :class="$wire.sort === 'best' && $wire.tab !== 'trips' ? 'bg-[#C5A059]/20 text-[#1B365D] dark:text-amber-200' : 'bg-slate-200/70 text-slate-700 dark:bg-slate-800 dark:text-slate-200'">
+                        <span class="inline-flex min-w-0 items-center gap-1.5" :class="{ 'opacity-50': $wire.sort !== 'best' || $wire.tab === 'trips' }">
+                            <x-heroicon-o-adjustments-horizontal class="h-4 w-4 shrink-0" aria-hidden="true" /><span class="sr-only">Edit preferences: </span><span class="truncate"><span :class="{ 'line-through': $wire.sort !== 'best' || $wire.tab === 'trips' }">@forelse ($goals as $goal){{ $goalLabels[$goal] ?? $goal }}{{ $loop->last ? '' : ' → ' }}@empty Preferences @endforelse</span> @if ($daysOff !== []) · {{ count($daysOff) }} dates off (UTC)@endif @if ($startCity) · Start {{ $startCity }}@endif</span>
+                        </span>
                     </button>
-                    <div class="flex min-w-0 max-w-full flex-1 basis-64 items-center gap-1 rounded-xl border border-slate-300 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
-                        <button type="button" x-ref="preferencesTrigger" @click="$wire.showPreferences = true" :aria-expanded="$wire.showPreferences" aria-haspopup="dialog" aria-controls="bid-preferences" aria-describedby="bid-ranking-status" :title="$wire.tab === 'trips' ? 'Ranking preferences inactive in Trips view.' : ($wire.sort === 'best' ? 'Edit preferences for Best match.' : 'Ranking preferences inactive for this sort. Dates off and start city filters still apply.')" class="inline-flex min-h-11 min-w-0 max-w-80 flex-1 items-center gap-1.5 rounded-full px-3 focus-visible:ring-2 focus-visible:ring-amber-500" :class="$wire.sort === 'best' && $wire.tab !== 'trips' ? 'bg-[#C5A059]/20 text-[#1B365D] dark:text-amber-200' : 'bg-slate-200/70 text-slate-700 dark:bg-slate-800 dark:text-slate-200'">
-                            <span class="inline-flex min-w-0 items-center gap-1.5" :class="{ 'opacity-50': $wire.sort !== 'best' || $wire.tab === 'trips' }">
-                                <x-heroicon-o-adjustments-horizontal class="h-4 w-4 shrink-0" aria-hidden="true" /><span class="sr-only">Edit preferences: </span><span class="truncate"><span :class="{ 'line-through': $wire.sort !== 'best' || $wire.tab === 'trips' }">@forelse ($goals as $goal){{ $goalLabels[$goal] ?? $goal }}{{ $loop->last ? '' : ' → ' }}@empty Preferences @endforelse</span> @if ($daysOff !== []) · {{ count($daysOff) }} dates off (UTC)@endif @if ($startCity) · Start {{ $startCity }}@endif</span>
-                            </span>
-                        </button>
-                        <span id="bid-ranking-status" class="sr-only" role="status">@if ($tab === 'trips')Ranking preferences inactive in Trips view.@elseif ($sort !== 'best')Ranking preferences inactive for this sort. Dates off and start city filters still apply.@else Best match uses your selected ranking goals.@endif</span>
-                        @if ($tab !== 'trips')
-                            <label for="bid-sort" class="sr-only">Sort lines</label>
-                            <select id="bid-sort" wire:model.change.live="sort" class="min-h-11 w-32 max-w-64 shrink-0 rounded-lg border-0 bg-transparent text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900 sm:w-auto">
-                                @foreach (\App\Enums\CrewBidSort::cases() as $option)
-                                    <option value="{{ $option->value }}" @disabled($option === \App\Enums\CrewBidSort::Submitted && ! $submittedOrder->available())>{{ $option === \App\Enums\CrewBidSort::BestMatch && $goals === [] ? 'Line ID (no goals set)' : $option->label() }}{{ $option === \App\Enums\CrewBidSort::Submitted && ! $submittedOrder->available() ? ' — '.$submittedOrder->unavailableReason : '' }}</option>
-                                @endforeach
-                            </select>
-                        @endif
-                    </div>
+                    <span id="bid-ranking-status" class="sr-only" role="status">@if ($tab === 'trips')Ranking preferences inactive in Trips view.@elseif ($sort !== 'best')Ranking preferences inactive for this sort. Dates off and start city filters still apply.@else Best match uses your selected ranking goals.@endif</span>
                     @if ($tab !== 'trips')
-                        <button type="button" x-ref="filtersTrigger" @click="filtersOpen = ! filtersOpen" :aria-expanded="filtersOpen" aria-controls="bid-filters" class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-slate-300 px-3 font-semibold focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-600"><x-heroicon-o-funnel class="h-4 w-4" aria-hidden="true" /><span>Filters</span><span class="rounded-full bg-[#C5A059]/15 px-1.5 font-mono">{{ $activeFilterCount }}<span class="sr-only"> active browsing filters</span></span></button>
-                        <button type="button" wire:click="addMatching" wire:loading.attr="disabled" @disabled($lines === []) aria-label="Add all {{ count($lines) }} matching {{ $tab === 'reserve' ? 'reserve' : 'flying' }} lines to My bid list" class="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg bg-[#1B365D] px-3 text-xs font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50">
-                            <x-heroicon-o-plus wire:loading.remove wire:target="addMatching" class="h-4 w-4 shrink-0" aria-hidden="true" />
-                            <x-heroicon-o-arrow-path wire:loading wire:target="addMatching" class="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-                            <span wire:loading.remove wire:target="addMatching">Add all</span>
-                            <span wire:loading wire:target="addMatching" role="status">Adding…</span>
-                        </button>
+                        <label for="bid-sort" class="sr-only">Sort lines</label>
+                        <select id="bid-sort" wire:model.change.live="sort" class="min-h-9 w-32 max-w-64 shrink-0 rounded-lg border-0 bg-transparent py-1.5 text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900 sm:w-auto">
+                            @foreach (\App\Enums\CrewBidSort::cases() as $option)
+                                <option value="{{ $option->value }}" @disabled($option === \App\Enums\CrewBidSort::Submitted && ! $submittedOrder->available())>{{ $option === \App\Enums\CrewBidSort::BestMatch && $goals === [] ? 'Line ID (no goals set)' : $option->label() }}</option>
+                            @endforeach
+                        </select>
+                        <button type="button" x-ref="filtersTrigger" @click="filtersOpen = ! filtersOpen" :aria-expanded="filtersOpen" aria-controls="bid-filters" class="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 font-semibold text-slate-600 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-slate-300 dark:hover:bg-slate-800"><x-heroicon-o-funnel class="h-4 w-4" aria-hidden="true" /><span>Filters</span><span class="rounded-full bg-[#C5A059]/15 px-1.5 font-mono">{{ $activeFilterCount }}<span class="sr-only"> active browsing filters</span></span></button>
                     @endif
                 </div>
+                <button type="button" x-ref="predictionsTrigger" @click="$refs.predictions.showModal()" wire:poll.60s.visible aria-haspopup="dialog" aria-controls="bid-predictions" title="Bid predictions{{ $prediction['stale'] ? ' · Stale shared bids; refresh recommended' : '' }}" class="inline-flex min-h-11 max-w-full shrink-0 items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 text-xs font-medium text-[#1B365D] hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+                    <x-heroicon-o-chart-bar class="h-4 w-4 shrink-0 text-[#C5A059]" aria-hidden="true" />
+                    <span class="sr-only">Bid predictions: </span>
+                    <span class="whitespace-nowrap">@if (! $prediction['available'])Unavailable @elseif ($prediction['likely'])<span class="font-mono font-semibold">{{ $prediction['likely'] }}</span> · Likely hold @else No hold @endif</span>
+                    @if ($prediction['stale'])<span class="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400" aria-hidden="true"></span><span class="sr-only"> · Stale shared bids; refresh recommended.</span>@endif
+                </button>
+                @if ($tab !== 'trips')
+                    <button type="button" wire:click="addMatching" wire:loading.attr="disabled" @disabled($lines === []) aria-label="Add all {{ count($lines) }} matching {{ $tab === 'reserve' ? 'reserve' : 'flying' }} lines to My bid list" class="ms-auto inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg bg-[#1B365D] px-3 text-xs font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50">
+                        <x-heroicon-o-plus wire:loading.remove wire:target="addMatching" class="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <x-heroicon-o-arrow-path wire:loading wire:target="addMatching" class="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                        <span wire:loading.remove wire:target="addMatching">Add all</span>
+                        <span wire:loading wire:target="addMatching" role="status">Adding…</span>
+                    </button>
+                @endif
             </div>
             @if ($sort === \App\Enums\CrewBidSort::Submitted->value && $submittedOrder->available())
                 <p class="pb-2 text-xs text-slate-500 dark:text-slate-400" role="status">Submitted order · Kalitta report checked <time datetime="{{ $submittedOrder->checkedAt->toIso8601String() }}">{{ $submittedOrder->checkedAt->utc()->format('Y-m-d H:i:s') }} UTC</time>. This is the last order checked by the app.</p>
