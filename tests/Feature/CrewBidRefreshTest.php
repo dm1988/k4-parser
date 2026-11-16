@@ -39,7 +39,7 @@ class CrewBidRefreshTest extends TestCase
         $job->handle(app(QueuedCrewBidRefresh::class), app(SyncCrewBidSnapshot::class));
 
         $this->get($this->statusUrl($package, $job))->assertOk()->assertJsonPath('state', 'failed')
-            ->assertJsonPath('message', 'The global report is missing choice ranks.')
+            ->assertJsonPath('message', 'The global and individual reports disagree on choice ranks. Refresh again.')
             ->assertHeader('Cache-Control', 'no-store, private')->assertDontSee('synthetic-password');
         $this->assertSame($before, $snapshot->fresh()->getRawOriginal());
         $this->assertNull(Cache::get('crew-bid-refresh:'.$job->refreshId.':credentials'));

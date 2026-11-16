@@ -56,6 +56,26 @@ class CrewBidPredictionTest extends TestCase
         $this->assertSame(1, $result['lines']['R2']['remaining']);
     }
 
+    public function test_confirmed_portal_rank_gaps_preserve_rank_labels_and_seniority_allocation(): void
+    {
+        $package = $this->package();
+        $snapshot = CrewBidSnapshot::factory()->create(['bidders' => [
+            '1' => ['name' => 'First', 'seniority' => 10, 'numbers' => [1]],
+            '2' => ['name' => 'Second', 'seniority' => 20, 'numbers' => [1]],
+            '3' => ['name' => 'Third', 'seniority' => 30, 'numbers' => [1, 2, 3], 'ranks' => [1, 4, 7]],
+            '4' => ['name' => 'Viewer', 'seniority' => 40, 'numbers' => [1, 2, 3]],
+        ]]);
+
+        $result = app(PredictCrewBidLines::class)->predict($package, $snapshot, 'FO', '4', ['F3']);
+
+        $this->assertTrue($result['available']);
+        $this->assertSame('F3', $result['likely']);
+        $this->assertSame(['Third'], array_column($result['lines']['R2']['occupants'], 'name'));
+        $this->assertSame([4], array_column($result['lines']['R2']['occupants'], 'rank'));
+        $this->assertSame([4, 2], array_column($result['lines']['R2']['bidders'], 'rank'));
+        $this->assertSame([1, 4, 7], $snapshot->fresh()->bidders[3]['ranks']);
+    }
+
     public function test_repeated_line_choices_do_not_consume_extra_awards(): void
     {
         $package = $this->package();

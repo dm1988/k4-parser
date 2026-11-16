@@ -61,6 +61,15 @@ class SharedBidPortal
                         default => $html,
                     };
                 }
+                if (($request['ctl00$ContentPlaceHolder1$ddl_crewMembers'] ?? '') === '910001') {
+                    $html = str_replace(['value="Select Name" selected', 'value="910001"', '<!--REPORT-->'], ['value="Select Name"', 'value="910001" selected', str_replace('synthetic-global', 'synthetic-individual', $controls)], $html);
+                    if ($scenario === 'gap-unconfirmed') {
+                        $html = str_replace('value="910001" selected', 'value="910001"', $html);
+                    }
+                    if ($scenario === 'gap-directory-changed') {
+                        $html = str_replace('20 - Sample', '21 - Sample', $html);
+                    }
+                }
 
                 return $http->response($html);
             },
@@ -73,8 +82,42 @@ class SharedBidPortal
                 $second = str_contains($request->url(), 'PageNumber=2');
                 $header = '<div id="oReportDiv"><table><tr><td>Current Bid Status For</td></tr></table><table id="t_3"><tbody><tr><td></td><td></td><td></td></tr><tr><td>Name</td><td>Choice</td><td>Line</td></tr>';
                 $person = '<tr><td>'.htmlspecialchars($name, ENT_QUOTES, 'UTF-8').'</td><td></td><td></td></tr>';
+                if (str_contains($request->url(), 'ReportID=synthetic-individual')) {
+                    $choices = match ($scenario) {
+                        'gap-recovered', 'gap-paginated', 'gap-pagination-changed', 'gap-duplicate-rank' => [1 => 2, 2 => 74, 3 => 1],
+                        'gap-confirmed' => [1 => 2, 3 => 1],
+                        'gap-start' => [2 => 2, 3 => 1],
+                        'gap-first-recovered' => [1 => 74, 2 => 2, 3 => 1],
+                        'gap-extra-sparse' => [1 => 2, 3 => 1, 5 => 74],
+                        'gap-repeated-line' => [1 => 2, 3 => 2],
+                        default => [1 => 2, 2 => 1, 3 => 74],
+                    };
+                    $paginated = in_array($scenario, ['gap-paginated', 'gap-pagination-changed', 'gap-duplicate-rank'], true);
+                    if ($paginated) {
+                        $choices = $second ? [3 => 1] : [1 => 2, 2 => 74];
+                        if ($second && $scenario === 'gap-duplicate-rank') {
+                            $choices[2] = 74;
+                        }
+                    }
+                    $rows = $person;
+                    foreach ($choices as $rank => $line) {
+                        $rows .= '<tr><td></td><td>'.$rank.'</td><td>'.$line.'</td></tr>';
+                    }
+                    $pages = $paginated ? ($second && $scenario === 'gap-pagination-changed' ? 3 : 2) : 1;
+
+                    return $http->response($header.$rows.'</tbody></table><table><tr><td>'.($second ? 2 : 1).' of '.$pages.'</td></tr></table></div>');
+                }
                 $rows = $second ? '<tr><td></td><td>2</td><td>1</td></tr><tr><td>Sample, Morgan</td><td></td><td></td></tr>' : $person.'<tr><td></td><td>1</td><td>2</td></tr>';
                 $html = $header.$rows.'</tbody></table><table><tr><td>'.($second ? '2' : '1').' of 2</td></tr></table></div>';
+                if (str_starts_with($scenario, 'gap-')) {
+                    $html = $second ? str_replace('<td>2</td><td>1</td>', '<td>3</td><td>1</td>', $html) : $html;
+                    if (in_array($scenario, ['gap-start', 'gap-first-recovered'], true) && ! $second) {
+                        $html = str_replace('<td>1</td><td>2</td>', '<td>2</td><td>2</td>', $html);
+                    }
+                    if ($scenario === 'gap-repeated-line' && $second) {
+                        $html = str_replace('<td>3</td><td>1</td>', '<td>3</td><td>2</td>', $html);
+                    }
+                }
                 $html = match ($scenario) {
                     'missing-bidder' => str_replace('<tr><td>Sample, Morgan</td><td></td><td></td></tr>', '', $html),
                     'unknown-name' => str_replace('Sample, Morgan', 'Unknown, Person', $html),

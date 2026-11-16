@@ -37,7 +37,7 @@
                 @if ($person)
                     <h3 class="font-semibold">Your submitted choices · {{ $person['name'] }}</h3>
                     @if ($person['numbers'] === [])<p>No submitted choices in the shared report for your employee number.</p>@else
-                        <div class="overflow-x-auto"><table class="w-full text-left text-sm"><caption class="sr-only">Original submitted choice order for {{ $person['name'] }}</caption><thead><tr><th scope="col" class="p-2">Choice</th><th scope="col" class="p-2">Portal line</th></tr></thead><tbody class="divide-y divide-slate-100 font-mono dark:divide-slate-800">@foreach ($person['numbers'] as $rank => $number)<tr><td class="p-2">{{ $rank + 1 }}</td><td class="p-2">{{ $number }}</td></tr>@endforeach</tbody></table></div>
+                        <div class="overflow-x-auto"><table class="w-full text-left text-sm"><caption class="sr-only">Original submitted choice order for {{ $person['name'] }}</caption><thead><tr><th scope="col" class="p-2">Choice</th><th scope="col" class="p-2">Portal line</th></tr></thead><tbody class="divide-y divide-slate-100 font-mono dark:divide-slate-800">@foreach ($person['numbers'] as $rank => $number)<tr><td class="p-2">{{ $person['ranks'][$rank] ?? $rank + 1 }}</td><td class="p-2">{{ $number }}</td></tr>@endforeach</tbody></table></div>
                     @endif
                 @endif
             @else

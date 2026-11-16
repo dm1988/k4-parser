@@ -28,6 +28,18 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Verify and recover nonconsecutive global choice ranks
+
+Goal: Refresh shared bids when global report ranks have gaps without publishing conflicting data or silently changing the portal's printed ranks.
+
+Current implementation (2026-11-16): Replaced unconditional consecutive-rank rejection with a read-only, same-session comparison against the affected employee's individually selected report. Fresh selector state, employee identity/directory, position and pagination are verified. A complete individual rank sequence can fill omitted global rows only when every existing global rank/line agrees; identical sparse sequences confirm printed gaps. Conflicts, unavailable reports, changed directories, repeated ranks and inconsistent pagination retain the last successful snapshot. Extra report reads share the existing 180-second and 32 MB limits. Global exports are read before individual selection so they retain their original scope. Encrypted snapshots now retain printed ranks alongside ordered line numbers; prediction labels and submitted-choice tables preserve those numbers, with backward-compatible handling of older snapshots. Updated the README lifecycle and troubleshooting guidance.
+
+Problem addressed: Queueing removed the web-request wait but retained an assumption that each employee's printed choices must be exactly 1 through N. The supplied FO frame has consecutive ranks on page 1 of 116 and does not identify the later failing group. The new verification handles both omitted global rows and independently confirmed sparse choices without assuming which caused the live failure.
+
+Validation: The focused report/queue/prediction/employee integration run passed all 67 cases (431 assertions), including recovery, confirmed gaps/blank first slot, individual pagination, repeated line choices, rejected inconsistencies, unchanged snapshots, source-rank display, legacy snapshots and an anonymous fixture matching the supplied nested frame/fixed-header structure. The final frame/export checks passed both cases (7 assertions), bringing distinct passing coverage to 68 PHP cases. Final Pint, whitespace checks and one Larastan pass (zero errors) passed. No real credentials, names or submitted choices from the supplied frame were saved in fixtures. Debugbar had no captured protected refresh requests. No full suite or agent-performed live portal login was run; a fresh live attempt is needed after restarting the long-running worker.
+
+Commit message: `fix: verify and recover gaps in shared portal bid ranks`
+
 ## [x] Completed: Document Artisan commands, jobs, workers and queues
 
 Goal: Provide the application's command and background-process operating reference in README.md.

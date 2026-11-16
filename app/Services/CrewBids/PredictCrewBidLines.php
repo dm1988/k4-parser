@@ -107,7 +107,7 @@ class PredictCrewBidLines
             foreach ($bidder['numbers'] as $rank => $number) {
                 if (isset($numbers[$number]) && ! isset($listed[$number])) {
                     $listed[$number] = true;
-                    $result['lines'][$numbers[$number]]['bidders'][] = ['id' => (string) $id, 'name' => $bidder['name'], 'seniority' => $bidder['seniority'], 'rank' => $rank + 1];
+                    $result['lines'][$numbers[$number]]['bidders'][] = ['id' => (string) $id, 'name' => $bidder['name'], 'seniority' => $bidder['seniority'], 'rank' => $bidder['ranks'][$rank] ?? $rank + 1];
                 }
             }
         }
@@ -131,7 +131,7 @@ class PredictCrewBidLines
                 }
                 $line = $result['lines'][$lineId];
                 if (count($line['occupants']) < $line['capacity']) {
-                    $result['lines'][$lineId]['occupants'][] = ['id' => (string) $id, 'name' => $bidder['name'], 'seniority' => $bidder['seniority'], 'rank' => $rank + 1];
+                    $result['lines'][$lineId]['occupants'][] = ['id' => (string) $id, 'name' => $bidder['name'], 'seniority' => $bidder['seniority'], 'rank' => $bidder['ranks'][$rank] ?? $rank + 1];
                     break;
                 }
             }

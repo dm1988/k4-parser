@@ -9,6 +9,8 @@ use SensitiveParameter;
 
 /**
  * @phpstan-type EmployeeReport array{seat: string, selected: ?string, employees: array<string, array{label: string, name: string, seniority: int}>, choices: list<array{rank: int, number: int, local_id: ?string}>, formats: list<string>, checked_at: string, context: array<string, mixed>, download: ?string}
+ *
+ * @phpstan-import-type EmployeePage from ReadEmployeeBidPage
  */
 class ViewEmployeeBids
 {
@@ -103,7 +105,7 @@ class ViewEmployeeBids
         });
     }
 
-    /** @return array{bidders: array<string, array{name: string, seniority: int, numbers: list<int>}>, context: array<string, mixed>, retrieved_at: string, download: ?string} */
+    /** @return array{bidders: array<string, array{name: string, seniority: int, numbers: list<int>, ranks: list<int>}>, context: array<string, mixed>, retrieved_at: string, download: ?string} */
     public function all(BidPackage $package, #[SensitiveParameter] string $employee, #[SensitiveParameter] string $password, string $seat, ?string $format = null): array
     {
         if (! in_array($seat, ['CA', 'FO'], true) || ($format !== null && ! in_array($format, ['PDF', 'Excel'], true))) {
@@ -142,14 +144,7 @@ class ViewEmployeeBids
             $total = null;
             $bytes = 0;
             for ($number = 1; $number <= ($total ?? 1); $number++) {
-                if (hrtime(true) - $started > 180_000_000_000) {
-                    throw new BidPortalException('The global report exceeded the refresh time limit.');
-                }
-                $content = $get($url.'&PageNumber='.$number.'&ZoomMode=Percent&ZoomPct=100&ReloadDocMap=true&SearchStartPage=0');
-                $bytes += strlen($content);
-                if ($bytes > 32_000_000) {
-                    throw new BidPortalException('The global report is too large.');
-                }
+                $content = $this->reportContent($get, $url, $number, $started, $bytes);
                 $report = $this->pages->globalReport($content, $names, $last);
                 if ($report['page'] !== $number || ($total !== null && $report['pages'] !== $total)) {
                     throw new BidPortalException('The global report pagination changed.');
@@ -172,15 +167,6 @@ class ViewEmployeeBids
             if (count($groups) !== count($page['employees'])) {
                 throw new BidPortalException('The global report does not cover the complete employee directory.');
             }
-            $bidders = [];
-            foreach ($page['employees'] as $id => $person) {
-                $choices = $groups[$id];
-                ksort($choices);
-                if ($choices !== [] && array_keys($choices) !== range(1, count($choices))) {
-                    throw new BidPortalException('The global report is missing choice ranks.');
-                }
-                $bidders[$id] = ['name' => $person['name'], 'seniority' => $person['seniority'], 'numbers' => array_values($choices)];
-            }
             $download = null;
             if ($format !== null) {
                 if ($page['export'] === null || ! in_array($format, $page['formats'], true)) {
@@ -192,6 +178,15 @@ class ViewEmployeeBids
                     throw new BidPortalException('The portal did not return a supported report file.');
                 }
             }
+            $bidders = [];
+            foreach ($page['employees'] as $id => $person) {
+                $choices = $groups[$id];
+                ksort($choices);
+                if ($choices !== [] && array_keys($choices) !== range(1, count($choices))) {
+                    $choices = $this->verifyGlobalChoices($page, (string) $id, $choices, $employee, $context['fleet'], $get, $select, $started, $bytes);
+                }
+                $bidders[$id] = ['name' => $person['name'], 'seniority' => $person['seniority'], 'numbers' => array_values($choices), 'ranks' => array_keys($choices)];
+            }
             $after = $this->context($get('/Pages/BidSheet.aspx'), $employee);
             foreach (['account_matches_input', 'period', 'fleet', 'seat', 'package_id', 'package_revision'] as $key) {
                 if ($after[$key] !== $context[$key]) {
@@ -201,6 +196,75 @@ class ViewEmployeeBids
 
             return ['bidders' => $bidders, 'context' => $context, 'retrieved_at' => now()->utc()->toIso8601String(), 'download' => $download];
         });
+    }
+
+    /**
+     * @param  EmployeePage  $global
+     * @param  array<int, int>  $choices
+     * @return array<int, int>
+     */
+    private function verifyGlobalChoices(#[SensitiveParameter] array $global, #[SensitiveParameter] string $id, #[SensitiveParameter] array $choices, #[SensitiveParameter] string $employee, string $fleet, Closure $get, Closure $select, int $started, int &$bytes): array
+    {
+        $this->checkReportTime($started);
+        $page = $this->pages->read($get('/Pages/ViewAllBids.aspx'), $employee, $fleet);
+        if ($page['seat'] !== $global['seat']) {
+            $this->checkReportTime($started);
+            $page = $this->pages->read($select($this->pages->select($page, $global['seat'], null)), $employee, $fleet);
+        }
+        if ($page['seat'] !== $global['seat'] || $page['employees'] !== $global['employees']) {
+            throw new BidPortalException('The portal directory changed while verifying choice ranks. Refresh again.');
+        }
+        $this->checkReportTime($started);
+        $page = $this->pages->read($select($this->pages->select($page, $global['seat'], $id)), $employee, $fleet);
+        if ($page['seat'] !== $global['seat'] || $page['selected'] !== $id || $page['employees'] !== $global['employees'] || $page['report'] === null) {
+            throw new BidPortalException('The global report is missing choice ranks, and its individual report could not be confirmed.');
+        }
+        $url = $this->session->destination('https://crewbids.kalittaair.com/Pages/ViewAllBids.aspx', $page['report']);
+        $verified = [];
+        $total = null;
+        for ($number = 1; $number <= ($total ?? 1); $number++) {
+            $report = $this->pages->report($this->reportContent($get, $url, $number, $started, $bytes), $global['employees'][$id]['name']);
+            if ($report['page'] !== $number || ($total !== null && $report['pages'] !== $total)) {
+                throw new BidPortalException('The individual report pagination changed while verifying choice ranks.');
+            }
+            $total = $report['pages'];
+            foreach ($report['numbers'] as $rank => $line) {
+                if (isset($verified[$rank])) {
+                    throw new BidPortalException('The individual report repeats a choice rank.');
+                }
+                $verified[$rank] = $line;
+            }
+        }
+        ksort($verified);
+        foreach ($choices as $rank => $line) {
+            if (($verified[$rank] ?? null) !== $line) {
+                throw new BidPortalException('The global and individual reports disagree on choice ranks. Refresh again.');
+            }
+        }
+        if (array_keys($verified) !== range(1, count($verified)) && $verified !== $choices) {
+            throw new BidPortalException('The global report is missing choice ranks that the individual report could not verify.');
+        }
+
+        return $verified;
+    }
+
+    private function reportContent(Closure $get, string $url, int $number, int $started, int &$bytes): string
+    {
+        $this->checkReportTime($started);
+        $content = $get($url.'&PageNumber='.$number.'&ZoomMode=Percent&ZoomPct=100&ReloadDocMap=true&SearchStartPage=0');
+        $bytes += strlen($content);
+        if ($bytes > 32_000_000) {
+            throw new BidPortalException('The global report is too large.');
+        }
+
+        return $content;
+    }
+
+    private function checkReportTime(int $started): void
+    {
+        if (hrtime(true) - $started > 180_000_000_000) {
+            throw new BidPortalException('The global report exceeded the refresh time limit.');
+        }
     }
 
     /** @return array{account_matches_input: bool, seat: string, fleet: string, period: string, package_id: int, package_revision: int, window_status: string, update_postback: bool} */

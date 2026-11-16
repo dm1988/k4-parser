@@ -10,6 +10,8 @@ use App\Models\PilotSeniorityList;
 use App\Models\User;
 use App\Services\CrewBids\QueuedCrewBidRefresh;
 use App\Services\CrewBids\SyncCrewBidSnapshot;
+use DOMDocument;
+use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Queue;
@@ -100,6 +102,23 @@ class CrewBidEmployeeTest extends TestCase
         $this->get(route('crew-bids.employees.index', $anotherMonth))->assertOk()->assertSee('No shared bid snapshot');
         $this->get($url.'?seat=FE')->assertNotFound();
         $http->assertNothingSent();
+    }
+
+    public function test_submitted_choices_display_confirmed_portal_rank_numbers_without_closing_gaps(): void
+    {
+        $user = User::factory()->crewBidsAccess()->create();
+        $user->forceFill(['crew_bid_employee_number' => '910001', 'crew_bid_employee_verified_at' => now()])->save();
+        $package = BidPackage::factory()->create(['period' => '2026-12']);
+        CrewBidSnapshot::factory()->create(['period' => '2026-12', 'bidders' => [
+            '910001' => ['name' => 'Example, Avery', 'seniority' => 10, 'numbers' => [2, 1], 'ranks' => [1, 3]],
+        ]]);
+
+        $response = $this->actingAs($user)->get(route('crew-bids.employees.index', $package))->assertOk();
+
+        $document = new DOMDocument;
+        @$document->loadHTML($response->getContent());
+        $cells = (new DOMXPath($document))->query('//table[caption[contains(., "Original submitted choice order")]]/tbody/tr/td[1]');
+        $this->assertSame(['1', '3'], array_map(fn ($cell): string => trim($cell->textContent), iterator_to_array($cells)));
     }
 
     public function test_invalid_credentials_and_position_show_safe_feedback_without_flashing_input(): void

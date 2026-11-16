@@ -101,7 +101,49 @@ class CrewBidSnapshotTest extends TestCase
     public static function invalidReports(): array
     {
         return array_map(static fn (string $scenario): array => [$scenario], ['wrong-context', 'context-changed', 'wrong-selection', 'duplicate-seniority', 'duplicate-name', 'bad-export-session',
-            'missing-bidder', 'unknown-name', 'duplicate-rank', 'missing-rank', 'pagination-changed', 'too-many-pages', 'connection']);
+            'missing-bidder', 'unknown-name', 'duplicate-rank', 'missing-rank', 'pagination-changed', 'too-many-pages', 'connection',
+            'gap-unconfirmed', 'gap-directory-changed', 'gap-extra-sparse', 'gap-pagination-changed', 'gap-duplicate-rank']);
+    }
+
+    #[DataProvider('verifiedChoiceRanks')]
+    public function test_global_rank_gaps_are_reconciled_only_with_the_verified_individual_report(string $scenario, array $numbers, array $ranks): void
+    {
+        $package = BidPackage::factory()->create(['period' => '2026-12']);
+        $http = SharedBidPortal::fake($scenario);
+
+        $result = app(SyncCrewBidSnapshot::class)->handle($package, '900000', 'synthetic-password', 'FO');
+
+        $this->assertSame($numbers, $result['snapshot']->bidders[910001]['numbers']);
+        $this->assertSame($ranks, $result['snapshot']->bidders[910001]['ranks']);
+        $this->assertSame([], $result['snapshot']->bidders[910002]['numbers']);
+        $this->assertDatabaseCount('crew_bid_snapshots', 1);
+        $http->assertSent(fn (Request $request): bool => ($request['ctl00$ContentPlaceHolder1$ddl_crewMembers'] ?? '') === '910001');
+        $http->assertNotSent(fn (Request $request): bool => $request->method() === 'POST' && str_contains($request->url(), 'BidSheet.aspx'));
+    }
+
+    public static function verifiedChoiceRanks(): array
+    {
+        return [
+            'missing global rows recovered' => ['gap-recovered', [2, 74, 1], [1, 2, 3]],
+            'printed gaps confirmed' => ['gap-confirmed', [2, 1], [1, 3]],
+            'first slot blank confirmed' => ['gap-start', [2, 1], [2, 3]],
+            'first global row recovered' => ['gap-first-recovered', [74, 2, 1], [1, 2, 3]],
+            'individual pagination' => ['gap-paginated', [2, 74, 1], [1, 2, 3]],
+            'repeated lines preserved' => ['gap-repeated-line', [2, 2], [1, 3]],
+        ];
+    }
+
+    public function test_rank_verification_keeps_requested_exports_bound_to_the_global_report(): void
+    {
+        $package = BidPackage::factory()->create(['period' => '2026-12']);
+        $http = SharedBidPortal::fake('gap-confirmed');
+
+        $result = app(SyncCrewBidSnapshot::class)->handle($package, '900000', 'synthetic-password', 'FO', 'PDF');
+
+        $this->assertSame('%PDF-synthetic-global-export', $result['download']);
+        $this->assertSame([1, 3], $result['snapshot']->bidders[910001]['ranks']);
+        $http->assertSent(fn (Request $request): bool => str_contains($request->url(), 'OpType=Export') && str_contains($request->url(), 'ReportID=synthetic-global'));
+        $http->assertNotSent(fn (Request $request): bool => str_contains($request->url(), 'OpType=Export') && str_contains($request->url(), 'ReportID=synthetic-individual'));
     }
 
     public function test_an_in_progress_refresh_blocks_a_second_login_for_the_same_scope(): void
@@ -129,6 +171,17 @@ class CrewBidSnapshotTest extends TestCase
 
         $this->assertSame(84, $report['pages']);
         $this->assertSame([910001 => []], $report['groups']);
+    }
+
+    public function test_global_reader_reads_the_supplied_nested_frame_structure_without_fixed_header_copies(): void
+    {
+        $html = file_get_contents(base_path('tests/Fixtures/crew-bids/portal-global-report.html'));
+
+        $report = app(ReadEmployeeBidPage::class)->globalReport($html, ['Example, Avery' => '910001', 'Sample, Morgan' => '910002']);
+
+        $this->assertSame(116, $report['pages']);
+        $this->assertSame([910001 => [1 => 2, 2 => 1], 910002 => [1 => 4, 2 => 3]], $report['groups']);
+        $this->assertSame('910002', $report['last']);
     }
 
     public function test_global_reports_preserve_repeated_line_numbers_at_different_ranks(): void
