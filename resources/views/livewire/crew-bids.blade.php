@@ -17,6 +17,14 @@
             @else
                 @can('manage-crew-bids')<a href="{{ route('filament.admin.resources.bid-packages.index') }}" class="inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-300 px-3 text-sm focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-600"><x-heroicon-o-cog-6-tooth class="h-4 w-4 shrink-0" aria-hidden="true" /><span>Manage package</span></a>@endcan
             @endif
+            @if ($package)
+                <button type="button" x-ref="predictionsTrigger" @click="$refs.predictions.showModal()" wire:poll.60s.visible aria-haspopup="dialog" aria-controls="bid-predictions" title="Bid predictions{{ $prediction['stale'] ? ' · Stale shared bids; refresh recommended' : '' }}" class="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border border-slate-300 bg-white px-2.5 text-xs font-medium text-[#1B365D] hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+                    <x-heroicon-o-chart-bar class="h-4 w-4 shrink-0 text-[#C5A059]" aria-hidden="true" />
+                    <span class="sr-only">Bid predictions: </span>
+                    <span class="whitespace-nowrap">@if (! $prediction['available'])Unavailable @elseif ($prediction['likely'])<span class="font-mono font-semibold">{{ $prediction['likely'] }}</span> · Likely hold @else No hold @endif</span>
+                    @if ($prediction['stale'])<span class="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400" aria-hidden="true"></span><span class="sr-only"> · Stale shared bids; refresh recommended.</span>@endif
+                </button>
+            @endif
             <div class="ms-auto flex max-w-full flex-wrap items-center justify-end gap-3">
                 @if ($notice)<span wire:key="bid-notice-{{ md5($notice) }}" x-data="{ visible: true }" x-show="visible" x-init="setTimeout(() => visible = false, 8000)" class="min-w-0 text-xs text-slate-600 dark:text-slate-300" role="status" aria-live="polite">{{ $notice }} @if ($undoId)<button type="button" wire:click="undoAdd" class="min-h-11 font-semibold underline focus-visible:ring-2 focus-visible:ring-amber-500" wire:loading.attr="disabled" wire:target="undoAdd"><span wire:loading.remove wire:target="undoAdd">Undo addition</span><span wire:loading wire:target="undoAdd" role="status">Undoing…</span></button>@endif</span>@endif
                 @if ($packages->isNotEmpty())
@@ -114,18 +122,42 @@
     <x-crew-bids.pay-editor :editor="$payEditor" />
 
     @if ($package)
-        <details wire:poll.60s.visible class="my-4 rounded-xl border border-slate-200 bg-white p-4 text-sm dark:border-slate-700 dark:bg-slate-900">
-            <summary class="min-h-7 cursor-pointer rounded font-semibold focus-visible:ring-2 focus-visible:ring-amber-500">Bid predictions{{ $prediction['likely'] ? ' · Likely hold '.$prediction['likely'] : '' }}</summary>
-            <div class="mt-3 space-y-3">
-                <p>{{ $prediction['reason'] }}</p>
+        <dialog id="bid-predictions" x-ref="predictions" wire:ignore.self aria-labelledby="bid-predictions-title" aria-describedby="bid-predictions-reason" @keydown.escape.stop @click="if ($event.target === $el) $el.close()" @close="$refs.predictionsTrigger.focus()" class="fixed inset-0 m-auto max-h-[80dvh] w-[calc(100%_-_2rem)] max-w-2xl overflow-y-auto rounded-xl border border-slate-200 bg-white p-0 text-slate-900 shadow-xl backdrop:bg-slate-950/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+            <section class="space-y-4 p-5">
+                <div class="flex items-center justify-between gap-3">
+                    <h2 id="bid-predictions-title" class="text-lg font-semibold">Bid predictions</h2>
+                    <button type="button" autofocus @click="$refs.predictions.close()" aria-label="Close bid predictions" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-amber-500 dark:hover:bg-slate-800"><x-heroicon-o-x-mark class="h-5 w-5" aria-hidden="true" /></button>
+                </div>
+                <p class="text-sm font-semibold">{{ $monthLabel }} · B{{ $package->fleet }} · {{ $seat }}</p>
+                @if ($prediction['likely'])<p class="font-semibold text-amber-800 dark:text-amber-200">Likely hold <span class="font-mono">{{ $prediction['likely'] }}</span></p>@endif
+                <p id="bid-predictions-reason" class="text-sm">{{ $prediction['reason'] }}</p>
+                @if ($prediction['employee_seniority'] !== null)<p class="font-mono text-xs">Your seniority: {{ $prediction['employee_seniority'] }}</p>@endif
                 @if ($prediction['checked_at'])<p class="font-mono text-xs">Shared bids: {{ $prediction['checked_at'] }}{{ $prediction['stale'] ? ' · Stale—refresh recommended' : '' }}</p>@endif
                 @if ($prediction['seniority_date'])<p class="font-mono text-xs">Seniority list: {{ $prediction['seniority_date'] }}</p>@endif
+                @if ($prediction['available'])
+                    <ul class="flex flex-wrap gap-x-4 gap-y-2 text-xs" aria-label="Prediction color key">
+                        <li class="flex items-center gap-1.5"><x-heroicon-o-check-circle class="h-4 w-4 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />Green: positions remain</li>
+                        <li class="flex items-center gap-1.5"><x-heroicon-o-exclamation-circle class="h-4 w-4 text-amber-700 dark:text-amber-300" aria-hidden="true" />Amber: likely hold or one position of multiple remains</li>
+                        <li class="flex items-center gap-1.5"><x-heroicon-o-no-symbol class="h-4 w-4 text-slate-600 dark:text-slate-400" aria-hidden="true" />Slate: no positions remain</li>
+                    </ul>
+                    <div class="overflow-x-auto rounded-lg border border-slate-200 focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-700" tabindex="0" role="region" aria-label="Senior projection breakdown">
+                        <table class="w-full text-left text-xs">
+                            <caption class="p-3 text-left font-semibold">Remaining {{ $seat }} positions after senior projections · all package lines</caption>
+                            <thead class="bg-slate-50 dark:bg-slate-800"><tr><th scope="col" class="px-3 py-2">Line</th><th scope="col" class="px-3 py-2">Projection</th><th scope="col" class="px-3 py-2">Remaining / capacity</th><th scope="col" class="px-3 py-2">Senior holds</th></tr></thead>
+                            <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                                @foreach ($prediction['lines'] as $id => $projection)
+                                    <tr><th scope="row" class="px-3 py-2 font-mono">{{ $id }}</th><td class="px-3 py-2">{{ $projection['label'] }}</td><td class="px-3 py-2 font-mono">{{ $projection['remaining'] !== null ? $projection['remaining'].' / '.$projection['capacity'] : 'Unknown' }}</td><td class="px-3 py-2 font-mono">{{ $projection['remaining'] !== null ? count($projection['occupants']) : 'Unknown' }}</td></tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
                 <div class="flex flex-wrap items-end gap-3">
                     <a href="{{ route('crew-bids.employees.index', ['package' => $package, 'seat' => $seat]) }}" class="inline-flex min-h-11 items-center rounded-lg border border-slate-300 px-3 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-700">Employee link / shared data</a>
                 </div>
                 <p class="text-xs text-slate-500 dark:text-slate-400">{{ $prediction['basis'] }}. Projections use your verified employee number, the dated seniority list and {{ $seat }} capacity. These are estimates, not official awards.</p>
-            </div>
-        </details>
+            </section>
+        </dialog>
     @endif
 
     @if ($dirty)

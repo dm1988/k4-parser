@@ -6,6 +6,30 @@ K4 Bids helps pilots compare monthly bid packages and prepare a private, ordered
 
 Status (2026-11-15): Package import/publication, browsing, preferences, manual ranking, review/copy, compact cards, interactive trip timelines, credit calculations, icons, and trip endpoint/deadhead flags are implemented. Reviewed portal submission and fresh report reconciliation are implemented and enabled locally for the user's controlled test. The read-only employee bid viewer is implemented from supplied authenticated captures. Live portal acceptance, receipt authentication, and manual browser, touch, and keyboard review remain outstanding.
 
+## [x] Completed: Bid prediction UI cleanup
+Please update the bid package interface to refactor the Bid Predictions feature into a header pill modal and clean up individual line card elements by replacing text-based projection warnings with minimal left-edge accent stripes on neutral backgrounds.
+
+### Requirements:
+
+1. **Header Bid Predictions Pill & Pop-Out Modal:**
+   * Add a compact interactive pill to the top header toolbar (near the title or metadata section): chart icon + `F56 · Likely hold`, with short `Unavailable` / `No hold` fallback states.
+   * Show stale data with a subtle amber micro-dot; retain the full prediction name and stale explanation for screen readers and in the hover title. Use subtle borders and a slate-800 dark background.
+   * Clicking this pill should trigger a clean pop-out modal or dropdown displaying detailed prediction stats and senior projection breakdowns.
+
+2. **Line Card Row Color-Coding (Removing Text Warnings):**
+   * Remove the bulky text elements (`"Projected unavailable · 0/2 positions remain..."`, `"Likely hold · 1/2 positions remain..."`, and `"Projected available · 2/2 positions remain..."`) from the individual line cards.
+   * Keep card backgrounds neutral and apply a 4px left accent stripe based on availability:
+     * **Projected Available:** An emerald-500 stripe indicating positions remain after senior projections.
+     * **Likely Hold / Tight Availability:** An amber-500 stripe indicating the likely hold or 1/2 positions remaining.
+     * **Projected Unavailable:** A slate-600 stripe with 60% opacity indicating 0/2 positions remain. Hover and keyboard focus restore full opacity.
+   * Ensure these color codes remain accessible and maintain high contrast in dark mode (`slate-900` / dark themes).
+
+3. **Tech Stack & Frameworks:**
+   * Implement using Tailwind CSS utility classes and Alpine.js for the header modal toggle, keeping consistency with the existing Livewire view architecture.
+
+Outcome (2026-11-16): Predictions now open from the header pill into an Alpine-controlled native modal with source metadata and an all-line remaining-capacity/senior-hold table. Following the accent-stripe refinement, cards retain neutral backgrounds with 4px emerald, amber or slate stripes and labelled icons. Unavailable cards are dimmed until hovered or focused; unknown data stays neutral. Amber indicates a likely hold or only one position remaining out of multiple, rather than a calculated confidence probability. Stale feedback and visible 60-second polling are retained. Focused prediction/JavaScript tests, Pint, the Vite build and one Larastan pass passed; manual browser review remains outstanding. See TODO.md for validation details and the commit message.
+
+
 ## Refactor My bid list
 Refactor the top header toolbar layout in the Livewire view to swap the positions of the `First Officer` badge and the `My bid list (43)` action container.
 

@@ -9,6 +9,8 @@ use App\Models\CrewBidSnapshot;
 use App\Models\PilotSeniorityList;
 use App\Models\User;
 use App\Services\CrewBids\PredictCrewBidLines;
+use DOMDocument;
+use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -153,15 +155,47 @@ class CrewBidPredictionTest extends TestCase
         $workspace = BidWorkspace::factory()->create(['user_id' => $user->id, 'bid_package_id' => $package->id, 'selections' => ['R2', 'F1'], 'revision' => 3]);
         $snapshot = CrewBidSnapshot::factory()->create();
 
-        Livewire::actingAs($user)->test(CrewBids::class)
-            ->assertSee('Likely hold R2')->assertSee('Projected unavailable')->assertDontSee('Example, Avery')
-            ->assertDontSee('Predict for bidder')->assertDontSee('Submitted bids for this line:')
-            ->set('tab', 'reserve')->assertDontSee('choice #2');
+        $component = Livewire::actingAs($user)->test(CrewBids::class)
+            ->assertSeeText('Likely hold R2')->assertSee('Projected unavailable')->assertDontSee('Example, Avery')
+            ->assertDontSee('Predict for bidder')->assertDontSee('Submitted bids for this line:');
+
+        $document = new DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$component->html());
+        $xpath = new DOMXPath($document);
+        $this->assertSame(1, $xpath->query('//header//button[@aria-controls="bid-predictions"]')->length);
+        $this->assertSame(1, $xpath->query('//dialog[@id="bid-predictions"]//table')->length);
+        $this->assertSame(3, $xpath->query('//dialog[@id="bid-predictions"]//tbody/tr')->length);
+        $this->assertSame(0, $xpath->query('//article//p[contains(., "positions remain after senior projections")]')->length);
+        $this->assertSame(1, $xpath->query('//article//span[@role="img" and contains(@aria-label, "Projected unavailable · 0/2")]')->length);
+
+        $component->set('tab', 'reserve')->assertDontSee('choice #2');
 
         $this->assertSame(['R2', 'F1'], $workspace->fresh()->selections);
         $this->assertSame(3, $workspace->fresh()->revision);
         $this->assertDatabaseCount('bid_submissions', 0);
         $this->assertSame($snapshot->id, CrewBidSnapshot::query()->sole()->id);
+    }
+
+    public function test_prediction_pill_keeps_missing_link_and_stale_data_feedback_accessible_in_the_modal(): void
+    {
+        $this->freezeTime();
+        $user = User::factory()->crewBidsAccess()->create();
+        $this->package();
+        PilotSeniorityList::factory()->create();
+        CrewBidSnapshot::factory()->create(['retrieved_at' => now()->subMinutes(16)]);
+
+        $component = Livewire::actingAs($user)->test(CrewBids::class)
+            ->assertSee('Unavailable')->assertSee('Stale')
+            ->assertSee('Link your employee number once')
+            ->assertSee('Employee link / shared data')
+            ->assertDontSee('Likely hold');
+
+        $document = new DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$component->html());
+        $xpath = new DOMXPath($document);
+        $this->assertSame(1, $xpath->query('//dialog[@id="bid-predictions"]//p[@id="bid-predictions-reason" and contains(., "Link your employee number once")]')->length);
+        $this->assertSame(0, $xpath->query('//dialog[@id="bid-predictions"]//table')->length);
+        $this->assertSame(0, $xpath->query('//article//span[@role="img" and contains(@aria-label, "Projected available")]')->length);
     }
 
     public function test_imported_seniority_updates_apply_by_employee_number_without_mutating_shared_bids(): void

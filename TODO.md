@@ -28,13 +28,29 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
-## Current focus: Manage seniority and shared bids in Filament
+## [x] Completed: Bid prediction UI cleanup
+
+Goal: Move bid predictions into a compact header pill and modal, and replace bulky per-line projection warnings with accessible availability colors.
+
+Current implementation (2026-11-16): Added a compact chart-icon header pill showing `F56 · Likely hold`, `Unavailable` or `No hold`, with an amber micro-dot for stale shared bids. The full prediction name and stale explanation remain in its accessible text and hover title. The pill uses subtle borders, a rounded shape and a slate-800 dark background. Alpine opens the existing native-dialog pattern with Escape/backdrop/close dismissal and trigger focus restoration. The modal retains source dates, seniority, prediction basis, limitations and employee/shared-data access, and adds remaining/capacity and senior-hold counts for all package lines. The visible header pill preserves 60-second shared-data polling. Following the requested accent-stripe refinement, line cards and their sticky headings keep neutral backgrounds (white/light, slate-900/dark), with a 4px emerald stripe for available lines and amber for likely holds or one remaining position out of multiple. Unavailable lines use slate-600 stripes and 60% opacity, returning to full opacity on hover or keyboard focus; the modal key uses the same palette. Compact labelled icons and hover descriptions preserve non-color status and capacity information. Missing or ineligible predictions remain neutral. Private order and prediction calculations are unchanged.
+
+Problem addressed: The separate prediction panel and repeated warning paragraphs consumed browsing space and obscured line comparisons.
+
+Validation: All 12 focused prediction tests passed (68 assertions), including modal placement, capacity breakdown, removed warning paragraphs, labelled status icons, missing-link/stale feedback and preserved private state. All 57 crew-bids JavaScript regressions, Pint, the production Vite build, the single Larastan pass (zero errors) and whitespace checks passed. Database-backed tests used explicit testing variables and guarded in-memory SQLite. No full suite or manual browser/touch review was performed. Existing documentation changes were preserved.
+
+Refinement validation: The accent-stripe and compact-pill refinements each passed the 12 focused prediction tests (68 assertions), Pint, the production Vite build and whitespace checks. These presentation-only refinements added no tests and reused the task's completed single Larastan pass. The compact pill retains the same modal trigger, visible polling and accessible stale-data explanation. Existing staged changes were preserved.
+
+Commit message: `ui: move bid predictions into a header modal with line accent stripes`
+
+## [x] Completed: Manage seniority and shared bids in Filament
 
 Goal: Give admins Filament controls for manual seniority imports, roster and shared snapshot inspection, verified employee-link management, and explicitly authorized user/admin role changes.
 
-Current implementation: Extending the existing resources and guarded import action. Preserve portal verification for employee links, restrict snapshot/roster editing to validated imports, and keep database records unchanged during development.
+Current implementation (2026-11-16): Added Pilot Seniority Lists and Shared Bid Snapshots resources under K4 Bids. Admins can manually import a supplied seniority PDF through the existing validated action, inspect dated source metadata, and search/paginate imported employee numbers, names and ranks. Snapshot pages filter month/fleet/seat, label stale data, retain original submitted choice order and link to the protected refresh page for a matching published package. Roster/snapshot records have no manual create/edit/delete path. Users now shows role, verified employee number and verification time; identity fields remain read-only and a confirmed Unlink employee number action clears only that user's identity link, with immediate form feedback. The explicitly authorized User/Admin selector allows promotion and demotion of other users while preserving separate K4 Bids grants. Self-role changes, super-admin promotion and changes to existing super-admin roles are blocked. Existing email-verification and active/grant controls remain available.
 
-Problem: These features currently require the crew workspace or command line for administration. The user explicitly authorized user/admin role changes in Filament; super-admin promotion remains outside scope.
+Problem addressed: Seniority and shared bid administration previously required the crew workspace; role changes required commands. Admins now have dedicated resource screens while portal login remains necessary to verify employee ownership. Shared source data and private bid lists are preserved when unlinking identities or changing roles.
+
+Validation: All 27 focused Filament resource/user cases passed (246 assertions), plus seven focused login and user/panel authorization regressions (39 assertions). Coverage includes import success/failure feedback, malformed input, roster search and actual pagination, snapshot filtering/choice order/refresh context, escaped source names, guest/regular/inactive/unverified access rejection, protected role boundaries, promotion/demotion access behavior, disabled identity fields and targeted unlink preservation. Pint, the single Larastan pass (zero errors), and whitespace checks passed. All database-backed tests used explicit testing variables, guarded in-memory SQLite and factory records. No migrations, imports, account changes or other local database writes were executed. No full suite, frontend asset changes or manual browser review was performed. Concurrent edits, staging and commits were preserved.
 
 Commit message: `feat: manage crew bid seniority and access in Filament`
 

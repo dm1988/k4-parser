@@ -1,8 +1,31 @@
 @props(['line', 'prediction' => null])
-<article x-data="bidLineCard" @click="toggleFromCard($event)" {{ $attributes->class('cc-bid-line group/bid-line cursor-pointer rounded-xl border border-l-[3px] border-slate-200 bg-white p-3 shadow-[0_1px_3px_0_rgb(15_23_42/0.08),0_1px_2px_-1px_rgb(15_23_42/0.06)] transition-[border-color,box-shadow,translate] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-slate-300 hover:shadow-[0_8px_20px_-6px_rgb(15_23_42/0.18),0_2px_6px_-2px_rgb(15_23_42/0.10)] focus-within:border-slate-400 has-[[data-bid-expandable][open]]:border-l-[#1B365D] motion-safe:hover:-translate-y-0.5 motion-reduce:transition-none dark:border-slate-700 dark:bg-slate-900 dark:shadow-[0_1px_3px_rgb(0_0_0/0.24),0_1px_2px_rgb(0_0_0/0.16)] dark:hover:border-slate-500 dark:hover:shadow-[0_8px_20px_-6px_rgb(0_0_0/0.5),0_2px_6px_-2px_rgb(0_0_0/0.3)] dark:focus-within:border-slate-500 dark:has-[[data-bid-expandable][open]]:border-l-blue-300') }}>
-    <div class="relative -mx-3 -mt-3 grid min-h-11 grid-cols-[minmax(80px,auto)_minmax(0,1fr)_auto] items-center gap-2 rounded-t-xl border-b border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800 sm:gap-3 group-has-[[data-bid-expandable][open]]/bid-line:sticky group-has-[[data-bid-expandable][open]]/bid-line:top-[var(--crew-bids-header-height,0px)] group-has-[[data-bid-expandable][open]]/bid-line:z-20 group-has-[[data-bid-expandable][open]]/bid-line:shadow-sm">
+<article x-data="bidLineCard" @click="toggleFromCard($event)" {{ $attributes->class([
+    'cc-bid-line group/bid-line cursor-pointer rounded-xl border border-l-4 border-slate-200 bg-white p-3 shadow-[0_1px_3px_0_rgb(15_23_42/0.08),0_1px_2px_-1px_rgb(15_23_42/0.06)] transition-[border-color,box-shadow,translate,opacity] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-[0_8px_20px_-6px_rgb(15_23_42/0.18),0_2px_6px_-2px_rgb(15_23_42/0.10)] motion-safe:hover:-translate-y-0.5 motion-reduce:transition-none dark:border-slate-700 dark:bg-slate-900 dark:shadow-[0_1px_3px_rgb(0_0_0/0.24),0_1px_2px_rgb(0_0_0/0.16)] dark:hover:shadow-[0_8px_20px_-6px_rgb(0_0_0/0.5),0_2px_6px_-2px_rgb(0_0_0/0.3)]',
+    'has-[[data-bid-expandable][open]]:border-l-[#1B365D] dark:has-[[data-bid-expandable][open]]:border-l-blue-300' => ! in_array($prediction['status'] ?? null, ['available', 'likely', 'unavailable'], true),
+    'border-l-emerald-500 dark:border-l-emerald-500' => ($prediction['status'] ?? null) === 'available' && ! ($prediction['remaining'] === 1 && $prediction['capacity'] > 1),
+    'border-l-amber-500 dark:border-l-amber-500' => ($prediction['status'] ?? null) === 'likely' || (($prediction['status'] ?? null) === 'available' && $prediction['remaining'] === 1 && $prediction['capacity'] > 1),
+    'border-l-slate-600 opacity-60 hover:opacity-100 focus-within:opacity-100 dark:border-l-slate-600' => ($prediction['status'] ?? null) === 'unavailable',
+]) }}>
+    <div class="relative -mx-3 -mt-3 grid min-h-11 grid-cols-[minmax(80px,auto)_minmax(0,1fr)_auto] items-center gap-2 rounded-t-xl border-b border-slate-200 bg-inherit p-3 dark:border-slate-700 sm:gap-3 group-has-[[data-bid-expandable][open]]/bid-line:sticky group-has-[[data-bid-expandable][open]]/bid-line:top-[var(--crew-bids-header-height,0px)] group-has-[[data-bid-expandable][open]]/bid-line:z-20 group-has-[[data-bid-expandable][open]]/bid-line:shadow-sm">
         <div>
-            <h3 class="font-mono text-base font-bold {{ $line->headingClasses }}">{{ $line->id }}<span class="sr-only"> · {{ $line->typeLabel }} line</span></h3>
+            <h3 class="flex items-center gap-1.5 font-mono text-base font-bold {{ $line->headingClasses }}">
+                {{ $line->id }}<span class="sr-only"> · {{ $line->typeLabel }} line</span>
+                @if ($prediction !== null)
+                    <span role="img" aria-label="{{ $prediction['label'] }}{{ $prediction['remaining'] !== null ? ' · '.$prediction['remaining'].'/'.$prediction['capacity'].' positions remain after senior projections' : '' }}" title="{{ $prediction['label'] }}{{ $prediction['remaining'] !== null ? ' · '.$prediction['remaining'].'/'.$prediction['capacity'].' positions remain after senior projections' : '' }}">
+                        @if ($prediction['status'] === 'likely')
+                            <x-heroicon-o-star class="h-4 w-4 text-amber-700 dark:text-amber-300" aria-hidden="true" />
+                        @elseif ($prediction['status'] === 'available' && $prediction['remaining'] === 1 && $prediction['capacity'] > 1)
+                            <x-heroicon-o-exclamation-circle class="h-4 w-4 text-amber-700 dark:text-amber-300" aria-hidden="true" />
+                        @elseif ($prediction['status'] === 'available')
+                            <x-heroicon-o-check-circle class="h-4 w-4 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />
+                        @elseif ($prediction['status'] === 'unavailable')
+                            <x-heroicon-o-no-symbol class="h-4 w-4 text-slate-600 dark:text-slate-400" aria-hidden="true" />
+                        @else
+                            <x-heroicon-o-question-mark-circle class="h-4 w-4 text-slate-500 dark:text-slate-400" aria-hidden="true" />
+                        @endif
+                    </span>
+                @endif
+            </h3>
             @if ($line->crew !== null)<span class="block whitespace-nowrap font-mono text-[10px] leading-4 text-slate-600 dark:text-slate-300" aria-label="Crew complement: {{ $line->crew }}">{{ $line->crew }}</span>@endif
             @if ($line->submittedRank !== null)<span class="block whitespace-nowrap text-[10px] font-semibold leading-4 text-[#1B365D] dark:text-amber-200">Submitted #{{ $line->submittedRank }}</span>@endif
             @if ($line->quickFlags !== [])
@@ -29,12 +52,6 @@
             @endif
         </div>
     </div>
-    @if ($prediction !== null)
-        <p class="mt-3 rounded-lg bg-slate-50 p-2 text-xs dark:bg-slate-800">
-            <span class="font-semibold">{{ $prediction['label'] }}</span>
-            @if ($prediction['remaining'] !== null)<span class="font-mono"> · {{ $prediction['remaining'] }}/{{ $prediction['capacity'] }} positions remain after senior projections</span>@endif
-        </p>
-    @endif
     @if ($line->warnings !== [])<p class="mt-3 truncate text-xs leading-4 font-medium text-amber-800 dark:text-amber-300">{{ $line->warningSummary }}</p>@endif
     <div x-id="['date-help']" class="space-y-1.5 py-3">
     <div class="flex items-stretch gap-1">
