@@ -25,9 +25,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware(['feature:crew_bids', 'can:use-crew-bids'])
         ->name('crew-bids.index');
     Route::prefix('crew-bids/employees')->name('crew-bids.employees.')
-        ->middleware(['feature:crew_bids', 'can:use-crew-bids', 'throttle:10,1'])->group(function () {
-            Route::get('/package/{package}', [CrewBidEmployeeController::class, 'index'])->whereNumber('package')->name('index');
-            Route::post('/package/{package}', [CrewBidEmployeeController::class, 'read'])->whereNumber('package')->name('read');
+        ->middleware(['feature:crew_bids', 'can:use-crew-bids'])->group(function () {
+            Route::get('/package/{package}', [CrewBidEmployeeController::class, 'index'])->middleware('throttle:10,1')->whereNumber('package')->name('index');
+            Route::post('/package/{package}', [CrewBidEmployeeController::class, 'read'])->middleware('throttle:10,1')->whereNumber('package')->name('read');
+            Route::get('/package/{package}/refresh/{refresh}', [CrewBidEmployeeController::class, 'status'])->middleware('throttle:60,1')->whereNumber('package')->whereUuid('refresh')->name('refresh.status');
+            Route::get('/package/{package}/refresh/{refresh}/download', [CrewBidEmployeeController::class, 'download'])->middleware('throttle:10,1')->whereNumber('package')->whereUuid('refresh')->name('refresh.download');
         });
     Route::prefix('crew-bids/submissions')->name('crew-bids.submissions.')
         ->middleware(['feature:crew_bids', 'can:use-crew-bids', 'throttle:10,1'])->group(function () {

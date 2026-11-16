@@ -28,6 +28,32 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Queue shared-bid refreshes and portal exports
+
+Goal: Return immediately when updating shared bids, with progress and failure feedback while Kalitta is read in the background.
+
+Current implementation (2026-11-16): Refresh and export requests dispatch an encrypted job to the dedicated database-backed crew-bid-refreshes connection/queue. The worker consumes a temporary encrypted login reference, rechecks account/package access and package identity, reads and validates the complete report, and replaces the shared snapshot only after report validation. Credentials are removed when consumed, on dispatch/worker failure, or expire after ten minutes. Per-context locks prevent duplicate queued/running logins; one attempt, a 240-second timeout and a 300-second reservation prevent unintended replay. Authenticated status polling updates only progress text, with deliberate View updated prediction and private PDF/Excel download actions. Exports expire after 15 minutes. Both Artisan dev and Composer dev register the dedicated worker.
+
+Problem addressed: The web request waited for every portal page and optional export. Missing choice ranks blocked the request, although the last good snapshot was already protected. That validation remains enforced and now appears as a background failure with a retry action. A queued entry created during implementation lacked newer lock metadata; compatibility handling now rejects it safely, discards its temporary login, and allows a fresh attempt.
+
+Validation: Forty distinct focused queue, employee-page and shared-report PHP cases passed across the integration and correction runs. The final queued-refresh file passed all 11 cases (110 assertions), including a real database queue payload/decryption/execution round trip, missing ranks preserving the previous snapshot, privacy/ownership, access and package changes, expired credentials, deduplication, dispatch failure and legacy metadata. All 71 focused JavaScript checks passed, including progress updates without navigation, network recovery and cleanup. Pint, Vite build, whitespace checks and the single Larastan pass (zero errors) passed. No full suite, agent-performed live portal login or production deployment was run.
+
+Operations: Start the worker with `vendor/bin/sail artisan queue:work crew-bid-refreshes --queue=crew-bid-refreshes --tries=1 --timeout=240`. Existing long-running workers must be restarted after code changes. Failed attempts require a fresh form submission because their temporary credentials are discarded.
+
+Commit message: `feat: queue shared bid refreshes with private progress and exports`
+
+## [x] Completed: Pause bid refreshes while overlays are open
+
+Goal: Preserve open dialogs, drawers and menus during automatic updates and provide an action for stale predictions.
+
+Current implementation (2026-11-16): Cancel automatic Livewire polls while overlays, pending saves or unsaved changes are present. Manual actions remain available. Stale prediction dialogs now offer Update submitted bids, opening the existing shared-refresh credential form.
+
+Problem addressed: Automatic refreshes interrupted overlays, and stale predictions offered no direct refresh action.
+
+Validation: Sail passed 14 focused JavaScript checks, 13 prediction tests (74 assertions), and the existing shared-refresh integration case (32 assertions). Pint, the Vite build and one Larastan pass (zero errors) passed. No full suite or manual browser review was run.
+
+Commit message: `fix: pause bid refreshes behind overlays and expose stale refresh action`
+
 ## [x] Completed: Use portal-only K4 bid workflows
 
 Goal: Use direct portal documents and authenticated reports for K4 bid ingestion and verification while retaining account email, as clarified by the user.
@@ -37,6 +63,8 @@ Current implementation (2026-11-16): Reviewed the existing direct downloader, sc
 Problem addressed: The backlog and submitted-bid screen directed core bid workflows toward company email despite the implemented portal downloader and authenticated report reader.
 
 Validation: An earlier Sail test request was blocked by automatic approval review because its usage limit was exhausted. After access recovered, all six focused portal-download/publication/submission/reconciliation and account-email checks passed in guarded in-memory SQLite (75 assertions). The code changes had already been integrated into the working baseline; this completion record preserves the user's subsequent credential-storage backlog addition.
+
+Final checks: Pint and one Larastan pass completed with zero errors.
 
 Commit message: `refactor: use portal-only K4 bid ingestion and verification`
 

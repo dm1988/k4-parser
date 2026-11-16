@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\User;
 use App\Services\Schedule\FlightTrackerUrlGenerator;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\DevCommands;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -23,6 +24,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        DevCommands::artisan('queue:listen crew-bid-refreshes --queue=crew-bid-refreshes --tries=1 --timeout=240', 'bids');
+
         Model::shouldBeStrict(! $this->app->isProduction());
 
         Gate::define('use-schedule-extractor', fn (User $user): bool => $user->canUseScheduleExtractor());

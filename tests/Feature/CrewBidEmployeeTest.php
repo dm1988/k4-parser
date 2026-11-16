@@ -2,19 +2,29 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\RefreshCrewBidSnapshot;
 use App\Models\BidPackage;
 use App\Models\BidWorkspace;
 use App\Models\CrewBidSnapshot;
 use App\Models\PilotSeniorityList;
 use App\Models\User;
+use App\Services\CrewBids\QueuedCrewBidRefresh;
+use App\Services\CrewBids\SyncCrewBidSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Queue;
 use Tests\Fixtures\SharedBidPortal;
 use Tests\TestCase;
 
 class CrewBidEmployeeTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Queue::fake();
+    }
 
     public function test_viewer_requires_login_access_and_an_available_package_before_contacting_the_portal(): void
     {
@@ -50,7 +60,9 @@ class CrewBidEmployeeTest extends TestCase
         $this->actingAs($user)->get($url)->assertOk()->assertSee('No shared bid snapshot');
 
         $this->post($url, $this->credentials())->assertRedirect(route('crew-bids.employees.index', ['package' => $package, 'seat' => 'FO']))
-            ->assertSessionHas('crew_bid_sync_notice', 'Shared bids updated for all K4 Bids users.');
+            ->assertSessionHas('crew_bid_sync_notice', 'Shared-bid refresh queued. You can keep using the app.');
+        $http->assertNothingSent();
+        $this->runRefresh();
 
         $this->actingAs($other)->get($url)->assertOk()->assertSee(['Example, Avery', 'Your submitted choices'])
             ->assertDontSee('Sample, Morgan')->assertDontSee('name="bidder"', false)
@@ -110,7 +122,10 @@ class CrewBidEmployeeTest extends TestCase
         $package = BidPackage::factory()->create(['period' => '2026-12']);
         $http = SharedBidPortal::fake();
 
-        $this->actingAs($user)->post(route('crew-bids.employees.read', $package), $this->credentials() + ['format' => 'PDF'])
+        $this->actingAs($user)->post(route('crew-bids.employees.read', $package), $this->credentials() + ['format' => 'PDF'])->assertRedirect();
+        $http->assertNothingSent();
+        $refresh = $this->runRefresh();
+        $this->get(route('crew-bids.employees.refresh.download', ['package' => $package, 'refresh' => $refresh]))
             ->assertOk()->assertContent('%PDF-synthetic-global-export')->assertHeader('Content-Type', 'application/pdf')
             ->assertHeader('Content-Disposition', 'attachment; filename="shared-bids-2026-12-FO.pdf"')
             ->assertHeader('Cache-Control', 'no-store, private')->assertHeader('X-Content-Type-Options', 'nosniff');
@@ -130,7 +145,8 @@ class CrewBidEmployeeTest extends TestCase
         CrewBidSnapshot::factory()->create(['period' => '2026-12']);
         $http = SharedBidPortal::fake('connection');
 
-        $this->actingAs($user)->post(route('crew-bids.employees.read', $package), $this->credentials())->assertRedirect()->assertSessionHas('crew_bid_sync_error');
+        $this->actingAs($user)->post(route('crew-bids.employees.read', $package), $this->credentials())->assertRedirect()->assertSessionMissing('crew_bid_sync_error');
+        $this->runRefresh();
         $this->get(route('crew-bids.employees.index', $package))->assertOk()->assertSee('The portal operation could not be completed.')
             ->assertSee('Example, Avery')->assertDontSee('private sensitive upstream detail')->assertDontSee('synthetic-password');
 
@@ -146,8 +162,11 @@ class CrewBidEmployeeTest extends TestCase
         $http = SharedBidPortal::fake('expired-login');
 
         $this->actingAs($user)->post(route('crew-bids.employees.read', $package), $this->credentials())
-            ->assertRedirect()->assertSessionHas('crew_bid_sync_error', 'The portal returned a login page instead of an authenticated Bid Sheet. Check your portal login and try again.')
+            ->assertRedirect()->assertSessionMissing('crew_bid_sync_error')
             ->assertSessionMissing('_old_input');
+        $refresh = $this->runRefresh();
+        $this->get(route('crew-bids.employees.refresh.status', ['package' => $package, 'refresh' => $refresh]))->assertOk()
+            ->assertJsonPath('state', 'failed')->assertJsonPath('message', 'The portal returned a login page instead of an authenticated Bid Sheet. Check your portal login and try again.');
 
         $this->assertSame($before, $snapshot->fresh()->getRawOriginal());
         $this->assertDatabaseCount('crew_bid_snapshots', 1);
@@ -165,6 +184,7 @@ class CrewBidEmployeeTest extends TestCase
         $http = SharedBidPortal::fake(name: $name);
         $url = route('crew-bids.employees.index', $package);
         $this->actingAs($user)->post($url, $this->credentials())->assertRedirect();
+        $this->runRefresh();
 
         $this->get($url.'?bidder=910001')->assertOk()->assertSee($name)->assertDontSee($name, false);
 
@@ -174,5 +194,14 @@ class CrewBidEmployeeTest extends TestCase
     private function credentials(): array
     {
         return ['employee' => '900000', 'portal_password' => 'synthetic-password', 'seat' => 'FO'];
+    }
+
+    private function runRefresh(): string
+    {
+        Queue::assertPushed(RefreshCrewBidSnapshot::class);
+        $job = Queue::pushed(RefreshCrewBidSnapshot::class)->first();
+        $job->handle(app(QueuedCrewBidRefresh::class), app(SyncCrewBidSnapshot::class));
+
+        return $job->refreshId;
     }
 }

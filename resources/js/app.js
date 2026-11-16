@@ -5,6 +5,7 @@ import initializeOfflineFuelInvalidation from './offline-fuel-invalidation';
 import initializeFlightDelayForm from './flight-delay-form';
 import './theme';
 import initializeCrewBids from './crew-bids';
+import './crew-bid-refresh';
 
 initializeFlightReleaseCopyButtons();
 initializeFlightPlanTaskMenu();
