@@ -104,6 +104,12 @@ class CrewBids extends Component
 
     public bool $showList = false;
 
+    #[Locked]
+    public bool $editingList = false;
+
+    /** @var list<string> */
+    public array $checkedSelections = [];
+
     public bool $showReview = false;
 
     public bool $showImport = false;
@@ -378,6 +384,66 @@ class CrewBids extends Component
         $this->persist();
     }
 
+    public function toggleListEditMode(): void
+    {
+        $this->editingList = ! $this->editingList;
+        $this->checkedSelections = [];
+        $this->resetValidation(['checkedSelections', 'checkedSelections.*']);
+    }
+
+    public function moveCheckedToTop(): void
+    {
+        $this->moveChecked('top');
+    }
+
+    public function moveCheckedToBottom(): void
+    {
+        $this->moveChecked('bottom');
+    }
+
+    public function removeChecked(): void
+    {
+        $checked = $this->checkedListItems();
+        if ($checked === []) {
+            return;
+        }
+        $this->selections = array_values(array_diff($this->selections, $checked));
+        if ($this->persist()) {
+            $this->notice = count($checked).' choices removed from your bid list.';
+        }
+    }
+
+    private function moveChecked(string $destination): void
+    {
+        $checked = $this->checkedListItems();
+        if ($checked === []) {
+            return;
+        }
+        $remaining = array_values(array_diff($this->selections, $checked));
+        $selections = $destination === 'top' ? [...$checked, ...$remaining] : [...$remaining, ...$checked];
+        if ($this->selections === $selections) {
+            return;
+        }
+        $this->selections = $selections;
+        if ($this->persist()) {
+            $this->notice = count($checked).' choices moved to the '.$destination.'.';
+        }
+    }
+
+    /** @return list<string> */
+    private function checkedListItems(): array
+    {
+        abort_unless($this->editingList, 422);
+        $this->validate([
+            'checkedSelections' => ['array', 'list', 'max:1000'],
+            'checkedSelections.*' => ['string', 'distinct', Rule::in($this->selections)],
+        ], [
+            'checkedSelections.*.in' => 'Choose only lines in your current bid list.',
+        ]);
+
+        return array_values(array_intersect($this->selections, $this->checkedSelections));
+    }
+
     public function retrySave(): void
     {
         $this->persist();
@@ -518,6 +584,8 @@ class CrewBids extends Component
 
     private function persist(): bool
     {
+        $this->checkedSelections = array_values(array_filter($this->checkedSelections,
+            fn (mixed $id): bool => in_array($id, $this->selections, true)));
         if ($this->packageId === null) {
             return false;
         }
@@ -554,6 +622,8 @@ class CrewBids extends Component
         $this->revision = $workspace->revision ?? 0;
         $this->lastSavedAt = $this->revision > 0 ? $workspace->updated_at?->toIso8601String() : null;
         $this->selections = $workspace->selections ?? [];
+        $this->editingList = false;
+        $this->checkedSelections = [];
         $this->goals = $preferences['goals'] ?? [];
         $this->daysOff = $preferences['days_off'] ?? [];
         $this->startCity = $preferences['start_city'] ?? '';

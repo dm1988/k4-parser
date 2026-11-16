@@ -255,6 +255,63 @@ for (const modifier of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }
     });
 }
 
+test('bulk check controls update the count and button state locally without editing bid order', async () => {
+    const view = await readFile(new URL('../../resources/views/livewire/crew-bids.blade.php', import.meta.url), 'utf8');
+    const toolbar = view.match(/<section aria-label="Bid list bulk actions"[\s\S]*?<\/section>/)[0];
+    const count = toolbar.match(/x-text="([^"]+)"/)[1];
+    const selectAll = toolbar.match(/@click="([^"]+)"[^>]*>Select all/)[1];
+    const deselectAll = toolbar.match(/@click="([^"]+)"[^>]*>Deselect all/)[1];
+    const move = toolbar.match(/<button[^>]*wire:click="moveCheckedToTop"[^>]*>/)[0];
+    const disabled = move.match(/:disabled="([^"]+)"/)[1];
+    const calls = [];
+    const $wire = {
+        selections: ['F3', 'R2', 'F1'],
+        checkedSelections: [],
+        $set(name, value, live) {
+            calls.push({ name, live });
+            this[name] = Array.from(value);
+        },
+    };
+    const evaluate = expression => vm.runInNewContext(expression, { $wire });
+
+    assert.equal(evaluate(count), '0 selected');
+    assert.equal(evaluate(disabled), true);
+    evaluate(selectAll);
+    assert.deepEqual($wire.checkedSelections, ['F3', 'R2', 'F1']);
+    assert.notEqual($wire.checkedSelections, $wire.selections);
+    assert.equal(evaluate(count), '3 selected');
+    assert.equal(evaluate(disabled), false);
+    $wire.checkedSelections = ['F1'];
+    assert.equal(evaluate(count), '1 selected');
+    evaluate(deselectAll);
+    assert.equal(evaluate(count), '0 selected');
+    assert.equal(evaluate(disabled), true);
+    assert.deepEqual($wire.selections, ['F3', 'R2', 'F1']);
+    assert.deepEqual(calls, [{ name: 'checkedSelections', live: false }, { name: 'checkedSelections', live: false }]);
+});
+
+test('footer actions menu closes on Escape before the drawer and resets when the drawer closes', async () => {
+    const view = await readFile(new URL('../../resources/views/livewire/crew-bids.blade.php', import.meta.url), 'utf8');
+    const wrapper = view.match(/<div[^>]*x-data="\{ open: false \}"[^>]*@keydown.escape="[^"]+"[^>]*>/)[0];
+    const escape = wrapper.match(/@keydown.escape="([^"]+)"/)[1];
+    const reset = wrapper.match(/x-effect="([^"]+)"/)[1];
+    const state = { open: true, $wire: { showList: true }, $event: { stopPropagation: () => calls.push('stop') }, $refs: { moreActionsTrigger: { focus: () => calls.push('focus') } } };
+    const calls = [];
+
+    vm.runInNewContext(escape, state);
+
+    assert.equal(state.open, false);
+    assert.equal(state.$wire.showList, true);
+    assert.deepEqual(calls, ['stop', 'focus']);
+    calls.length = 0;
+    vm.runInNewContext(escape, state);
+    assert.deepEqual(calls, []);
+    state.open = true;
+    state.$wire.showList = false;
+    vm.runInNewContext(reset, state);
+    assert.equal(state.open, false);
+});
+
 test('bid position dropdown sends the selected index to move without calling other component methods', async () => {
     const view = await readFile(new URL('../../resources/views/livewire/crew-bids.blade.php', import.meta.url), 'utf8');
     const livewire = await readFile(new URL('../../vendor/livewire/livewire/dist/livewire.esm.js', import.meta.url), 'utf8');

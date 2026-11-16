@@ -28,6 +28,20 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: My bid list: multi select / bulk actions
+
+Goal: Add checkbox selection and bulk removal/reordering to the My bid list drawer with persistent selection and controls that stay visible while scrolling.
+
+Current implementation (2026-11-16): Added an Edit Mode/Done toggle that replaces drag grips and individual move/remove controls with labelled checkboxes and disables sortable initialization for that mode. A toolbar outside the scrolling list shows an immediate selection count, Select all/Deselect all, Move to top, Move to bottom and confirmed Remove selected actions. Nonadjacent choices move together in their current list order and remain checked for follow-up moves. Removed rows leave both the list and its checked selection; other removal/clear paths prune stale checks. Done, saved reload and package-context changes reset edit selection. Bulk changes use one existing optimistic workspace save, preserving preferences and other users' lists; validation rejects invalid, duplicate and out-of-list IDs. Save failures retain local edits, moved-row checks and Retry save behavior, with errors visible inside the drawer. Copy/submission loading guards cover bulk saves. Existing light/dark styles, focus affordances and transitions are preserved. Removed this completed section from CREW_BIDS.md.
+
+Problem addressed: Reorganizing or removing multiple choices required repeated individual actions, and the drawer had no checked selection or persistent bulk-action toolbar.
+
+Footer refinement: Moved Sync from K4, Add all matching lines and Clear bid list out of the scrolling content into a secondary More actions dropdown to the right of Review / Copy (or Copy numbered list / Retry save). The menu opens above the footer, supports keyboard focus and Escape dismissal without closing the drawer, closes after local actions and resets when the drawer closes. Mobile uses a compact labelled ellipsis button; larger screens also show More actions text.
+
+Validation: Elevated Sail was available. All 21 bulk-action tests passed (147 assertions), plus seven existing reorder/append/undo/conflict/status cases (65 assertions). All seven focused JavaScript checks passed, including local selection counts and footer-menu dismissal. The initial unavailable arrow-icon names were replaced with installed Heroicons and Edit Mode rendering passed. The single Larastan pass reported one redundant is_string check; removed it while preserving strict list-membership filtering, then all nine affected validation/removal/retry tests passed (68 assertions). Static analysis was not rerun, honoring the one-pass rule. The footer render check passed after relocation (20 assertions); final Pint, the production Vite build and whitespace checks passed. No full suite or manual browser/touch review was performed. The unrelated FEATURES_END_TO_END.md file was left untouched.
+
+Commit message: `feat: add bid list bulk actions and footer menu`
+
 ## [x] Completed: Sort options: Add My Bid List
 
 Goal: Add My Bid List immediately above Submitted bid order and display saved choices in their manual order in the workspace.
