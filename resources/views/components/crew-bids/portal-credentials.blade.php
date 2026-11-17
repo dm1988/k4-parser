@@ -1,5 +1,11 @@
-@props(['viewing' => false, 'syncing' => false, 'idPrefix' => 'portal', 'allowSaved' => true])
+@props(['viewing' => false, 'syncing' => false, 'idPrefix' => 'portal', 'allowSaved' => true, 'showSecurityHelp' => true])
 <div x-data="{ saved: @js($allowSaved && $connection['unlocked']) }" class="space-y-4">
+@if ($showSecurityHelp)
+    <div class="flex items-center justify-between gap-3">
+        <span class="text-sm font-medium">K4 login</span>
+        <x-crew-bids.security-help :viewing="$viewing" />
+    </div>
+@endif
 @if ($allowSaved && $connection['connected'])
     <div class="space-y-2 text-sm">
         @if ($connection['unlocked'])
@@ -19,5 +25,4 @@
         <input id="{{ $idPrefix }}-password" name="portal_password" type="password" maxlength="256" required autocomplete="new-password" data-lpignore="true" data-1p-ignore data-bwignore readonly x-init="$el.value = ''" @focus="$el.removeAttribute('readonly')" @pageshow.window="$el.value = ''; $el.setAttribute('readonly', 'readonly')" class="mt-1 block w-full rounded-lg border-slate-300 focus:border-[#1B365D] focus:ring-[#1B365D] dark:border-slate-700 dark:bg-slate-950">
     </label>
 </fieldset>
-<p class="text-sm text-slate-600 dark:text-slate-300">One-off logins are held temporarily in memory for this operation. Saved connections retain password-encrypted ciphertext; usable keys expire or are revoked when you lock or log out. {{ $viewing ? 'Reading stored shared bids does not require a login.' : 'Using a saved login does not replace review or final submission confirmation.' }}</p>
 </div>

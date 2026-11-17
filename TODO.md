@@ -28,6 +28,26 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Move K4 credential security explanations into help popovers
+
+Goal: Replace the persistent credential-lifetime and connection-encryption paragraphs with a compact question-mark help icon describing the implementation and protocols.
+
+Outcome (2026-11-17): Added a shared K4 security disclosure using the existing question-mark icon, native details/summary behavior, dark-mode styling, bounded viewport width/height and scrollable content. Escape restores trigger focus; outside clicks dismiss the panel. The popover covers both original explanations, Sodium/XChaCha20-Poly1305, Argon2id, volatile queue/key lifetimes, HTTPS/TLS verification, password-reset recovery and the runtime security boundary. It claims no security certification. Credential forms and the connection page reuse it, with the embedded connection form suppressing a duplicate help icon. Open disclosures participate in the existing refresh-blocking selector. Preserved prior unrelated documentation edits.
+
+Validation: Five focused existing vault/view and sync cases passed (59 assertions). The frontend production build, Pint and whitespace checks passed. Only presentation changed; no new backend tests or Larastan pass were required. Browser interaction was not exercised by these server-rendering checks.
+
+Commit message: `refactor: move K4 security details into help popovers`
+
+## [x] Completed: Fix Sail interpolation warnings for the secret-service password
+
+Goal: Remove Docker Compose's repeated unset K-variable warning without exposing or changing the literal secret text.
+
+Outcome (2026-11-17): Traced the warning to a literal dollar-sign variable reference in the double-quoted CREW_BIDS_SECRETS_PASSWORD setting. Changed only its surrounding quotes in the ignored local .env to single quotes. Documented literal password quoting and configuration/worker reload behavior in README. No credential values were printed or added to tracked files; earlier unrelated documentation edits were preserved.
+
+Validation: Reproduced the warnings before the fix, then verified Sail ps completes without them. Confirmed Laravel dotenv preserves the exact literal password without displaying it, cleared Laravel's configuration cache, verified .env remains Git-ignored, and passed whitespace checks. No PHP behavior changed, so PHPUnit, Pint and Larastan were unnecessary for this environment/documentation fix.
+
+Commit message: `docs: clarify literal secret password quoting for Sail`
+
 ## [x] Completed: Implement password-unlocked K4 credential storage
 
 Goal: Implement the confirmed encrypted server vault with explicit app-password unlock per session and cautious handling of temporary secrets.
@@ -43,6 +63,30 @@ Operations: Added the isolated Sail memory service, restricted ACL, disabled RDB
 Validation: The focused integration pass passed 166 tests (1,050 assertions), including seven real memory-service/ACL checks. After the final session-interface and shared logout changes, 43 focused vault/authentication tests passed (292 assertions). Frontend production build, Pint and whitespace checks passed. Larastan's initial checkpoint identified session contract/signature issues; those were corrected without suppressions, and the user explicitly authorized a final verification pass, which passed with zero errors. Existing unrelated documentation changes were preserved.
 
 Branch: `crew-bids-vault`. Commit message: `feat: add password-unlocked K4 credential vault`
+
+## [x] Completed: Plan password-unlocked K4 credential storage
+
+Goal: Plan the Zero-trust crewbids.kalittaair.com credential storage section without implementing credential storage.
+
+Current implementation (2026-11-17): Recorded the user's confirmed encrypted server vault and per-session app-password unlock choices. Expanded CREW_BIDS.md with a bounded threat model, Argon2id/Sodium envelopes, volatile unlock/operation grants, optional connection UX, queued handoff replacement, password-change/reset/revocation behavior, delivery sequence and acceptance checks. Aligned the proposed read-only comparison flow with optional saved credentials. The vault remains unimplemented.
+
+Problem addressed: Re-entering K4 credentials for each operation is inconvenient, but storing a salt or using APP_KEY-based encryption alone does not establish user-password-protected storage. Current queued credentials use the default cache, verified locally as database-backed; the existing Redis service also snapshots to disk. Disk-free temporary-secret handling therefore needs a separate verified volatile path.
+
+Validation: Inspected relevant source and non-secret local runtime configuration; confirmed Sodium availability and consulted primary PHP, OWASP, Redis and Laravel documentation. Eight focused existing Sail queue-cleanup/password/logout cases passed (54 assertions). No live portal login, real credential capture, production inspection, infrastructure change or application-code edit occurred. Whitespace checks passed; existing documentation changes were preserved. PHP formatting/static analysis were unnecessary for this documentation-only task.
+
+Commit message: `docs: plan password-unlocked K4 credential vault`
+
+## [x] Completed: Investigate submitted-order retrieval and comparison
+
+Goal: Explain how users obtain Submitted bid order today and document a read-only comparison fix in CREW_BIDS.md.
+
+Current implementation (2026-11-17): Traced the submission resolver, portal read/review/reconciliation, local sync, cloud status and shared prediction source. Documented a separate Compare with K4 flow, private persistent report evidence, queued refresh, complete local-versus-submitted rank comparison, independent sort availability, explicit replacement, compatibility/uncertainty rules and acceptance cases. The proposed feature remains unimplemented.
+
+Problem addressed: The sort requires a compatible matched app submission attempt, although that evidence survives reloads/local edits. Sync from K4 replaces the local draft and does not establish submitted-order evidence; the current comparison entry point belongs to the gated submission flow.
+
+Validation: Both focused existing Sail test files passed: 67 cases, 333 assertions. Inspected a recent Debugbar workspace summary: 200 response, no exceptions and no outbound HTTP requests. No live portal login or bid Update was performed. Documentation-only change; no Pint or Larastan run was needed. Whitespace checks passed, and the pre-existing award-page note in CREW_BIDS.md was preserved.
+
+Commit message: `docs: plan read-only K4 submitted bid comparison`
 
 ## [x] Completed: Group and compact the workspace line controls
 

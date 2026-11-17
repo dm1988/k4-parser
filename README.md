@@ -152,6 +152,8 @@ Keep `CACHE_STORE=database` for ordinary application caching. Authenticated K4 o
 
 The Sail `crew-bid-secrets` service has no exposed port or data volume, a read-only root filesystem, temporary `/tmp`, disabled core dumps, RDB/AOF and slow-command logging disabled, and a restricted ACL in `docker/crew-bid-secrets.acl`. It shares an internal network only with the app container. This local configuration deliberately uses no Redis password/TLS and must not be copied unchanged to a remote deployment. Native installations must supply an equivalent isolated secret service explicitly.
 
+For literal passwords containing `$`, use single quotes in the shared `.env` file, for example `CREW_BIDS_SECRETS_PASSWORD='example$Kvalue'` (illustrative only). Docker Compose interpolates unquoted and double-quoted values, so `$K` inside a double-quoted password causes `The "K" variable is not set` warnings and substitutes an empty string in Compose's parsed value. Single quotes preserve the literal text. Do not add a dummy `K` variable or replace dollar signs with `$$` in this shared Laravel environment file. See [Docker's environment-file syntax](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/#env-file-syntax). After correcting quoting, clear Laravel's configuration and restart long-running workers so they reload it.
+
 For an existing Sail checkout, add the service/network and migrate before using authenticated K4 operations:
 
 ```bash
