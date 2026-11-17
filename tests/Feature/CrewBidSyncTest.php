@@ -8,6 +8,7 @@ use App\Models\BidWorkspace;
 use App\Models\User;
 use App\Services\CrewBids\BidPortalHttpClient;
 use App\Services\CrewBids\CrewBidSecretStore;
+use App\Services\CrewBids\ResolveSubmittedBidOrder;
 use Closure;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
@@ -44,6 +45,7 @@ class CrewBidSyncTest extends TestCase
         $workspace = BidWorkspace::query()->where('user_id', $user->id)->sole();
         $this->assertSame(['F5', 'R6', 'Q7'], $workspace->selections);
         $this->assertSame(1, $workspace->revision);
+        $this->assertSame(['F5' => 1, 'R6' => 2, 'Q7' => 3], app(ResolveSubmittedBidOrder::class)->resolve($user, $package, 'FO')->ranks);
         $this->assertSame(['F1'], $other->fresh()->selections);
         $this->assertDatabaseCount('bid_submissions', 0);
         $http->assertNotSent(fn (Request $request): bool => $request->method() === 'POST' && str_contains($request->url(), 'BidSheet.aspx'));

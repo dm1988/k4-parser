@@ -13,3 +13,4 @@ initializeReleaseSummaryScroll();
 initializeOfflineFuelInvalidation();
 initializeFlightDelayForm();
 initializeCrewBids();
+import './submitted-bid-comparison';

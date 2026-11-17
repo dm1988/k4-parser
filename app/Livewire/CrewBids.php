@@ -19,9 +19,12 @@ use App\Services\CrewBids\BrowseBidLines;
 use App\Services\CrewBids\CalculateCrewBidPay;
 use App\Services\CrewBids\CrewPayPeriod;
 use App\Services\CrewBids\PredictCrewBidLines;
+use App\Services\CrewBids\QueuedSubmittedBidRefresh;
 use App\Services\CrewBids\ResolveSubmittedBidOrder;
+use App\Services\CrewBids\StoreSubmittedBidSnapshot;
 use App\View\Models\CrewBidPayEditorViewModel;
 use App\View\Models\CrewBidsPageDataFactory;
+use App\View\Models\SubmittedBidComparisonViewModel;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -112,6 +115,8 @@ class CrewBids extends Component
 
     public bool $showReview = false;
 
+    public bool $showComparison = false;
+
     public bool $showImport = false;
 
     public bool $showPayEditor = false;
@@ -172,6 +177,17 @@ class CrewBids extends Component
         if ($package !== null) {
             $this->loadPackage($package, $this->seat);
         }
+    }
+
+    public function openComparison(): void
+    {
+        app(StoreSubmittedBidSnapshot::class)->authorize($this->user(), $this->package(), $this->seat);
+        $this->showComparison = true;
+    }
+
+    public function refreshComparison(): void
+    {
+        app(StoreSubmittedBidSnapshot::class)->authorize($this->user(), $this->package(), $this->seat);
     }
 
     public function updated(string $property): void
@@ -633,6 +649,7 @@ class CrewBids extends Component
         $this->undoId = null;
         $this->notice = '';
         $this->showReview = false;
+        $this->showComparison = false;
         $this->pendingPackageId = null;
         $this->rangeStart = $package->period.'-01';
         $this->rangeEnd = $package->period.'-01';
@@ -721,6 +738,8 @@ class CrewBids extends Component
 
         return view('livewire.crew-bids', $data->toViewData() + [
             'prediction' => $predictions->forUser($data->package, $data->package === null ? null : CrewBidSnapshot::forPackage($data->package, $this->seat), $this->seat, $this->user(), $this->selections),
+            'comparison' => $this->showComparison && $data->package !== null ? SubmittedBidComparisonViewModel::make($this->user(), $data->package, $this->seat, $this->selections, $data->submittedOrder, app(StoreSubmittedBidSnapshot::class)) : null,
+            'personalRefresh' => $this->showComparison && $data->package !== null ? app(QueuedSubmittedBidRefresh::class)->current($this->user(), $data->package, $this->seat) : null,
             'payEditor' => CrewBidPayEditorViewModel::fromInput($this->showPayEditor, $this->payLineId, $this->payInput, $data->package?->period, $this->seat, $this->user()->crew_pay_settings ?? []),
         ])->layout('layouts.app');
     }

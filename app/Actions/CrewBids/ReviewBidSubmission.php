@@ -7,14 +7,16 @@ use App\Models\BidPackage;
 use App\Models\BidSubmission;
 use App\Models\BidWorkspace;
 use App\Models\User;
+use App\Services\CrewBids\StoreSubmittedBidSnapshot;
 use App\Services\CrewBids\SubmitPortalBid;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use SensitiveParameter;
 
 class ReviewBidSubmission
 {
-    public function __construct(private SubmitPortalBid $portal) {}
+    public function __construct(private SubmitPortalBid $portal, private StoreSubmittedBidSnapshot $snapshots) {}
 
     public function workspace(User $user, BidPackage $package, string $seat): BidWorkspace
     {
@@ -63,6 +65,7 @@ class ReviewBidSubmission
         $this->validateWorkspace($workspace, $package, $review['workspace_revision']);
         $this->assertBinding($workspace, $package, $review);
 
+        $snapshotHash = $this->snapshots->packageHash($package);
         $result = $this->portal->submit($employee, $password, $review, function () use ($user, $submission, $review): void {
             DB::transaction(function () use ($user, $submission, $review): void {
                 $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
@@ -86,6 +89,8 @@ class ReviewBidSubmission
         });
         $submission->refresh()->update(['status' => $result['status'], 'reconciled_at' => $result['status'] === 'matched' ? now() : null]);
 
+        $this->retainReport($user, $package, $workspace->seat, $employee, $result, $snapshotHash, $submission->id);
+
         return $submission->refresh();
     }
 
@@ -95,8 +100,17 @@ class ReviewBidSubmission
         if ($submission->status !== 'unknown') {
             throw new BidPortalException('Only an unknown submission needs a fresh report check.');
         }
+        $workspace = BidWorkspace::query()->where('user_id', $user->id)->findOrFail($submission->bid_workspace_id);
+        $package = BidPackage::query()->findOrFail($workspace->bid_package_id);
+        $snapshotHash = $this->snapshots->packageHash($package);
+        $attemptId = $this->snapshots->attemptId($user, $package, $workspace->seat);
         $result = $this->portal->reconcile($employee, $password, $submission->review);
         $submission->update(['status' => $result['status'], 'reconciled_at' => now()]);
+        if (($submission->review['local_payload_hash'] ?? null) === hash('sha256', json_encode($package->payload, JSON_THROW_ON_ERROR))
+            && ($submission->review['local_package_fingerprint'] ?? null) === $package->fingerprint
+            && ($submission->review['local_revision'] ?? null) === $package->source_revision) {
+            $this->retainReport($user, $package, $workspace->seat, $employee, $result, $snapshotHash, $attemptId);
+        }
 
         return $submission->refresh();
     }
@@ -106,6 +120,20 @@ class ReviewBidSubmission
         Gate::forUser($user)->authorize('use-crew-bids');
         abort_unless(config('crew_bids.submission.enabled'), 404);
         abort_unless($submission->user_id === $user->id, 404);
+    }
+
+    /** @param array<string, mixed> $result */
+    private function retainReport(User $user, BidPackage $package, string $seat, #[SensitiveParameter] string $employee, array $result, string $hash, ?string $attemptId): void
+    {
+        if (! isset($result['report'], $result['check_id'], $result['started_at'], $result['checked_at'])) {
+            return;
+        }
+        try {
+            $this->snapshots->store($user, $package, $seat, $employee, $result['report'], $result['check_id'],
+                CarbonImmutable::parse($result['started_at']), CarbonImmutable::parse($result['checked_at']), $hash, 'submission_readback', $attemptId);
+        } catch (BidPortalException) {
+            // An obsolete comparison must not change the write-attempt audit or retry guard.
+        }
     }
 
     private function validateWorkspace(BidWorkspace $workspace, BidPackage $package, int $revision): void

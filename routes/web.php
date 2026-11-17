@@ -10,6 +10,7 @@ use App\Http\Controllers\FlightDelayController;
 use App\Http\Controllers\FlightReleaseController;
 use App\Http\Controllers\OfflineFuelScoreController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SubmittedBidRefreshController;
 use App\Http\Controllers\WelcomeController;
 use App\Http\Middleware\UseSavedCrewBidCredentials;
 use App\Livewire\CrewBids;
@@ -33,8 +34,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/package/{package}/refresh/{refresh}', [CrewBidEmployeeController::class, 'status'])->middleware('throttle:60,1')->whereNumber('package')->whereUuid('refresh')->name('refresh.status');
             Route::get('/package/{package}/refresh/{refresh}/download', [CrewBidEmployeeController::class, 'download'])->middleware('throttle:10,1')->whereNumber('package')->whereUuid('refresh')->name('refresh.download');
         });
+    Route::get('/crew-bids/submissions/package/{package}/{seat}/check/{refresh}', [SubmittedBidRefreshController::class, 'status'])
+        ->middleware(['feature:crew_bids', 'can:use-crew-bids', 'throttle:60,1'])->whereNumber('package')->whereIn('seat', ['CA', 'FO'])->whereUlid('refresh')->name('crew-bids.submissions.check.status');
     Route::prefix('crew-bids/submissions')->name('crew-bids.submissions.')
         ->middleware(['feature:crew_bids', 'can:use-crew-bids', 'throttle:10,1', UseSavedCrewBidCredentials::class])->group(function () {
+            Route::post('/package/{package}/{seat}/check', [SubmittedBidRefreshController::class, 'store'])->whereNumber('package')->whereIn('seat', ['CA', 'FO'])->name('check.store');
             Route::get('/package/{package}/{seat}/sync', [CrewBidSyncController::class, 'create'])->whereNumber('package')->whereIn('seat', ['CA', 'FO'])->name('sync.create');
             Route::post('/package/{package}/{seat}/sync', [CrewBidSyncController::class, 'store'])->whereNumber('package')->whereIn('seat', ['CA', 'FO'])->name('sync.store');
             Route::get('/package/{package}/{seat}', [CrewBidSubmissionController::class, 'create'])->whereNumber('package')->whereIn('seat', ['CA', 'FO'])->name('create');

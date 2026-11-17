@@ -295,10 +295,10 @@ class CrewBidSubmittedOrderTest extends TestCase
         $workspace = $this->workspace();
 
         Livewire::actingAs(User::findOrFail($workspace->user_id))->test(CrewBids::class)
-            ->assertSee('Saved')->assertSee('Kalitta: unconfirmed')
+            ->assertSee('Saved')->assertSee('Not checked')
             ->assertSee('Saving locally does not submit your bid.')
             ->assertSee('Retry local save')->assertSee('Open Review / Copy, then Submit to Kalitta')
-            ->assertDontSee('Kalitta: matched')->assertDontSee('Uploaded');
+            ->assertDontSee('Matches last K4 check');
 
         $this->assertSame(7, $workspace->fresh()->revision);
     }
@@ -312,7 +312,7 @@ class CrewBidSubmittedOrderTest extends TestCase
             ->assertSee('x-ref="listTrigger"', false)->assertSee('x-ref="statusTrigger"', false)
             ->assertSee('aria-controls="bid-status-popover"', false)
             ->assertSee('aria-labelledby="bid-status-title"', false)
-            ->assertSee('Upload differs')->assertDontSee('Uploaded')
+            ->assertSee('Differs from last K4 check')->assertDontSee('Matches last K4 check')
             ->assertSee('Last local save:')->assertSee('2026-11-15 18:59:16 UTC')
             ->assertSet('showList', false);
 
@@ -334,13 +334,13 @@ class CrewBidSubmittedOrderTest extends TestCase
         $submission->update(['review' => $review]);
         $component = Livewire::actingAs(User::findOrFail($workspace->user_id))->test(CrewBids::class);
 
-        $component->assertSee('Saved')->assertSee('Uploaded')->assertSee('Kalitta: matched')
+        $component->assertSee('Saved')->assertSee('Matches last K4 check')
             ->assertSee('This list matches the Kalitta report checked 2026-11-15 12:00:00 UTC.');
         $component->call('move', 'F1', 0)->assertHasNoErrors()
-            ->assertSee('Saved')->assertSee('Upload differs')->assertDontSee('Uploaded')->assertSee('Kalitta: list differs')
+            ->assertSee('Saved')->assertSee('Differs from last K4 check')->assertDontSee('Matches last K4 check')
             ->assertSee('Review your current order before submitting it to Kalitta.');
         $this->matched($workspace, ['status' => 'unknown', 'attempted_at' => now()->addMinute(), 'reconciled_at' => null]);
-        $component->call('$refresh')->assertSee('Kalitta: unconfirmed')->assertDontSee('Kalitta: matched');
+        $component->call('$refresh')->assertSee('Not checked')->assertDontSee('Matches last K4 check');
 
         $this->assertSame(['F1', 'F3'], $workspace->fresh()->selections);
         $this->assertSame('matched', $submission->fresh()->status);

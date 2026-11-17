@@ -3,8 +3,10 @@
 namespace App\Services\CrewBids;
 
 use App\Exceptions\BidPortalException;
+use Carbon\CarbonImmutable;
 use Closure;
 use GuzzleHttp\Psr7\Uri;
+use Illuminate\Support\Str;
 use SensitiveParameter;
 use Throwable;
 
@@ -44,7 +46,7 @@ class SubmitPortalBid
 
     /** @param array<string, mixed> $review
      * @param  Closure(): void  $beforeSend
-     * @return array{status: string}
+     * @return array<string, mixed>
      */
     public function submit(#[SensitiveParameter] string $employee, #[SensitiveParameter] string $password, array $review, Closure $beforeSend): array
     {
@@ -63,9 +65,13 @@ class SubmitPortalBid
             $beforeSend();
             try {
                 $post($fields);
+                $startedAt = CarbonImmutable::now();
+                $checkId = (string) Str::ulid();
                 $fresh = $this->snapshot($get('/Pages/BidSheet.aspx'), $employee, $get, false);
 
-                return ['status' => $fresh['context'] === $review['context'] && $fresh['current'] === $review['numbers'] ? 'matched' : 'unknown'];
+                return ['status' => $fresh['context'] === $review['context'] && $fresh['current'] === $review['numbers'] ? 'matched' : 'unknown',
+                    'report' => ['context' => $fresh['context'], 'numbers' => $fresh['current']],
+                    'check_id' => $checkId, 'started_at' => $startedAt->toISOString(), 'checked_at' => CarbonImmutable::now()->toISOString()];
             } catch (Throwable) {
                 return ['status' => 'unknown'];
             }
@@ -73,7 +79,7 @@ class SubmitPortalBid
     }
 
     /** @param array<string, mixed> $review
-     * @return array{status: string}
+     * @return array<string, mixed>
      */
     public function reconcile(#[SensitiveParameter] string $employee, #[SensitiveParameter] string $password, array $review): array
     {
@@ -82,12 +88,16 @@ class SubmitPortalBid
         }
 
         return $this->session->run($employee, $password, function (string $html, Closure $get) use ($employee, $review): array {
+            $startedAt = CarbonImmutable::now();
+            $checkId = (string) Str::ulid();
             $fresh = $this->snapshot($html, $employee, $get, false);
             if ($fresh['context'] !== $review['context']) {
                 throw new BidPortalException('The portal bid context changed. Check the submission directly in Kalitta.');
             }
 
-            return ['status' => $fresh['current'] === $review['numbers'] ? 'matched' : 'not_matched'];
+            return ['status' => $fresh['current'] === $review['numbers'] ? 'matched' : 'not_matched',
+                'report' => ['context' => $fresh['context'], 'numbers' => $fresh['current']],
+                'check_id' => $checkId, 'started_at' => $startedAt->toISOString(), 'checked_at' => CarbonImmutable::now()->toISOString()];
         });
     }
 

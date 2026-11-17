@@ -6,14 +6,17 @@ use App\Exceptions\BidPortalException;
 use App\Models\BidPackage;
 use App\Models\BidWorkspace;
 use App\Models\User;
-use App\Services\CrewBids\SubmitPortalBid;
+use App\Services\CrewBids\ReadPersonalSubmittedBids;
+use App\Services\CrewBids\StoreSubmittedBidSnapshot;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use SensitiveParameter;
 
 class ImportSubmittedBidList
 {
-    public function __construct(private SubmitPortalBid $portal, private SaveBidWorkspace $save) {}
+    public function __construct(private ReadPersonalSubmittedBids $portal, private SaveBidWorkspace $save, private StoreSubmittedBidSnapshot $snapshots) {}
 
     public function workspace(User $user, BidPackage $package, string $seat): ?BidWorkspace
     {
@@ -34,7 +37,12 @@ class ImportSubmittedBidList
             throw new BidPortalException('Confirm replacement of your existing bid list before syncing from K4.');
         }
         $packageHash = $this->packageHash($package);
-        $report = $this->portal->readSubmitted($employee, $password);
+        $startedAt = CarbonImmutable::now();
+        $checkId = (string) Str::ulid();
+        $evidenceHash = $this->snapshots->packageHash($package);
+        $attemptId = $this->snapshots->attemptId($user, $package, $seat);
+        $report = $this->portal->read($employee, $password);
+        $checkedAt = CarbonImmutable::now();
         if ($report['context']['period'] !== $package->period || $report['context']['fleet'] !== $package->fleet || $report['context']['seat'] !== $seat) {
             throw new BidPortalException('Your authenticated portal month, fleet or seat does not match this bid list.');
         }
@@ -54,12 +62,15 @@ class ImportSubmittedBidList
             $selections[] = $byNumber[$number][0];
         }
 
-        return DB::transaction(function () use ($user, $package, $seat, $revision, $workspace, $selections, $packageHash): BidWorkspace {
+        return DB::transaction(function () use ($user, $package, $seat, $revision, $workspace, $selections, $packageHash, $employee, $report, $checkId, $startedAt, $checkedAt, $evidenceHash, $attemptId): BidWorkspace {
+            User::query()->lockForUpdate()->findOrFail($user->id);
             $current = BidPackage::query()->lockForUpdate()->findOrFail($package->id);
             $this->workspace($user, $current, $seat);
             if (! hash_equals($packageHash, $this->packageHash($current))) {
                 throw new BidPortalException('The bid package changed during sync. Reopen Sync from K4 before retrying.');
             }
+
+            $this->snapshots->store($user, $current, $seat, $employee, $report, $checkId, $startedAt, $checkedAt, $evidenceHash, 'sync', $attemptId);
 
             return $this->save->handle($user, $current, $seat, $revision, $workspace->preferences ?? [
                 'goals' => [], 'days_off' => [], 'start_city' => '', 'initialized' => true,

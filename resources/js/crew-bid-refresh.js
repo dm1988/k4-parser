@@ -1,4 +1,4 @@
-export function createCrewBidRefresh({ url, state, message }, request = window.fetch.bind(window)) {
+export function createCrewBidRefresh({ url, state, message, finished_at = null }, request = window.fetch.bind(window)) {
     let timer;
     let stopped = false;
     let controller;
@@ -6,6 +6,7 @@ export function createCrewBidRefresh({ url, state, message }, request = window.f
     return {
         state,
         message,
+        finishedAt: finished_at,
         connectionError: false,
 
         init() {
@@ -41,6 +42,7 @@ export function createCrewBidRefresh({ url, state, message }, request = window.f
                 if (stopped) return;
                 this.state = result.state;
                 this.message = result.message;
+                this.finishedAt = result.finished_at ?? null;
                 this.connectionError = false;
             } catch {
                 if (!stopped) this.connectionError = true;

@@ -7,6 +7,7 @@ use App\Models\BidPackage;
 use App\Models\BidSubmission;
 use App\Models\BidWorkspace;
 use App\Models\CrewBidCredentialVault;
+use App\Models\SubmittedBidSnapshot;
 use App\Models\User;
 use App\Services\CrewBids\BidPortalHttpClient;
 use App\Services\CrewBids\CrewBidSecretStore;
@@ -123,6 +124,7 @@ class CrewBidSubmissionTest extends TestCase
         $this->assertSame('matched', $submission->fresh()->status);
         $this->assertNotNull($submission->fresh()->attempted_at);
         $this->assertSame(['F1' => 1, 'R2' => 2], app(ResolveSubmittedBidOrder::class)->resolve($user, $package, 'FO')->ranks);
+        $this->assertSame([1, 2], SubmittedBidSnapshot::query()->sole()->evidence['numbers']);
         $this->assertSame(['F1', 'R2'], $workspace->fresh()->selections);
         $this->get(route('crew-bids.submissions.show', $submission))->assertOk()->assertSee('fresh Kalitta report matches every choice')
             ->assertSee('This verifies the order in Kalitta\'s submitted report.', false)
@@ -172,6 +174,7 @@ class CrewBidSubmissionTest extends TestCase
         $this->assertDatabaseCount('bid_submissions', 1);
         $this->post(route('crew-bids.submissions.reconcile', $submission), $this->credentials())->assertRedirect();
         $this->assertSame('matched', $submission->fresh()->status);
+        $this->assertSame([1, 2], SubmittedBidSnapshot::query()->sole()->evidence['numbers']);
         $this->assertSame(1, $this->writeAttempts);
         $this->assertSame(['F1', 'R2'], $workspace->fresh()->selections);
     }

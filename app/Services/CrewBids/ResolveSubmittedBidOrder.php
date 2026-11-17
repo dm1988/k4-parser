@@ -11,10 +11,32 @@ use Illuminate\Contracts\Encryption\DecryptException;
 
 class ResolveSubmittedBidOrder
 {
+    public function __construct(private StoreSubmittedBidSnapshot $snapshots) {}
+
     public function resolve(User $user, ?BidPackage $package, string $seat): SubmittedBidOrder
     {
         if ($package === null) {
             return new SubmittedBidOrder;
+        }
+        $snapshot = $this->snapshots->latest($user, $package, $seat);
+        if ($snapshot !== null) {
+            $evidence = $this->snapshots->evidence($snapshot, $user, $package, $seat);
+            if ($evidence === null || ! hash_equals($this->snapshots->packageHash($package), $evidence['package_hash'])) {
+                return new SubmittedBidOrder(unavailableReason: 'The last K4 check is incompatible with this package or account');
+            }
+            if ($this->snapshots->attemptId($user, $package, $seat) !== $evidence['attempt_id']) {
+                return new SubmittedBidOrder(unavailableReason: 'A later submission needs a fresh K4 check');
+            }
+            $rows = $this->snapshots->map($package, $seat, $evidence['numbers']);
+            $ranks = [];
+            foreach ($rows as $row) {
+                if ($row['line_id'] === null || $row['annotation'] !== '') {
+                    return new SubmittedBidOrder(unavailableReason: 'Some checked K4 lines are unavailable or ambiguous');
+                }
+                $ranks[$row['line_id']] = $row['rank'];
+            }
+
+            return new SubmittedBidOrder($ranks, $snapshot->checked_at);
         }
         $workspace = BidWorkspace::query()->where('user_id', $user->id)->where('bid_package_id', $package->id)->where('seat', $seat)->first();
         if ($workspace === null) {

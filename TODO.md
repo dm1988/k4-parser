@@ -28,6 +28,40 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Move the header bid status to the left
+
+Goal: Put save/K4 status on the left of the split header control and My bid list/count on the right.
+
+Outcome (2026-11-17): Reordered the actual buttons so visual and keyboard order agree. Updated outer corner rounding and moved the divider to the status button's right edge. Preserved the existing actions, focus references, responsive labels and status popover.
+
+Validation: Three focused status-rendering tests passed (31 assertions), along with 67 existing workspace JavaScript interaction tests. Frontend build, Pint and whitespace checks passed. Presentation-only change; no new tests or Larastan run required. Browser appearance was not manually verified.
+
+Commit message: `style: move bid status left of My bid list`
+
+## [x] Completed: Compact the bid-list save and K4 status panel
+
+Goal: Reduce the list drawer's status panel height and move explanatory detail behind a question-mark affordance.
+
+Outcome (2026-11-17): Replaced the stacked status card with a compact wrapping row of local-save and K4-check labels/icons. Moved relative save time, save help, full K4 check timestamp/description and submission guidance into a keyboard-accessible question-mark popover with Escape/outside-click dismissal, bounded scrolling and light/dark styles. Kept save retries visible and preserved existing status logic and unrelated comparison changes.
+
+Validation: Three focused status-rendering tests passed (31 assertions), along with 67 existing workspace JavaScript interaction tests. Frontend build, Pint and whitespace checks passed. Presentation-only change; no new tests or Larastan run required. Browser appearance was not manually verified.
+
+Commit message: `style: compact bid-list save and K4 check status`
+
+## [x] Completed: Read and compare submitted K4 bids without replacing My bid list
+
+Goal: Retrieve personal submitted K4 bids independently of app submissions, compare them with the complete local draft, and enable submitted-order sorting without replacing My bid list.
+
+Outcome (2026-11-17): Added Compare with K4 in the list footer menu and Check submitted bids in its status popover. The native comparison dialog retains local edits, filters, copy text and revision while showing both ranks, additions/removals, rank shifts versus retained-choice reordering, source timestamps and unavailable-line annotations. It includes flying/reserve and filtered-out choices. Prior-package checks remain explicitly historical. Replaced upload language with Matches last K4 check / Differs from last K4 check / Not checked; the sort label remains short. Local replacement remains a separate, guarded action.
+
+Implementation: Added encrypted, owner/account/package/seat-bound SubmittedBidSnapshot evidence independent of workspaces and BidSubmission write audits. Supported personal report reads work with an empty local list, submissions disabled and closed bid windows. Successful sync and actual submission/reconciliation read-back retain observed reports. Complete compatible checks drive sorting and status; missing, ineligible, ambiguous, corrupted or incompatible evidence cannot claim a match. Submission-attempt identifiers invalidate pre-write checks even within the same timestamp second; a new personal read does not clear unknown-write retry protection. Empty portal reports remain conservatively unsupported pending a representative verified fixture.
+
+Security/queue: RefreshSubmittedBids uses the existing crew-bid-refreshes connection/queue, encrypted reference-only payloads, one-use ten-minute grants in the volatile secret service, session/lease revocation, private status, owner/context locks, package/access rechecks and operation ordering. Failures preserve the last successful evidence and local list. Polling updates comparison data without navigation; credential fields clear after requests. README documents setup, migration, worker, lifecycle and recovery. Removed the completed plan from CREW_BIDS.md; unrelated backlog items remain unchanged.
+
+Validation: 147 focused comparison/submitted-order/sync/submission/vault tests passed (876 assertions). After the final type fixes, the 30 comparison tests passed again (157 assertions). Eight focused JavaScript polling/cleanup tests, the frontend production build, Pint, route registration and whitespace checks passed. Applied only the new snapshot migration to the local Sail database. Larastan’s single pass found imprecise encrypted/date cast metadata, redundant type checks and a nullsafe access; corrected those without suppressions. Per the once-only rule, a second Larastan pass was not run, so static-analysis clearance is unverified. No live K4 login or live Bid Sheet Update was performed. Native dialog focus/Escape behavior, responsive bounds and both themes were implemented, but real-browser interaction remains unverified.
+
+Commit message: `feat: compare submitted K4 bids without replacing local choices`
+
 ## [x] Completed: Move K4 credential security explanations into help popovers
 
 Goal: Replace the persistent credential-lifetime and connection-encryption paragraphs with a compact question-mark help icon describing the implementation and protocols.

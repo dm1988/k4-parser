@@ -36,6 +36,9 @@ class UseSavedCrewBidCredentials
 
             return $next($request);
         } catch (BidPortalException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $exception->getMessage()], 422);
+            }
             $key = $request->routeIs('crew-bids.submissions.sync.*') ? 'crew_bid_import_error'
                 : ($request->is('crew-bids/submissions*') ? 'bid_submission_error' : 'crew_bid_sync_error');
 

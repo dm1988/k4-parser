@@ -128,7 +128,7 @@ Never commit `.env`; it contains machine-specific settings and secrets. The most
 | `DB_*` | SQLite or MySQL connection settings |
 | `REDIS_HOST`, `REDIS_PORT` | Redis connection; use `redis` as the Docker hostname |
 | `TESSERACT_PATH` | Tesseract executable path; defaults to `/usr/bin/tesseract` |
-| `QUEUE_CONNECTION` | Default queue connection; defaults to `database`. Shared-bid refreshes always use their own `crew-bid-refreshes` connection |
+| `QUEUE_CONNECTION` | Default queue connection; defaults to `database`. Personal submitted-bid checks and shared-bid refreshes always use their own `crew-bid-refreshes` connection |
 | `DB_QUEUE_CONNECTION`, `DB_QUEUE_TABLE` | Optional database connection name and jobs table for database queues; table defaults to `jobs` |
 | `DB_QUEUE`, `DB_QUEUE_RETRY_AFTER` | Default database queue name (`default`) and reservation time (`90` seconds); these do not change the dedicated bid queue's name or 300-second reservation |
 | `CACHE_STORE`, `CACHE_PREFIX` | Shared cache used for worker restarts, locks, refresh status and encrypted exports; defaults to the database store. K4 credentials and unlock keys never use this cache |
@@ -316,6 +316,7 @@ A **connection** selects a backend/configuration; a **queue** selects a named st
 
 | Job/message | Trigger | Connection → queue | Attempts and behavior |
 | --- | --- | --- | --- |
+| `App\Jobs\RefreshSubmittedBids` | Compare with K4 → Refresh from K4 | `crew-bid-refreshes` connection → `crew-bid-refreshes` queue | One attempt, 240-second timeout; fresh credentials required after failure/expiry |
 | `App\Jobs\RefreshCrewBidSnapshot` | Refresh shared bids / prepare PDF or Excel on My bid predictions | Explicit `crew-bid-refreshes` → `crew-bid-refreshes` | One attempt; 240-second job timeout; fail on timeout; 300-second database reservation. Encrypted queue payload contains a temporary credential reference, not the portal password |
 | `App\Mail\SecurityUpdateAnnouncement` via Laravel `SendQueuedMailable` | `mail:security-update` | Configured default connection → default queue for review copies, `broadcasts` for full sends | Five attempts; retry delays of 60, 120, 300 and 600 seconds |
 | `App\Mail\VersionOneAnnouncement` via Laravel `SendQueuedMailable` | `mail:version-one` | Configured default connection → default queue for previews, `broadcasts` for full sends | Five attempts; same retry delays |
@@ -324,6 +325,25 @@ A **connection** selects a backend/configuration; a **queue** selects a named st
 The default connection is selected by `QUEUE_CONNECTION` (`database` in `.env.example`); its default queue is normally `default` (`DB_QUEUE` for the database connection). Account verification/OTP and password-reset notifications currently run synchronously and do not implement `ShouldQueue`.
 
 The bid connection always uses the database driver and the jobs table configured by `DB_QUEUE_CONNECTION` / `DB_QUEUE_TABLE`, even when the default connection is `sync` or Redis. Other configured connections are `sync`, `database`, `redis`, `beanstalkd`, `sqs`, `deferred`, `background` and `failover`; their presence in configuration does not mean they are running. `sync` executes default jobs during the caller's request; it does not turn the dedicated bid job into a synchronous operation.
+
+### Read and compare personal submitted bids
+
+Open **My bid list → More actions → Compare with K4**, or **Bid list status → Check submitted bids**. **Refresh from K4** queues a private personal-report read. This works without a local list and independently of `CREW_BIDS_SUBMISSION_ENABLED`, including a closed bid window when K4 still exposes a supported report. Use one-off credentials or an explicitly unlocked saved connection. Comparison does not submit bids or replace/save the local draft.
+
+The dialog shows every local and submitted choice, including reserves and choices hidden by workspace filters. Numeric rank changes are separate from retained-choice reordering. Missing, ambiguous or ineligible mappings stay visible and prevent a complete sort/match claim. The last successful check is encrypted in `submitted_bid_snapshots`, private to the app owner, K4 account and package/position. Its UTC time is the app's retrieval time, not a K4 submission/acceptance timestamp. Valid compatible checks enable **Submitted bid order** after reloads and local edits. A later write makes an older baseline historical; a fresh comparison does not clear an unknown submission's explicit reconciliation/retry guard.
+
+**Replace My bid list with K4 order** remains a separate action with overwrite and revision-conflict checks; it is disabled while the workspace has unsaved changes. Successful sync and actual submission/reconciliation read-back also retain observed report evidence. Failed reads preserve the last check, timestamp and local list. Empty reports are conservatively rejected until a representative verified empty-report format is supported.
+
+Deployment requires the new migration and rebuilt assets:
+
+```bash
+./vendor/bin/sail artisan migrate --no-interaction
+./vendor/bin/sail npm run build
+./vendor/bin/sail artisan queue:restart
+./vendor/bin/sail artisan queue:work crew-bid-refreshes --queue=crew-bid-refreshes --tries=1 --timeout=240
+```
+
+`App\Jobs\RefreshSubmittedBids` shares the existing bid worker; no extra queue, scheduler, feature switch or manual Artisan refresh command is needed. Its encrypted job contains references only; the one-use login expires in the dedicated volatile secret service after ten minutes. It has one attempt, a 240-second timeout and the bid connection's 300-second reservation. Owner/package/position locks and 15-minute private progress records track queued/running/completed/failed states. Session/lease revocation, access and package binding are rechecked before publishing, and older operations cannot replace newer evidence. Completion rerenders comparison data without navigating or discarding open-dialog edits. After a failure or expiry, use **Refresh from K4** with a fresh login/unlock; do not replay the old job with `queue:retry`. Keep web/worker database, cache, app key and volatile secret service aligned as described below.
 
 ### Shared-bid job lifecycle
 
@@ -416,7 +436,7 @@ The signal makes daemon workers exit after their current job; it does not launch
 ./vendor/bin/sail artisan queue:monitor database:default,database:broadcasts,crew-bid-refreshes:crew-bid-refreshes --max=100
 ```
 
-Adjust monitored connection/queue names when overriding defaults. Pausing a queue does not extend the ten-minute credential lifetime, so a long pause requires fresh bid-refresh submissions afterward. Retrying mail can deliver a duplicate if the provider accepted the original attempt before it failed locally. For bid refreshes, use a **fresh submission in My bid predictions**, rather than `queue:retry` or a bulk retry: the worker has consumed/discarded the temporary login. `queue:forget` and pruning delete failure history; they do not undo side effects. `queue:clear` deletes pending work and `queue:flush` deletes all failed-job history; neither is a normal restart step.
+Adjust monitored connection/queue names when overriding defaults. Pausing a queue does not extend the ten-minute credential lifetime, so a long pause requires fresh bid-refresh submissions afterward. Retrying mail can deliver a duplicate if the provider accepted the original attempt before it failed locally. For bid refreshes, use a **fresh refresh in Compare with K4 or My bid predictions**, rather than `queue:retry` or a bulk retry: the worker has consumed/discarded the temporary login. `queue:forget` and pruning delete failure history; they do not undo side effects. `queue:clear` deletes pending work and `queue:flush` deletes all failed-job history; neither is a normal restart step.
 
 ## Scheduler
 

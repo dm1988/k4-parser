@@ -52,7 +52,7 @@ class AppServiceProvider extends ServiceProvider
         View::composer('components.crew-bids.portal-credentials', function (\Illuminate\View\View $view): void {
             $user = request()->user();
             $connection = ['connected' => false, 'unlocked' => false, 'hint' => null];
-            if (config('crew_bids.vault.enabled') && $user instanceof User && $user->canUseCrewBids()) {
+            if (config('crew_bids.vault.enabled') && request()->hasSession() && $user instanceof User && $user->canUseCrewBids()) {
                 $connection = app(CrewBidVaultService::class)->status($user, request()->session());
             }
             $view->with('connection', $connection);
