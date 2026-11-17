@@ -28,6 +28,11 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## Relocate line color text...
+Find a better place for this text: Credit h:mm[:ss] · Block h:mm · UTC · Blue: flying trip (includes layover/rest) · Orange: reserve · Light: off · ?: unknown
+How about in the Package details popout. Add a brief usage guide
+
+
 ## [x] Completed: Move the header bid status to the left
 
 Goal: Put save/K4 status on the left of the split header control and My bid list/count on the right.
