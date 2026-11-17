@@ -86,6 +86,9 @@
 
             <fieldset id="k4-bids-preferences" class="scroll-mt-6 space-y-4 border-t border-gray-200 pt-6 dark:border-gray-700">
                 <legend class="text-base font-semibold text-[#1B365D] dark:text-amber-200">{{ __('K4 Bids') }}</legend>
+                @if ($crewBidConnectionAvailable && $user->canUseCrewBids())
+                    <a href="{{ route('crew-bids.connection.index') }}" class="inline-flex min-h-11 items-center font-semibold underline focus-visible:ring-2 focus-visible:ring-amber-500">Manage saved K4 connection</a>
+                @endif
                 <div>
                     <x-input-label for="crew_bid_seat_preference" :value="__('Bid seat')" />
                     <select id="crew_bid_seat_preference" name="crew_bid_seat_preference" aria-describedby="bid-seat-help" required

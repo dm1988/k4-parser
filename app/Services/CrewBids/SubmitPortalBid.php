@@ -59,6 +59,7 @@ class SubmitPortalBid
             }
             $replacement = $this->pages->replacement($snapshot['sheet'], $review['selections']);
             $fields = array_replace($snapshot['fields'], $replacement);
+            app(CrewBidOperationGuard::class)->assertAuthorized();
             $beforeSend();
             try {
                 $post($fields);

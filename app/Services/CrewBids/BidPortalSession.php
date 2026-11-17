@@ -163,6 +163,7 @@ class BidPortalSession
     /** @param array<string, string> $fields */
     private function request(string $method, string $url, #[SensitiveParameter] CookieJar $cookies, #[SensitiveParameter] array $fields = []): Response
     {
+        app(CrewBidOperationGuard::class)->assertAuthorized();
         $response = $this->http->asForm()->connectTimeout(5)->timeout(20)->withoutRedirecting()
             ->withHeaders(['Cache-Control' => 'no-cache, no-store', 'Pragma' => 'no-cache'])
             ->withOptions([

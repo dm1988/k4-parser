@@ -19,7 +19,7 @@ use Illuminate\Support\Carbon;
 
 /** @property Carbon|null $email_verification_otp_expires_at */
 #[Fillable(['name', 'email', 'airline_iata_code', 'airline_icao_code', 'flight_tracker_preference', 'crew_bid_seat_preference', 'crew_bids_access', 'crew_pay_settings', 'email_verified_at', 'password', 'remember_token', 'role', 'is_active', 'has_bought_coffee', 'last_admin_login_at', 'stripe_id', 'pm_type', 'pm_last_four', 'trial_ends_at'])]
-#[Hidden(['password', 'remember_token', 'email_verification_otp_hash', 'crew_pay_settings', 'crew_bid_employee_number'])]
+#[Hidden(['password', 'remember_token', 'email_verification_otp_hash', 'crew_pay_settings', 'crew_bid_employee_number', 'crew_bid_credential_epoch'])]
 class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
@@ -34,6 +34,7 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         'crew_bid_seat_preference' => 'FO',
         'crew_bid_employee_number' => null,
         'crew_bid_employee_verified_at' => null,
+        'crew_bid_credential_epoch' => '',
         'has_bought_coffee' => false,
     ];
 

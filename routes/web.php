@@ -4,12 +4,14 @@ use App\Enums\FlightPlanTask;
 use App\Http\Controllers\CrewBidEmployeeController;
 use App\Http\Controllers\CrewBidSubmissionController;
 use App\Http\Controllers\CrewBidSyncController;
+use App\Http\Controllers\CrewBidVaultController;
 use App\Http\Controllers\ExtractController;
 use App\Http\Controllers\FlightDelayController;
 use App\Http\Controllers\FlightReleaseController;
 use App\Http\Controllers\OfflineFuelScoreController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WelcomeController;
+use App\Http\Middleware\UseSavedCrewBidCredentials;
 use App\Livewire\CrewBids;
 use App\Livewire\FlightPlanBrief;
 use Illuminate\Support\Facades\Route;
@@ -25,14 +27,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware(['feature:crew_bids', 'can:use-crew-bids'])
         ->name('crew-bids.index');
     Route::prefix('crew-bids/employees')->name('crew-bids.employees.')
-        ->middleware(['feature:crew_bids', 'can:use-crew-bids'])->group(function () {
+        ->middleware(['feature:crew_bids', 'can:use-crew-bids', UseSavedCrewBidCredentials::class])->group(function () {
             Route::get('/package/{package}', [CrewBidEmployeeController::class, 'index'])->middleware('throttle:10,1')->whereNumber('package')->name('index');
             Route::post('/package/{package}', [CrewBidEmployeeController::class, 'read'])->middleware('throttle:10,1')->whereNumber('package')->name('read');
             Route::get('/package/{package}/refresh/{refresh}', [CrewBidEmployeeController::class, 'status'])->middleware('throttle:60,1')->whereNumber('package')->whereUuid('refresh')->name('refresh.status');
             Route::get('/package/{package}/refresh/{refresh}/download', [CrewBidEmployeeController::class, 'download'])->middleware('throttle:10,1')->whereNumber('package')->whereUuid('refresh')->name('refresh.download');
         });
     Route::prefix('crew-bids/submissions')->name('crew-bids.submissions.')
-        ->middleware(['feature:crew_bids', 'can:use-crew-bids', 'throttle:10,1'])->group(function () {
+        ->middleware(['feature:crew_bids', 'can:use-crew-bids', 'throttle:10,1', UseSavedCrewBidCredentials::class])->group(function () {
             Route::get('/package/{package}/{seat}/sync', [CrewBidSyncController::class, 'create'])->whereNumber('package')->whereIn('seat', ['CA', 'FO'])->name('sync.create');
             Route::post('/package/{package}/{seat}/sync', [CrewBidSyncController::class, 'store'])->whereNumber('package')->whereIn('seat', ['CA', 'FO'])->name('sync.store');
             Route::get('/package/{package}/{seat}', [CrewBidSubmissionController::class, 'create'])->whereNumber('package')->whereIn('seat', ['CA', 'FO'])->name('create');
@@ -40,6 +42,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/{submission}', [CrewBidSubmissionController::class, 'show'])->whereUlid('submission')->name('show');
             Route::post('/{submission}', [CrewBidSubmissionController::class, 'submit'])->whereUlid('submission')->name('submit');
             Route::post('/{submission}/reconcile', [CrewBidSubmissionController::class, 'reconcile'])->whereUlid('submission')->name('reconcile');
+        });
+    Route::prefix('crew-bids/connection')->name('crew-bids.connection.')
+        ->middleware(['feature:crew_bids', 'can:use-crew-bids'])->group(function () {
+            Route::get('/', [CrewBidVaultController::class, 'index'])->middleware('throttle:60,1')->name('index');
+            Route::post('/', [CrewBidVaultController::class, 'store'])->middleware('throttle:crew-bid-vault')->name('store');
+            Route::post('/unlock', [CrewBidVaultController::class, 'unlock'])->middleware('throttle:crew-bid-vault')->name('unlock');
+            Route::delete('/session', [CrewBidVaultController::class, 'lock'])->name('lock');
+            Route::delete('/', [CrewBidVaultController::class, 'destroy'])->middleware('throttle:crew-bid-vault')->name('destroy');
         });
     Route::get('/dashboard', [ExtractController::class, 'dashboard'])->name('dashboard');
 

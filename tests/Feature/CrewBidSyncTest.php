@@ -7,12 +7,14 @@ use App\Models\BidPackage;
 use App\Models\BidWorkspace;
 use App\Models\User;
 use App\Services\CrewBids\BidPortalHttpClient;
+use App\Services\CrewBids\CrewBidSecretStore;
 use Closure;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Fixtures\InMemoryCrewBidSecretStore;
 use Tests\TestCase;
 
 class CrewBidSyncTest extends TestCase
@@ -20,6 +22,12 @@ class CrewBidSyncTest extends TestCase
     use RefreshDatabase;
 
     private const string ORIGIN = 'https://crewbids.kalittaair.com';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->app->instance(CrewBidSecretStore::class, new InMemoryCrewBidSecretStore);
+    }
 
     public function test_imports_report_order_into_a_new_workspace_without_changing_k4_or_retaining_credentials(): void
     {

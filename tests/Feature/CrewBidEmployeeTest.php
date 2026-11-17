@@ -8,6 +8,7 @@ use App\Models\BidWorkspace;
 use App\Models\CrewBidSnapshot;
 use App\Models\PilotSeniorityList;
 use App\Models\User;
+use App\Services\CrewBids\CrewBidSecretStore;
 use App\Services\CrewBids\QueuedCrewBidRefresh;
 use App\Services\CrewBids\SyncCrewBidSnapshot;
 use DOMDocument;
@@ -15,6 +16,7 @@ use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Queue;
+use Tests\Fixtures\InMemoryCrewBidSecretStore;
 use Tests\Fixtures\SharedBidPortal;
 use Tests\TestCase;
 
@@ -25,6 +27,7 @@ class CrewBidEmployeeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->app->instance(CrewBidSecretStore::class, new InMemoryCrewBidSecretStore);
         Queue::fake();
     }
 

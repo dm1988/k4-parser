@@ -7,12 +7,14 @@ use App\Livewire\CrewBids;
 use App\Models\BidPackage;
 use App\Models\PilotSeniorityList;
 use App\Models\User;
+use App\Services\CrewBids\CrewBidSecretStore;
 use App\Services\CrewBids\ReadPilotSeniority;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
+use Tests\Fixtures\InMemoryCrewBidSecretStore;
 use Tests\Fixtures\SharedBidPortal;
 use Tests\TestCase;
 
@@ -21,6 +23,12 @@ class PilotSeniorityTest extends TestCase
     use RefreshDatabase;
 
     private const string URL = 'https://crewbids.kalittaair.com/hyperlinks/Seniority%20July.pdf';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->app->instance(CrewBidSecretStore::class, new InMemoryCrewBidSecretStore);
+    }
 
     public function test_manual_import_parses_pdf_and_stores_only_the_identity_fields_encrypted(): void
     {

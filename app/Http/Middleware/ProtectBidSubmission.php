@@ -15,15 +15,15 @@ class ProtectBidSubmission
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->is('crew-bids/submissions*', 'crew-bids/employees*')) {
+        if (! $request->is('crew-bids/submissions*', 'crew-bids/employees*', 'crew-bids/connection*', 'password', 'login', 'reset-password')) {
             return $next($request);
         }
-        abort_unless($request->isSecure() || app()->environment('local', 'testing'), 403);
         config(['debugbar.enabled' => false, 'app.debug' => false]);
         if (app()->bound('debugbar')) {
             app('debugbar')->disable();
         }
         try {
+            abort_unless($request->isSecure() || app()->environment('local', 'testing'), 403);
             $response = $next($request);
             $response->headers->set('Cache-Control', 'no-store, private');
             $response->headers->set('Referrer-Policy', 'no-referrer');
@@ -32,6 +32,7 @@ class ProtectBidSubmission
         } finally {
             $request->request->remove('employee');
             $request->request->remove('portal_password');
+            $request->request->remove('app_password');
         }
     }
 }

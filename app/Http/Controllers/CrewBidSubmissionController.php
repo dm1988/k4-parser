@@ -56,7 +56,7 @@ class CrewBidSubmissionController extends Controller
     {
         $this->reviews->authorize($this->user($request), $submission);
         if (! $this->validCredentials($request) || ! $request->boolean('confirmed')) {
-            return to_route('crew-bids.submissions.show', $submission)->with('bid_submission_error', 'Enter your credentials again and confirm the exact replacement and your bid eligibility.');
+            return to_route('crew-bids.submissions.show', $submission)->with('bid_submission_error', 'Choose a K4 login and confirm the exact replacement and your bid eligibility.');
         }
         try {
             $this->reviews->submit($this->user($request), $submission, $request->string('employee')->toString(), $request->string('portal_password')->toString());

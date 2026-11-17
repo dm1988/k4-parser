@@ -12,8 +12,18 @@ Awards present saved html page:
 
 Determine how to render awards. Suggest pop out to the right of the package management div in the k4 bids header.
 
-## Zero-trust crewbids.kalittaair.com credential storage
-Plan zero trust credential storage using stored salt against a user's password
+## Current focus: Zero-trust crewbids.kalittaair.com credential storage
+
+**Status: Implemented 2026-11-17; saved reuse remains disabled by default pending deployment verification.** Implementation outcomes and validation belong in [TODO.md](TODO.md); configuration, threat boundary, lifecycle and worker operations are in [README.md](README.md#k4-credential-vault-and-memory-service).
+
+The encrypted server vault requires an explicit app-password unlock each session. Private owner-bound Sodium envelopes, volatile unlock leases and one-use queue grants replace APP_KEY-recoverable credential caching. Existing direct-portal reads, shared refresh/export, employee verification, local sync and deliberate submission/reconciliation can use an unlocked connection. Final bid confirmation remains mandatory. Account emails remain supported. Read-only submitted-bid comparison remains a separate proposed feature.
+
+Remaining deployment work:
+
+- Verify production TLS/authentication, private networking, disabled persistence/command logging, replica/backup policy and no swap/core/crash/request-body capture; only then attest the environment and enable saved reuse. The flag does not perform that host audit.
+- Benchmark the pinned Argon2id profile and account-password verifier cost on deployment hardware; require strong app passwords. Format/KDF upgrades need a versioned migration using a valid unlock.
+- Perform an authorized live-K4 read-only connection check and browser acceptance of unlock/navigation/lock; local tests use synthetic accounts and do not send real bids.
+- Review historical cached-login/database backups under the existing retention policy. Rejecting/deleting legacy handoffs does not erase historical copies. Restore procedures must start with empty volatile storage and invalidated app sessions.
 
 ## Advanced comparison controls
 

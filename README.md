@@ -21,6 +21,8 @@ For a native installation:
 - Tesseract OCR (`tesseract-ocr` on Debian/Ubuntu)
 - MySQL 8.x, or SQLite for a lightweight local setup
 
+Authenticated K4 operations additionally require PHP Sodium, PhpRedis with GETDEL support, server-side Laravel sessions and the dedicated volatile Redis service described below. Sail already supplies the PHP extensions.
+
 The supported Sail image supplies PHP 8.4, Node.js 24, Composer, Tesseract, and the required PHP extensions. The Compose stack uses MySQL 8.4 and Redis.
 
 ## Docker setup (recommended)
@@ -82,7 +84,7 @@ For frontend development only, run:
 ./vendor/bin/sail npm run dev
 ```
 
-For the complete development process group, including workers, see [Workers](#workers). `sail up -d` starts the web, MySQL and Redis containers; it does not start queue workers or the scheduler.
+For the complete development process group, including workers, see [Workers](#workers). `sail up -d` starts the web, MySQL, ordinary Redis and isolated `crew-bid-secrets` containers; it does not start queue workers or the scheduler.
 
 Stop the containers with `./vendor/bin/sail down`. Add `-v` only when you intentionally want to delete the MySQL and Redis volumes as well.
 
@@ -129,16 +131,62 @@ Never commit `.env`; it contains machine-specific settings and secrets. The most
 | `QUEUE_CONNECTION` | Default queue connection; defaults to `database`. Shared-bid refreshes always use their own `crew-bid-refreshes` connection |
 | `DB_QUEUE_CONNECTION`, `DB_QUEUE_TABLE` | Optional database connection name and jobs table for database queues; table defaults to `jobs` |
 | `DB_QUEUE`, `DB_QUEUE_RETRY_AFTER` | Default database queue name (`default`) and reservation time (`90` seconds); these do not change the dedicated bid queue's name or 300-second reservation |
-| `CACHE_STORE`, `CACHE_PREFIX` | Shared cache used for worker restarts, locks, refresh status, temporary encrypted portal logins and exports; defaults to the database store |
+| `CACHE_STORE`, `CACHE_PREFIX` | Shared cache used for worker restarts, locks, refresh status and encrypted exports; defaults to the database store. K4 credentials and unlock keys never use this cache |
 | `QUEUE_FAILED_DRIVER` | Failed-job storage; defaults to `database-uuids` |
 | `CREW_BIDS_PORTAL_IMPORT_ENABLED` | Enable scheduled public-package imports; defaults to `false` |
 | `CREW_BIDS_PORTAL_IMPORT_ADMIN_ID` | Active, verified bid administrator responsible for portal imports |
 | `CREW_BIDS_SUBMISSION_ENABLED` | Enable outbound portal submission; separate from package ingestion and shared-bid refreshes |
+| `CREW_BIDS_VAULT_ENABLED` | Optional password-unlocked saved K4 connections; defaults to `false`. Does not enable submissions |
+| `CREW_BIDS_SECRETS_HOST`, `CREW_BIDS_SECRETS_PORT` | Dedicated volatile Redis service shared by web and bid workers; required for authenticated K4 operations, including one-off logins |
+| `CREW_BIDS_SECRETS_USERNAME`, `CREW_BIDS_SECRETS_PASSWORD`, `CREW_BIDS_SECRETS_TLS` | Secret-service identity and verified TLS; authentication and TLS are mandatory outside local/testing |
+| `CREW_BIDS_SECRETS_RUNTIME_ATTESTED` | Defaults to `false`; outside local/testing, explicitly attest that the host, logging, swap, dumps, backup and replication controls below have been verified |
 | `MAIL_MAILER`, `MAIL_*` | Account email, announcements and system alerts. The example environment uses the `log` mailer |
 | `MAIL_ADMIN_ADDRESS` | Recipient for scheduled system-health alerts; must be a valid email address |
 | `APP_PORT`, `VITE_PORT` | Optional host ports for the Docker web and Vite services |
 
 After changing environment/configuration values, run `./vendor/bin/sail artisan config:clear` during development or rebuild production configuration with `./vendor/bin/sail artisan config:cache`, then restart workers. Use `optimize:clear` deliberately: it also clears application cache entries and locks, as described below.
+
+## K4 credential vault and memory service
+
+Keep `CACHE_STORE=database` for ordinary application caching. Authenticated K4 operations use a **separate Redis instance**, even for one-off logins. The normal `redis` container snapshots to a persistent volume and is rejected as a secret backend. A different logical Redis database or cache prefix on that instance is insufficient.
+
+The Sail `crew-bid-secrets` service has no exposed port or data volume, a read-only root filesystem, temporary `/tmp`, disabled core dumps, RDB/AOF and slow-command logging disabled, and a restricted ACL in `docker/crew-bid-secrets.acl`. It shares an internal network only with the app container. This local configuration deliberately uses no Redis password/TLS and must not be copied unchanged to a remote deployment. Native installations must supply an equivalent isolated secret service explicitly.
+
+For an existing Sail checkout, add the service/network and migrate before using authenticated K4 operations:
+
+```bash
+./vendor/bin/sail up -d crew-bid-secrets laravel.test
+./vendor/bin/sail artisan migrate --no-interaction
+./vendor/bin/sail artisan config:clear
+./vendor/bin/sail artisan queue:restart
+```
+
+The first command may recreate the web container to attach its new network. Restart manually running workers, or let supervision restart them. The worker command remains:
+
+```bash
+./vendor/bin/sail artisan queue:work crew-bid-refreshes --queue=crew-bid-refreshes --tries=1 --timeout=240
+```
+
+Saved connections remain off by default. After checking the environment below, set `CREW_BIDS_VAULT_ENABLED=true`, clear/rebuild configuration and restart workers. **Profile → K4 Bids → Manage saved K4 connection** offers verified Connect/Update, Unlock, Lock and Forget actions. Users enter their app password to unlock each session; there is no automatic login/remember-me unlock or unattended vault access. Existing portal forms offer saved-login use or a one-off login. Final bid review, exact-order confirmation and the independent submission feature flag remain required.
+
+Vault records contain a random-key XChaCha20-Poly1305 payload and a separately wrapped key derived from the actual app password using Argon2id (format 1: 64 MiB, two passes, random 16-byte salt). Fresh independent 24-byte nonces and authenticated owner/vault/purpose/version context prevent substitution. `users.password` and `APP_KEY` are not encryption keys for the vault. `APP_KEY` still protects other existing app data, report exports and queue references; rotate it using Laravel's normal previous-key procedure, rather than expecting this feature to migrate those unrelated records. Benchmark the pinned vault KDF and review login password strength/bcrypt cost on deployment hardware before rollout; changing KDF parameters requires a new supported envelope format and a valid password unlock, not editing stored metadata.
+
+Only an opaque unlock handle is stored in the ordinary server-side app session. Unwrapped keys live in the memory service for at most 15 idle minutes or two hours absolute, capped by the app session lifetime. Deliberate K4 operations renew idle time; navigation and polling do not. Cookie-backed Laravel sessions are rejected. Queued one-off/saved logins live only in memory for ten minutes, are claimed atomically once, and are bound to their initiating session, owner access epoch and exact package/seat/export context. A store restart loses all unlocks and queued credentials; users must unlock or enter a new login. There is no database/file/cache fallback, and old APP_KEY-encrypted cache handoffs are discarded rather than reused.
+
+Normal app-password changes transactionally rewrap the existing data key with fresh salt/nonce, preserving the encrypted payload and revoking prior unlocks. A corrupt vault blocks that change until explicitly forgotten. Password reset/admin replacement deletes an unrecoverable vault; a login-verifier rehash preserves its ciphertext. Changed/lost verified employee identity invalidates the connection; repeating verification for the same identity preserves it. Forget, access changes and account deletion revoke old grants; deletion cascades to the vault. Lock/logout revoke the session. Revocation tombstones prevent a stale session write from resurrecting an operation; if the memory service is unavailable during lock/logout, a durable owner access-epoch change revokes all of that owner's existing grants as a conservative fallback. Locking cannot retract a bid Update already sent, so unknown-outcome reconciliation and the no-write-retry rule remain in force.
+
+Outside `local`/`testing`, the secret client refuses to connect without verified TLS, a Redis authentication secret and `CREW_BIDS_SECRETS_RUNTIME_ATTESTED=true`. This is an operator attestation, not an automatic host audit. Before attesting, verify disabled RDB/AOF/slowlog, no persistent replicas/backups/restore snapshots, no swap/hibernation/core/crash dumps for secret-bearing processes, private network access, and exclusion of request bodies, Redis command arguments, portal passwords and unlock keys from proxy/APM/profiler/monitor logs. Deny manual snapshot, replication, monitoring and reconfiguration commands to the application identity; preserve only the ACL commands used by the bundled service. The client also checks runtime persistence/logging settings whenever it opens a connection. A database restore must be accompanied by a fresh empty memory service and invalidated app sessions; never restore volatile grants alongside old vault metadata.
+
+The server necessarily sees plaintext in memory while authenticating to K4. This feature protects stored ciphertext and limits session reuse; it does not protect against a compromised running server or a cracked/weak app password. Ciphertext can remain in historical database backups after Forget, subject to the deployment's retention policy. Production host controls, TLS and a live K4 account have not been validated by the local synthetic tests. Keep saved reuse disabled on any deployment that has not met these prerequisites.
+
+Verify the local dedicated service with synthetic data only:
+
+```bash
+./vendor/bin/sail exec -T crew-bid-secrets redis-cli CONFIG GET save appendonly slowlog-log-slower-than slowlog-max-len
+./vendor/bin/sail exec -T -e APP_ENV=testing -e DB_CONNECTION=sqlite -e DB_DATABASE=:memory: -e DB_URL= -e CACHE_STORE=array -e SESSION_DRIVER=array -e CREW_BIDS_SECRETS_INTEGRATION=1 laravel.test php artisan test --compact tests/Feature/CrewBidSecretStoreTest.php
+```
+
+Expected settings are empty `save`, `appendonly=no`, `slowlog-log-slower-than=-1` and `slowlog-max-len=0`. The opt-in integration tests also exercise atomic claiming/CAS, rejection of the ordinary Redis backend, and ACL denial of SAVE/BGSAVE/CONFIG SET and out-of-prefix access. Without the opt-in variable, infrastructure-dependent cases are skipped. No new scheduled command or queue was added; the existing bid worker processes these grants.
 
 ## Testing
 
@@ -279,7 +327,7 @@ The bid connection always uses the database driver and the jobs table configured
 
 The web request queues work and redirects immediately. The authenticated page polls a private status endpoint for `queued`, `running`, `completed` or `failed`, updating progress without reloading the page. Users choose **View updated prediction** when ready; requested exports appear as private download links.
 
-Each queued login is encrypted in cache, valid for ten minutes and removed when consumed or when an attempt fails. The worker rechecks account/package access and package identity before contacting Kalitta. The application serializes refreshes per month/fleet/position with a lock. Nonconsecutive global choice ranks trigger a read-only comparison with that employee's individually selected report, within the same refresh time/size limits. Matching ranks/lines can recover omitted global rows or confirm printed gaps; original printed ranks are retained. Unverified or conflicting reports preserve the last good snapshot. Status records and encrypted exports have a 15-minute cache lifetime; export access is restricted to the requesting account/package. Web and worker processes must share cache storage and `APP_KEY`; a process-local `array` cache is unsuitable for runtime workers.
+Each queued login is held only in the dedicated volatile secret service, valid for ten minutes and atomically consumed once. Jobs contain references, never passwords or unlock keys. The worker rechecks the originating app session, revocation epoch, optional vault lease, account/package access and package identity before contacting Kalitta; authorization is rechecked before every external call. The application serializes refreshes per month/fleet/position with a lock. Nonconsecutive global choice ranks trigger a read-only comparison with that employee's individually selected report, within the same refresh time/size limits. Matching ranks/lines can recover omitted global rows or confirm printed gaps; original printed ranks are retained. Unverified or conflicting reports preserve the last good snapshot. Status records and encrypted exports have a 15-minute cache lifetime; export access is restricted to the requesting account/package. Web and worker processes must share cache storage, the dedicated secret service and `APP_KEY`; a process-local `array` cache is unsuitable for runtime workers.
 
 Expected portal/validation errors are stored in application refresh status and handled by the job, so a worker may print `DONE` while the page reports a failed refresh. `queue:failed` primarily shows unhandled worker failures/timeouts, not every portal-validation failure. Expired, failed or outdated refreshes require a new form submission with a fresh login; replaying a failed job will not restore discarded credentials.
 

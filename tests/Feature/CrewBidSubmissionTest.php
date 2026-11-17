@@ -6,8 +6,11 @@ use App\Livewire\CrewBids;
 use App\Models\BidPackage;
 use App\Models\BidSubmission;
 use App\Models\BidWorkspace;
+use App\Models\CrewBidCredentialVault;
 use App\Models\User;
 use App\Services\CrewBids\BidPortalHttpClient;
+use App\Services\CrewBids\CrewBidSecretStore;
+use App\Services\CrewBids\CrewBidVaultService;
 use App\Services\CrewBids\ResolveSubmittedBidOrder;
 use DOMDocument;
 use DOMXPath;
@@ -19,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
+use Tests\Fixtures\InMemoryCrewBidSecretStore;
 use Tests\TestCase;
 
 class CrewBidSubmissionTest extends TestCase
@@ -28,6 +32,60 @@ class CrewBidSubmissionTest extends TestCase
     private const string ORIGIN = 'https://crewbids.kalittaair.com';
 
     private int $writeAttempts = 0;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->app->instance(CrewBidSecretStore::class, new InMemoryCrewBidSecretStore);
+    }
+
+    public function test_saved_credentials_still_require_exact_order_review_and_explicit_final_confirmation(): void
+    {
+        [$user, $package] = $this->workspace();
+        config(['crew_bids.vault.enabled' => true]);
+        CrewBidCredentialVault::factory()->create(['user_id' => $user->id]);
+        $this->actingAs($user)->post(route('crew-bids.connection.unlock'), ['app_password' => 'password'])->assertRedirect()->assertSessionMissing('crew_bid_sync_error');
+        $this->withCookie(config('session.cookie'), session()->getId());
+        $http = $this->portal();
+
+        $this->post($this->createUrl($package), ['use_saved_credentials' => 1, 'revision' => 1])->assertRedirect()->assertSessionMissing('bid_submission_error');
+        $submission = BidSubmission::query()->sole();
+        $this->assertSame('reviewed', $submission->status);
+        $this->post(route('crew-bids.submissions.submit', $submission), ['use_saved_credentials' => 1])->assertSessionHas('bid_submission_error');
+        $this->assertSame(0, $this->writeAttempts);
+
+        $this->post(route('crew-bids.submissions.submit', $submission), ['use_saved_credentials' => 1, 'confirmed' => 1])->assertRedirect();
+
+        $this->assertSame('matched', $submission->fresh()->status);
+        $this->assertSame(1, $this->writeAttempts);
+        $this->assertCount(1, $this->writes($http));
+    }
+
+    public function test_lock_during_final_preflight_prevents_the_portal_update(): void
+    {
+        [$user, $package] = $this->workspace();
+        config(['crew_bids.vault.enabled' => true]);
+        CrewBidCredentialVault::factory()->create(['user_id' => $user->id]);
+        $this->actingAs($user)->post(route('crew-bids.connection.unlock'), ['app_password' => 'password'])->assertRedirect();
+        $this->withCookie(config('session.cookie'), session()->getId());
+        $cancel = false;
+        $reads = 0;
+        $http = $this->portal(onRead: function () use (&$cancel, &$reads): void {
+            if ($cancel && ++$reads === 2) {
+                app(CrewBidVaultService::class)->lock(session()->driver());
+                session()->save();
+            }
+        });
+        $this->post($this->createUrl($package), ['use_saved_credentials' => 1, 'revision' => 1])->assertRedirect();
+        $submission = BidSubmission::query()->sole();
+        $cancel = true;
+
+        $this->post(route('crew-bids.submissions.submit', $submission), ['use_saved_credentials' => 1, 'confirmed' => 1])->assertSessionHas('bid_submission_error');
+
+        $this->assertSame(0, $this->writeAttempts);
+        $this->assertCount(0, $this->writes($http));
+        $this->assertNull($submission->fresh()->attempted_at);
+    }
 
     public function test_guest_requests_cannot_start_the_portal_flow(): void
     {
@@ -266,7 +324,7 @@ class CrewBidSubmissionTest extends TestCase
         return $http->recorded(fn (Request $request): bool => $request->method() === 'POST' && str_contains($request->url(), 'BidSheet.aspx'));
     }
 
-    private function portal(bool $timeout = false): BidPortalHttpClient
+    private function portal(bool $timeout = false, ?\Closure $onRead = null): BidPortalHttpClient
     {
         $http = new BidPortalHttpClient;
         $http->preventStrayRequests();
@@ -277,7 +335,7 @@ class CrewBidSubmissionTest extends TestCase
             self::ORIGIN.'/' => fn (Request $request) => $request->method() === 'GET'
                 ? $http->response(file_get_contents(base_path('tests/Fixtures/crew-bids/portal-login.html')))
                 : $http->response('', 302, ['Location' => '/Pages/BidSheet.aspx']),
-            self::ORIGIN.'/Pages/BidSheet.aspx' => function (Request $request) use ($http, $sheet, $timeout, &$written) {
+            self::ORIGIN.'/Pages/BidSheet.aspx' => function (Request $request) use ($http, $sheet, $timeout, $onRead, &$written) {
                 if ($request->method() === 'POST') {
                     $this->writeAttempts++;
                     $written = true;
@@ -287,6 +345,8 @@ class CrewBidSubmissionTest extends TestCase
 
                     return $http->response('Update returned without an acceptance label.');
                 }
+
+                $onRead?->__invoke();
 
                 return $http->response($written ? str_replace(['value="5"', 'value="6"', 'value="7"'], ['value="1"', 'value="2"', 'value=""'], $sheet) : $sheet);
             },

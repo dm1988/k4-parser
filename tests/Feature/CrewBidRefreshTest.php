@@ -6,6 +6,7 @@ use App\Jobs\RefreshCrewBidSnapshot;
 use App\Models\BidPackage;
 use App\Models\CrewBidSnapshot;
 use App\Models\User;
+use App\Services\CrewBids\CrewBidSecretStore;
 use App\Services\CrewBids\QueuedCrewBidRefresh;
 use App\Services\CrewBids\SyncCrewBidSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,12 +16,19 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use RuntimeException;
+use Tests\Fixtures\InMemoryCrewBidSecretStore;
 use Tests\Fixtures\SharedBidPortal;
 use Tests\TestCase;
 
 class CrewBidRefreshTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->app->instance(CrewBidSecretStore::class, new InMemoryCrewBidSecretStore);
+    }
 
     public function test_missing_ranks_fail_in_background_without_replacing_the_last_good_snapshot(): void
     {
@@ -203,7 +211,7 @@ class CrewBidRefreshTest extends TestCase
         $user = User::factory()->crewBidsAccess()->create();
         $package = BidPackage::factory()->create(['period' => '2026-12']);
 
-        app(QueuedCrewBidRefresh::class)->start($user, $package, 'FO', '900000', 'synthetic-password', null);
+        $this->actingAs($user)->post(route('crew-bids.employees.read', $package), $this->credentials())->assertRedirect()->assertSessionMissing('crew_bid_sync_error');
 
         $this->assertDatabaseCount('jobs', 1);
         $payload = DB::table('jobs')->sole()->payload;
@@ -214,8 +222,8 @@ class CrewBidRefreshTest extends TestCase
         $this->assertInstanceOf(RefreshCrewBidSnapshot::class, $job);
         $this->assertStringNotContainsString('synthetic-password', serialize($job));
         $secret = Cache::get('crew-bid-refresh:'.$job->refreshId.':credentials');
-        $this->assertStringNotContainsString('synthetic-password', $secret);
-        $this->assertStringContainsString('synthetic-password', Crypt::decryptString($secret));
+        $this->assertNull($secret);
+        $this->assertSame('synthetic-password', app(CrewBidSecretStore::class)->get('refresh:'.$job->refreshId)['password']);
         $http->assertNothingSent();
 
         $queued = Queue::connection('crew-bid-refreshes')->pop('crew-bid-refreshes');
@@ -226,6 +234,7 @@ class CrewBidRefreshTest extends TestCase
         $this->assertDatabaseCount('crew_bid_snapshots', 1);
         $this->assertSame('completed', app(QueuedCrewBidRefresh::class)->current($user, $package, 'FO')['state']);
         $this->assertNull(Cache::get('crew-bid-refresh:'.$job->refreshId.':credentials'));
+        $this->assertNull(app(CrewBidSecretStore::class)->get('refresh:'.$job->refreshId));
         $http->assertSentCount(8);
     }
 

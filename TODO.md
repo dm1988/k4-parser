@@ -28,6 +28,22 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Implement password-unlocked K4 credential storage
+
+Goal: Implement the confirmed encrypted server vault with explicit app-password unlock per session and cautious handling of temporary secrets.
+
+Current implementation (2026-11-17): Added a private owner-bound Sodium vault using random data keys, pinned Argon2id password-derived wrapping keys, independent XChaCha20-Poly1305 nonces and separate payload/wrapping generations. Added protected, throttled Connect/Update, Unlock, Lock and Forget screens linked from profile bid preferences. Existing portal readers, employee verification, shared refresh/export, local bid sync and deliberate submission/reconciliation accept an explicitly selected unlocked connection; final bid confirmation remains required. Saved reuse defaults off.
+
+Problem addressed: The previous queued handoff was recoverable from a database cache plus APP_KEY. Both saved and one-off credential handoffs now use a separate volatile Redis service with no cache/file/database fallback. Queues retain references only; grants are atomically consumed and bound to the originating app session, current owner access epoch and exact operation/package context. Keys have idle/absolute limits; navigation/polling cannot renew them. Every external call rechecks authorization, including immediately before submission preflight/Update. Session revocation tombstones prevent stale session writes from reviving work; lock during a memory-store outage conservatively revokes all owner grants through the durable epoch.
+
+Lifecycle: Normal password changes transactionally rewrap the key while preserving payload ciphertext. Corrupt vaults require explicit Forget before a password change; the Forget screen remains available if reuse is disabled. Password reset/admin replacement and changed/lost employee identity invalidate the vault, while same-identity reverification and automatic login rehash preserve it. Shared authentication events cover other login/logout entry points. Account deletion cascades vault deletion. Account verification/reset emails remain unchanged.
+
+Operations: Added the isolated Sail memory service, restricted ACL, disabled RDB/AOF/slowlog, read-only filesystem, temporary storage and no exposed port. Started the local service and applied only the new vault migration. CACHE_STORE and the user's .env were not changed. README documents service/configuration setup, the unchanged bid-worker command, lifecycle/recovery, synthetic integration tests and production host/TLS/logging/swap/backup prerequisites. CREW_BIDS.md now records implemented status and only the remaining deployment verification. No live K4 login, real credential capture or real bid submission was performed; saved reuse remains disabled by default pending operator verification.
+
+Validation: The focused integration pass passed 166 tests (1,050 assertions), including seven real memory-service/ACL checks. After the final session-interface and shared logout changes, 43 focused vault/authentication tests passed (292 assertions). Frontend production build, Pint and whitespace checks passed. Larastan's initial checkpoint identified session contract/signature issues; those were corrected without suppressions, and the user explicitly authorized a final verification pass, which passed with zero errors. Existing unrelated documentation changes were preserved.
+
+Branch: `crew-bids-vault`. Commit message: `feat: add password-unlocked K4 credential vault`
+
 ## [x] Completed: Group and compact the workspace line controls
 
 Goal: Group preferences, filters and sorting as controls for workspace results, with compact spacing and a separate Add all action.

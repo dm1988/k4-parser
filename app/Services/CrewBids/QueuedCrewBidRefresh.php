@@ -20,6 +20,8 @@ class QueuedCrewBidRefresh
 {
     public const LIFETIME = 900;
 
+    public function __construct(private CrewBidSecretStore $secrets, private CrewBidOperationGuard $guard) {}
+
     public function start(User $user, BidPackage $package, string $seat, #[SensitiveParameter] string $employee, #[SensitiveParameter] string $password, ?string $format): void
     {
         $lockKey = 'crew-bid-refresh-active:'.$package->period.':'.$package->fleet.':'.$seat;
@@ -35,11 +37,14 @@ class QueuedCrewBidRefresh
                 'deadline' => now()->timestamp + 600,
                 'lock_key' => $lockKey, 'lock_owner' => $lock->owner(), 'package_hash' => $this->packageHash($package),
             ], self::LIFETIME);
-            Cache::put($this->key($id).':credentials', Crypt::encryptString(json_encode(['employee' => $employee, 'password' => $password], JSON_THROW_ON_ERROR)), 600);
+            $this->secrets->put('refresh:'.$id, [
+                'employee' => $employee, 'password' => $password, 'binding' => $this->guard->binding(),
+                'context' => $this->operationContext($id, $user->id, $package->id, $seat, $format, $this->packageHash($package)),
+            ], 600);
             Cache::put($this->latestKey($user, $package, $seat), $id, self::LIFETIME);
             Bus::dispatch(new RefreshCrewBidSnapshot($id, $lockKey, $lock->owner()));
         } catch (Throwable $exception) {
-            Cache::forget($this->key($id).':credentials');
+            $this->discard($id);
             Cache::forget($this->key($id));
             Cache::forget($this->latestKey($user, $package, $seat));
             $lock->release();
@@ -80,16 +85,16 @@ class QueuedCrewBidRefresh
     {
         $state = $this->state($id);
         if ($state === null || $state['state'] !== 'queued') {
-            Cache::forget($this->key($id).':credentials');
+            $this->discard($id);
 
             return;
         }
         try {
-            $secret = Cache::pull($this->key($id).':credentials');
+            $secret = $this->secrets->pull('refresh:'.$id);
             if ($state['package_hash'] === '') {
                 throw new BidPortalException('This refresh was queued before an app update. Enter your portal login again to retry.');
             }
-            if (! is_string($secret) || $state['deadline'] <= now()->timestamp) {
+            if ($secret === null || $state['deadline'] <= now()->timestamp) {
                 throw new BidPortalException('The queued login expired. Enter your portal login again to retry.');
             }
             $user = User::query()->find($state['user_id']);
@@ -101,11 +106,16 @@ class QueuedCrewBidRefresh
             if (! hash_equals($state['package_hash'], $this->packageHash($package))) {
                 throw new BidPortalException('This bid package changed while the refresh was queued. Open it again and retry.');
             }
-            /** @var array{employee: string, password: string} $credentials */
-            $credentials = json_decode(Crypt::decryptString($secret), true, flags: JSON_THROW_ON_ERROR);
+            if (($secret['context'] ?? null) !== $this->operationContext($id, $state['user_id'], $state['package_id'], $state['seat'], $state['format'], $state['package_hash'])
+                || ! is_array($secret['binding'] ?? null) || ($secret['binding']['user_id'] ?? null) !== $user->id
+                || ! is_string($secret['employee'] ?? null) || ! is_string($secret['password'] ?? null)) {
+                throw new BidPortalException('The queued login context changed. Start a fresh refresh.');
+            }
+            $this->guard->activate($secret['binding']);
+            $this->guard->assertAuthorized();
             $state['deadline'] = now()->timestamp + 270;
             $this->write($state, 'running', 'Reading and validating the complete Kalitta report…');
-            $result = $sync->handle($package, $credentials['employee'], $credentials['password'], $state['seat'], $state['format']);
+            $result = $sync->handle($package, $secret['employee'], $secret['password'], $state['seat'], $state['format']);
             if ($result['download'] !== null) {
                 Cache::put($this->key($id).':download', Crypt::encryptString($result['download']), self::LIFETIME);
             }
@@ -115,13 +125,15 @@ class QueuedCrewBidRefresh
         } catch (Throwable) {
             $this->fail($id, 'The shared-bid refresh could not finish. Previous snapshot data remains available. Try again.');
         } finally {
-            Cache::forget($this->key($id).':credentials');
+            unset($secret);
+            $this->guard->clear();
+            $this->discard($id);
         }
     }
 
     public function fail(string $id, string $message): void
     {
-        Cache::forget($this->key($id).':credentials');
+        $this->discard($id);
         $state = $this->state($id);
         if ($state !== null && in_array($state['state'], ['queued', 'running'], true)) {
             $this->write($state, 'failed', $message);
@@ -167,5 +179,20 @@ class QueuedCrewBidRefresh
     private function packageHash(BidPackage $package): string
     {
         return hash('sha256', json_encode([$package->period, $package->fleet, $package->source_revision, $package->fingerprint, $package->payload], JSON_THROW_ON_ERROR));
+    }
+
+    private function operationContext(string $id, int $owner, int $package, string $seat, ?string $format, string $hash): string
+    {
+        return hash('sha256', json_encode(['shared-bid-refresh', $id, $owner, $package, $seat, $format, $hash], JSON_THROW_ON_ERROR));
+    }
+
+    private function discard(string $id): void
+    {
+        Cache::forget($this->key($id).':credentials');
+        try {
+            $this->secrets->forget('refresh:'.$id);
+        } catch (BidPortalException) {
+            // A lost store cannot recover a grant; any remaining grant expires within ten minutes.
+        }
     }
 }
