@@ -55,13 +55,13 @@
     @if ($line->warnings !== [])<p class="mt-3 truncate text-xs leading-4 font-medium text-amber-800 dark:text-amber-300">{{ $line->warningSummary }}</p>@endif
     <div x-id="['date-help']" class="space-y-1.5 py-3">
     <div class="flex items-stretch gap-1">
-    <button type="button" x-ref="calendar" class="grid min-h-8 min-w-0 flex-1 gap-px rounded-md focus-visible:ring-2 focus-visible:ring-amber-500" style="grid-template-columns: repeat({{ count($line->calendarDays) }}, minmax(0, 1fr))" aria-label="Inspect UTC dates for {{ $line->id }}" :aria-describedby="$id('date-help')" @click="inspectDate($event)" @keydown="handleDateKey($event)">
+    <button type="button" x-ref="calendar" class="grid min-h-8 min-w-0 flex-1 grid-cols-8 gap-1 rounded-md focus-visible:ring-2 focus-visible:ring-amber-500 sm:grid-cols-[repeat(16,minmax(0,1fr))] lg:grid-cols-[repeat(var(--bid-calendar-days),minmax(0,1fr))] lg:gap-px" style="--bid-calendar-days: {{ count($line->calendarDays) }}" aria-label="Inspect UTC dates for {{ $line->id }}" :aria-describedby="$id('date-help')" @click="inspectDate($event)" @keydown="handleDateKey($event)">
         @foreach ($line->calendarDays as $day)
-            <span data-date="{{ $day['date'] }}" data-date-detail="{{ $day['description'] }}" title="{{ $day['description'] }}" :class="inspectedDate === $el.dataset.date ? 'ring-2 ring-inset ring-[#C5A059]' : ''" class="flex min-w-0 items-center justify-center rounded-sm font-mono text-[9px] {{ $day['classes'] }}">{{ $day['label'] }}</span>
+            <span data-date="{{ $day['date'] }}" data-date-detail="{{ $day['description'] }}" title="{{ $day['description'] }}" :class="inspectedDate === $el.dataset.date ? 'ring-2 ring-inset ring-[#C5A059]' : ''" class="flex min-h-8 min-w-0 items-center justify-center rounded-sm font-mono text-[11px] lg:min-h-0 lg:text-[9px] {{ $day['classes'] }}">{{ $day['label'] }}</span>
         @endforeach
     </button>
     @if ($line->carryDays > 0)
-        <span class="flex shrink-0 items-center justify-center rounded-md border border-[#C5A059] bg-amber-50 px-2 font-mono text-xs font-semibold text-[#1B365D] dark:bg-amber-950 dark:text-amber-200" aria-label="{{ $line->carryDays }} {{ $line->carryBadgeDescription }} for {{ $line->id }}">+{{ $line->carryDays }}</span>
+        <span class="flex min-h-8 shrink-0 self-end items-center justify-center rounded-md border border-[#C5A059] bg-amber-50 px-2 font-mono text-xs font-semibold text-[#1B365D] dark:bg-amber-950 dark:text-amber-200 lg:self-stretch" aria-label="{{ $line->carryDays }} {{ $line->carryBadgeDescription }} for {{ $line->id }}">+{{ $line->carryDays }}</span>
     @endif
     </div>
     <p :id="$id('date-help')" class="sr-only">Select a day for its UTC activity. Use Left and Right arrows to move between days, Home and End to jump, and Escape to clear.</p>

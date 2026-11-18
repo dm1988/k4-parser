@@ -28,6 +28,16 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Make mobile bid-calendar dates readable
+
+Goal: Prevent crowded, overlapping date labels on small-screen line cards.
+
+Outcome (2026-11-18): Wrapped dates into consistent eight-column rows on narrow screens and sixteen-column rows from sm, preserving the full-month strip from lg. Increased small-screen labels to 11px with 32px-high cells and 4px gaps. Every date remains visible with the existing colors, inspection and keyboard behavior. Kept the carry/transition badge at normal height beside the final row. Preserved the existing mobile-header changes.
+
+Validation: Both focused line-card/date rendering tests passed (14 assertions). Final production build, Pint and whitespace checks passed. Presentation-only change; no new tests. Larastan ran once and reported the previously known redundant seat check in ParseBidAwards.php:47. Browser appearance was not manually verified.
+
+Commit message: `style: wrap bid calendar dates on small screens`
+
 ## [x] Completed: Compact the mobile sticky bid header
 
 Goal: Keep only the cart, personal prediction pill and Add all visible while scrolling lines on small screens, with cleaner mobile controls and the existing large-screen layout.
