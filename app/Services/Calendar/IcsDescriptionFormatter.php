@@ -15,6 +15,7 @@ class IcsDescriptionFormatter
 
     public function format(array $event): string
     {
+        unset($event['metadata']['event_uid']);
         $metadata = $this->normalizeCrewMetadata(
             is_array($event['metadata'] ?? null) ? $event['metadata'] : []
         );
@@ -36,6 +37,7 @@ class IcsDescriptionFormatter
                 MetadataKey::RawLines->value,
                 MetadataKey::FlightawareUrl->value,
                 MetadataKey::DutyRawLines->value,
+                'source_observations',
                 'crew',
                 MetadataKey::CrewCount->value,
                 MetadataKey::OperatingCrewCount->value,
@@ -44,7 +46,6 @@ class IcsDescriptionFormatter
                 MetadataKey::Destination->value,
                 MetadataKey::LocalStart->value,
                 MetadataKey::LocalEnd->value,
-                'source_observations',
             ], true)) {
                 continue;
             }

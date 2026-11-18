@@ -23,9 +23,46 @@ services:
             - '.:/var/www/html'
         networks:
             - sail
+            - crew-bid-secrets
         depends_on:
             - mysql
             - redis
+            - crew-bid-secrets
+    crew-bid-secrets:
+        image: 'redis:alpine'
+        command:
+            - redis-server
+            - --save
+            - ''
+            - --appendonly
+            - 'no'
+            - --dir
+            - /tmp
+            - --protected-mode
+            - 'no'
+            - --maxmemory
+            - 32mb
+            - --maxmemory-policy
+            - noeviction
+            - --slowlog-log-slower-than
+            - '-1'
+            - --slowlog-max-len
+            - '0'
+            - --aclfile
+            - /etc/redis/crew-bid-secrets.acl
+        read_only: true
+        volumes:
+            - './docker/crew-bid-secrets.acl:/etc/redis/crew-bid-secrets.acl:ro'
+        tmpfs:
+            - /tmp
+        ulimits:
+            core: 0
+        networks:
+            - crew-bid-secrets
+        healthcheck:
+            test: [CMD, redis-cli, ping]
+            retries: 3
+            timeout: 5s
     mysql:
         image: 'mysql:8.4'
         ports:
@@ -67,6 +104,8 @@ services:
             retries: 3
             timeout: 5s
 networks:
+    crew-bid-secrets:
+        internal: true
     sail:
         driver: bridge
 volumes:

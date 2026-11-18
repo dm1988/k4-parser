@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
@@ -14,7 +15,7 @@ class UserResourceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admins_can_update_safe_user_fields_and_active_status_without_changing_password_or_role(): void
+    public function test_admins_can_update_user_fields_role_and_active_status_without_changing_password(): void
     {
         $admin = User::factory()->create();
         $admin->forceFill([
@@ -56,7 +57,7 @@ class UserResourceTest extends TestCase
         $this->assertSame('after@example.com', $targetUser->email);
         $this->assertNotNull($targetUser->email_verified_at);
         $this->assertSame($originalPassword, $targetUser->password);
-        $this->assertSame('user', $targetUser->role);
+        $this->assertSame('admin', $targetUser->role);
         $this->assertFalse((bool) $targetUser->is_active);
         $this->assertTrue($targetUser->has_bought_coffee);
     }
@@ -76,16 +77,41 @@ class UserResourceTest extends TestCase
         $this->assertTrue((bool) $inactiveUser->fresh()->is_active);
     }
 
-    public function test_users_table_displays_active_and_coffee_statuses(): void
+    public function test_admins_can_grant_and_revoke_crew_bid_access_without_changing_role(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+        $targetUser = User::factory()->create();
+
+        Livewire::test(EditUser::class, ['record' => $targetUser->getKey()])
+            ->fillForm(['crew_bids_access' => true])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertTrue($targetUser->fresh()->crew_bids_access);
+        $this->assertSame('user', $targetUser->role);
+
+        Livewire::test(EditUser::class, ['record' => $targetUser->getKey()])
+            ->fillForm(['crew_bids_access' => false])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertFalse($targetUser->fresh()->crew_bids_access);
+        $this->assertSame('user', $targetUser->role);
+    }
+
+    public function test_users_table_displays_active_crew_bid_and_coffee_statuses(): void
     {
         $this->actingAs($this->makeAdminUser());
         $activeUser = User::factory()->create();
         $inactiveUser = User::factory()->inactive()->create();
         $purchaser = User::factory()->boughtCoffee()->create();
+        $bidder = User::factory()->crewBidsAccess()->create();
 
         Livewire::test(ListUsers::class)
             ->assertTableColumnStateSet('is_active', true, $activeUser)
             ->assertTableColumnStateSet('is_active', false, $inactiveUser)
+            ->assertTableColumnStateSet('crew_bids_access', true, $bidder)
+            ->assertTableColumnStateSet('crew_bids_access', false, $activeUser)
             ->assertTableColumnStateSet('has_bought_coffee', true, $purchaser)
             ->assertTableColumnStateSet('has_bought_coffee', false, $activeUser);
     }
@@ -106,7 +132,7 @@ class UserResourceTest extends TestCase
         $this->assertTrue((bool) $admin->fresh()->is_active);
     }
 
-    public function test_admin_promotion_remains_manual_only_from_the_filament_user_resource(): void
+    public function test_super_admin_promotion_is_rejected_by_the_filament_user_resource(): void
     {
         $admin = User::factory()->create();
         $admin->forceFill([
@@ -132,9 +158,51 @@ class UserResourceTest extends TestCase
                 'role' => 'super_admin',
             ])
             ->call('save')
-            ->assertHasNoFormErrors();
+            ->assertHasFormErrors(['role']);
 
         $this->assertSame('user', $targetUser->fresh()->role);
+    }
+
+    public function test_admins_can_demote_other_admins_without_altering_their_access_grant(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+        $target = User::factory()->admin()->crewBidsAccess()->create();
+
+        Livewire::test(EditUser::class, ['record' => $target->id])->fillForm(['role' => 'user'])
+            ->call('save')->assertHasNoFormErrors();
+
+        $this->assertSame('user', $target->fresh()->role);
+        $this->assertTrue($target->fresh()->crew_bids_access);
+        $this->assertFalse($target->fresh()->canAccessPanel(Filament::getPanel('admin')));
+        $this->assertTrue($target->fresh()->canUseCrewBids());
+    }
+
+    public function test_promoting_an_active_verified_user_enables_admin_panel_access(): void
+    {
+        $this->actingAs($this->makeAdminUser());
+        $target = User::factory()->create();
+
+        Livewire::test(EditUser::class, ['record' => $target->id])->fillForm(['role' => 'admin'])
+            ->call('save')->assertHasNoFormErrors();
+
+        $this->assertTrue($target->fresh()->canAccessPanel(Filament::getPanel('admin')));
+        $this->assertTrue($target->fresh()->canUseCrewBids());
+        $this->assertFalse($target->fresh()->crew_bids_access);
+    }
+
+    public function test_self_role_and_existing_super_admin_roles_cannot_be_changed_through_the_form(): void
+    {
+        $admin = $this->makeAdminUser();
+        $superAdmin = User::factory()->create(['role' => 'super_admin']);
+        $this->actingAs($admin);
+
+        Livewire::test(EditUser::class, ['record' => $admin->id])->assertFormFieldDisabled('role')
+            ->fillForm(['role' => 'user'])->call('save')->assertHasNoFormErrors();
+        Livewire::test(EditUser::class, ['record' => $superAdmin->id])->assertFormFieldDisabled('role')
+            ->fillForm(['role' => 'user'])->call('save')->assertHasFormErrors(['role']);
+
+        $this->assertSame('admin', $admin->fresh()->role);
+        $this->assertSame('super_admin', $superAdmin->fresh()->role);
     }
 
     public function test_admins_can_search_users_by_name_and_email(): void
@@ -199,7 +267,7 @@ class UserResourceTest extends TestCase
     public function test_non_admin_users_can_not_access_user_resource_pages(): void
     {
         $targetUser = User::factory()->create();
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->crewBidsAccess()->create());
 
         $this->get('/admin/users')->assertForbidden();
         $this->get('/admin/users/create')->assertForbidden();

@@ -56,6 +56,26 @@ class PdfImagePageTextExtractorTest extends TestCase
         (new PdfImagePageTextExtractor)->extract('/tmp/release.pdf', 0);
     }
 
+    public function test_ocr_uses_one_thread_without_changing_the_parent_process_environment(): void
+    {
+        $pdftoppm = $this->executable(
+            'for argument in "$@"; do output="$argument"; done'."\n".
+            'printf png > "$output.png"'."\n",
+        );
+        $tesseract = $this->executable('printf "%s" "$OMP_THREAD_LIMIT"');
+        config()->set('services.ocr.pdftoppm_path', $pdftoppm);
+        config()->set('services.ocr.tesseract_path', $tesseract);
+        $previousLimit = getenv('OMP_THREAD_LIMIT');
+        putenv('OMP_THREAD_LIMIT=8');
+
+        try {
+            $this->assertSame('1', (new PdfImagePageTextExtractor)->extract('/tmp/release.pdf', 0));
+            $this->assertSame('8', getenv('OMP_THREAD_LIMIT'));
+        } finally {
+            putenv($previousLimit === false ? 'OMP_THREAD_LIMIT' : 'OMP_THREAD_LIMIT='.$previousLimit);
+        }
+    }
+
     public function test_it_rejects_negative_page_indexes(): void
     {
         config()->set('services.ocr.pdftoppm_path', $this->executable('exit 0'));

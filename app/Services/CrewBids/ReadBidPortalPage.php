@@ -1,0 +1,371 @@
+<?php
+
+namespace App\Services\CrewBids;
+
+use App\Exceptions\BidPortalException;
+use DOMDocument;
+use DOMElement;
+use SensitiveParameter;
+
+class ReadBidPortalPage
+{
+    private const string PREFIX = 'ctl00$ContentPlaceHolder1$';
+
+    /** @return array{action: string, fields: array<string, string>} */
+    public function login(#[SensitiveParameter] string $html): array
+    {
+        $form = $this->form($html);
+        $inputs = $this->inputs($form);
+        foreach (['Login1$UserName' => 'text', 'Login1$Password' => 'password', 'Login1$LoginButton' => 'submit'] as $name => $type) {
+            if (! isset($inputs[$name]) || $inputs[$name]->getAttribute('type') !== $type || $inputs[$name]->hasAttribute('disabled')) {
+                throw new BidPortalException('The portal login form is not supported.');
+            }
+        }
+        $fields = $this->hidden($inputs);
+        if (($fields['__VIEWSTATE'] ?? '') === '') {
+            throw new BidPortalException('The portal login page is missing fresh Web Forms state.');
+        }
+        $fields['Login1$LoginButton'] = $inputs['Login1$LoginButton']->getAttribute('value');
+
+        return ['action' => $form->getAttribute('action'), 'fields' => $fields];
+    }
+
+    /**
+     * @return array{action: string, maximum_line: int, training: bool, training_lines: list<int>,
+     *   slots: list<array{rank: int, line_field: string, line: ?int, editable: bool}>,
+     *   controls: list<string>, submitted_report: bool}
+     */
+    public function bidSheet(#[SensitiveParameter] string $html): array
+    {
+        $form = $this->form($html);
+        $inputs = $this->inputs($form);
+        $hidden = $this->hidden($inputs);
+        $maximum = $hidden[self::PREFIX.'hf_lines'] ?? '';
+        $training = $hidden[self::PREFIX.'hf_InTrng'] ?? '';
+        if (! preg_match('/\A[1-9]\d{0,3}\z/', $maximum) || ! in_array($training, ['True', 'False'], true)
+            || ! array_key_exists(self::PREFIX.'hf_BidLines', $hidden) || isset($inputs['Login1$Password'])) {
+            throw new BidPortalException('An authenticated, supported Bid Sheet was not found.');
+        }
+        $trainingLines = [];
+        $trainingList = trim($hidden[self::PREFIX.'hf_BidLines']);
+        foreach ($trainingList === '' ? [] : explode(',', $trainingList) as $number) {
+            if (! preg_match('/\A[1-9]\d{0,3}\z/', trim($number)) || (int) $number > (int) $maximum) {
+                throw new BidPortalException('The portal training-line rules are not supported.');
+            }
+            $trainingLines[] = (int) $number;
+        }
+        $slots = [];
+        $lineCount = 0;
+        foreach ($inputs as $name => $choice) {
+            if (preg_match('/\A'.preg_quote(self::PREFIX, '/').'tb_l[1-9]\d*\z/', $name)) {
+                $lineCount++;
+            }
+            if (! preg_match('/\A'.preg_quote(self::PREFIX, '/').'tb_c([1-9]\d*)\z/', $name, $match)) {
+                continue;
+            }
+            $lineName = self::PREFIX.'tb_l'.$match[1];
+            $line = $inputs[$lineName] ?? null;
+            $rank = $choice->getAttribute('value');
+            if ($line === null || $choice->getAttribute('type') !== 'text' || $line->getAttribute('type') !== 'text'
+                || ! preg_match('/\A[1-9]\d{0,3}\z/', $rank) || isset($slots[(int) $rank])) {
+                throw new BidPortalException('The portal choice/rank layout is not supported.');
+            }
+            $value = trim($line->getAttribute('value'));
+            if ($value !== '' && ! preg_match('/\A[1-9]\d{0,3}\z/', $value)) {
+                throw new BidPortalException('The existing portal choices are not supported.');
+            }
+            $slots[(int) $rank] = ['rank' => (int) $rank, 'line_field' => $lineName,
+                'line' => $value === '' ? null : (int) $value,
+                'editable' => ! $line->hasAttribute('readonly') && ! $line->hasAttribute('disabled')
+                    && ! $choice->hasAttribute('disabled') && ! $this->disabledByFieldset($line)];
+        }
+        ksort($slots);
+        if ($slots === [] || count($slots) !== $lineCount || array_keys($slots) !== range(1, count($slots))) {
+            throw new BidPortalException('The portal choice/rank layout is incomplete.');
+        }
+        $controls = [];
+        foreach ($inputs as $name => $input) {
+            if (in_array($input->getAttribute('type'), ['submit', 'button', 'image'], true) && ! $input->hasAttribute('disabled')) {
+                $controls[] = $name;
+            }
+        }
+        foreach ($form->getElementsByTagName('button') as $button) {
+            if ($button->getAttribute('name') !== '' && ! $button->hasAttribute('disabled')) {
+                $controls[] = $button->getAttribute('name');
+            }
+        }
+        $report = false;
+        foreach ($form->getElementsByTagName('a') as $link) {
+            if (in_array($link->getAttribute('href'), ['BidLineDataOutput.aspx', './BidLineDataOutput.aspx', '/Pages/BidLineDataOutput.aspx', 'https://crewbids.kalittaair.com/Pages/BidLineDataOutput.aspx'], true)) {
+                $report = true;
+            }
+        }
+
+        return ['action' => $form->getAttribute('action'), 'maximum_line' => (int) $maximum,
+            'training' => $training === 'True', 'training_lines' => array_values(array_unique($trainingLines)),
+            'slots' => array_values($slots), 'controls' => $controls, 'submitted_report' => $report];
+    }
+
+    /**
+     * The page labels describe the visible bid context, not a verified submission receipt.
+     *
+     * @return array{account_matches_input: bool, seat: string, fleet: string, period: string, package_id: int, package_revision: int, window_status: string, update_postback: bool}
+     */
+    public function context(#[SensitiveParameter] string $html, #[SensitiveParameter] string $employee, ?int $maximumLine = null): array
+    {
+        $form = $this->form($html);
+        foreach ($form->getElementsByTagName('input') as $input) {
+            if ($input->getAttribute('name') === 'Login1$Password') {
+                throw new BidPortalException('The portal returned a login page instead of an authenticated Bid Sheet. Check your portal login and try again.');
+            }
+        }
+        $account = $this->element($form, 'LoginName1');
+        $seat = $this->text($this->element($form, 'ContentPlaceHolder1_lbl_Position'));
+        $fleet = $this->text($this->element($form, 'ContentPlaceHolder1_lbl_Type'));
+        $table = $this->element($form, 'ContentPlaceHolder1_gv_bidpackage');
+        if ($account === null) {
+            throw new BidPortalException('The Bid Sheet did not identify the signed-in portal account.');
+        }
+        if ($table === null) {
+            throw new BidPortalException('The Bid Sheet package table was not found. Check the current Bid Sheet layout in Kalitta.');
+        }
+        if (! in_array($seat, ['CA', 'FO'], true)) {
+            throw new BidPortalException('The Bid Sheet did not provide a supported CA/FO position.');
+        }
+        if (! preg_match('/\A(?:747|777)\z/', $fleet)) {
+            throw new BidPortalException('The Bid Sheet did not provide a supported 747/777 fleet.');
+        }
+
+        $rows = $table->getElementsByTagName('tr');
+        if ($rows->length !== 2) {
+            throw new BidPortalException('The portal bid context has an unsupported number of rows.');
+        }
+        $headers = [];
+        foreach ($rows->item(0)->getElementsByTagName('th') as $header) {
+            $headers[] = $this->text($header);
+        }
+        if ($headers !== ['Bid Package', 'Month', 'Bid Starting Date', 'Bid Ending Date', 'Revision', 'Bid Lines '.$fleet, 'Status '.$fleet]) {
+            throw new BidPortalException('The portal bid context columns are not supported.');
+        }
+        $cells = [];
+        foreach ($rows->item(1)->getElementsByTagName('td') as $cell) {
+            $cells[] = $this->text($cell);
+        }
+        if (count($cells) !== 7 || ! preg_match('/\A[1-9]\d{0,9}\z/', $cells[0])
+            || ! preg_match('/\A(0?[1-9]|1[0-2])\/(20\d{2})\z/', $cells[1], $month)
+            || ! preg_match('/\A\d{1,2}\/\d{1,2}\/20\d{2}\z/', $cells[2])
+            || ! preg_match('/\A\d{1,2}\/\d{1,2}\/20\d{2}\z/', $cells[3])
+            || ! preg_match('/\A\d{1,3}\z/', $cells[4])
+            || ! preg_match('/\A[1-9]\d{0,3}\z/', $cells[5])
+            || ($maximumLine !== null && (string) $maximumLine !== $cells[5])) {
+            throw new BidPortalException('The portal bid context values are not supported.');
+        }
+        $button = $this->element($form, 'ContentPlaceHolder1_btn_update');
+        $updatePostback = $button !== null
+            && $button->getAttribute('type') === 'button'
+            && $button->getAttribute('name') === self::PREFIX.'btn_update'
+            && ! $button->hasAttribute('disabled')
+            && ! $this->disabledByFieldset($button)
+            && trim($button->getAttribute('value')) === 'Update'
+            && preg_match('/\A(?:javascript:)?__doPostBack\([\'\"]ctl00\$ContentPlaceHolder1\$btn_update[\'\"],[\'\"][\'\"]\)\s*;?\z/', trim($button->getAttribute('onclick'))) === 1;
+
+        return [
+            'account_matches_input' => $this->text($account) === trim($employee),
+            'seat' => $seat,
+            'fleet' => $fleet,
+            'period' => $month[2].'-'.str_pad($month[1], 2, '0', STR_PAD_LEFT),
+            'package_id' => (int) $cells[0],
+            'package_revision' => (int) $cells[4],
+            'window_status' => in_array($cells[6], ['Open', 'Closed'], true) ? $cells[6] : 'Unknown',
+            'update_postback' => $updatePostback,
+        ];
+    }
+
+    /**
+     * An offline candidate does not establish account/context or permission to submit.
+     *
+     * @param  array{maximum_line: int, training: bool, training_lines: list<int>, slots: list<array{rank: int, line_field: string}>}  $sheet
+     * @param  list<string>  $selections
+     * @return array<string, string>
+     */
+    public function replacement(#[SensitiveParameter] array $sheet, #[SensitiveParameter] array $selections): array
+    {
+        if ($selections === [] || count($selections) > count($sheet['slots'])) {
+            throw new BidPortalException('Choose a nonempty list within the observed portal capacity.');
+        }
+        $numbers = [];
+        foreach ($selections as $id) {
+            if (! preg_match('/\A[FQR]\s*([1-9]\d{0,3})\z/', $id, $match)) {
+                throw new BidPortalException('The local list contains an unsupported line identifier.');
+            }
+            $number = (int) $match[1];
+            if (isset($numbers[$number])) {
+                throw new BidPortalException('The local list contains duplicate portal line numbers.');
+            }
+            if ($number > $sheet['maximum_line'] || $sheet['training'] !== in_array($number, $sheet['training_lines'], true)) {
+                throw new BidPortalException('A local choice is unavailable under the observed portal eligibility rules.');
+            }
+            $numbers[$number] = $match[1];
+        }
+        $ordered = array_values($numbers);
+        $fields = [];
+        foreach ($sheet['slots'] as $slot) {
+            $fields[$slot['line_field']] = $ordered[$slot['rank'] - 1] ?? '';
+        }
+
+        return $fields;
+    }
+
+    /** @return array<string, string> */
+    public function updateFields(#[SensitiveParameter] string $html): array
+    {
+        $form = $this->form($html);
+        $this->inputs($form);
+        $fields = [];
+        foreach ($form->getElementsByTagName('*') as $input) {
+            $name = $input->getAttribute('name');
+            if ($name === '' || $input->hasAttribute('disabled') || $this->disabledByFieldset($input)) {
+                continue;
+            }
+            if ($input->tagName === 'input') {
+                $type = strtolower($input->getAttribute('type'));
+                if (in_array($type, ['button', 'submit', 'reset', 'image'], true)
+                    || (in_array($type, ['checkbox', 'radio'], true) && ! $input->hasAttribute('checked'))) {
+                    continue;
+                }
+                if (! in_array($type, ['text', 'hidden', 'checkbox', 'radio'], true)) {
+                    throw new BidPortalException('The Bid Sheet has an unsupported input type.');
+                }
+                $value = $input->hasAttribute('value') ? $input->getAttribute('value') : (in_array($type, ['checkbox', 'radio'], true) ? 'on' : '');
+            } elseif ($input->tagName === 'select') {
+                $options = [];
+                foreach ($input->getElementsByTagName('option') as $option) {
+                    if ($option->hasAttribute('selected') && ! $option->hasAttribute('disabled')) {
+                        $options[] = $option;
+                    }
+                }
+                if ($input->hasAttribute('multiple') || count($options) > 1) {
+                    throw new BidPortalException('The Bid Sheet has unsupported selection settings.');
+                }
+                $option = $options[0] ?? $input->getElementsByTagName('option')->item(0);
+                if ($option === null || $option->hasAttribute('disabled')) {
+                    continue;
+                }
+                $value = $option->hasAttribute('value') ? $option->getAttribute('value') : $option->textContent;
+            } elseif ($input->tagName === 'textarea') {
+                $value = $input->textContent;
+            } else {
+                continue;
+            }
+            if (array_key_exists($name, $fields)) {
+                throw new BidPortalException('The Bid Sheet has ambiguous successful controls.');
+            }
+            $fields[$name] = $value;
+        }
+        if (($fields['__VIEWSTATE'] ?? '') === '' || ($fields['__EVENTVALIDATION'] ?? '') === '') {
+            throw new BidPortalException('The Bid Sheet is missing fresh Web Forms state.');
+        }
+        $fields['__EVENTTARGET'] = self::PREFIX.'btn_update';
+        $fields['__EVENTARGUMENT'] = '';
+
+        return $fields;
+    }
+
+    private function form(#[SensitiveParameter] string $html): DOMElement
+    {
+        if (trim($html) === '') {
+            throw new BidPortalException('The portal returned an empty page.');
+        }
+        $previous = libxml_use_internal_errors(true);
+        try {
+            $document = new DOMDocument;
+            $document->loadHTML($html, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+        }
+        $forms = [];
+        foreach ($document->getElementsByTagName('form') as $form) {
+            if ($form->getAttribute('id') === 'form1') {
+                $forms[] = $form;
+            }
+        }
+        if (count($forms) !== 1 || strtolower($forms[0]->getAttribute('method')) !== 'post') {
+            throw new BidPortalException('The portal form is not supported.');
+        }
+
+        return $forms[0];
+    }
+
+    /**
+     * Radio groups share a name; discovery does not serialize these unrelated settings.
+     *
+     * @return array<string, DOMElement>
+     */
+    private function inputs(#[SensitiveParameter] DOMElement $form): array
+    {
+        $inputs = [];
+        foreach ($form->getElementsByTagName('input') as $input) {
+            $name = $input->getAttribute('name');
+            if ($name === '') {
+                continue;
+            }
+            if (isset($inputs[$name])) {
+                if (strtolower($inputs[$name]->getAttribute('type')) === 'radio' && strtolower($input->getAttribute('type')) === 'radio') {
+                    continue;
+                }
+                throw new BidPortalException('The portal contains ambiguous form fields.');
+            }
+            $inputs[$name] = $input;
+        }
+
+        return $inputs;
+    }
+
+    /** @param array<string, DOMElement> $inputs
+     * @return array<string, string>
+     */
+    private function hidden(#[SensitiveParameter] array $inputs): array
+    {
+        $fields = [];
+        foreach ($inputs as $name => $input) {
+            if ($input->getAttribute('type') === 'hidden' && ! $input->hasAttribute('disabled')) {
+                $fields[$name] = $input->getAttribute('value');
+            }
+        }
+
+        return $fields;
+    }
+
+    private function disabledByFieldset(#[SensitiveParameter] DOMElement $input): bool
+    {
+        for ($parent = $input->parentNode; $parent instanceof DOMElement; $parent = $parent->parentNode) {
+            if ($parent->tagName === 'fieldset' && $parent->hasAttribute('disabled')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function element(#[SensitiveParameter] DOMElement $form, string $id): ?DOMElement
+    {
+        $found = null;
+        foreach ($form->getElementsByTagName('*') as $element) {
+            if ($element->getAttribute('id') !== $id) {
+                continue;
+            }
+            if ($found !== null) {
+                throw new BidPortalException('The portal contains ambiguous context labels.');
+            }
+            $found = $element;
+        }
+
+        return $found;
+    }
+
+    private function text(?DOMElement $element): string
+    {
+        return $element === null ? '' : trim(preg_replace('/\s+/u', ' ', $element->textContent) ?? '');
+    }
+}

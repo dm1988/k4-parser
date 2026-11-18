@@ -1,0 +1,1163 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Actions\CrewBids\SaveBidWorkspace;
+use App\Livewire\CrewBids;
+use App\Models\BidPackage;
+use App\Models\BidWorkspace;
+use App\Models\User;
+use App\View\Models\CrewBidLineViewModel;
+use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Gate;
+use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\TestCase;
+
+class CrewBidsTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_access_policy_hides_navigation_and_protects_routes(): void
+    {
+        $this->get(route('crew-bids.index'))->assertRedirect(route('login'));
+        $user = User::factory()->create();
+        $this->actingAs($user)->get(route('crew-bids.index'))->assertForbidden();
+        $this->get(route('dashboard'))->assertDontSee('href="'.route('crew-bids.index').'"', false);
+        config(['features.crew_bids.for_all_users' => true]);
+        $this->get(route('crew-bids.index'))->assertForbidden();
+        $user->update(['crew_bids_access' => true]);
+        $this->get(route('crew-bids.index'))->assertOk()->assertSee('No bid package available yet')->assertDontSee('Manage package');
+        $this->assertSame(2, substr_count($this->get(route('dashboard'))->getContent(), 'href="'.route('crew-bids.index').'"'));
+        $this->assertFalse(Gate::forUser($user)->allows('manage-crew-bids'));
+        $this->assertTrue(Gate::forUser($user)->allows('use-crew-bids'));
+        $user->update(['crew_bids_access' => false]);
+        $this->get(route('crew-bids.index'))->assertForbidden();
+        $this->get(route('dashboard'))->assertDontSee('href="'.route('crew-bids.index').'"', false);
+        config(['features.crew_bids.enabled' => false]);
+        $this->get(route('crew-bids.index'))->assertNotFound();
+        $this->assertFalse(Gate::forUser($user)->allows('use-crew-bids'));
+    }
+
+    public function test_unverified_users_cannot_open_the_workspace(): void
+    {
+        $this->actingAs(User::factory()->crewBidsAccess()->unverified()->create())->get(route('crew-bids.index'))->assertRedirect(route('verification.notice'));
+    }
+
+    public function test_inactive_grantees_cannot_open_the_workspace_or_see_navigation(): void
+    {
+        $user = User::factory()->crewBidsAccess()->inactive()->create();
+
+        $this->actingAs($user)->get(route('crew-bids.index'))->assertForbidden();
+        $this->get(route('dashboard'))->assertDontSee('href="'.route('crew-bids.index').'"', false);
+
+        $this->actingAs(User::factory()->admin()->inactive()->create())->get(route('crew-bids.index'))->assertForbidden();
+    }
+
+    public function test_admin_roles_can_use_bids_without_an_explicit_grant(): void
+    {
+        foreach (['admin', 'super_admin'] as $role) {
+            $user = User::factory()->create(['role' => $role]);
+
+            $this->actingAs($user)->get(route('crew-bids.index'))->assertOk()->assertSee('Manage package');
+            $this->assertTrue(Gate::forUser($user)->allows('manage-crew-bids'));
+        }
+    }
+
+    public function test_profile_update_cannot_self_grant_crew_bid_access(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->patch(route('profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'crew_bids_access' => true,
+        ])->assertRedirect(route('profile.edit'));
+
+        $this->assertFalse($user->fresh()->crew_bids_access);
+    }
+
+    public function test_saved_bid_seat_controls_eligibility_and_keeps_each_seats_workspace(): void
+    {
+        $package = BidPackage::factory()->create();
+        $user = User::factory()->admin()->create(['crew_bid_seat_preference' => 'CA']);
+        $payload = $package->payload;
+        $payload['lines']['R2']['captains'] = 0;
+        $package->update(['payload' => $payload]);
+        BidWorkspace::factory()->create(['user_id' => $user->id, 'bid_package_id' => $package->id, 'seat' => 'CA', 'selections' => ['F1'], 'updated_at' => now()->subMinute()]);
+        BidWorkspace::factory()->create(['user_id' => $user->id, 'bid_package_id' => $package->id, 'seat' => 'FO', 'selections' => ['R2']]);
+
+        Livewire::actingAs($user)->test(CrewBids::class)->assertSet('seat', 'CA')->assertSet('selections', ['F1'])
+            ->assertViewHas('allLines', fn (array $lines): bool => array_column($lines, 'id') === ['F1'])
+            ->assertDontSee('id="bid-seat"', false);
+        $this->get(route('crew-bids.index'))->assertOk()->assertSeeText('Captain')
+            ->assertSee(route('profile.edit').'#k4-bids-preferences', false)->assertSeeText('Bid preferences');
+
+        $this->patch(route('profile.update'), ['name' => $user->name, 'email' => $user->email, 'crew_bid_seat_preference' => 'FO'])
+            ->assertSessionHasNoErrors();
+        Livewire::actingAs($user->refresh())->test(CrewBids::class)->assertSet('seat', 'FO')->assertSet('selections', ['R2']);
+        $this->get(route('crew-bids.index'))->assertOk()->assertSeeText('First Officer');
+        $this->assertSame(['F1'], BidWorkspace::query()->where('user_id', $user->id)->where('seat', 'CA')->sole()->selections);
+    }
+
+    public function test_package_changes_keep_the_preferred_seat(): void
+    {
+        BidPackage::factory()->create();
+        $next = BidPackage::factory()->create(['period' => '2026-10']);
+
+        Livewire::actingAs(User::factory()->admin()->create(['crew_bid_seat_preference' => 'CA']))->test(CrewBids::class)
+            ->set('contextPackage', (string) $next->id)->call('changeContext')
+            ->assertSet('packageId', $next->id)->assertSet('seat', 'CA')->call('add', 'F1')->assertHasNoErrors();
+
+        $this->assertSame('CA', BidWorkspace::query()->sole()->seat);
+    }
+
+    public function test_saved_bid_seat_is_loaded_when_no_package_is_published(): void
+    {
+        Livewire::actingAs(User::factory()->admin()->create(['crew_bid_seat_preference' => 'CA']))->test(CrewBids::class)
+            ->assertSet('seat', 'CA')->assertSet('packageId', null)->assertSee('No bid package available yet');
+    }
+
+    public function test_admin_navigation_places_bids_after_flight_plan_brief(): void
+    {
+        $this->actingAs(User::factory()->admin()->create())->get(route('crew-bids.index'))->assertOk()->assertSeeInOrder(['Flight Plan Brief', 'K4 Bids', 'Admin Panel']);
+    }
+
+    public function test_flying_and_reserve_choices_share_manual_order_and_survive_reload(): void
+    {
+        $package = BidPackage::factory()->create();
+        $user = User::factory()->admin()->create();
+        $page = Livewire::actingAs($user)->test(CrewBids::class)->call('finishSetup')
+            ->call('add', 'F1')->call('add', 'R2')->call('add', 'F1')->assertSet('selections', ['F1', 'R2'])
+            ->call('move', 'R2', 0)->set('sort', 'credit')->assertSet('selections', ['R2', 'F1'])
+            ->set('showList', true)->set('showReview', true)->assertSee("1. R2\n2. F1");
+        $page->assertViewHas('aiPrompt', fn (?string $prompt): bool => $prompt === 'Fill in the form using the following list where the leading number is the **Rank** (the form field number) and the second number is the **Value** to be entered into that field. The input fields follow the ID pattern `ContentPlaceHolder1_tb_l{Rank}`.'."\n\n1 2\n2 1");
+        $page->assertSee('Copy AI prompt')->assertSee('data-bid-copy-target="bid-ai-prompt-text"', false);
+        $page->assertSet('dirty', false);
+        $saved = BidWorkspace::query()->where('user_id', $user->id)->sole();
+        $this->assertSame($package->id, $saved->bid_package_id);
+        $this->assertSame(['R2', 'F1'], $saved->selections);
+        $raw = DB::table('bid_workspaces')->where('id', $saved->id)->value('selections');
+        $this->assertSame('["R2","F1"]', Crypt::decryptString($raw));
+        Livewire::test(CrewBids::class)->assertSet('selections', ['R2', 'F1'])->assertSet('showPreferences', false);
+    }
+
+    public function test_dropdown_positions_save_bid_order_in_both_directions_and_survive_reload(): void
+    {
+        BidPackage::factory()->create();
+        $user = User::factory()->admin()->create();
+        $page = Livewire::actingAs($user)->test(CrewBids::class)
+            ->call('add', 'F1')->call('add', 'R2')->set('showList', true);
+
+        $page->call('move', 'R2', '0')->assertHasNoErrors()->assertSet('selections', ['R2', 'F1']);
+
+        $this->assertSame(['R2', 'F1'], BidWorkspace::query()->where('user_id', $user->id)->sole()->selections);
+        Livewire::test(CrewBids::class)->assertSet('selections', ['R2', 'F1']);
+
+        $page->call('move', 'R2', '1')->assertHasNoErrors()->assertSet('selections', ['F1', 'R2']);
+
+        $this->assertSame(['F1', 'R2'], BidWorkspace::query()->where('user_id', $user->id)->sole()->selections);
+        Livewire::test(CrewBids::class)->assertSet('selections', ['F1', 'R2']);
+    }
+
+    public function test_adding_matching_lines_appends_filtered_results_in_sort_order_without_reordering_existing_choices(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        foreach (['F3' => 4200, 'F4' => 4500, 'F5' => 3600] as $id => $credit) {
+            $payload['lines'][$id] = array_replace($payload['lines']['F1'], ['id' => $id, 'credit' => $credit]);
+        }
+        $package->update(['payload' => $payload]);
+        $user = User::factory()->admin()->create();
+        $page = Livewire::actingAs($user)->test(CrewBids::class)
+            ->call('add', 'R2')->call('add', 'F1')
+            ->set('minimumCredit', 70)->set('sort', 'credit');
+        $page->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F4', 'F3']);
+
+        $page->call('addMatching')->assertHasNoErrors()->assertSet('selections', ['R2', 'F1', 'F4', 'F3'])
+            ->call('addMatching')->assertSet('selections', ['R2', 'F1', 'F4', 'F3']);
+
+        $this->assertSame(['R2', 'F1', 'F4', 'F3'], BidWorkspace::query()->where('user_id', $user->id)->sole()->selections);
+        $this->assertSame($payload, $package->fresh()->payload);
+    }
+
+    public function test_preferences_reopen_and_close_after_saving_without_changing_bid_order(): void
+    {
+        BidPackage::factory()->create();
+        $user = User::factory()->admin()->create();
+
+        Livewire::actingAs($user)->test(CrewBids::class)->assertSet('showPreferences', true)
+            ->call('finishSetup')->assertSet('showPreferences', false)
+            ->call('add', 'R2')->call('add', 'F1')->set('showPreferences', true)
+            ->set('goals', ['days_off', 'credit'])->set('startCity', 'ANC')
+            ->call('finishSetup')->assertHasNoErrors()->assertSet('showPreferences', false)
+            ->assertSet('selections', ['R2', 'F1']);
+
+        $workspace = BidWorkspace::query()->sole();
+        $this->assertSame(['goals' => ['days_off', 'credit'], 'days_off' => [], 'start_city' => 'ANC', 'initialized' => true], $workspace->preferences);
+        $this->assertSame(['R2', 'F1'], $workspace->selections);
+        Livewire::test(CrewBids::class)->assertSet('showPreferences', false)->assertSet('startCity', 'ANC');
+    }
+
+    public function test_saving_preferences_applies_best_match_without_changing_manual_bid_order(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F3'] = array_replace($payload['lines']['F1'], ['id' => 'F3', 'credit' => 6000]);
+        $payload['lines']['F3']['calendar']['2026-11-16'] = ['status' => 'occupied', 'activity' => 'Trip / occupied'];
+        $package->update(['payload' => $payload]);
+        $user = User::factory()->admin()->create();
+        $page = Livewire::actingAs($user)->test(CrewBids::class)
+            ->call('add', 'F3')->call('add', 'F1')->set('goals', ['days_off', 'credit'])
+            ->set('sort', 'credit')->set('showPreferences', true)
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F3', 'F1']);
+
+        $page->call('finishSetup')->assertHasNoErrors()->assertSet('sort', 'best')
+            ->assertSet('showPreferences', false)->assertSet('selections', ['F3', 'F1'])
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F1', 'F3']);
+
+        $workspace = BidWorkspace::query()->where('user_id', $user->id)->sole();
+        $this->assertSame(['days_off', 'credit'], $workspace->preferences['goals']);
+        $this->assertSame(['F3', 'F1'], $workspace->selections);
+    }
+
+    #[DataProvider('invalidSortValues')]
+    public function test_invalid_sort_values_show_validation_feedback_and_allow_a_valid_selection(string $value, string $message): void
+    {
+        BidPackage::factory()->create();
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+
+        $page->set('sort', $value)->assertHasErrors('sort')->assertSee($message)
+            ->set('sort', 'credit')->assertHasNoErrors()->assertSet('sort', 'credit');
+
+        $this->assertDatabaseCount('bid_workspaces', 0);
+    }
+
+    /** @return array<string, array{string, string}> */
+    public static function invalidSortValues(): array
+    {
+        return [
+            'unknown sort' => ['unknown', 'The selected sort is invalid.'],
+            'goal-only value' => ['blocks', 'The selected sort is invalid.'],
+            'missing sort' => ['', 'The sort field is required.'],
+        ];
+    }
+
+    #[DataProvider('sortOnlyGoalValues')]
+    public function test_sort_only_values_cannot_be_saved_as_ranking_goals(string $value): void
+    {
+        BidPackage::factory()->create();
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+
+        $page->set('goals', [$value])->call('finishSetup')->assertHasErrors('preferences.goals.0');
+
+        $this->assertDatabaseCount('bid_workspaces', 0);
+    }
+
+    /** @return array<string, array{string}> */
+    public static function sortOnlyGoalValues(): array
+    {
+        return [
+            'best match' => ['best'],
+            'block sort' => ['block'],
+            'line ID' => ['id'],
+            'my bid list' => ['my_bid_list'],
+            'submitted order' => ['submitted'],
+        ];
+    }
+
+    public function test_failed_preference_validation_keeps_the_manual_sort_and_dialog_open(): void
+    {
+        BidPackage::factory()->create();
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->set('sort', 'credit')->set('showPreferences', true)->set('goals', ['invalid']);
+
+        $page->call('finishSetup')->assertHasErrors('preferences.goals.0')
+            ->assertSet('sort', 'credit')->assertSet('showPreferences', true);
+
+        $this->assertDatabaseCount('bid_workspaces', 0);
+    }
+
+    public function test_preferences_stay_open_with_the_save_error_inside_the_dialog_after_a_tab_conflict(): void
+    {
+        BidPackage::factory()->create();
+        $user = User::factory()->admin()->create();
+        $first = Livewire::actingAs($user)->test(CrewBids::class);
+        $second = Livewire::test(CrewBids::class);
+        $first->call('add', 'F1');
+
+        $second->set('sort', 'credit')->set('goals', ['credit'])->call('finishSetup')
+            ->assertHasErrors('workspace')->assertSet('showPreferences', true)
+            ->assertSet('dirty', true)->assertSet('goals', ['credit'])->assertSet('sort', 'credit');
+
+        $document = new \DOMDocument;
+        @$document->loadHTML($second->html());
+        $xpath = new \DOMXPath($document);
+        $this->assertSame('This list changed in another tab. Your edits are retained. Reload saved choices before retrying.', $xpath->evaluate('string(//*[@id="bid-preferences"]//*[@role="alert"])'));
+        $workspace = BidWorkspace::query()->sole();
+        $this->assertSame(['F1'], $workspace->selections);
+        $this->assertSame([], $workspace->preferences['goals']);
+    }
+
+    public function test_line_view_models_render_manual_rank_after_reordering_and_escape_source_metadata(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['crew'] = '<script>alert("crew")</script>';
+        $payload['lines']['F1']['calendar']['2026-11-01']['activity'] = '<script>alert("activity")</script>';
+        $package->update(['payload' => $payload]);
+
+        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->call('add', 'F1')->call('add', 'R2')->call('move', 'R2', 0)->set('sort', 'credit')
+            ->assertViewHas('lineCards', fn (array $cards): bool => count($cards) === 1 && $cards[0] instanceof CrewBidLineViewModel && $cards[0]->id === 'F1' && $cards[0]->rank === 2)
+            ->assertSeeHtml('aria-label="Selected #2; open my bid list"')
+            ->assertSee('&lt;script&gt;alert', false)
+            ->assertDontSee('<script>alert("crew")</script>', false)
+            ->assertDontSee('<script>alert("activity")</script>', false);
+    }
+
+    /** @return array<string, array{bool, string}> */
+    public static function primaryLineDisclosures(): array
+    {
+        return ['linked trip' => [true, 'Trip 749'], 'no linked trips' => [false, 'Details']];
+    }
+
+    #[DataProvider('primaryLineDisclosures')]
+    public function test_line_cards_inspect_dates_in_place_and_expand_trips_or_details(bool $hasTrips, string $primaryLabel): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['pairings'] = $hasTrips ? [['id' => '749', 'date' => '2026-11-01']] : [];
+        $payload['lines']['F1']['calendar']['2026-11-02'] = ['status' => 'unknown', 'activity' => 'Unknown'];
+        $package->update(['payload' => $payload]);
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+
+        $document = new \DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$page->html());
+        $xpath = new \DOMXPath($document);
+        $card = '//article[@x-data="bidLineCard"]';
+        $this->assertSame(1, $xpath->query($card.'//details[@x-ref="primaryDetails"]')->length);
+        $this->assertSame($primaryLabel, $xpath->evaluate('normalize-space(('.$card.'//details[@x-ref="primaryDetails"]/summary)[1])'));
+        $this->assertSame(30, $xpath->query($card.'//button[@x-ref="calendar"]/span[@data-date]')->length);
+        $this->assertSame('2026-11-02 UTC · Unknown', $xpath->evaluate('string(('.$card.'//span[@data-date="2026-11-02"]/@data-date-detail)[1])'));
+        $this->assertSame(0, $xpath->query($card.'//details[@x-ref="dateDetails"]')->length);
+        $page->assertDontSee('UTC · Select a day for activity.')->assertSee('Escape to clear.');
+    }
+
+    public function test_date_conflicts_exclude_available_lines_but_retain_selected_choices(): void
+    {
+        BidPackage::factory()->create();
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        $page
+            ->call('add', 'F1')->call('toggleDate', '2026-11-03')
+            ->assertSet('selections', ['F1'])->assertViewHas('lines', fn (array $lines): bool => count($lines) === 0);
+        $page->set('showList', true)->assertSee('Conflicts with requested UTC days off: 2026-11-03');
+        $page->call('add', 'R2')->assertHasErrors('workspace')->assertSet('selections', ['F1']);
+    }
+
+    public function test_unknown_dates_remain_visible_with_a_warning_and_cannot_claim_days_off(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['calendar']['2026-11-20'] = ['status' => 'unknown', 'activity' => 'Unknown'];
+        $package->update(['payload' => $payload]);
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        $page->call('toggleDate', '2026-11-20')
+            ->assertSee('Dates incomplete; conflicts unknown')->assertViewHas('lines', fn (array $lines): bool => count($lines) === 1 && $lines[0]['days_off'] === null);
+        $page->call('add', 'F1')->assertSet('selections', ['F1']);
+    }
+
+    public function test_calendar_updates_save_all_selected_dates_in_order_and_keep_selected_conflicts(): void
+    {
+        BidPackage::factory()->create();
+        $user = User::factory()->admin()->create();
+
+        $page = Livewire::actingAs($user)->test(CrewBids::class)->call('add', 'F1')
+            ->set('daysOff', ['2026-11-22', '2026-11-03', '2026-11-20'])
+            ->assertHasNoErrors()->assertSet('daysOff', ['2026-11-03', '2026-11-20', '2026-11-22'])
+            ->assertSet('selections', ['F1'])->assertViewHas('lines', [])
+            ->assertViewHas('selected', fn (array $lines): bool => $lines[0]['id'] === 'F1' && $lines[0]['warnings'] === ['Conflicts with requested UTC days off: 2026-11-03']);
+
+        $this->assertSame(['2026-11-03', '2026-11-20', '2026-11-22'], BidWorkspace::query()->sole()->preferences['days_off']);
+        Livewire::test(CrewBids::class)->assertSet('daysOff', ['2026-11-03', '2026-11-20', '2026-11-22']);
+
+        $page->set('daysOff', ['2026-11-22', '2026-11-20'])->assertHasNoErrors()
+            ->assertSet('daysOff', ['2026-11-20', '2026-11-22'])
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F1']);
+        $this->assertSame(['2026-11-20', '2026-11-22'], BidWorkspace::query()->sole()->preferences['days_off']);
+
+        $page->call('clearDates')->assertSet('daysOff', []);
+        $this->assertSame([], BidWorkspace::query()->sole()->preferences['days_off']);
+    }
+
+    public function test_calendar_model_updates_reject_out_of_package_dates_without_saving(): void
+    {
+        BidPackage::factory()->create();
+
+        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->set('daysOff', ['2026-12-01'])->assertHasErrors('preferences.days_off.0');
+
+        $this->assertDatabaseCount('bid_workspaces', 0);
+    }
+
+    public function test_priorities_are_strict_and_start_city_is_a_hard_filter(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F3'] = array_replace($payload['lines']['F1'], ['id' => 'F3', 'credit' => 9999, 'start_city' => 'LAX']);
+        $payload['lines']['F3']['calendar']['2026-11-16'] = ['status' => 'occupied', 'activity' => 'Trip / occupied'];
+        $package->update(['payload' => $payload]);
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        $page
+            ->set('goals', ['days_off', 'credit'])->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F1', 'F3'])
+            ->assertSee('Why this matched')->assertSee('Priorities in order; each lower goal breaks ties only.')
+            ->assertSeeInOrder(['F1', 'Credit', 'Days off', 'Why this matched'])
+            ->assertSeeInOrder(['Maximize days off: 15', 'Maximize credit: 65:00']);
+        $page->call('sortGoal', 'credit', 0)->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F3', 'F1']);
+        $page->set('startCity', 'ANC')->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F1'])
+            ->assertSee('Required start city ANC: Matches');
+    }
+
+    public function test_client_goal_order_persists_exactly_without_changing_the_bid_order(): void
+    {
+        BidPackage::factory()->create();
+        $user = User::factory()->admin()->create();
+
+        Livewire::actingAs($user)->test(CrewBids::class)
+            ->call('add', 'F1')->call('add', 'R2')
+            ->set('goals', ['credit', 'days_off', 'blocks'])
+            ->set('goals', ['blocks', 'credit', 'days_off'])
+            ->assertHasNoErrors()->assertSet('selections', ['F1', 'R2']);
+
+        $saved = BidWorkspace::query()->sole();
+        $this->assertSame(['blocks', 'credit', 'days_off'], $saved->preferences['goals']);
+        $this->assertSame(['F1', 'R2'], $saved->selections);
+        Livewire::test(CrewBids::class)->assertSet('goals', ['blocks', 'credit', 'days_off']);
+    }
+
+    public function test_credit_and_block_sorts_are_independent_and_keep_manual_bid_order(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['credit'] = 5850;
+        $payload['lines']['F1']['block'] = 5415;
+        $payload['lines']['F3'] = array_replace($payload['lines']['F1'], ['id' => 'F3', 'credit' => 5700, 'block' => 5520]);
+        $payload['lines']['F4'] = array_replace($payload['lines']['F1'], ['id' => 'F4', 'credit' => null, 'block' => null]);
+        $payload['lines']['F5'] = array_replace($payload['lines']['F1'], ['id' => 'F5', 'credit_seconds' => 351030, 'block' => 5414]);
+        $package->update(['payload' => $payload]);
+
+        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->assertSee('Highest block time')->assertSee('97:30')->assertSee('97:30:30')->assertSee('90:15')
+            ->call('add', 'F1')->call('add', 'F3')
+            ->set('sort', 'credit')->assertHasNoErrors()
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F5', 'F1', 'F3', 'F4'])
+            ->set('sort', 'block')->assertHasNoErrors()
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F3', 'F1', 'F5', 'F4'])
+            ->assertSet('selections', ['F1', 'F3'])
+            ->set('minimumCredit', 96)
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F1', 'F5']);
+    }
+
+    public function test_private_lists_are_isolated_and_zero_seat_lines_cannot_be_selected(): void
+    {
+        $package = BidPackage::factory()->create();
+        $other = User::factory()->create();
+        BidWorkspace::factory()->create(['user_id' => $other->id, 'bid_package_id' => $package->id, 'selections' => ['R2']]);
+        $payload = $package->payload;
+        $payload['lines']['F1']['captains'] = 0;
+        $package->update(['payload' => $payload]);
+        Livewire::actingAs(User::factory()->admin()->create(['crew_bid_seat_preference' => 'CA']))->test(CrewBids::class)->assertSet('selections', [])
+            ->call('add', 'F1')->assertNotFound();
+        $this->assertSame(['R2'], BidWorkspace::query()->where('user_id', $other->id)->sole()->selections);
+    }
+
+    public function test_conflicting_tabs_retain_local_edits_and_require_saved_reload(): void
+    {
+        BidPackage::factory()->create();
+        $user = User::factory()->admin()->create();
+        $first = Livewire::actingAs($user)->test(CrewBids::class);
+        $second = Livewire::test(CrewBids::class);
+        $first->call('add', 'F1');
+        $second->call('add', 'R2')->assertHasErrors('workspace')->assertSet('dirty', true)->assertSet('selections', ['R2']);
+        $this->assertSame(['F1'], BidWorkspace::query()->where('user_id', $user->id)->sole()->selections);
+        $second->call('reloadSaved')->assertSet('dirty', false)->assertSet('selections', ['F1']);
+    }
+
+    public function test_new_revision_requires_confirmation_and_retains_prior_list(): void
+    {
+        $prior = BidPackage::factory()->create();
+        $user = User::factory()->admin()->create();
+        $page = Livewire::actingAs($user)->test(CrewBids::class)->call('add', 'F1')->call('add', 'R2');
+        $payload = $prior->payload;
+        unset($payload['lines']['R2']);
+        $payload['lines']['F1']['credit'] = 4000;
+        $next = BidPackage::factory()->create(['payload' => $payload, 'source_revision' => 'LINES_5']);
+        $page->call('reviewRevision', $next->id)->assertSet('packageId', $prior->id)->assertSee('Unavailable — will be omitted')->assertSee('Credit 65:00 → 66:40')
+            ->call('confirmRevision')->assertSet('packageId', $next->id)->assertSet('selections', ['F1']);
+        $this->assertSame(['F1', 'R2'], BidWorkspace::query()->where('user_id', $user->id)->where('bid_package_id', $prior->id)->sole()->selections);
+    }
+
+    public function test_revision_review_preserves_choice_order_and_explains_schedule_city_and_seat_changes(): void
+    {
+        $prior = BidPackage::factory()->create();
+        $payload = $prior->payload;
+        foreach (['F3', 'F4'] as $id) {
+            $payload['lines'][$id] = array_replace($payload['lines']['F1'], ['id' => $id]);
+        }
+        $prior->update(['payload' => $payload]);
+        $user = User::factory()->admin()->create();
+        $page = Livewire::actingAs($user)->test(CrewBids::class)
+            ->call('add', 'F3')->call('add', 'F1')->call('add', 'F4')->call('add', 'R2');
+        $payload['lines']['F1']['credit'] = 4000;
+        $payload['lines']['F1']['start_city'] = 'CVG';
+        $payload['lines']['F1']['calendar']['2026-11-03'] = ['status' => 'off', 'activity' => 'Off'];
+        $payload['lines']['F4']['first_officers'] = 0;
+        unset($payload['lines']['R2']);
+        $next = BidPackage::factory()->create(['payload' => $payload]);
+
+        $page->call('reviewRevision', $next->id)->assertHasNoErrors()
+            ->assertViewHas('revisionChanges', [
+                ['id' => 'F3', 'status' => 'Unchanged', 'details' => []],
+                ['id' => 'F1', 'status' => 'Changed — review before carrying forward', 'details' => [
+                    'Credit 65:00 → 66:40; days off 15 → 16',
+                    'Changed UTC schedule dates: 2026-11-03',
+                    'Start city ANC → CVG',
+                ]],
+                ['id' => 'F4', 'status' => 'Unavailable — will be omitted', 'details' => [
+                    'Credit 65:00 → 65:00; days off 15 → 15',
+                    'Start city ANC → ANC',
+                ]],
+                ['id' => 'R2', 'status' => 'Unavailable — will be omitted', 'details' => []],
+            ])
+            ->assertSet('packageId', $prior->id)->assertSet('selections', ['F3', 'F1', 'F4', 'R2']);
+
+        $this->assertSame(['F3', 'F1', 'F4', 'R2'], BidWorkspace::query()->where('user_id', $user->id)->sole()->selections);
+    }
+
+    public function test_actions_recheck_access_after_feature_is_revoked(): void
+    {
+        BidPackage::factory()->create();
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        config(['features.crew_bids.enabled' => false]);
+        $page->call('add', 'F1')->assertNotFound();
+        $this->assertDatabaseCount('bid_workspaces', 0);
+    }
+
+    public function test_open_workspace_cannot_save_after_crew_bid_grant_is_revoked(): void
+    {
+        BidPackage::factory()->create();
+        $user = User::factory()->crewBidsAccess()->create();
+        $page = Livewire::actingAs($user)->test(CrewBids::class)
+            ->call('add', 'F1')->assertSet('selections', ['F1']);
+        $user->update(['crew_bids_access' => false]);
+
+        $page->call('remove', 'F1')->assertForbidden();
+
+        $this->assertSame(['F1'], BidWorkspace::query()->where('user_id', $user->id)->sole()->selections);
+
+        $user->update(['crew_bids_access' => true]);
+        Livewire::actingAs($user)->test(CrewBids::class)->assertSet('selections', ['F1']);
+    }
+
+    public function test_crew_bid_grantee_cannot_import_or_manage_packages(): void
+    {
+        $user = User::factory()->crewBidsAccess()->create();
+
+        $this->actingAs($user)->get('/admin/bid-packages')->assertForbidden();
+        Livewire::actingAs($user)->test(CrewBids::class)
+            ->assertDontSee('id="bid-package-import"', false)
+            ->set('showImport', true)->assertDontSee('id="bid-package-import"', false)
+            ->call('previewImport')->assertForbidden();
+    }
+
+    public function test_invalid_dates_and_duplicate_goals_do_not_persist(): void
+    {
+        BidPackage::factory()->create();
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        $page->call('toggleDate', '2026-12-01')->assertHasErrors('daysOff');
+        $page->set('goals', ['credit', 'credit'])->assertHasErrors('preferences.goals.0');
+        $this->assertDatabaseCount('bid_workspaces', 0);
+    }
+
+    public function test_source_metadata_is_escaped_and_raw_payload_is_not_in_livewire_state(): void
+    {
+        BidPackage::factory()->create(['source_revision' => '<script>unsafe()</script>']);
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        $page->assertSee('&lt;script&gt;unsafe()&lt;/script&gt;', false)->assertDontSee('<script>unsafe()</script>', false);
+        $this->assertArrayNotHasKey('payload', $page->getData());
+        $this->assertArrayNotHasKey('allLines', $page->getData());
+    }
+
+    public function test_owner_account_deletion_removes_private_workspace(): void
+    {
+        $workspace = BidWorkspace::factory()->create();
+        User::query()->findOrFail($workspace->user_id)->delete();
+        $this->assertModelMissing($workspace);
+    }
+
+    public function test_failed_save_retains_choices_and_retry_persists_them(): void
+    {
+        BidPackage::factory()->create();
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        Exceptions::fake();
+        $this->mock(SaveBidWorkspace::class)->shouldReceive('handle')->once()->andThrow(new \RuntimeException('Simulated database outage'));
+        $page->call('add', 'F1')->assertSet('dirty', true)->assertSet('selections', ['F1'])->assertSee('Save failed. Your edits are retained.');
+        Exceptions::assertReported(\RuntimeException::class);
+        $this->app->forgetInstance(SaveBidWorkspace::class);
+        $page->call('retrySave')->assertSet('dirty', false);
+        $this->assertSame(['F1'], BidWorkspace::query()->sole()->selections);
+    }
+
+    public function test_save_timestamp_tracks_confirmed_writes_and_survives_reload_and_save_failure(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-15T12:00:00Z'));
+        $package = BidPackage::factory()->create();
+        $user = User::factory()->admin()->create();
+        $page = Livewire::actingAs($user)->test(CrewBids::class)->assertSet('lastSavedAt', null);
+
+        $page->call('add', 'F1')->assertHasNoErrors()->assertSet('lastSavedAt', '2026-11-15T12:00:00+00:00');
+        Livewire::test(CrewBids::class)->assertSet('lastSavedAt', '2026-11-15T12:00:00+00:00');
+
+        $this->travel(2)->minutes();
+        $page->set('goals', ['credit'])->assertHasNoErrors()->assertSet('lastSavedAt', '2026-11-15T12:02:00+00:00');
+        $this->assertSame(['credit'], BidWorkspace::query()->sole()->preferences['goals']);
+        Exceptions::fake();
+        $this->mock(SaveBidWorkspace::class)->shouldReceive('handle')->once()->andThrow(new \RuntimeException('Simulated database outage'));
+        $this->travel(2)->minutes();
+
+        $page->call('add', 'R2')->assertSet('dirty', true)->assertSet('lastSavedAt', '2026-11-15T12:02:00+00:00');
+        Exceptions::assertReported(\RuntimeException::class);
+        $this->assertSame(['F1'], BidWorkspace::query()->sole()->selections);
+        $this->app->forgetInstance(SaveBidWorkspace::class);
+        $page->call('retrySave')->assertSet('dirty', false)->assertSet('lastSavedAt', '2026-11-15T12:04:00+00:00');
+        $this->assertSame(['F1', 'R2'], BidWorkspace::query()->sole()->selections);
+
+        $this->travel(1)->minute();
+        $page->call('move', 'R2', 0)->assertHasNoErrors()->assertSet('lastSavedAt', '2026-11-15T12:05:00+00:00');
+        $this->assertSame(['R2', 'F1'], BidWorkspace::query()->sole()->selections);
+        $page->call('reloadSaved')->assertSet('lastSavedAt', '2026-11-15T12:05:00+00:00');
+        $next = BidPackage::factory()->create(['period' => '2026-10']);
+        $page->set('contextPackage', (string) $next->id)->call('changeContext')->assertSet('lastSavedAt', null);
+        $page->set('contextPackage', (string) $package->id)->call('changeContext')->assertSet('lastSavedAt', '2026-11-15T12:05:00+00:00');
+    }
+
+    public function test_date_range_undo_and_unknown_activity_leave_manual_choices_consistent(): void
+    {
+        BidPackage::factory()->create();
+        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->call('add', 'F1')->call('add', 'R2')->call('undoAdd')->assertSet('selections', ['F1'])
+            ->set('rangeStart', '2026-11-20')->set('rangeEnd', '2026-11-22')->call('addRange')
+            ->assertSet('daysOff', ['2026-11-20', '2026-11-21', '2026-11-22'])->assertSet('selections', ['F1']);
+    }
+
+    #[DataProvider('bidPackageDateBounds')]
+    public function test_date_ranges_start_at_the_package_month_with_matching_picker_bounds(string $period, string $firstDate, string $lastDate): void
+    {
+        $this->travelTo(new \DateTimeImmutable('2026-10-15T12:00:00+00:00'));
+        BidPackage::factory()->create(['period' => $period]);
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->assertSet('rangeStart', $firstDate)->assertSet('rangeEnd', $firstDate)
+            ->assertSet('daysOff', []);
+
+        $document = new \DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$page->html());
+        $pickers = (new \DOMXPath($document))->query('//input[@type="date"]');
+        $this->assertCount(2, $pickers);
+        foreach ($pickers as $picker) {
+            $this->assertInstanceOf(\DOMElement::class, $picker);
+            $this->assertSame($firstDate, $picker->getAttribute('min'));
+            $this->assertSame($lastDate, $picker->getAttribute('max'));
+        }
+        $this->assertDatabaseCount('bid_workspaces', 0);
+
+        $page->call('addRange')->assertHasNoErrors()->assertSet('daysOff', [$firstDate]);
+        $this->assertSame([$firstDate], BidWorkspace::query()->sole()->preferences['days_off']);
+    }
+
+    /** @return array<string, array{string, string, string}> */
+    public static function bidPackageDateBounds(): array
+    {
+        return [
+            'next month' => ['2026-11', '2026-11-01', '2026-11-30'],
+            'next year' => ['2027-01', '2027-01-01', '2027-01-31'],
+            'february' => ['2027-02', '2027-02-01', '2027-02-28'],
+            'leap february' => ['2028-02', '2028-02-01', '2028-02-29'],
+        ];
+    }
+
+    public function test_switching_bid_packages_resets_date_ranges_to_the_new_package_start(): void
+    {
+        BidPackage::factory()->create(['period' => '2026-11']);
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->set('rangeStart', '2026-11-20')->set('rangeEnd', '2026-11-22');
+        $next = BidPackage::factory()->create(['period' => '2026-12']);
+
+        $page->set('contextPackage', (string) $next->id)->call('changeContext')
+            ->assertSet('rangeStart', '2026-12-01')->assertSet('rangeEnd', '2026-12-01')
+            ->assertSet('daysOff', [])
+            ->assertSeeHtml('min="2026-12-01" max="2026-12-31"');
+    }
+
+    public function test_date_ranges_reject_dates_outside_the_bid_package_without_saving(): void
+    {
+        BidPackage::factory()->create();
+
+        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->set('rangeStart', '2026-11-30')->set('rangeEnd', '2026-12-01')->call('addRange')
+            ->assertHasErrors('daysOff')->assertSet('daysOff', []);
+
+        $this->assertDatabaseCount('bid_workspaces', 0);
+    }
+
+    public function test_fewer_blocks_goal_counts_contiguous_occupied_dates_including_rest(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F3'] = array_replace($payload['lines']['F1'], ['id' => 'F3']);
+        $payload['lines']['F3']['calendar']['2026-11-07'] = ['status' => 'off', 'activity' => 'Off'];
+        $payload['lines']['F1']['calendar']['2026-11-07']['activity'] = 'Layover / rest';
+        $package->update(['payload' => $payload]);
+        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)->set('goals', ['blocks'])
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines, 'id') === ['F1', 'F3'] && $lines[0]['blocks'] === 1 && $lines[1]['blocks'] === 2);
+    }
+
+    public function test_line_cards_show_carry_days_and_inline_trip_previews_with_source_rest(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['pairings'] = [['id' => '749', 'date' => '2026-11-29'], ['id' => '749', 'date' => '2026-11-30']];
+        $payload['lines']['F1']['carry_in'] = null;
+        $payload['trips']['749'] = [
+            'id' => '749', 'start_date' => '2026-11-29', 'end_date' => '2026-12-03',
+            'start_city' => 'MIA', 'end_city' => 'MIA', 'report' => '21:00', 'release' => '13:30',
+            'legs' => [
+                ['date' => '2026-11-29', 'origin' => 'MIA', 'destination' => 'LUX', 'departure' => '23:00', 'arrival' => '07:00', 'deadhead' => false, 'flight' => 'K4 749', 'block' => '8:00', 'rest_after' => '100:00'],
+                ['date' => '2026-12-02', 'origin' => 'LUX', 'destination' => 'ANC', 'departure' => '09:00', 'arrival' => '18:00', 'deadhead' => false, 'block' => '9:00', 'rest_after' => '17:30'],
+                ['date' => '2026-12-03', 'origin' => 'ANC', 'destination' => 'MIA', 'departure' => '11:30', 'arrival' => '13:00', 'deadhead' => true],
+            ],
+        ];
+        $payload['trips']['999'] = array_replace($payload['trips']['749'], ['id' => '999']);
+        $package->update(['payload' => $payload]);
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        $page
+            ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['carry_days'] === 3 && count($lines[0]['month']) === 30 && count($lines[0]['trip_details']) === 1 && $lines[0]['trip_details'][0]['minimum_rest'] === '17:30')
+            ->assertSeeHtml('aria-label="3 calculated occupied days after month-end for F1"')
+            ->assertSee('+3')->assertSee('Trip 749')->assertDontSee('Trip 999')
+            ->assertSee('MIA–LUX–ANC–MIA')->assertSee('LUX, ANC')->assertSee('Minimum source rest')
+            ->assertSeeHtml('aria-label="Leg timeline for trip 749, UTC"')
+            ->assertSee('Leg timeline · UTC')->assertSee('Segment widths are illustrative.')
+            ->assertSeeHtml('role="tablist"')->assertSee('Timeline / Legs')->assertSee('Layovers &amp; Rest', false)->assertSee('Pairing Metadata')
+            ->assertSee('2026-11-30 07:00')->assertSee('2026-11-29 21:00')->assertSee('2026-12-03 13:30')
+            ->assertSee('50h 0m')->assertSee('17h 30m')->assertSee('arrival to next departure')
+            ->assertSee('8:00')->assertSee('100:00')->assertSee('Deadhead')->assertDontSee('Hotel details');
+
+        $this->assertSame(1, substr_count($page->html(), 'K4 749'));
+        $page->assertSeeHtml('aria-label="All linked trips start and end at MIA."')
+            ->assertSeeHtml('aria-label="Includes deadhead legs in the available trip details."')
+            ->assertSeeHtml('aria-label="Trip flag explanations for F1"');
+
+        $document = new \DOMDocument;
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$page->html());
+        $header = (new \DOMXPath($document))->query('//article[.//h3[contains(., "F1")]]/div[1]')->item(0);
+        $this->assertStringContainsString('1 CA 2 FO', $header->textContent);
+        $this->assertStringContainsString('DH', $header->textContent);
+    }
+
+    /** @param array<int, array{0: string, 1: string, 2: bool, 3?: bool}|null> $tripSpecifications
+     * @param  list<string>  $expectedLabels
+     */
+    #[DataProvider('quickFlagSources')]
+    public function test_quick_flags_require_complete_endpoints_but_keep_positive_deadhead_evidence(array $tripSpecifications, array $expectedLabels): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['pairings'] = [];
+        $payload['trips'] = [999 => [
+            'id' => '999', 'start_date' => '2026-11-01', 'end_date' => '2026-11-01',
+            'start_city' => 'MIA', 'end_city' => 'CVG', 'report' => '00:00', 'release' => '03:30',
+            'legs' => [['date' => '2026-11-01', 'origin' => 'MIA', 'destination' => 'CVG', 'departure' => '01:00', 'arrival' => '03:00', 'deadhead' => true]],
+        ]];
+        foreach ($tripSpecifications as $id => $specification) {
+            $pairing = ['id' => (string) $id, 'date' => '2026-11-01'];
+            $payload['lines']['F1']['pairings'][] = $pairing;
+            $payload['lines']['F1']['pairings'][] = $pairing;
+            if ($specification === null) {
+                continue;
+            }
+            [$origin, $destination, $deadhead] = $specification;
+            $via = $origin === 'ANC' ? 'CVG' : 'ANC';
+            $payload['trips'][$id] = [
+                'id' => (string) $id, 'start_date' => '2026-11-01', 'end_date' => '2026-11-01',
+                'start_city' => $origin, 'end_city' => $destination, 'report' => '00:00', 'release' => '06:30',
+                'legs' => ($specification[3] ?? true) ? [
+                    ['date' => '2026-11-01', 'origin' => $origin, 'destination' => $via, 'departure' => '01:00', 'arrival' => '03:00', 'deadhead' => false],
+                    ['date' => '2026-11-01', 'origin' => $via, 'destination' => $destination ?: $origin, 'departure' => '04:00', 'arrival' => '06:00', 'deadhead' => $deadhead],
+                ] : [],
+            ];
+        }
+        $package->update(['payload' => $payload]);
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        $page
+            ->assertViewHas('lines', fn (array $lines): bool => array_column($lines[0]['quick_flags'], 'label') === $expectedLabels);
+
+        $this->assertSame($expectedLabels === [] ? 0 : 1, substr_count($page->html(), 'aria-label="Trip flags for F1"'));
+        $this->assertSame($payload, $package->fresh()->payload);
+    }
+
+    /** @return array<string, array{array<int, array{0: string, 1: string, 2: bool, 3?: bool}|null>, list<string>}> */
+    public static function quickFlagSources(): array
+    {
+        return [
+            'return airport and deadhead' => [[749 => ['MIA', 'MIA', true]], ['MIA', 'DH']],
+            'shared return airport across trips' => [[749 => ['MIA', 'MIA', false], 750 => ['MIA', 'MIA', false]], ['MIA']],
+            'common open route' => [[749 => ['MIA', 'CVG', false]], ['MIA→CVG']],
+            'different return airports' => [[749 => ['MIA', 'MIA', false], 750 => ['ANC', 'ANC', false]], ['Mixed ends']],
+            'partial coverage with a known deadhead' => [[749 => ['MIA', 'MIA', true], 750 => null], ['DH']],
+            'partial coverage without a known deadhead' => [[749 => ['MIA', 'MIA', false], 750 => null], []],
+            'missing endpoint' => [[749 => ['MIA', '', false]], []],
+            'known endpoints without legs' => [[749 => ['MIA', 'MIA', false, false]], ['MIA']],
+            'no linked trips despite an unrelated deadhead' => [[], []],
+        ];
+    }
+
+    public function test_legacy_trip_data_calculates_block_and_overnight_layovers_across_the_year_boundary(): void
+    {
+        $package = BidPackage::factory()->create(['period' => '2026-12']);
+        $payload = $package->payload;
+        $payload['lines']['F1']['pairings'] = [['id' => '749', 'date' => '2026-12-31']];
+        $payload['trips']['749'] = [
+            'id' => '749', 'start_date' => '2026-12-31', 'end_date' => '2027-01-02',
+            'start_city' => 'MIA', 'end_city' => 'NRT', 'report' => '22:30', 'release' => '17:35',
+            'legs' => [
+                ['date' => '2026-12-31', 'origin' => 'MIA', 'destination' => 'CVG', 'departure' => '23:30', 'arrival' => '01:00', 'deadhead' => false],
+                ['date' => '2027-01-02', 'origin' => 'CVG', 'destination' => 'NRT', 'departure' => '05:15', 'arrival' => '17:05', 'deadhead' => false],
+            ],
+        ];
+        $package->update(['payload' => $payload]);
+
+        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->assertViewHas('lines', function (array $lines): bool {
+                $trip = $lines[0]['trip_details'][0];
+
+                return $trip['legs'][0]['block'] === '1:30' && $trip['legs'][1]['block'] === '11:50'
+                    && $trip['legs'][0]['block_basis'] === 'calculated' && $trip['minimum_rest'] === null
+                    && $trip['layovers'] === [['airport' => 'CVG', 'duration' => '28h 15m']];
+            })
+            ->assertSee('11:50')->assertSee('28h 15m')->assertSee('2027-01-01 01:00')
+            ->assertSee('Arrives 2027-01-01')
+            ->assertSee('calculated from scheduled UTC times')->assertSee('Source rest is shown separately.')
+            ->assertDontSee('Block (h:mm): Not present');
+
+        $this->assertSame($payload, $package->fresh()->payload);
+    }
+
+    #[DataProvider('unavailableLayovers')]
+    public function test_inconsistent_connections_do_not_claim_a_layover(string $nextOrigin, string $nextDeparture, string $status, string $message): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['pairings'] = [['id' => '749', 'date' => '2026-11-01']];
+        $payload['trips']['749'] = [
+            'id' => '749', 'start_date' => '2026-11-01', 'end_date' => '2026-11-01',
+            'start_city' => 'MIA', 'end_city' => 'NRT', 'report' => '06:00', 'release' => '23:00',
+            'legs' => [
+                ['date' => '2026-11-01', 'origin' => 'MIA', 'destination' => 'CVG', 'departure' => '07:00', 'arrival' => '10:00', 'deadhead' => false],
+                ['date' => '2026-11-01', 'origin' => $nextOrigin, 'destination' => 'NRT', 'departure' => $nextDeparture, 'arrival' => '22:00', 'deadhead' => false],
+            ],
+        ];
+        $package->update(['payload' => $payload]);
+
+        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['trip_details'][0]['layovers'] === [] && $lines[0]['trip_details'][0]['legs'][0]['connection_status'] === $status && $lines[0]['trip_details'][0]['legs'][0]['layover_highlight'] === null)
+            ->assertSee($message)->assertSee('Connection uncertain')
+            ->assertDontSee('Short layover · under 10h')->assertDontSee('Extended layover · 24h+');
+    }
+
+    /** @return array<string, array{string, string, string, string}> */
+    public static function unavailableLayovers(): array
+    {
+        return [
+            'overlapping UTC times' => ['CVG', '09:59', 'overlap', 'Layover unavailable: consecutive leg times overlap.'],
+            'airport transfer' => ['ORD', '11:00', 'airport_change', 'Layover unavailable: next leg departs from a different airport.'],
+        ];
+    }
+
+    public function test_transport_elapsed_time_is_separate_from_block_and_zero_length_connections_are_preserved(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['pairings'] = [['id' => '749', 'date' => '2026-11-01']];
+        $payload['trips']['749'] = [
+            'id' => '749', 'start_date' => '2026-11-01', 'end_date' => '2026-11-01',
+            'start_city' => 'MIA', 'end_city' => 'CVG', 'report' => '06:00', 'release' => '17:00',
+            'legs' => [
+                ['date' => '2026-11-01', 'origin' => 'MIA', 'destination' => 'YYZ', 'departure' => '07:00', 'arrival' => '10:00', 'deadhead' => true],
+                ['date' => '2026-11-01', 'origin' => 'YYZ', 'destination' => 'YHM', 'departure' => '10:00', 'arrival' => '11:00', 'deadhead' => false, 'flight' => 'GT J1 BUS G'],
+                ['date' => '2026-11-01', 'origin' => 'YHM', 'destination' => 'CVG', 'departure' => '12:00', 'arrival' => '16:00', 'deadhead' => false, 'block' => '3:50'],
+            ],
+        ];
+        $package->update(['payload' => $payload]);
+
+        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->assertViewHas('lines', function (array $lines): bool {
+                $legs = $lines[0]['trip_details'][0]['legs'];
+
+                return $legs[0]['block_basis'] === 'unavailable' && $legs[1]['block_basis'] === 'unavailable'
+                    && $legs[0]['layover_label'] === '0h 0m' && $legs[2]['block'] === '3:50'
+                    && array_column($legs, 'timeline_type') === ['deadhead', 'ground', 'flying']
+                    && $legs[2]['block_basis'] === 'source' && $legs[2]['connection_status'] === null;
+            })
+            ->assertDontSee('Not recorded for this transport leg')->assertSee('3h 0m')->assertSee('0h 0m')->assertSee('3:50')
+            ->assertSee('Ground transfer')->assertSee('Deadhead');
+    }
+
+    #[DataProvider('shortConnectionWindows')]
+    public function test_layover_groups_highlight_only_connections_under_three_hours(string $departure, string $expectedGroup, string $duration): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['pairings'] = [['id' => '749', 'date' => '2026-11-01']];
+        $payload['trips']['749'] = [
+            'id' => '749', 'start_date' => '2026-11-01', 'end_date' => '2026-11-01',
+            'start_city' => 'MIA', 'end_city' => 'NRT', 'report' => '06:00', 'release' => '23:00',
+            'duty_days' => 1, 'crew_label' => '1 CA, 2 FO',
+            'legs' => [
+                ['date' => '2026-11-01', 'origin' => 'MIA', 'destination' => 'CVG', 'departure' => '07:00', 'arrival' => '10:00', 'deadhead' => false, 'rest_after' => '1:00'],
+                ['date' => '2026-11-01', 'origin' => 'CVG', 'destination' => 'NRT', 'departure' => $departure, 'arrival' => '22:00', 'deadhead' => false],
+            ],
+        ];
+        $package->update(['payload' => $payload]);
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->assertViewHas('lines', function (array $lines) use ($expectedGroup, $duration): bool {
+                $groups = $lines[0]['trip_details'][0]['layover_groups'];
+
+                return count($groups[$expectedGroup]) === 1 && $groups[$expectedGroup][0]['duration'] === $duration
+                    && $groups[$expectedGroup][0]['source_rest'] === '1:00'
+                    && $groups[$expectedGroup === 'short' ? 'longer' : 'short'] === [];
+            })
+            ->assertSee($duration)->assertSee('1 CA, 2 FO')->assertSee('UTC interval');
+
+        if ($expectedGroup === 'short') {
+            $page->assertSee('Short connection · under 3h');
+        } else {
+            $page->assertDontSee('Short connection · under 3h');
+        }
+    }
+
+    /** @return array<string, array{string, string, string}> */
+    public static function shortConnectionWindows(): array
+    {
+        return [
+            'one minute below threshold' => ['12:59', 'short', '2h 59m'],
+            'exactly three hours' => ['13:00', 'longer', '3h 0m'],
+        ];
+    }
+
+    #[DataProvider('layoverHighlightBoundaries')]
+    public function test_layover_highlights_use_scheduled_duration_at_exact_thresholds(string $nextDate, string $departure, ?string $highlight): void
+    {
+        $package = BidPackage::factory()->create(['period' => '2026-12']);
+        $payload = $package->payload;
+        $payload['lines']['F1']['pairings'] = [['id' => '749', 'date' => '2026-12-31']];
+        $payload['trips']['749'] = [
+            'id' => '749', 'start_date' => '2026-12-31', 'end_date' => $nextDate,
+            'start_city' => 'MIA', 'end_city' => 'ICN', 'report' => '21:00', 'release' => '23:45',
+            'legs' => [
+                ['date' => '2026-12-31', 'origin' => 'MIA', 'destination' => 'NRT', 'departure' => '22:00', 'arrival' => '23:00', 'deadhead' => false, 'rest_after' => '8:00'],
+                ['date' => $nextDate, 'origin' => 'NRT', 'destination' => 'ICN', 'departure' => $departure, 'arrival' => '23:30', 'deadhead' => false],
+            ],
+        ];
+        $package->update(['payload' => $payload]);
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->assertViewHas('lines', function (array $lines) use ($highlight): bool {
+                $trip = $lines[0]['trip_details'][0];
+                $layover = array_merge($trip['layover_groups']['short'], $trip['layover_groups']['longer'])[0];
+
+                return $trip['legs'][0]['layover_highlight'] === $highlight && $layover['highlight'] === $highlight
+                    && $trip['legs'][1]['layover_highlight'] === null && $trip['minimum_rest'] === '8:00';
+            });
+
+        if ($highlight === 'short') {
+            $page->assertSee('Short layover · under 10h')->assertDontSee('Extended layover · 24h+');
+        } elseif ($highlight === 'extended') {
+            $page->assertSee('Extended layover · 24h+')->assertDontSee('Short layover · under 10h');
+        } else {
+            $page->assertDontSee('Short layover · under 10h')->assertDontSee('Extended layover · 24h+');
+        }
+    }
+
+    /** @return array<string, array{string, string, string|null}> */
+    public static function layoverHighlightBoundaries(): array
+    {
+        return [
+            'zero gap' => ['2026-12-31', '23:00', 'short'],
+            'one minute under ten hours' => ['2027-01-01', '08:59', 'short'],
+            'exactly ten hours' => ['2027-01-01', '09:00', null],
+            'one minute under twenty-four hours' => ['2027-01-01', '22:59', null],
+            'exactly twenty-four hours' => ['2027-01-01', '23:00', 'extended'],
+            'one minute over twenty-four hours' => ['2027-01-01', '23:01', 'extended'],
+        ];
+    }
+
+    public function test_carry_days_count_unique_next_year_dates_without_changing_monthly_days_off(): void
+    {
+        $package = BidPackage::factory()->create(['period' => '2026-12']);
+        $payload = $package->payload;
+        $calendar = [];
+        for ($day = 1; $day <= 31; $day++) {
+            $calendar[sprintf('2026-12-%02d', $day)] = ['status' => 'off', 'activity' => 'Off'];
+        }
+        $payload['lines']['F1']['calendar'] = $calendar;
+        $payload['lines']['F1']['carry_in'] = null;
+        $payload['lines']['F1']['pairings'] = [['id' => '749', 'date' => '2026-12-30'], ['id' => '750', 'date' => '2026-12-31']];
+        foreach (['749' => '2027-01-02', '750' => '2027-01-03'] as $id => $end) {
+            $payload['trips'][$id] = ['id' => (string) $id, 'start_date' => '2026-12-30', 'end_date' => $end, 'start_city' => 'MIA', 'end_city' => 'LUX', 'report' => null, 'release' => '12:00', 'legs' => []];
+        }
+        $package->update(['payload' => $payload]);
+
+        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['carry_days'] === 3 && $lines[0]['days_off'] === 31)
+            ->assertDontSee('A leg timeline is unavailable because no dated legs were imported.');
+    }
+
+    public function test_published_carry_count_takes_precedence_over_calculated_days_and_preserves_zero(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['pairings'] = [['id' => '749', 'date' => '2026-11-29']];
+        $payload['lines']['F1']['carry_in'] = 2;
+        $payload['trips']['749'] = [
+            'id' => '749', 'start_date' => '2026-11-29', 'end_date' => '2026-12-03',
+            'start_city' => 'MIA', 'end_city' => 'MIA', 'report' => null, 'release' => '13:30', 'legs' => [],
+        ];
+        $package->update(['payload' => $payload]);
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        $page
+            ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['carry_days'] === 2 && $lines[0]['carry_basis'] === 'Published carry count')
+            ->assertSeeHtml('aria-label="2 published carry days for F1"')
+            ->assertSee('Published carry count');
+
+        $payload['lines']['F1']['carry_in'] = 0;
+        $package->update(['payload' => $payload]);
+        $page->call('$refresh')
+            ->assertViewHas('lines', fn (array $lines): bool => $lines[0]['carry_days'] === 0 && $lines[0]['carry_basis'] === 'Published carry count')
+            ->assertDontSeeHtml('aria-label="3 calculated occupied days after month-end for F1"')
+            ->assertSee('Published carry count');
+    }
+
+    /** @param array<string, int|null> $creditFields */
+    #[DataProvider('carryCreditPayloads')]
+    public function test_saved_packages_present_carry_credit_without_rewriting_the_payload(array $creditFields, ?int $expectedSeconds, string $expectedLabel): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines'] = ['F1' => array_replace($payload['lines']['F1'], $creditFields)];
+        $package->update(['payload' => $payload]);
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class);
+        $page
+            ->assertViewHas('lines', function (array $lines) use ($expectedSeconds, $expectedLabel): bool {
+                $this->assertSame($expectedSeconds, $lines[0]['carry_credit_seconds']);
+                $this->assertSame($expectedLabel, $lines[0]['carry_credit_label']);
+                $this->assertArrayNotHasKey('pch_seconds', $lines[0]);
+                $this->assertArrayNotHasKey('pch_label', $lines[0]);
+
+                return true;
+            })
+            ->assertDontSee('PCH · carry-in credit')->assertDontSee('PCH counts legs');
+
+        $this->assertSame($expectedSeconds !== null, str_contains($page->html(), 'Carry credit subtotal · before premium'));
+        $this->assertSame($expectedSeconds !== null, str_contains($page->html(), 'This subtotal is not total contractual Pay Credit Hours (PCH)'));
+        $this->assertSame($payload, $package->fresh()->payload);
+    }
+
+    /** @return array<string, array{array<string, int|null>, int|null, string}> */
+    public static function carryCreditPayloads(): array
+    {
+        return [
+            'legacy subtotal with seconds' => [['pch_seconds' => 90], 90, '0:01:30'],
+            'legacy zero' => [['pch_seconds' => 0], 0, '0:00'],
+            'missing subtotal' => [[], null, 'Not available'],
+            'current subtotal overrides legacy' => [['carry_credit_seconds' => 120, 'pch_seconds' => 90], 120, '0:02'],
+            'current zero overrides legacy' => [['carry_credit_seconds' => 0, 'pch_seconds' => 90], 0, '0:00'],
+            'current unknown overrides legacy' => [['carry_credit_seconds' => null, 'pch_seconds' => 90], null, 'Not available'],
+        ];
+    }
+
+    public function test_missing_metrics_are_omitted_and_known_zero_values_remain_visible(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines'] = ['F1' => array_replace($payload['lines']['F1'], [
+            'credit' => null, 'block' => null, 'duty_days' => null, 'start_city' => null, 'crew' => null,
+            'pairings' => [['id' => '749', 'date' => '2026-11-01']],
+        ])];
+        $payload['lines']['F1']['calendar']['2026-11-01'] = ['status' => 'unknown', 'activity' => 'Unknown'];
+        $payload['trips']['749'] = [
+            'id' => '749', 'start_date' => '2026-11-01', 'end_date' => '2026-11-01',
+            'start_city' => 'YYZ', 'end_city' => 'YHM', 'report' => null, 'release' => '11:00',
+            'legs' => [['date' => '2026-11-01', 'origin' => 'YYZ', 'destination' => 'YHM', 'departure' => '10:00', 'arrival' => '11:00', 'deadhead' => false, 'flight' => 'GT BUS']],
+        ];
+        $package->update(['payload' => $payload]);
+
+        $page = Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->set('goals', ['credit', 'days_off', 'blocks'])
+            ->call('add', 'F1')->set('showList', true)
+            ->assertSee('Dates incomplete; conflicts unknown')->assertSee('1h 0m')->assertSee('Release · UTC')
+            ->assertDontSee('Not available')->assertDontSee('Not recorded')->assertDontSee('Not present')
+            ->assertDontSee('Min rest')->assertDontSee('Hotel details')->assertDontSee('Block · h:mm')
+            ->assertDontSee('Report · UTC')->assertDontSee('Duty days (source)')->assertDontSee('Crew complement');
+
+        $payload['lines']['F1'] = array_replace($payload['lines']['F1'], ['credit' => 0, 'block' => 0, 'duty_days' => 0]);
+        foreach ($payload['lines']['F1']['calendar'] as &$entry) {
+            $entry = ['status' => 'occupied', 'activity' => 'Trip 749'];
+        }
+        unset($entry);
+        $payload['trips']['749']['report'] = '00:00';
+        $payload['trips']['749']['duty_days'] = 0;
+        $payload['trips']['749']['block_minutes'] = 0;
+        $payload['trips']['749']['credit_minutes'] = 0;
+        $payload['trips']['749']['legs'][0]['rest_after'] = '0:00';
+        $package->update(['payload' => $payload]);
+
+        $page->call('$refresh')->assertViewHas('lines', fn (array $lines): bool => $lines[0]['credit_label'] === '0:00' && $lines[0]['block_label'] === '0:00' && $lines[0]['days_off'] === 0)
+            ->assertSee('Block · h:mm')->assertSee('Min rest')->assertSee('0:00')->assertSee('Duty days (source)')->assertSee('Report · UTC');
+    }
+
+    public function test_missing_trip_details_preserve_trip_identifiers_and_carry_count_without_placeholders(): void
+    {
+        $package = BidPackage::factory()->create();
+        $payload = $package->payload;
+        $payload['lines']['F1']['pairings'] = [['id' => '749', 'date' => '2026-11-29']];
+        $payload['lines']['F1']['carry_in'] = 2;
+        $package->update(['payload' => $payload]);
+
+        Livewire::actingAs(User::factory()->admin()->create())->test(CrewBids::class)
+            ->assertSee('+2')->assertSee('Trip 749')->assertDontSee('Trip details not available')
+            ->assertDontSee('Trips file not imported or this trip was not found in the imported file.');
+
+        $payload['lines']['F1']['carry_in'] = null;
+        $package->update(['payload' => $payload]);
+        Livewire::test(CrewBids::class)->assertViewHas('lines', fn (array $lines): bool => $lines[0]['carry_days'] === null)
+            ->assertDontSee('+0')->assertDontSee('+2');
+
+        $payload['trips']['749'] = [
+            'id' => '749', 'start_date' => '2026-11-29', 'end_date' => null,
+            'start_city' => 'MIA', 'end_city' => 'MIA', 'report' => null, 'release' => null, 'legs' => [],
+        ];
+        $package->update(['payload' => $payload]);
+        Livewire::test(CrewBids::class)->assertViewHas('lines', fn (array $lines): bool => $lines[0]['carry_days'] === null)
+            ->assertDontSee('Calculated occupied days after month-end');
+    }
+}

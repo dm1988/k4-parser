@@ -3,6 +3,7 @@
 namespace App\Services\Schedule\Extractor;
 
 use Smalot\PdfParser\Parser;
+use Symfony\Component\Process\Process;
 
 class PdfTextExtractor
 {
@@ -31,5 +32,14 @@ class PdfTextExtractor
                 'page_count' => count($pdf->getPages()),
             ],
         ];
+    }
+
+    public function extractLayout(string $path): string
+    {
+        $process = new Process(['pdftotext', '-layout', '-enc', 'UTF-8', $path, '-']);
+        $process->setTimeout(30);
+        $process->mustRun();
+
+        return str_replace("\x00", '', $process->getOutput());
     }
 }

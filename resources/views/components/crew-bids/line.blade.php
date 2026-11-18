@@ -1,0 +1,131 @@
+@props(['line', 'prediction' => null])
+<article x-data="bidLineCard" @click="toggleFromCard($event)" {{ $attributes->class([
+    'cc-bid-line group/bid-line cursor-pointer rounded-xl border border-l-4 border-slate-200 bg-white p-3 shadow-[0_1px_3px_0_rgb(15_23_42/0.08),0_1px_2px_-1px_rgb(15_23_42/0.06)] transition-[border-color,box-shadow,translate,opacity] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] hover:shadow-[0_8px_20px_-6px_rgb(15_23_42/0.18),0_2px_6px_-2px_rgb(15_23_42/0.10)] motion-safe:hover:-translate-y-0.5 motion-reduce:transition-none dark:border-slate-700 dark:bg-slate-900 dark:shadow-[0_1px_3px_rgb(0_0_0/0.24),0_1px_2px_rgb(0_0_0/0.16)] dark:hover:shadow-[0_8px_20px_-6px_rgb(0_0_0/0.5),0_2px_6px_-2px_rgb(0_0_0/0.3)]',
+    'has-[[data-bid-expandable][open]]:border-l-[#1B365D] dark:has-[[data-bid-expandable][open]]:border-l-blue-300' => ! in_array($prediction['status'] ?? null, ['available', 'likely', 'unavailable'], true),
+    'border-l-emerald-500 dark:border-l-emerald-500' => ($prediction['status'] ?? null) === 'available' && ! ($prediction['remaining'] === 1 && $prediction['capacity'] > 1),
+    'border-l-amber-500 dark:border-l-amber-500' => ($prediction['status'] ?? null) === 'likely' || (($prediction['status'] ?? null) === 'available' && $prediction['remaining'] === 1 && $prediction['capacity'] > 1),
+    'border-l-slate-600 opacity-60 hover:opacity-100 focus-within:opacity-100 dark:border-l-slate-600' => ($prediction['status'] ?? null) === 'unavailable',
+]) }}>
+    <div class="relative -mx-3 -mt-3 grid min-h-11 grid-cols-[minmax(80px,auto)_minmax(0,1fr)_auto] items-center gap-2 rounded-t-xl border-b border-slate-200 bg-inherit p-3 dark:border-slate-700 sm:gap-3 group-has-[[data-bid-expandable][open]]/bid-line:sticky group-has-[[data-bid-expandable][open]]/bid-line:top-[var(--crew-bids-header-height,0px)] group-has-[[data-bid-expandable][open]]/bid-line:z-20 group-has-[[data-bid-expandable][open]]/bid-line:shadow-sm">
+        <div>
+            <h3 class="flex items-center gap-1.5 font-mono text-base font-bold {{ $line->headingClasses }}">
+                {{ $line->id }}<span class="sr-only"> · {{ $line->typeLabel }} line</span>
+                @if ($prediction !== null)
+                    <span role="img" aria-label="{{ $prediction['label'] }}{{ $prediction['remaining'] !== null ? ' · '.$prediction['remaining'].'/'.$prediction['capacity'].' positions remain after senior projections' : '' }}" title="{{ $prediction['label'] }}{{ $prediction['remaining'] !== null ? ' · '.$prediction['remaining'].'/'.$prediction['capacity'].' positions remain after senior projections' : '' }}">
+                        @if ($prediction['status'] === 'likely')
+                            <x-heroicon-o-star class="h-4 w-4 text-amber-700 dark:text-amber-300" aria-hidden="true" />
+                        @elseif ($prediction['status'] === 'available' && $prediction['remaining'] === 1 && $prediction['capacity'] > 1)
+                            <x-heroicon-o-exclamation-circle class="h-4 w-4 text-amber-700 dark:text-amber-300" aria-hidden="true" />
+                        @elseif ($prediction['status'] === 'available')
+                            <x-heroicon-o-check-circle class="h-4 w-4 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />
+                        @elseif ($prediction['status'] === 'unavailable')
+                            <x-heroicon-o-no-symbol class="h-4 w-4 text-slate-600 dark:text-slate-400" aria-hidden="true" />
+                        @else
+                            <x-heroicon-o-question-mark-circle class="h-4 w-4 text-slate-500 dark:text-slate-400" aria-hidden="true" />
+                        @endif
+                    </span>
+                @endif
+            </h3>
+            @if ($line->crew !== null)<span class="block whitespace-nowrap font-mono text-[10px] leading-4 text-slate-600 dark:text-slate-300" aria-label="Crew complement: {{ $line->crew }}">{{ $line->crew }}</span>@endif
+            @if ($line->quickFlags !== [])
+                <div role="group" class="flex items-center gap-0.5" aria-label="Trip flags for {{ $line->id }}">
+                    @foreach ($line->quickFlags as $flag)
+                        <span role="img" aria-label="{{ $flag['description'] }}" title="{{ $flag['description'] }}" class="inline-flex h-4 items-center gap-1 rounded px-0.5 text-[9px] leading-none {{ $flag['classes'] }}">
+                            <x-dynamic-component :component="$flag['icon']" class="h-3 w-3 shrink-0" aria-hidden="true" />
+                            <span @class(['hidden sm:inline' => ! $flag['showLabelOnMobile']]) aria-hidden="true">{{ $flag['label'] }}</span>
+                        </span>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+        <dl class="flex min-w-0 flex-wrap items-center justify-end gap-2 text-[10px] leading-4 sm:justify-start sm:gap-6">
+            @foreach ($line->summaryMetrics as $metric)
+                <div class="{{ $metric['containerClasses'] }}"><dt class="text-slate-500 dark:text-slate-400 {{ $metric['labelClasses'] }}">{{ $metric['label'] }}</dt><dd class="{{ $metric['valueClasses'] }}" @if ($metric['title'] !== null) title="{{ $metric['title'] }}" @endif>{{ $metric['value'] }}</dd></div>
+            @endforeach
+        </dl>
+        <div class="flex flex-col items-end">
+            @if ($line->rank !== null)
+                <button type="button" @click="openList($event)" aria-label="Selected #{{ $line->rank }}; open my bid list" class="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-amber-500"><x-heroicon-o-check class="h-4 w-4 shrink-0" aria-hidden="true" /><span><span class="hidden sm:inline">Selected </span>#{{ $line->rank }}</span></button>
+            @else
+                <button type="button" x-data="bidAction" @click="run(() => $wire.add('{{ $line->id }}'))" :disabled="pending" :aria-busy="pending" wire:loading.attr="disabled" wire:target="add,remove,move,addMatching,clearList,undoAdd,changeContext,confirmRevision" aria-label="Add {{ $line->id }} to my bid list" class="inline-flex min-h-11 items-center gap-1 rounded-lg bg-[#1B365D] px-3 text-xs font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50"><x-heroicon-o-plus x-show="! pending" class="h-4 w-4 shrink-0" aria-hidden="true" /><x-heroicon-o-arrow-path x-show="pending" x-cloak class="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" /><span x-text="pending ? 'Adding…' : 'Add'" role="status">Add</span></button>
+            @endif
+            @if ($line->submittedRank !== null)<span class="whitespace-nowrap px-2 text-[10px] font-semibold leading-4 text-[#1B365D] dark:text-amber-200">Submitted #{{ $line->submittedRank }}</span>@endif
+        </div>
+    </div>
+    @if ($line->warnings !== [])<p class="mt-3 truncate text-xs leading-4 font-medium text-amber-800 dark:text-amber-300">{{ $line->warningSummary }}</p>@endif
+    <div x-id="['date-help']" class="space-y-1.5 py-3">
+    <div class="flex items-stretch gap-1">
+    <button type="button" x-ref="calendar" class="grid min-h-8 min-w-0 flex-1 grid-cols-8 gap-1 rounded-md focus-visible:ring-2 focus-visible:ring-amber-500 sm:grid-cols-[repeat(16,minmax(0,1fr))] lg:grid-cols-[repeat(var(--bid-calendar-days),minmax(0,1fr))] lg:gap-px" style="--bid-calendar-days: {{ count($line->calendarDays) }}" aria-label="Inspect UTC dates for {{ $line->id }}" :aria-describedby="$id('date-help')" @click="inspectDate($event)" @keydown="handleDateKey($event)">
+        @foreach ($line->calendarDays as $day)
+            <span data-date="{{ $day['date'] }}" data-date-detail="{{ $day['description'] }}" title="{{ $day['description'] }}" :class="inspectedDate === $el.dataset.date ? 'ring-2 ring-inset ring-[#C5A059]' : ''" class="flex min-h-8 min-w-0 items-center justify-center rounded-sm font-mono text-[11px] lg:min-h-0 lg:text-[9px] {{ $day['classes'] }}">{{ $day['label'] }}</span>
+        @endforeach
+    </button>
+    @if ($line->carryDays > 0)
+        <span class="flex min-h-8 shrink-0 self-end items-center justify-center rounded-md border border-[#C5A059] bg-amber-50 px-2 font-mono text-xs font-semibold text-[#1B365D] dark:bg-amber-950 dark:text-amber-200 lg:self-stretch" aria-label="{{ $line->carryDays }} {{ $line->carryBadgeDescription }} for {{ $line->id }}">+{{ $line->carryDays }}</span>
+    @endif
+    </div>
+    <p :id="$id('date-help')" class="sr-only">Select a day for its UTC activity. Use Left and Right arrows to move between days, Home and End to jump, and Escape to clear.</p>
+    <div x-show="inspectedDate" x-cloak class="flex min-h-6 items-start justify-between gap-2 text-xs text-slate-600 dark:text-slate-300">
+        <p role="status" aria-atomic="true" class="min-w-0 break-words" x-text="inspected"></p>
+        <button type="button" x-show="inspectedDate" x-cloak @click="clearDate()" aria-label="Clear inspected date for {{ $line->id }}" class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-amber-500 dark:hover:bg-slate-800"><x-heroicon-o-x-mark class="h-3.5 w-3.5" aria-hidden="true" /></button>
+    </div>
+    </div>
+    <div class="flex items-start gap-3 border-t border-dotted border-slate-200 pt-3 text-xs has-[>details[open]]:grid has-[>details[open]]:grid-cols-1 dark:border-slate-700">
+    @if ($line->trips !== [])
+        <details data-bid-expandable x-ref="primaryDetails" class="min-w-0">
+            <summary class="min-h-7 cursor-pointer truncate rounded-md py-1.5 text-left font-mono font-semibold text-[#1B365D] focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-blue-200"><span class="inline-flex max-w-full items-center gap-1 align-top"><x-heroicon-o-paper-airplane class="h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span class="truncate">{{ $line->tripSummaryLabel }}</span></span></summary>
+            <div class="mt-2 space-y-2" aria-label="Trips for {{ $line->id }}">
+            @foreach ($line->trips as $trip)
+                <details @if ($line->singleTrip) open @endif class="rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700">
+                    <summary class="min-h-11 cursor-pointer rounded-md text-xs focus-visible:ring-2 focus-visible:ring-amber-500">
+                        <span class="inline-block rounded bg-[#1B365D]/10 px-2 py-1 font-mono font-semibold text-[#1B365D] dark:bg-blue-300/10 dark:text-blue-200">Trip {{ $trip['id'] }}</span>
+                        @if ($trip['available'])
+                            <span class="ms-2 font-mono">{{ $trip['start_city'] }} → {{ $trip['end_city'] }}</span>
+                            @if ($trip['layovers'] !== [])<span class="ms-2">Layovers: <span class="font-mono">{{ $trip['layover_label'] }}</span></span>@endif
+                            @if ($trip['minimum_rest'] !== null)<span class="ms-2">Min rest <span class="font-mono">{{ $trip['minimum_rest'] }}</span> (h:mm)</span>@endif
+                        @endif
+                    </summary>
+                    @if ($trip['available'])<x-crew-bids.trip-details :trip="$trip" />@endif
+                </details>
+            @endforeach
+            </div>
+        </details>
+    @endif
+    <details data-bid-expandable @if ($line->trips === []) x-ref="primaryDetails" @endif class="ms-auto min-w-0 open:ms-0">
+        <summary class="min-h-7 cursor-pointer whitespace-nowrap rounded-md py-1.5 text-right font-medium underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-amber-500"><span class="inline-flex items-center gap-1 align-top"><x-heroicon-o-document-text class="h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span>Details</span></span></summary>
+        @foreach ($line->warnings as $warning)<p class="mt-2 text-sm font-medium text-amber-800 dark:text-amber-300">{{ $warning }}</p>@endforeach
+        @if ($line->quickFlags !== [])
+            <ul class="mt-2 space-y-1 text-xs" aria-label="Trip flag explanations for {{ $line->id }}">
+                @foreach ($line->quickFlags as $flag)<li>{{ $flag['description'] }}</li>@endforeach
+            </ul>
+        @endif
+        <dl class="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+            @foreach ($line->detailMetrics as $metric)
+                <div><dt class="text-slate-500 dark:text-slate-400">{{ $metric['label'] }}</dt><dd class="{{ $metric['valueClasses'] }}">{{ $metric['value'] }}</dd></div>
+            @endforeach
+        </dl>
+        @if ($line->creditNotes !== [])
+            <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                @foreach ($line->creditNotes as $note){{ $note }} @endforeach
+            </p>
+        @endif
+        <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">Days off and work blocks use UTC occupancy, including trip layovers. Duty days are the separate source count.</p>
+        @if ($line->payEstimate !== null)
+            <x-crew-bids.pay-breakdown :estimate="$line->payEstimate" :line-id="$line->id" />
+        @endif
+    </details>
+    @if ($line->matchDetails !== [] || $line->filterDetails !== [])
+        <details data-bid-expandable class="min-w-0">
+            <summary aria-label="Why this matched" title="Why this matched" class="ms-auto flex h-7 w-7 cursor-pointer list-none items-center justify-center rounded-md p-1 text-slate-600 focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-slate-300 [&::-webkit-details-marker]:hidden"><x-heroicon-o-question-mark-circle class="h-5 w-5 shrink-0" aria-hidden="true" /><span class="sr-only">Why this matched</span></summary>
+            <div class="mt-2 rounded-lg border border-slate-200 p-3 text-xs dark:border-slate-700">
+                @if ($line->matchDetails !== [])
+                    <p>Priorities in order; each lower goal breaks ties only.</p>
+                    <ol class="mt-2 list-inside list-decimal space-y-1">@foreach ($line->matchDetails as $detail)<li>{{ $detail }}</li>@endforeach</ol>
+                @endif
+                @foreach ($line->filterDetails as $detail)<p class="mt-2">{{ $detail }}</p>@endforeach
+                <p class="mt-2 text-slate-500 dark:text-slate-400">Browsing sort can change display order. Your bid order stays manual.</p>
+            </div>
+        </details>
+    @endif
+    </div>
+</article>

@@ -90,6 +90,30 @@
 }
 
 @layer components {
+	.cc-bid-line {
+		interpolate-size: allow-keywords;
+	}
+
+	@supports (interpolate-size: allow-keywords) and selector(details::details-content) {
+		.cc-bid-line details::details-content {
+			height: 0;
+			overflow: clip;
+			transition:
+				height 240ms cubic-bezier(0.22, 1, 0.36, 1),
+				content-visibility 240ms allow-discrete;
+		}
+
+		.cc-bid-line details[open]::details-content {
+			height: auto;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.cc-bid-line details::details-content {
+			transition: none;
+		}
+	}
+
 	.cc-welcome :is(a, select):focus-visible {
 		@apply outline outline-2 outline-offset-4 outline-[#1B365D] dark:outline-[#C5A059];
 	}

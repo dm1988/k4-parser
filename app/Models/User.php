@@ -18,8 +18,8 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 
 /** @property Carbon|null $email_verification_otp_expires_at */
-#[Fillable(['name', 'email', 'airline_iata_code', 'airline_icao_code', 'flight_tracker_preference', 'email_verified_at', 'password', 'remember_token', 'role', 'is_active', 'has_bought_coffee', 'last_admin_login_at', 'stripe_id', 'pm_type', 'pm_last_four', 'trial_ends_at'])]
-#[Hidden(['password', 'remember_token', 'email_verification_otp_hash'])]
+#[Fillable(['name', 'email', 'airline_iata_code', 'airline_icao_code', 'flight_tracker_preference', 'crew_bid_seat_preference', 'crew_bids_access', 'crew_pay_settings', 'email_verified_at', 'password', 'remember_token', 'role', 'is_active', 'has_bought_coffee', 'last_admin_login_at', 'stripe_id', 'pm_type', 'pm_last_four', 'trial_ends_at'])]
+#[Hidden(['password', 'remember_token', 'email_verification_otp_hash', 'crew_pay_settings', 'crew_bid_employee_number', 'crew_bid_credential_epoch'])]
 class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
@@ -31,17 +31,38 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         'airline_iata_code' => null,
         'airline_icao_code' => null,
         'flight_tracker_preference' => FlightTracker::FlightAware->value,
+        'crew_bid_seat_preference' => 'FO',
+        'crew_bid_employee_number' => null,
+        'crew_bid_employee_verified_at' => null,
+        'crew_bid_credential_epoch' => '',
         'has_bought_coffee' => false,
     ];
 
+    /**
+     * @return array{
+     *     email_verified_at: 'datetime',
+     *     email_verification_otp_expires_at: 'datetime',
+     *     is_active: 'boolean',
+     *     crew_bids_access: 'boolean',
+     *     has_bought_coffee: 'boolean',
+     *     password: 'hashed',
+     *     crew_pay_settings: 'encrypted:array',
+     *     crew_bid_employee_number: 'encrypted',
+     *     crew_bid_employee_verified_at: 'immutable_datetime'
+     * }
+     */
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'email_verification_otp_expires_at' => 'datetime',
             'is_active' => 'boolean',
+            'crew_bids_access' => 'boolean',
             'has_bought_coffee' => 'boolean',
             'password' => 'hashed',
+            'crew_pay_settings' => 'encrypted:array',
+            'crew_bid_employee_number' => 'encrypted',
+            'crew_bid_employee_verified_at' => 'immutable_datetime',
         ];
     }
 
@@ -94,6 +115,14 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
     public function flightDelays(): HasMany
     {
         return $this->hasMany(FlightDelay::class);
+    }
+
+    public function canUseCrewBids(): bool
+    {
+        return $this->is_active
+            && $this->hasVerifiedEmail()
+            && (bool) config('features.crew_bids.enabled', true)
+            && ($this->crew_bids_access || $this->isAdmin());
     }
 
     public function canUseFlightRelease(): bool

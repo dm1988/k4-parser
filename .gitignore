@@ -48,5 +48,6 @@ storage/framework/views/*
 
 testing
 testing_test_*
+testing-journal
 
 .dockerignore

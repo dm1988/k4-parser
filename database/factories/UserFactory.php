@@ -33,6 +33,7 @@ class UserFactory extends Factory
             'is_active' => true,
             'has_bought_coffee' => false,
             'role' => 'user',
+            'crew_bids_access' => false,
         ];
     }
 
@@ -66,10 +67,24 @@ class UserFactory extends Factory
         ]);
     }
 
+    public function crewBidsAccess(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'crew_bids_access' => true,
+        ]);
+    }
+
     public function boughtCoffee(): static
     {
         return $this->state(fn (array $attributes) => [
             'has_bought_coffee' => true,
+        ]);
+    }
+
+    public function withCrewPaySettings(string $longevityDate, bool $checkAirman = false): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'crew_pay_settings' => ['longevity_date' => $longevityDate, 'check_airman' => $checkAirman],
         ]);
     }
 }

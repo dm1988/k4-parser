@@ -23,9 +23,9 @@ class IcsGenerator
     public function serialize(array $events, array $trip = []): string
     {
         $tripNumber = $trip['trip_number'] ?? null;
-        $calendarName = filled($tripNumber) ? 'JCA Parsed Trip '.$tripNumber : null;
+        $calendarName = $trip['calendar_name'] ?? (filled($tripNumber) ? 'JCA Parsed Trip '.$tripNumber : null);
         $calendar = Calendar::create($calendarName)
-            ->description('Calendar export from Crew Compass JCA parser')
+            ->description($trip['calendar_description'] ?? 'Calendar export from Crew Compass JCA parser')
             ->productIdentifier('-//Crew Compass//Roster Extractor//EN')
             ->withoutAutoTimezoneComponents();
 
@@ -42,12 +42,14 @@ class IcsGenerator
             $start = Carbon::parse($event['start'])->setTimezone('UTC');
             $end = Carbon::parse($event['end'])->setTimezone('UTC');
 
-            $event['metadata'][MetadataKey::UtcStart->value] = $start->format('m-d H:i').' Z';
-            $event['metadata'][MetadataKey::UtcEnd->value] = $end->format('m-d H:i').' Z';
+            if (($event['metadata']['all_day'] ?? false) !== true) {
+                $event['metadata'][MetadataKey::UtcStart->value] = $start->format('m-d H:i').' Z';
+                $event['metadata'][MetadataKey::UtcEnd->value] = $end->format('m-d H:i').' Z';
+            }
 
             $trackerUrl = $this->flightTrackerUrlGenerator->forEvent($event);
             $description = $this->descriptionFormatter->format($event);
-            $uid = sha1($event['title'].$event['start'].$event['end']);
+            $uid = $event['metadata']['event_uid'] ?? sha1($event['title'].$event['start'].$event['end']);
 
             $calendarEvent = Event::create($event['title'])
                 ->uniqueIdentifier($uid.'@crew-compass')
@@ -55,6 +57,10 @@ class IcsGenerator
                 ->startsAt($start)
                 ->endsAt($end)
                 ->description($description);
+
+            if (($event['metadata']['all_day'] ?? false) === true) {
+                $calendarEvent->fullDay();
+            }
 
             if ($trackerUrl !== null) {
                 $calendarEvent->url($trackerUrl);

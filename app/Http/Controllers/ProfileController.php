@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\FlightTracker;
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\CrewBidCredentialVault;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,6 +22,7 @@ class ProfileController extends Controller
             'user' => $request->user(),
             'flightTrackers' => FlightTracker::cases(),
             'selectedFlightTracker' => FlightTracker::fromValue($request->user()?->flight_tracker_preference)->value,
+            'crewBidConnectionAvailable' => (bool) config('crew_bids.vault.enabled') || CrewBidCredentialVault::query()->where('user_id', $request->user()?->id)->exists(),
         ]);
     }
 
@@ -29,7 +31,11 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $attributes = $request->validated();
+        if (isset($attributes['crew_pay_settings'])) {
+            $attributes['crew_pay_settings']['check_airman'] = (bool) $attributes['crew_pay_settings']['check_airman'];
+        }
+        $request->user()->fill($attributes);
 
         if ($request->user()->isDirty('email')) {
             $request->user()->email_verified_at = null;

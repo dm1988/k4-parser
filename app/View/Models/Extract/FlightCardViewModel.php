@@ -14,9 +14,10 @@ readonly class FlightCardViewModel
         public Flight $flight,
         public ?string $trackerUrl = null,
         public string $trackerLabel = 'FlightAware',
+        public bool $enableDutyDownload = true,
     ) {}
 
-    public static function fromFlight(Flight $flight): self
+    public static function fromFlight(Flight $flight, bool $enableDutyDownload = true): self
     {
         $generator = app(FlightTrackerUrlGenerator::class);
 
@@ -24,6 +25,7 @@ readonly class FlightCardViewModel
             $flight,
             $generator->url($flight->tailNumber, $flight->flightNumber),
             $generator->labelFor($flight->tailNumber, $flight->flightNumber),
+            $enableDutyDownload,
         );
     }
 
@@ -115,7 +117,7 @@ readonly class FlightCardViewModel
 
     public function showsDutyDownload(): bool
     {
-        return (auth()->user()?->canExportScheduleExtractorDuty() ?? false)
+        return $this->enableDutyDownload && (auth()->user()?->canExportScheduleExtractorDuty() ?? false)
             && $this->hasDutyCalendarDownload();
     }
 

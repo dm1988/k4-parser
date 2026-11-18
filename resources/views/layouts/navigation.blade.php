@@ -1,4 +1,4 @@
-<nav x-data="{ open: false }" class="border-b border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900">
+<nav x-data="bidPayMenu" class="border-b border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900">
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex min-h-16 justify-between gap-4">
@@ -17,6 +17,9 @@
                             <x-demo-badge data-demo-badge />
                         </span>
                     </x-nav-link>
+                    @endif
+                    @if (Auth::user()?->canUseCrewBids())
+                    <x-nav-link :href="route('crew-bids.index')" :active="request()->routeIs('crew-bids.*')">{{ __('K4 Bids') }}</x-nav-link>
                     @endif
                     @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
                     <x-nav-link :href="route('filament.admin.pages.dashboard')"
@@ -38,8 +41,14 @@
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button
+                            type="button" x-ref="userMenuTrigger" data-pay-menu-trigger
                             class="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-hidden dark:bg-gray-900 dark:text-gray-300 dark:hover:text-white">
-                            <div>{{ Auth::user()->name }}</div>
+                            <span class="flex flex-col gap-1 text-start">
+                                <span>{{ Auth::user()->name }}</span>
+                                @if (Auth::user()->canUseCrewBids())
+                                    <span class="text-xs font-normal text-gray-500 dark:text-gray-400">{{ Auth::user()->crew_bid_seat_preference === 'CA' ? __('Captain') : __('First Officer') }}</span>
+                                @endif
+                            </span>
 
                             <div class="ms-1">
                                 <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg"
@@ -64,6 +73,17 @@
                             {{ __('Profile') }}
                         </x-dropdown-link>
 
+                        @if (Auth::user()?->canUseCrewBids())
+                        <x-dropdown-link :href="route('profile.edit').'#k4-bids-preferences'">
+                            {{ __('Bid preferences') }}
+                        </x-dropdown-link>
+                        <x-dropdown-link :href="route('profile.edit').'#k4-bids-preferences'"
+                            @click="openPayAdjustments($event, $refs.userMenuTrigger)"
+                            class="min-h-11 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-500">
+                            {{ __('Pay adjustments') }}
+                        </x-dropdown-link>
+                        @endif
+
                         <!-- Authentication -->
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
@@ -79,7 +99,7 @@
 
             <!-- Hamburger -->
             <div class="-me-2 flex items-center sm:hidden">
-                <button @click="open = ! open"
+                <button @click="open = ! open" x-ref="mobileMenuTrigger"
                     aria-controls="mobile-navigation"
                     x-bind:aria-expanded="open"
                     class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-hidden dark:hover:bg-gray-800 dark:hover:text-gray-200 dark:focus:bg-gray-800 dark:focus:text-gray-200">
@@ -112,6 +132,9 @@
                 </span>
             </x-responsive-nav-link>
             @endif
+            @if (Auth::user()?->canUseCrewBids())
+            <x-responsive-nav-link :href="route('crew-bids.index')" :active="request()->routeIs('crew-bids.*')">{{ __('K4 Bids') }}</x-responsive-nav-link>
+            @endif
             @if (Auth::user()->canAccessPanel(filament()->getPanel('admin')))
             <x-responsive-nav-link :href="route('filament.admin.pages.dashboard')"
                 :active="request()->routeIs('filament.admin.*')">
@@ -128,6 +151,9 @@
         <div class="border-t border-gray-200 pb-1 pt-4 dark:border-gray-700">
             <div class="px-4">
                 <div class="text-base font-medium text-gray-800 dark:text-gray-100">{{ Auth::user()->name }}</div>
+                @if (Auth::user()->canUseCrewBids())
+                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ Auth::user()->crew_bid_seat_preference === 'CA' ? __('Captain') : __('First Officer') }}</div>
+                @endif
                 <div class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ Auth::user()->email }}</div>
             </div>
 
@@ -139,6 +165,17 @@
                 <x-responsive-nav-link :href="route('profile.edit')">
                     {{ __('Profile') }}
                 </x-responsive-nav-link>
+
+                @if (Auth::user()?->canUseCrewBids())
+                <x-responsive-nav-link :href="route('profile.edit').'#k4-bids-preferences'">
+                    {{ __('Bid preferences') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('profile.edit').'#k4-bids-preferences'"
+                    @click="openPayAdjustments($event, $refs.mobileMenuTrigger)"
+                    class="min-h-11 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-500">
+                    {{ __('Pay adjustments') }}
+                </x-responsive-nav-link>
+                @endif
 
                 <!-- Authentication -->
                 <form method="POST" action="{{ route('logout') }}">

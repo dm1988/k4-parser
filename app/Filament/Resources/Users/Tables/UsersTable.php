@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Tables;
 
+use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -22,6 +23,7 @@ class UsersTable
                 TextColumn::make('email')
                     ->label('Email address')
                     ->searchable(),
+                TextColumn::make('role')->badge()->sortable(),
                 TextColumn::make('email_verified_at')
                     ->dateTime()
                     ->sortable(),
@@ -29,6 +31,12 @@ class UsersTable
                     ->label('Active')
                     ->boolean()
                     ->sortable(),
+                IconColumn::make('crew_bids_access')
+                    ->label('K4 Bids grant')
+                    ->boolean()
+                    ->sortable(),
+                TextColumn::make('crew_bid_employee_number')->label('Employee number')->placeholder('Not linked')->toggleable(),
+                TextColumn::make('crew_bid_employee_verified_at')->label('Employee verified (UTC)')->dateTime(timezone: 'UTC')->placeholder('Not verified')->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('has_bought_coffee')
                     ->label('Bought coffee')
                     ->boolean()
@@ -57,6 +65,7 @@ class UsersTable
             ])
             ->recordActions([
                 EditAction::make(),
+                UserResource::unlinkEmployeeAction(),
                 DeleteAction::make()
                     ->modalHeading('Delete user')
                     ->modalDescription(fn (User $record): string => "Are you sure you want to delete {$record->name} ({$record->email})? This action cannot be undone.")
