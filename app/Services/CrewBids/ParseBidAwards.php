@@ -44,7 +44,7 @@ class ParseBidAwards
             [, , $astro, $crew, $name, $choice] = $values;
             $line = $identity[1];
             $seat = $identity[2];
-            if (! preg_match('/\A[1-9]\d{0,3}\z/', $line) || ! in_array($seat, ['CA', 'FO'], true)
+            if (! preg_match('/\A[1-9]\d{0,3}\z/', $line)
                 || ! preg_match('/\A\d{1,20}\z/', $crew) || ($astro !== '' && ! ctype_digit($astro))
                 || $name === '' || ! ctype_digit($choice) || isset($awards[$crew])) {
                 $this->invalid('An award row is incomplete or has an ambiguous employee or line.');

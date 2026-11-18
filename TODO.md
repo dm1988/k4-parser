@@ -28,6 +28,16 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Integrate crew-bids-vault into crew-bids
+
+Goal: Bring the vault branch and its completed bid-workspace features into crew-bids while preserving the latest mobile calendar changes.
+
+Outcome (2026-11-18): Fetched origin and confirmed both local branches matched their remote tips. Committed the completed mobile-calendar task as 4e72993, then fast-forwarded crew-bids from 1b1441e through all ten vault-branch commits without conflicts. Preserved the original commits and source branch. Removed the redundant award-seat check already guaranteed by the row regex, resolving the known Larastan finding without changing accepted input. The three feature migrations were already applied locally. Left crew-bids checked out; no remote push was performed.
+
+Validation: The focused integration run passed 455 PHP tests (2,798 assertions); three private-package tests were skipped because the samples are unavailable. All 73 affected JavaScript tests passed. Production build, Pint, the single Larastan run (zero errors), migration-status and whitespace checks passed. Confirmed crew-bids-vault is an ancestor of the integrated branch. No full-suite run was performed.
+
+Commit message: `chore: finalize crew bids vault integration`
+
 ## [x] Completed: Make mobile bid-calendar dates readable
 
 Goal: Prevent crowded, overlapping date labels on small-screen line cards.
