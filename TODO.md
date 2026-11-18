@@ -28,6 +28,16 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Move submitted rank below the selected rank
+
+Goal: Place Submitted #7 directly below the right-hand Selected #7 control in the bid-card header.
+
+Outcome (2026-11-17): Moved the submitted-rank label from the line identity column into the right-hand action column, beneath the selection control. Right-aligned the stack and preserved the label's existing light/dark styling and visibility conditions.
+
+Validation: The existing focused submitted-rank rendering test passed (1 test, 9 assertions). Frontend build, Pint, Larastan (zero errors) and whitespace checks passed. Layout-only change; no new tests. Browser appearance was not manually verified.
+
+Commit message: `style: move submitted rank below selected bid rank`
+
 ## Relocate line color text...
 Find a better place for this text: Credit h:mm[:ss] · Block h:mm · UTC · Blue: flying trip (includes layover/rest) · Orange: reserve · Light: off · ?: unknown
 How about in the Package details popout. Add a brief usage guide

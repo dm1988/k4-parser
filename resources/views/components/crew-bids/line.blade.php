@@ -27,7 +27,6 @@
                 @endif
             </h3>
             @if ($line->crew !== null)<span class="block whitespace-nowrap font-mono text-[10px] leading-4 text-slate-600 dark:text-slate-300" aria-label="Crew complement: {{ $line->crew }}">{{ $line->crew }}</span>@endif
-            @if ($line->submittedRank !== null)<span class="block whitespace-nowrap text-[10px] font-semibold leading-4 text-[#1B365D] dark:text-amber-200">Submitted #{{ $line->submittedRank }}</span>@endif
             @if ($line->quickFlags !== [])
                 <div role="group" class="flex items-center gap-0.5" aria-label="Trip flags for {{ $line->id }}">
                     @foreach ($line->quickFlags as $flag)
@@ -44,12 +43,13 @@
                 <div class="{{ $metric['containerClasses'] }}"><dt class="text-slate-500 dark:text-slate-400 {{ $metric['labelClasses'] }}">{{ $metric['label'] }}</dt><dd class="{{ $metric['valueClasses'] }}" @if ($metric['title'] !== null) title="{{ $metric['title'] }}" @endif>{{ $metric['value'] }}</dd></div>
             @endforeach
         </dl>
-        <div>
+        <div class="flex flex-col items-end">
             @if ($line->rank !== null)
                 <button type="button" @click="openList($event)" aria-label="Selected #{{ $line->rank }}; open my bid list" class="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-amber-500"><x-heroicon-o-check class="h-4 w-4 shrink-0" aria-hidden="true" /><span><span class="hidden sm:inline">Selected </span>#{{ $line->rank }}</span></button>
             @else
                 <button type="button" x-data="bidAction" @click="run(() => $wire.add('{{ $line->id }}'))" :disabled="pending" :aria-busy="pending" wire:loading.attr="disabled" wire:target="add,remove,move,addMatching,clearList,undoAdd,changeContext,confirmRevision" aria-label="Add {{ $line->id }} to my bid list" class="inline-flex min-h-11 items-center gap-1 rounded-lg bg-[#1B365D] px-3 text-xs font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50"><x-heroicon-o-plus x-show="! pending" class="h-4 w-4 shrink-0" aria-hidden="true" /><x-heroicon-o-arrow-path x-show="pending" x-cloak class="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" /><span x-text="pending ? 'Adding…' : 'Add'" role="status">Add</span></button>
             @endif
+            @if ($line->submittedRank !== null)<span class="whitespace-nowrap px-2 text-[10px] font-semibold leading-4 text-[#1B365D] dark:text-amber-200">Submitted #{{ $line->submittedRank }}</span>@endif
         </div>
     </div>
     @if ($line->warnings !== [])<p class="mt-3 truncate text-xs leading-4 font-medium text-amber-800 dark:text-amber-300">{{ $line->warningSummary }}</p>@endif
