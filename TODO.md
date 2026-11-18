@@ -28,6 +28,26 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Audit schedule services for bid-awards reuse
+
+Goal: Identify existing schedule services to reuse for the planned personal bid-awards workspace and calendar exports.
+
+Outcome (2026-11-17): Added a concrete reuse audit to the bid-awards section of CREW_BIDS.md and updated its implementation sequence. Selected the existing event DTOs/mappers, PDF extraction boundary, airport/tracker services, ICS generator/formatter and export response service. Identified format-specific ingestion, discarded per-duty clocks, month-clipped browsing calendars, schedule-specific route/cache/presentation coupling, legacy UID/labels and provenance/raw-crew filtering as integration boundaries. Defined one small award-to-schedule adapter and compatible shared-service extensions, retaining existing schedule behavior. No service refactoring or awards implementation was performed.
+
+Validation: Read the relevant implementations and existing export, DTO, duty-date, merge and cache-isolation test contracts; reviewed the documentation diff and whitespace. Documentation-only audit; tests, Pint and Larastan were not run.
+
+Commit message: `docs: audit schedule service reuse for bid awards`
+
+## [x] Completed: Clarify the bid awards plan
+
+Goal: Define the personal awards workspace and resolve the bid-awards requirements in CREW_BIDS.md.
+
+Outcome (2026-11-17): Updated only the bid-awards plan with confirmed same-line CA/FO visibility, Crew ID matching, manual employee-number entry for uploaded awards, explicit dropdown selection, full-month calendar, this awarded line's continuation into the next month, and combined duty/work plus flight ICS exports with per-flight downloads. Recorded the supplied PDF fields, unavailable portal captures, missing successful portal evidence, schedule-linking requirements and focused implementation coverage. Preserved existing document edits and unrelated backlog sections. Application implementation remains pending.
+
+Validation: Inspected both supplied PDFs' first pages with the installed parser through Sail, checked the existing employee-linking and workspace flows, and reviewed the documentation diff and whitespace. Documentation-only change; tests, Pint and Larastan were not needed.
+
+Commit message: `docs: clarify personal bid awards workspace requirements`
+
 ## [x] Completed: Move submitted rank below the selected rank
 
 Goal: Place Submitted #7 directly below the right-hand Selected #7 control in the bid-card header.
