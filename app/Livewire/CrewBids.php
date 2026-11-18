@@ -9,11 +9,14 @@ use App\Actions\CrewBids\SaveBidWorkspace;
 use App\Actions\CrewBids\SaveCrewBidPayProfile;
 use App\DTOs\CrewBidBrowseCriteria;
 use App\Enums\CrewBidSort;
+use App\Livewire\Forms\BidAwardsForm;
+use App\Models\BidAwardReport;
 use App\Models\BidPackage;
 use App\Models\BidWorkspace;
 use App\Models\CrewBidPayProfile;
 use App\Models\CrewBidSnapshot;
 use App\Models\User;
+use App\Services\CrewBids\AwardedBidSchedule;
 use App\Services\CrewBids\BidLineMatcher;
 use App\Services\CrewBids\BrowseBidLines;
 use App\Services\CrewBids\CalculateCrewBidPay;
@@ -74,6 +77,11 @@ class CrewBids extends Component
     public ?string $undoId = null;
 
     public string $contextPackage = '';
+
+    #[Locked]
+    public ?int $awardReportId = null;
+
+    public BidAwardsForm $awardForm;
 
     public string $tab = 'flying';
 
@@ -212,14 +220,30 @@ class CrewBids extends Component
 
     public function changeContext(): void
     {
+        if (preg_match('/\Aawards:([1-9]\d*)\z/', $this->contextPackage, $match)) {
+            $report = BidAwardReport::availableTo($this->user())->findOrFail((int) $match[1]);
+            if ($this->dirty && ! $this->persist()) {
+                $this->contextPackage = $this->awardReportId === null ? (string) $this->packageId : 'awards:'.$this->awardReportId;
+
+                return;
+            }
+            $this->awardReportId = $report->id;
+            $this->showList = false;
+            $this->showPreferences = false;
+            $this->showComparison = false;
+            $this->showPayEditor = false;
+
+            return;
+        }
         $this->validate(['contextPackage' => ['required', 'integer']]);
         $target = BidPackage::query()->whereNotNull('published_at')->findOrFail((int) $this->contextPackage);
         $this->assertPackageAvailable($target);
         if ($this->dirty && ! $this->persist()) {
-            $this->contextPackage = (string) $this->packageId;
+            $this->contextPackage = $this->awardReportId === null ? (string) $this->packageId : 'awards:'.$this->awardReportId;
 
             return;
         }
+        $this->awardReportId = null;
         $prior = BidWorkspace::query()->where('user_id', Auth::id())->where('seat', $this->seat)
             ->whereIn('bid_package_id', BidPackage::query()->where('period', $target->period)->where('fleet', $target->fleet)->whereNotNull('published_at')->select('id'))
             ->latest('updated_at')->first();
@@ -562,6 +586,15 @@ class CrewBids extends Component
         }
     }
 
+    public function identifyAwardEmployee(): void
+    {
+        abort_if($this->awardReportId === null, 404);
+        BidAwardReport::availableTo($this->user())->findOrFail($this->awardReportId);
+        $this->awardForm->validate(['employeeNumber' => ['required', 'string', 'regex:/\A\d{1,20}\z/']]);
+        session()->put('bid_awards_employee.'.$this->user()->id, $this->awardForm->employeeNumber);
+        $this->awardForm->employeeNumber = '';
+    }
+
     public function previewImport(): void
     {
         Gate::authorize('manage-crew-bids');
@@ -727,6 +760,20 @@ class CrewBids extends Component
 
     public function render(CrewBidsPageDataFactory $pageDataFactory, PredictCrewBidLines $predictions): View
     {
+        $awardReports = BidAwardReport::availableTo($this->user())->orderByDesc('period')->orderByDesc('id')
+            ->get(['id', 'period', 'fleet', 'bid_package_id', 'created_at']);
+        if ($this->awardReportId !== null) {
+            $report = BidAwardReport::availableTo($this->user())->findOrFail($this->awardReportId);
+
+            return view('livewire.crew-bid-awards', [
+                'report' => $report->only(['id', 'period', 'fleet', 'created_at']),
+                'awardReports' => $awardReports,
+                'packages' => BidPackage::query()->whereNotNull('published_at')->where(fn ($query) => $query->whereNull('archived_at')
+                    ->orWhereHas('workspaces', fn ($query) => $query->where('user_id', $this->user()->id)))
+                    ->orderByDesc('period')->orderByDesc('id')->get(['id', 'period', 'fleet', 'source_revision', 'archived_at']),
+                'awards' => app(AwardedBidSchedule::class)->forUser($report, $this->user(), true),
+            ])->layout('layouts.app');
+        }
         $data = $pageDataFactory->make(
             package: $this->packageId === null ? null : $this->package(),
             user: $this->user(),
@@ -737,6 +784,7 @@ class CrewBids extends Component
         );
 
         return view('livewire.crew-bids', $data->toViewData() + [
+            'awardReports' => $awardReports,
             'prediction' => $predictions->forUser($data->package, $data->package === null ? null : CrewBidSnapshot::forPackage($data->package, $this->seat), $this->seat, $this->user(), $this->selections),
             'comparison' => $this->showComparison && $data->package !== null ? SubmittedBidComparisonViewModel::make($this->user(), $data->package, $this->seat, $this->selections, $data->submittedOrder, app(StoreSubmittedBidSnapshot::class)) : null,
             'personalRefresh' => $this->showComparison && $data->package !== null ? app(QueuedSubmittedBidRefresh::class)->current($this->user(), $data->package, $this->seat) : null,

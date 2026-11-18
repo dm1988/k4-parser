@@ -134,6 +134,9 @@ class ExportPayload
      */
     private function tripFilenamePrefix(array $trip): string
     {
+        if (is_string($trip['filename_prefix'] ?? null) && preg_match('/\A[a-zA-Z0-9._-]+\z/', $trip['filename_prefix'])) {
+            return $trip['filename_prefix'];
+        }
         $tripNumber = $trip['trip_number'] ?? null;
         $tripSuffix = $tripNumber ? "-{$tripNumber}" : '';
 

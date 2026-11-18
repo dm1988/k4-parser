@@ -28,6 +28,18 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Personal bid awards workspace and Filament management
+
+Goal: Show only the user's awarded line and tied CA/FO crew, with a full-month calendar, next-month transition days and schedule-feature calendar exports.
+
+Outcome (2026-11-17): Added encrypted, immutable award reports and admin upload/removal at Filament → K4 Bids → Awards, with explicit published schedule-revision selection and duplicate-import protection. Awards open explicitly from the package dropdown and replace the bid workspace while preserving private lists/preferences. Missing Crew ID prompts support session-scoped manual identification without changing the verified K4 account. Only same-line crew and schedule events enter the view/download payloads. Reused schedule DTOs, mappers, flight cards, airport/tracker services, ExportPayload, IcsGenerator and IcsDescriptionFormatter; added a typed awards page DTO and Livewire identity form. Full-month calendars include this line's next-month continuation. Combined/per-flight exports retain full UTC spans and stable event IDs; supported reserve dates export as all-day assignments. New bid imports retain exact per-duty UTC boundaries; older packages explain missing coverage. Admin access uses the gear icon, with no visible Manage awards text link. Fixed real-PDF parsing where CA/FO starts one character left of the Class header, keeping Astro ID and Crew ID separate, including blank Astro IDs.
+
+Validation: 76 focused awards, bid-import, ICS/description, flight-card and duty-export tests passed (515 assertions). After the final parser/adapter cleanup, the 19 affected awards tests passed again (117 assertions). Both supplied PDFs parsed in full without importing records: 747, 404 rows; 777, 335 rows. Pint, frontend build and whitespace checks passed. The new local migration was already applied. Larastan ran once at integration, reported six findings in two new services, and those findings were corrected; it was not rerun, following the once-per-task instruction. Browser and calendar-client acceptance remain unverified.
+
+Remaining: The user confirmed that K4 appeared down and no successful award-page capture was available. Direct authenticated retrieval remains in CREW_BIDS.md for source validation; the uploaded-PDF workflow is complete. Existing packages need reviewed source reimports for complete timed duty exports when their payloads lack per-duty clocks.
+
+Commit message: `feat: add personal bid awards and Filament upload management`
+
 ## [x] Completed: Audit schedule services for bid-awards reuse
 
 Goal: Identify existing schedule services to reuse for the planned personal bid-awards workspace and calendar exports.
@@ -58,7 +70,7 @@ Validation: The existing focused submitted-rank rendering test passed (1 test, 9
 
 Commit message: `style: move submitted rank below selected bid rank`
 
-## Relocate line color text...
+## Current focus: Relocate line color text...
 Find a better place for this text: Credit h:mm[:ss] · Block h:mm · UTC · Blue: flying trip (includes layover/rest) · Orange: reserve · Light: off · ?: unknown
 How about in the Package details popout. Add a brief usage guide
 

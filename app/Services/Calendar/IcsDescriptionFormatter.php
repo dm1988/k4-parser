@@ -15,6 +15,7 @@ class IcsDescriptionFormatter
 
     public function format(array $event): string
     {
+        unset($event['metadata']['event_uid']);
         $metadata = $this->normalizeCrewMetadata(
             is_array($event['metadata'] ?? null) ? $event['metadata'] : []
         );

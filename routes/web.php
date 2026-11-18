@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\FlightPlanTask;
+use App\Http\Controllers\BidAwardController;
 use App\Http\Controllers\CrewBidEmployeeController;
 use App\Http\Controllers\CrewBidSubmissionController;
 use App\Http\Controllers\CrewBidSyncController;
@@ -27,6 +28,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('/crew-bids', CrewBids::class)
         ->middleware(['feature:crew_bids', 'can:use-crew-bids'])
         ->name('crew-bids.index');
+    Route::prefix('crew-bids/awards')->name('crew-bids.awards.')
+        ->middleware(['feature:crew_bids', 'can:use-crew-bids', 'throttle:30,1'])->group(function () {
+            Route::get('/{report}/calendar', [BidAwardController::class, 'calendar'])->whereNumber('report')->name('calendar');
+            Route::get('/{report}/events/{eventId}', [BidAwardController::class, 'event'])->whereNumber('report')->whereAlphaNumeric('eventId')->name('event');
+        });
     Route::prefix('crew-bids/employees')->name('crew-bids.employees.')
         ->middleware(['feature:crew_bids', 'can:use-crew-bids', UseSavedCrewBidCredentials::class])->group(function () {
             Route::get('/package/{package}', [CrewBidEmployeeController::class, 'index'])->middleware('throttle:10,1')->whereNumber('package')->name('index');

@@ -10,7 +10,7 @@ use Throwable;
 
 class ParseBidDocuments
 {
-    public const string VERSION = 'crew-bids-parser:v4';
+    public const string VERSION = 'crew-bids-parser:v5';
 
     public function __construct(private ReadBidOverview $overview, private Parser $pdf) {}
 
@@ -273,7 +273,7 @@ class ParseBidDocuments
     /**
      * @param  list<array<int, array{string, int}>>  $capturedLegs
      * @param  list<array<string, mixed>>  $legs
-     * @return list<array{start_date: string, end_date: string, leg_indexes: list<int>}>|null
+     * @return list<array{start_date: string, end_date: string, report_at: string, release_at: string, leg_indexes: list<int>}>|null
      */
     private function duties(string $chunk, array $capturedLegs, array $legs): ?array
     {
@@ -313,7 +313,13 @@ class ParseBidDocuments
             if ($release[1] < $last['arrival']) {
                 $end = $end->addDay();
             }
-            $duties[] = ['start_date' => $start->format('Y-m-d'), 'end_date' => $end->format('Y-m-d'), 'leg_indexes' => $indexes];
+            $reportAt = CarbonImmutable::parse($start->format('Y-m-d').' '.$report[1][0], 'UTC');
+            $releaseAt = CarbonImmutable::parse($end->format('Y-m-d').' '.$release[1], 'UTC');
+            if ($releaseAt <= $reportAt) {
+                return null;
+            }
+            $duties[] = ['start_date' => $start->format('Y-m-d'), 'end_date' => $end->format('Y-m-d'),
+                'report_at' => $reportAt->toIso8601String(), 'release_at' => $releaseAt->toIso8601String(), 'leg_indexes' => $indexes];
             $assigned += count($indexes);
         }
 

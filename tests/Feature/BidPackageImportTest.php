@@ -139,8 +139,8 @@ class BidPackageImportTest extends TestCase
         $this->assertSame(3, $result['payload']['trips'][700]['duty_days']);
         $this->assertSame('1 CA, 2 FO', $result['payload']['trips'][700]['crew_label']);
         $this->assertSame([
-            ['start_date' => '2026-11-01', 'end_date' => '2026-11-02', 'leg_indexes' => [0]],
-            ['start_date' => '2026-11-03', 'end_date' => '2026-11-04', 'leg_indexes' => [1]],
+            ['start_date' => '2026-11-01', 'end_date' => '2026-11-02', 'report_at' => '2026-11-01T23:00:00+00:00', 'release_at' => '2026-11-02T01:30:00+00:00', 'leg_indexes' => [0]],
+            ['start_date' => '2026-11-03', 'end_date' => '2026-11-04', 'report_at' => '2026-11-03T20:00:00+00:00', 'release_at' => '2026-11-04T02:30:00+00:00', 'leg_indexes' => [1]],
         ], $result['payload']['trips'][700]['duties']);
         $this->assertSame('line_source', $result['payload']['lines']['F1']['credit_basis']);
         $this->assertNull($result['payload']['lines']['F1']['carry_premium_seconds']);
