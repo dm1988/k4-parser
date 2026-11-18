@@ -5,11 +5,13 @@ namespace Tests\Feature;
 use App\Exceptions\BidPortalException;
 use App\Services\CrewBids\BidPortalHttpClient;
 use App\Services\CrewBids\SubmitPortalBid;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Events\RequestSending;
 use Illuminate\Http\Client\Events\ResponseReceived;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -21,6 +23,7 @@ class SubmitPortalBidTest extends TestCase
 
     public function test_reviews_fresh_report_then_posts_once_with_fresh_state_exact_rank_order_and_preserved_settings(): void
     {
+        $this->travelTo(CarbonImmutable::parse('2026-11-17T12:00:00Z'));
         Event::fake([RequestSending::class, ResponseReceived::class]);
         $http = $this->portal();
         $service = app(SubmitPortalBid::class);
@@ -36,7 +39,7 @@ class SubmitPortalBidTest extends TestCase
             $called++;
         });
 
-        $this->assertSame(['status' => 'matched'], $result);
+        $this->assertReadback($result, 'matched', [1, 2]);
         $this->assertSame(1, $called);
         $writes = $http->recorded(fn (Request $request): bool => $request->method() === 'POST' && str_contains($request->url(), 'BidSheet.aspx'));
         $this->assertCount(1, $writes);
@@ -63,25 +66,27 @@ class SubmitPortalBidTest extends TestCase
 
     public function test_timeout_after_send_is_unknown_and_reconciliation_never_posts_an_update(): void
     {
+        $this->travelTo(CarbonImmutable::parse('2026-11-17T12:00:00Z'));
         $http = $this->portal(timeout: true);
         $service = app(SubmitPortalBid::class);
         $review = $service->review('900000', 'synthetic-password', ['F1', 'R2']) + ['selections' => ['F1', 'R2']];
 
         $result = $service->submit('900000', 'synthetic-password', $review, static function (): void {});
         $this->assertSame(['status' => 'unknown'], $result);
-        $this->assertSame(['status' => 'matched'], $service->reconcile('900000', 'synthetic-password', $review));
+        $this->assertReadback($service->reconcile('900000', 'synthetic-password', $review), 'matched', [1, 2]);
         $this->assertSame(1, $this->writeAttempts);
     }
 
     public function test_the_displayed_online_user_count_can_change_between_review_and_submission(): void
     {
+        $this->travelTo(CarbonImmutable::parse('2026-11-17T12:00:00Z'));
         $http = $this->portal(dynamicCounter: true);
         $service = app(SubmitPortalBid::class);
         $review = $service->review('900000', 'synthetic-password', ['F1', 'R2']) + ['selections' => ['F1', 'R2']];
 
         $result = $service->submit('900000', 'synthetic-password', $review, static function (): void {});
 
-        $this->assertSame(['status' => 'matched'], $result);
+        $this->assertReadback($result, 'matched', [1, 2]);
         $writes = $http->recorded(fn (Request $request): bool => $request->method() === 'POST' && str_contains($request->url(), 'BidSheet.aspx'))->values();
         $this->assertCount(1, $writes);
         $this->assertSame('104', $writes[0][0]['ctl00$tb_usersLoggedIn']);
@@ -173,12 +178,16 @@ class SubmitPortalBidTest extends TestCase
 
     public function test_a_contradictory_report_after_update_remains_unknown(): void
     {
+        $this->travelTo(CarbonImmutable::parse('2026-11-17T12:00:00Z'));
         $this->portal(afterReport: 'before');
         $service = app(SubmitPortalBid::class);
         $review = $service->review('900000', 'synthetic-password', ['F1', 'R2']) + ['selections' => ['F1', 'R2']];
 
-        $this->assertSame(['status' => 'unknown'], $service->submit('900000', 'synthetic-password', $review, static function (): void {}));
-        $this->assertSame(['status' => 'not_matched'], $service->reconcile('900000', 'synthetic-password', $review));
+        $submitted = $service->submit('900000', 'synthetic-password', $review, static function (): void {});
+        $this->assertReadback($submitted, 'unknown', [5, 6, 7]);
+        $reconciled = $service->reconcile('900000', 'synthetic-password', $review);
+        $this->assertReadback($reconciled, 'not_matched', [5, 6, 7]);
+        $this->assertNotSame($submitted['check_id'], $reconciled['check_id']);
         $this->assertSame(1, $this->writeAttempts);
     }
 
@@ -195,6 +204,23 @@ class SubmitPortalBidTest extends TestCase
             $this->assertStringContainsString('submitted choices changed', $exception->getMessage());
             $http->assertNotSent(fn (Request $request): bool => $request->method() === 'POST' && str_contains($request->url(), 'BidSheet.aspx'));
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $result
+     * @param  list<int>  $numbers
+     */
+    private function assertReadback(array $result, string $status, array $numbers): void
+    {
+        $this->assertSame(['status', 'report', 'check_id', 'started_at', 'checked_at'], array_keys($result));
+        $this->assertSame($status, $result['status']);
+        $this->assertSame([
+            'context' => ['account_matches_input' => true, 'seat' => 'FO', 'fleet' => '777', 'period' => '2026-12', 'package_id' => 4000, 'package_revision' => 0],
+            'numbers' => $numbers,
+        ], $result['report']);
+        $this->assertTrue(Str::isUlid($result['check_id']));
+        $this->assertSame('2026-11-17T12:00:00.000000Z', $result['started_at']);
+        $this->assertSame('2026-11-17T12:00:00.000000Z', $result['checked_at']);
     }
 
     private function portal(bool $timeout = false, ?string $sheet = null, ?string $report = null, string $initialReport = 'before', string $afterReport = 'after', bool $dynamicCounter = false): BidPortalHttpClient

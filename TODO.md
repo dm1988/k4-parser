@@ -28,6 +28,16 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Fix seven crew-bid test failures
+
+Goal: Resolve the seven failures reported by the full test run while retaining the current application behavior.
+
+Outcome (2026-11-17): Reproduced all seven failures and updated four test files to match the current contracts. Bulk-menu coverage now checks Compare with K4, the renamed replacement action and its route. Pay-source coverage verifies exact overnight duty timestamps. Missing-prediction assertions target the actual header and card statuses so explanatory legend text does not trigger a false failure. Submission/readback assertions verify status, report context/order, valid distinct check IDs and fixed UTC timestamps, while preserving timeout and single-write coverage. Preserved the existing Package details and TODO changes.
+
+Validation: All 62 tests in the four affected classes passed (363 assertions), including the seven originally failing tests. Pint and whitespace checks passed. Larastan ran once and still reports the previously known always-true seat check in ParseBidAwards.php:47; application services were unchanged. No full-suite rerun was performed.
+
+Commit message: `test: align crew bid assertions with current UI and readback contracts`
+
 ## [x] Completed: Personal bid awards workspace and Filament management
 
 Goal: Show only the user's awarded line and tied CA/FO crew, with a full-month calendar, next-month transition days and schedule-feature calendar exports.
@@ -70,9 +80,15 @@ Validation: The existing focused submitted-rank rendering test passed (1 test, 9
 
 Commit message: `style: move submitted rank below selected bid rank`
 
-## Current focus: Relocate line color text...
-Find a better place for this text: Credit h:mm[:ss] · Block h:mm · UTC · Blue: flying trip (includes layover/rest) · Orange: reserve · Light: off · ?: unknown
-How about in the Package details popout. Add a brief usage guide
+## [x] Completed: Move the line legend into Package details
+
+Goal: Relocate the line colors and time-format explanation into Package details and add a brief usage guide.
+
+Outcome (2026-11-17): Moved the calendar key into Package details with matching light/dark swatches, credit/block formats and UTC labeling. Added the matching +1 carry-in / transition badge and explained that it counts days into the next month. Added a line-border/status-icon key covering projected availability, likely hold, the last remaining position, projected unavailability, missing/ineligible predictions and the blue expanded-card state. Simplified both format labels to h:mm, reflecting the usual source precision. Added a short guide for comparing lines, inspecting dates and arranging a bid list. Added 12px top padding between the toolbar and available line cards.
+
+Validation: Two focused line-card rendering tests passed (14 assertions), followed by the focused personal-prediction rendering test (1 test, 15 assertions) after extending the border/icon key. Frontend build, Pint and whitespace checks passed. Larastan ran once and reported an existing always-true seat check in ParseBidAwards.php:47; that service was unchanged in this layout task. No new tests were needed for presentation-only changes. Browser appearance was not manually verified.
+
+Commit message: `style: move bid legend into package details and space line cards`
 
 
 ## [x] Completed: Move the header bid status to the left

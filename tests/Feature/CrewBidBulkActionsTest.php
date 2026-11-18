@@ -28,7 +28,9 @@ class CrewBidBulkActionsTest extends TestCase
         $this->assertTrue($normal->query('//*[@id="bid-list-items"]')->item(0)->hasAttribute('wire:sort'));
         $menu = $normal->query('//*[@id="bid-list-drawer"]/section/footer//*[@id="bid-list-more-actions"]')->item(0);
         $this->assertNotNull($menu);
-        $this->assertStringContainsString('Sync from K4', $menu->textContent);
+        $this->assertStringContainsString('Compare with K4', $menu->textContent);
+        $this->assertStringContainsString('Replace My bid list with K4 order', $menu->textContent);
+        $this->assertSame(route('crew-bids.submissions.sync.create', ['package' => $workspace->bid_package_id, 'seat' => 'FO']), $normal->query('//*[@id="bid-list-more-actions"]//form')->item(0)->getAttribute('action'));
         $this->assertStringContainsString('Add all 5 matching flying lines', $menu->textContent);
         $this->assertStringContainsString('Clear bid list', $menu->textContent);
 

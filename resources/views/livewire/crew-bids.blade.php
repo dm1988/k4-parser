@@ -117,6 +117,38 @@
             <section class="p-5">
                 <div class="flex items-center justify-between gap-3"><h2 id="bid-package-details-title" class="text-lg font-semibold">Package details</h2><button type="button" autofocus @click="$refs.packageDetails.close()" aria-label="Close package details" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-amber-500 dark:hover:bg-slate-800"><x-heroicon-o-x-mark class="h-5 w-5" aria-hidden="true" /></button></div>
                 <div class="mt-2 space-y-2 text-sm text-slate-600 dark:text-slate-300"><p>{{ $monthLabel }} · B{{ $package->fleet }} · {{ $seat }} · {{ $package->source_revision }}</p><p>{{ count($allLines) }} eligible lines · {{ count($trips) }} imported trips</p>@foreach ($package->payload['coverage'] as $source => $present)<p>{{ ucfirst($source) }}: {{ $present ? 'Imported' : 'Not imported' }}</p>@endforeach</div>
+                <section class="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700" aria-labelledby="bid-calendar-key-title">
+                    <h3 id="bid-calendar-key-title" class="text-sm font-semibold">Calendar key</h3>
+                    <ul class="mt-3 grid gap-2 text-xs text-slate-600 dark:text-slate-300 sm:grid-cols-2">
+                        <li class="flex items-center gap-2"><span aria-hidden="true" class="h-4 w-4 shrink-0 rounded bg-[#1B365D] dark:bg-blue-300"></span>Flying trip, including layover/rest</li>
+                        <li class="flex items-center gap-2"><span aria-hidden="true" class="h-4 w-4 shrink-0 rounded bg-orange-600 dark:bg-orange-400"></span>Reserve</li>
+                        <li class="flex items-center gap-2"><span aria-hidden="true" class="h-4 w-4 shrink-0 rounded border border-slate-200 bg-slate-100 dark:border-slate-600 dark:bg-slate-800"></span>Off</li>
+                        <li class="flex items-center gap-2"><span aria-hidden="true" class="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-amber-200 font-mono text-amber-950">?</span>Unknown activity</li>
+                        <li class="flex items-center gap-2 sm:col-span-2"><span aria-hidden="true" class="inline-flex h-6 shrink-0 items-center justify-center rounded-md border border-[#C5A059] bg-amber-50 px-2 font-mono text-xs font-semibold text-[#1B365D] dark:bg-amber-950 dark:text-amber-200">+1</span>Carry-in / transition days into next month (+1 = one day)</li>
+                    </ul>
+                    <p class="mt-3 text-xs text-slate-600 dark:text-slate-300">Credit <span class="font-mono">h:mm</span> · Block <span class="font-mono">h:mm</span>. Dates and times are UTC.</p>
+                </section>
+                <section class="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700" aria-labelledby="bid-line-status-key-title">
+                    <h3 id="bid-line-status-key-title" class="text-sm font-semibold">Line borders and status icons</h3>
+                    <ul class="mt-3 space-y-3 text-xs text-slate-600 dark:text-slate-300">
+                        <li class="flex items-center gap-3"><span aria-hidden="true" class="shrink-0 rounded-l border-l-4 border-emerald-500 py-1 pl-2"><x-heroicon-o-check-circle class="h-4 w-4 text-emerald-700 dark:text-emerald-400" /></span><span><strong class="font-semibold">Green · check circle:</strong> Projected available. Positions remain after senior projections.</span></li>
+                        <li class="flex items-center gap-3"><span aria-hidden="true" class="shrink-0 rounded-l border-l-4 border-amber-500 py-1 pl-2"><x-heroicon-o-star class="h-4 w-4 text-amber-700 dark:text-amber-300" /></span><span><strong class="font-semibold">Amber · star:</strong> Likely hold. Your first projected available choice in your bid order.</span></li>
+                        <li class="flex items-center gap-3"><span aria-hidden="true" class="shrink-0 rounded-l border-l-4 border-amber-500 py-1 pl-2"><x-heroicon-o-exclamation-circle class="h-4 w-4 text-amber-700 dark:text-amber-300" /></span><span><strong class="font-semibold">Amber · exclamation circle:</strong> Only one position remains on a line with multiple positions.</span></li>
+                        <li class="flex items-center gap-3"><span aria-hidden="true" class="shrink-0 rounded-l border-l-4 border-slate-600 py-1 pl-2"><x-heroicon-o-no-symbol class="h-4 w-4 text-slate-600 dark:text-slate-400" /></span><span><strong class="font-semibold">Slate · barred circle:</strong> Projected unavailable. Senior projections fill all positions; the card is dimmed.</span></li>
+                        <li class="flex items-center gap-3"><span aria-hidden="true" class="shrink-0 rounded-l border-l-4 border-slate-200 py-1 pl-2 dark:border-slate-700"><x-heroicon-o-question-mark-circle class="h-4 w-4 text-slate-500 dark:text-slate-400" /></span><span><strong class="font-semibold">Neutral · question mark:</strong> Prediction unavailable, or no positions for your seat. The icon's label gives the reason.</span></li>
+                        <li class="flex items-center gap-3"><span aria-hidden="true" class="h-6 w-7 shrink-0 rounded-l border-l-4 border-[#1B365D] dark:border-blue-300"></span><span><strong class="font-semibold">Blue:</strong> Trips or Details is expanded on a card without an active projection color.</span></li>
+                    </ul>
+                    <p class="mt-3 text-xs text-slate-600 dark:text-slate-300">A neutral border with no status icon means no prediction is available. Projections use your seat, seniority and shared bids; later bids can change them.</p>
+                </section>
+                <section class="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700" aria-labelledby="bid-usage-guide-title">
+                    <h3 id="bid-usage-guide-title" class="text-sm font-semibold">Quick guide</h3>
+                    <ol class="mt-3 list-decimal space-y-2 ps-4 text-xs text-slate-600 dark:text-slate-300">
+                        <li>Choose Lines, Trips, or Reserve. Use Preferences, Sort, and Filters to compare options.</li>
+                        <li>Select a calendar date to inspect its activity. Open Trips or Details to see more about a line.</li>
+                        <li>Add lines to My bid list, arrange them in your preferred order, then open Review / Copy when ready.</li>
+                    </ol>
+                    <p class="mt-3 text-xs text-slate-600 dark:text-slate-300">Saving your list keeps your draft in the app. Submitting to Kalitta is a separate step.</p>
+                </section>
                 <a href="{{ route('crew-bids.employees.index', ['package' => $package, 'seat' => $seat]) }}" class="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-semibold hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-700 dark:hover:bg-slate-800"><x-heroicon-o-users class="h-4 w-4" aria-hidden="true" />My predictions / shared data</a>
             </section>
         </dialog>
@@ -319,8 +351,7 @@
                 </div>
             </div>
             <p wire:loading.delay wire:target="tab,sort,daysOff,goals,startCity,minimumCredit,minimumDaysOff,layoverCity,extendedLayoversOnly,avoidShortLayovers,selectedOnly,changeContext,resetFilters,clearCreditFilters,clearWorkPatternFilters,clearLayoverFilters,clearDates,addRange" role="status" class="mb-2 text-xs text-slate-500 dark:text-slate-400">Updating matching lines…</p>
-            <p class="mb-3 text-xs text-slate-500 dark:text-slate-400">Credit h:mm[:ss] · Block h:mm · UTC · Blue: flying trip (includes layover/rest) · Orange: reserve · Light: off · ?: unknown</p>
-            <section class="space-y-3" aria-label="Available lines" wire:loading.class="opacity-60" wire:target="tab,sort,daysOff,goals,startCity,minimumCredit,minimumDaysOff,layoverCity,extendedLayoversOnly,avoidShortLayovers,selectedOnly,changeContext,resetFilters,clearCreditFilters,clearWorkPatternFilters,clearLayoverFilters,clearDates,addRange">
+            <section class="space-y-3 pt-3" aria-label="Available lines" wire:loading.class="opacity-60" wire:target="tab,sort,daysOff,goals,startCity,minimumCredit,minimumDaysOff,layoverCity,extendedLayoversOnly,avoidShortLayovers,selectedOnly,changeContext,resetFilters,clearCreditFilters,clearWorkPatternFilters,clearLayoverFilters,clearDates,addRange">
                 @forelse ($lineCards as $line)<x-crew-bids.line :line="$line" :prediction="$prediction['lines'][$line->id] ?? null" wire:key="bid-line-{{ $packageId }}-{{ $line->id }}" />
                 @empty<div class="rounded-xl border border-slate-200 p-5 dark:border-slate-700"><p>No lines match these filters.</p><button type="button" wire:click="resetFilters" class="min-h-11 font-semibold underline" wire:loading.attr="disabled" wire:target="resetFilters"><span wire:loading.remove wire:target="resetFilters">Reset filters</span><span wire:loading wire:target="resetFilters" role="status">Resetting…</span></button></div>@endforelse
             </section>

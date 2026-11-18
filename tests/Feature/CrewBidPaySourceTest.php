@@ -108,7 +108,11 @@ class CrewBidPaySourceTest extends TestCase
 
         $this->artisan('crew-bids:enrich-pay-source', ['package' => $package->id, 'files' => $paths])->assertSuccessful();
 
-        $this->assertSame([['start_date' => '2026-11-30', 'end_date' => '2026-12-01', 'leg_indexes' => [0]]], $package->fresh()->pay_source['payload']['trips'][700]['duties']);
+        $this->assertSame([[
+            'start_date' => '2026-11-30', 'end_date' => '2026-12-01',
+            'report_at' => '2026-11-30T23:30:00+00:00', 'release_at' => '2026-12-01T02:00:00+00:00',
+            'leg_indexes' => [0],
+        ]], $package->fresh()->pay_source['payload']['trips'][700]['duties']);
     }
 
     /** @return array{BidPackage, list<string>} */

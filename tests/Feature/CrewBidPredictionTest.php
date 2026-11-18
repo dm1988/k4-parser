@@ -209,15 +209,15 @@ class CrewBidPredictionTest extends TestCase
             ->assertSee('Link your employee number once')
             ->assertSee('Employee link / shared data')
             ->assertSee('Update submitted bids')
-            ->assertSee(route('crew-bids.employees.index', ['package' => $package, 'seat' => 'FO']).'#refresh-shared-bids', false)
-            ->assertDontSee('Likely hold');
+            ->assertSee(route('crew-bids.employees.index', ['package' => $package, 'seat' => 'FO']).'#refresh-shared-bids', false);
 
         $document = new DOMDocument;
         @$document->loadHTML('<?xml encoding="UTF-8">'.$component->html());
         $xpath = new DOMXPath($document);
+        $this->assertStringNotContainsString('Likely hold', $xpath->query('//header//button[@aria-controls="bid-predictions"]')->item(0)->textContent);
         $this->assertSame(1, $xpath->query('//dialog[@id="bid-predictions"]//p[@id="bid-predictions-reason" and contains(., "Link your employee number once")]')->length);
         $this->assertSame(0, $xpath->query('//dialog[@id="bid-predictions"]//table')->length);
-        $this->assertSame(0, $xpath->query('//article//span[@role="img" and contains(@aria-label, "Projected available")]')->length);
+        $this->assertSame(0, $xpath->query('//article//span[@role="img" and (contains(@aria-label, "Projected available") or contains(@aria-label, "Likely hold"))]')->length);
     }
 
     public function test_fresh_shared_bids_hide_the_stale_refresh_action_without_changing_the_private_list(): void
