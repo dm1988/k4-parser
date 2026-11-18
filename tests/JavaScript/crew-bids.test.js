@@ -687,6 +687,98 @@ test('sticky action offset follows the wrapping workspace header and releases it
     assert.equal(properties.get('--crew-bids-header-height'), '161px');
 });
 
+test('mobile scrolling keeps only the action row pinned and updates expanded line offsets across viewport changes', () => {
+    const properties = new Map();
+    const listeners = new Map();
+    const frames = new Map();
+    let desktop = false;
+    let height = 300;
+    let resize;
+    let disconnected = false;
+    let nextFrame = 0;
+    const viewport = {
+        scrollY: 0,
+        matchMedia: () => ({ matches: desktop }),
+        addEventListener: (name, callback) => listeners.set(name, callback),
+        removeEventListener: (name, callback) => {
+            assert.equal(listeners.get(name), callback);
+            listeners.delete(name);
+        },
+        requestAnimationFrame: callback => { frames.set(++nextFrame, callback); return nextFrame; },
+        cancelAnimationFrame: id => frames.delete(id),
+    };
+    const flush = () => {
+        for (const [id, callback] of frames) {
+            frames.delete(id);
+            callback();
+        }
+    };
+    const header = {
+        getBoundingClientRect() {
+            const top = Math.max(120 - viewport.scrollY, desktop ? 0 : parseInt(properties.get('--crew-bids-mobile-header-top') ?? '0', 10));
+            return { top, bottom: top + height, height };
+        },
+    };
+    const state = createCrewBidsHeader({ windowObject: viewport, ResizeObserverClass: class {
+        constructor(callback) { resize = callback; }
+        observe() {}
+        disconnect() { disconnected = true; }
+    } });
+    state.$el = { style: { setProperty: (name, value) => properties.set(name, value) } };
+    state.$refs = { workspaceHeader: header, listTrigger: { getBoundingClientRect: () => ({ top: header.getBoundingClientRect().top + height - 52 }) } };
+    state.$wire = { intercept: () => () => {}, interceptMessage: () => () => {} };
+    state.$nextTick = callback => callback();
+
+    state.init();
+
+    assert.equal(properties.get('--crew-bids-mobile-header-top'), '-240px');
+    assert.equal(properties.get('--crew-bids-header-height'), '300px');
+    viewport.scrollY = 200;
+    listeners.get('scroll')();
+    flush();
+    assert.equal(properties.get('--crew-bids-header-height'), '220px');
+    viewport.scrollY = 900;
+    listeners.get('scroll')();
+    listeners.get('scroll')();
+    assert.equal(frames.size, 1);
+    flush();
+    assert.equal(properties.get('--crew-bids-header-height'), '60px');
+    height = 400;
+    resize();
+    assert.equal(properties.get('--crew-bids-mobile-header-top'), '-340px');
+    assert.equal(properties.get('--crew-bids-header-height'), '60px');
+    desktop = true;
+    listeners.get('resize')();
+    flush();
+    assert.equal(properties.get('--crew-bids-mobile-header-top'), '0px');
+    assert.equal(properties.get('--crew-bids-header-height'), '400px');
+    desktop = false;
+    viewport.scrollY = 0;
+    listeners.get('scroll')();
+    flush();
+    assert.equal(properties.get('--crew-bids-header-height'), '400px');
+    listeners.get('scroll')();
+    state.destroy();
+    assert.equal(disconnected, true);
+    assert.equal(listeners.size, 0);
+    assert.equal(frames.size, 0);
+    height = 200;
+    resize();
+    assert.equal(properties.get('--crew-bids-header-height'), '400px');
+});
+
+test('keyboard focus on a scrolled-away header control reveals the full mobile header', () => {
+    const scrolls = [];
+    const state = createCrewBidsHeader({ windowObject: { scrollY: 900, scrollTo: options => scrolls.push(options) } });
+    state.$refs = { headerStart: { getBoundingClientRect: () => ({ top: -780 }) } };
+
+    state.revealHeaderControl({ target: { getBoundingClientRect: () => ({ top: -200 }) } });
+
+    assert.deepEqual(scrolls, [{ top: 120, behavior: 'instant' }]);
+    state.revealHeaderControl({ target: { getBoundingClientRect: () => ({ top: 8 }) } });
+    assert.equal(scrolls.length, 1);
+});
+
 test('preferences waiting for the debounce keep the leave-page warning until saved', () => {
     const root = { dataset: { dirty: 'false', preferencesDirty: 'true' } };
 

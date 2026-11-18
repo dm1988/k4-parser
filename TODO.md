@@ -28,6 +28,16 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## [x] Completed: Compact the mobile sticky bid header
+
+Goal: Keep only the cart, personal prediction pill and Add all visible while scrolling lines on small screens, with cleaner mobile controls and the existing large-screen layout.
+
+Outcome (2026-11-17): Below the lg breakpoint, arranged the existing cart/count, prediction pill and Add all in one bottom action row. The title, package context, matching count and browsing controls scroll away naturally while that row stays pinned, preserving document height and avoiding a collapse jump. Made the package picker fit the available width and gave preferences, sorting and filters clearer rows with 44px touch targets. Kept desktop command/toolbar styling and the same control instances. Header measurements now track its visible height so expanded line headers sit below the compact row, with throttled scroll/resize updates and cleanup. Keyboard focus on a scrolled-away control reveals the full header. Preserved all previously staged work.
+
+Validation: All 69 focused crew-bid JavaScript tests passed, including new mobile scroll, viewport/height-change, cleanup and keyboard-focus cases. Two focused prediction/header rendering tests passed (25 assertions). Production asset build, Pint and whitespace checks passed. Larastan ran once and reported only the previously known redundant seat check in ParseBidAwards.php:47. Browser appearance was not manually verified.
+
+Commit message: `ui: compact the mobile crew bid sticky header`
+
 ## [x] Completed: Fix seven crew-bid test failures
 
 Goal: Resolve the seven failures reported by the full test run while retaining the current application behavior.

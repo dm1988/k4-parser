@@ -1,11 +1,12 @@
 <div class="mx-auto max-w-7xl px-3 py-6 sm:px-6" data-crew-bids data-dirty="{{ $dirty ? 'true' : 'false' }}" x-data="crewBidsHeader" @bid-action-failed="$refs.networkError.hidden = false; if ($refs.preferencesNetworkError) $refs.preferencesNetworkError.hidden = false" :data-preferences-dirty="$wire.$dirty(['goals', 'daysOff', 'startCity'])" @keydown.escape.window="if (statusOpen) { $event.preventDefault(); closeStatus(true) } else if ($wire.showPreferences) { $wire.showPreferences = false } else if ($wire.showList) { $event.preventDefault(); closeList() } else if (filtersOpen) { filtersOpen = false; $refs.filtersTrigger?.focus() }">
-    <header x-ref="workspaceHeader" class="sticky top-0 z-30 -mx-3 border-b border-slate-200 bg-gray-100 px-3 shadow-sm dark:border-slate-800 dark:bg-gray-950 sm:-mx-6 sm:px-6">
-        <div class="flex flex-wrap items-center gap-3 py-3" data-bid-command-bar>
-            <div class="flex min-w-0 basis-full flex-wrap items-center gap-3 lg:flex-1 lg:basis-0" data-bid-context>
-                <h1 class="shrink-0 text-2xl font-bold text-[#1B365D] dark:text-amber-200">K4 Bids</h1>
+    <div x-ref="headerStart" aria-hidden="true"></div>
+    <header x-ref="workspaceHeader" @focusin="revealHeaderControl($event)" class="sticky top-[var(--crew-bids-mobile-header-top,0px)] z-30 -mx-3 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-slate-200 bg-gray-100 px-3 py-2 shadow-sm dark:border-slate-800 dark:bg-gray-950 sm:-mx-6 sm:px-6 lg:top-0 lg:block lg:py-0">
+        <div class="contents lg:flex lg:flex-wrap lg:items-center lg:gap-3 lg:py-3" data-bid-command-bar>
+            <div class="order-1 col-span-3 flex min-w-0 basis-full flex-wrap items-center gap-2 lg:order-none lg:flex-1 lg:basis-0 lg:gap-3" data-bid-context>
+                <h1 class="shrink-0 text-xl font-bold text-[#1B365D] dark:text-amber-200 lg:text-2xl">K4 Bids</h1>
                 @if ($packages->isNotEmpty())
-                    <div class="flex min-w-0 max-w-full items-center gap-1">
-                        <div class="flex min-w-0 items-center rounded-full border border-slate-300 bg-white pe-2 dark:border-slate-700 dark:bg-slate-900">
+                    <div class="flex w-full min-w-0 max-w-full items-center gap-1 lg:w-auto">
+                        <div class="flex w-full min-w-0 items-center rounded-full border border-slate-300 bg-white pe-2 dark:border-slate-700 dark:bg-slate-900 lg:w-auto">
                             <label class="sr-only" for="bid-package">Bid package</label>
                             <select id="bid-package" wire:model="contextPackage" wire:change="changeContext" wire:loading.attr="disabled" wire:target="changeContext" class="min-h-11 min-w-0 max-w-full flex-1 rounded-full border-0 bg-transparent font-mono text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900 sm:text-sm">
                                 @foreach ($packages as $option)<option value="{{ $option->id }}">{{ $option->period }} · B{{ $option->fleet }} · {{ $option->source_revision }}</option>@endforeach
@@ -20,10 +21,10 @@
                     @can('manage-crew-bids')<a href="{{ route('filament.admin.resources.bid-packages.index') }}" class="inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-300 px-3 text-sm focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-600"><x-heroicon-o-cog-6-tooth class="h-4 w-4 shrink-0" aria-hidden="true" /><span>Manage package</span></a>@endcan
                 @endif
             </div>
-            <div class="ms-auto flex max-w-full flex-wrap items-center justify-end gap-3" data-bid-list-actions>
-                @if ($notice)<span wire:key="bid-notice-{{ md5($notice) }}" x-data="{ visible: true }" x-show="visible" x-init="setTimeout(() => visible = false, 8000)" class="min-w-0 text-xs text-slate-600 dark:text-slate-300" role="status" aria-live="polite">{{ $notice }} @if ($undoId)<button type="button" wire:click="undoAdd" class="min-h-11 font-semibold underline focus-visible:ring-2 focus-visible:ring-amber-500" wire:loading.attr="disabled" wire:target="undoAdd"><span wire:loading.remove wire:target="undoAdd">Undo addition</span><span wire:loading wire:target="undoAdd" role="status">Undoing…</span></button>@endif</span>@endif
-                <div class="relative inline-flex min-w-0 max-w-full rounded-xl bg-[#1B365D] text-white dark:bg-slate-800" data-bid-split-control @click.outside="closeStatus()" @focusout="if (! $el.contains($event.relatedTarget)) closeStatus()">
-                    <button type="button" x-ref="statusTrigger" @click="toggleStatus()" title="View local save and Kalitta report details" aria-label="View bid list save and submission status" aria-haspopup="dialog" aria-describedby="bid-save-status bid-submission-status" :aria-expanded="statusOpen" aria-controls="bid-status-popover" class="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-s-xl border-e border-white/20 px-2 py-1.5 hover:bg-white/10 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400 sm:px-3">
+            <div class="contents lg:ms-auto lg:flex lg:max-w-full lg:flex-wrap lg:items-center lg:justify-end lg:gap-3" data-bid-list-actions>
+                @if ($notice)<span wire:key="bid-notice-{{ md5($notice) }}" x-data="{ visible: true }" x-show="visible" x-init="setTimeout(() => visible = false, 8000)" class="order-3 col-span-3 min-w-0 text-xs text-slate-600 dark:text-slate-300" role="status" aria-live="polite">{{ $notice }} @if ($undoId)<button type="button" wire:click="undoAdd" class="min-h-11 font-semibold underline focus-visible:ring-2 focus-visible:ring-amber-500" wire:loading.attr="disabled" wire:target="undoAdd"><span wire:loading.remove wire:target="undoAdd">Undo addition</span><span wire:loading wire:target="undoAdd" role="status">Undoing…</span></button>@endif</span>@endif
+                <div class="relative order-4 col-start-1 inline-flex min-w-0 max-w-full rounded-xl bg-[#1B365D] text-white dark:bg-slate-800" data-bid-split-control @click.outside="closeStatus()" @focusout="if (! $el.contains($event.relatedTarget)) closeStatus()">
+                    <button type="button" x-ref="statusTrigger" @click="toggleStatus()" title="View local save and Kalitta report details" aria-label="View bid list save and submission status" aria-haspopup="dialog" aria-describedby="bid-save-status bid-submission-status" :aria-expanded="statusOpen" aria-controls="bid-status-popover" class="hidden min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-s-xl border-e border-white/20 px-2 py-1.5 hover:bg-white/10 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400 sm:px-3 lg:inline-flex">
                         <span class="relative inline-flex h-6 w-6 shrink-0" :class="{ 'text-emerald-400': cloudState(@js($submissionStatus->state)) === 'synced', 'text-amber-300': cloudState(@js($submissionStatus->state)) === 'pending', 'text-slate-300': cloudState(@js($submissionStatus->state)) === 'unconfirmed' }" aria-hidden="true">
                             <span x-show="cloudState(@js($submissionStatus->state)) !== 'pending'"><x-heroicon-o-cloud class="h-6 w-6" /></span>
                             <span x-cloak x-show="cloudState(@js($submissionStatus->state)) === 'pending'"><x-heroicon-o-cloud-arrow-up class="h-6 w-6" /></span>
@@ -40,9 +41,9 @@
                         </span>
                         <x-heroicon-o-chevron-down class="hidden h-3 w-3 shrink-0 sm:block" aria-hidden="true" />
                     </button>
-                    <button type="button" x-ref="listTrigger" @click="openList($event)" title="Open my bid list" :aria-expanded="$wire.showList" aria-controls="bid-list-drawer" class="inline-flex min-h-11 min-w-0 items-center gap-2 rounded-e-xl px-3 py-2 text-xs font-semibold hover:bg-white/10 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400 sm:text-sm">
+                    <button type="button" x-ref="listTrigger" @click="openList($event)" title="Open my bid list" aria-label="Open my bid list ({{ count($selections) }})" :aria-expanded="$wire.showList" aria-controls="bid-list-drawer" class="inline-flex min-h-11 min-w-0 items-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold hover:bg-white/10 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400 sm:text-sm lg:gap-2 lg:rounded-e-xl lg:rounded-s-none lg:px-3">
                         <x-heroicon-o-shopping-cart class="h-5 w-5 shrink-0" aria-hidden="true" />
-                        <span class="truncate">My bid list ({{ count($selections) }})</span>
+                        <span class="hidden truncate lg:inline">My bid list ({{ count($selections) }})</span><span class="font-mono lg:hidden" aria-hidden="true">{{ count($selections) }}</span>
                     </button>
                     <span id="bid-save-status" class="sr-only" role="status" aria-live="polite" x-text="'Local save: ' + saveDescription() + '. ' + saveHelp()"></span>
                     <span id="bid-submission-status" class="sr-only" role="status" aria-live="polite">{{ $submissionStatus->description }}</span>
@@ -64,8 +65,8 @@
             </div>
         </div>
         @if ($package)
-            <div class="flex flex-wrap items-center gap-2 border-t border-slate-200 py-2 text-xs dark:border-slate-800" data-bid-control-toolbar>
-                <div class="flex min-w-0 max-w-full flex-wrap items-center gap-2">
+            <div class="contents text-xs lg:flex lg:flex-wrap lg:items-center lg:gap-2 lg:border-t lg:border-slate-200 lg:py-2 dark:lg:border-slate-800" data-bid-control-toolbar>
+                <div class="order-2 col-span-3 flex min-w-0 max-w-full flex-wrap items-center justify-between gap-2 lg:justify-start">
                     <span class="whitespace-nowrap font-mono text-slate-500 dark:text-slate-400" aria-live="polite">@if ($tab === 'trips'){{ count($trips) }} trips @else{{ count($lines) }} matching / {{ $total }}@endif</span>
                     <label for="bid-view" class="sr-only">Bid package view</label>
                     <select id="bid-view" wire:model.change.live="tab" wire:loading.attr="disabled" wire:target="tab" class="min-h-11 w-28 rounded-lg border-slate-300 bg-white py-2 ps-3 pe-8 text-xs font-medium text-slate-600 focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
@@ -74,8 +75,8 @@
                         <option value="reserve">Reserve</option>
                     </select>
                 </div>
-                <div role="group" aria-label="Workspace line controls" class="flex min-h-11 min-w-0 max-w-full flex-wrap items-center gap-1 rounded-xl border border-slate-300 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900">
-                    <button type="button" x-ref="preferencesTrigger" @click="$wire.showPreferences = true" :aria-expanded="$wire.showPreferences" aria-haspopup="dialog" aria-controls="bid-preferences" aria-describedby="bid-ranking-status" :title="$wire.tab === 'trips' ? 'Ranking preferences inactive in Trips view.' : ($wire.sort === 'best' ? 'Edit preferences for Best match.' : 'Ranking preferences inactive for this sort. Dates off and start city filters still apply.')" class="inline-flex min-h-9 min-w-0 max-w-80 flex-1 basis-40 items-center gap-1.5 rounded-full px-3 focus-visible:ring-2 focus-visible:ring-amber-500" :class="$wire.sort === 'best' && $wire.tab !== 'trips' ? 'bg-[#C5A059]/20 text-[#1B365D] dark:text-amber-200' : 'bg-slate-200/70 text-slate-700 dark:bg-slate-800 dark:text-slate-200'">
+                <div role="group" aria-label="Workspace line controls" class="order-3 col-span-3 grid min-h-11 min-w-0 max-w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-1 rounded-xl border border-slate-300 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900 lg:flex lg:flex-wrap">
+                    <button type="button" x-ref="preferencesTrigger" @click="$wire.showPreferences = true" :aria-expanded="$wire.showPreferences" aria-haspopup="dialog" aria-controls="bid-preferences" aria-describedby="bid-ranking-status" :title="$wire.tab === 'trips' ? 'Ranking preferences inactive in Trips view.' : ($wire.sort === 'best' ? 'Edit preferences for Best match.' : 'Ranking preferences inactive for this sort. Dates off and start city filters still apply.')" class="col-span-2 inline-flex min-h-11 min-w-0 flex-1 basis-40 items-center gap-1.5 rounded-full px-3 focus-visible:ring-2 focus-visible:ring-amber-500 lg:min-h-9 lg:max-w-80" :class="$wire.sort === 'best' && $wire.tab !== 'trips' ? 'bg-[#C5A059]/20 text-[#1B365D] dark:text-amber-200' : 'bg-slate-200/70 text-slate-700 dark:bg-slate-800 dark:text-slate-200'">
                         <span class="inline-flex min-w-0 items-center gap-1.5" :class="{ 'opacity-50': $wire.sort !== 'best' || $wire.tab === 'trips' }">
                             <x-heroicon-o-adjustments-horizontal class="h-4 w-4 shrink-0" aria-hidden="true" /><span class="sr-only">Edit preferences: </span><span class="truncate"><span :class="{ 'line-through': $wire.sort !== 'best' || $wire.tab === 'trips' }">@forelse ($goals as $goal){{ $goalLabels[$goal] ?? $goal }}{{ $loop->last ? '' : ' → ' }}@empty Preferences @endforelse</span> @if ($daysOff !== []) · {{ count($daysOff) }} dates off (UTC)@endif @if ($startCity) · Start {{ $startCity }}@endif</span>
                         </span>
@@ -83,22 +84,22 @@
                     <span id="bid-ranking-status" class="sr-only" role="status">@if ($tab === 'trips')Ranking preferences inactive in Trips view.@elseif ($sort !== 'best')Ranking preferences inactive for this sort. Dates off and start city filters still apply.@else Best match uses your selected ranking goals.@endif</span>
                     @if ($tab !== 'trips')
                         <label for="bid-sort" class="sr-only">Sort lines</label>
-                        <select id="bid-sort" wire:model.change.live="sort" class="min-h-9 w-32 max-w-64 shrink-0 rounded-lg border-0 bg-transparent py-1.5 text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900 sm:w-auto">
+                        <select id="bid-sort" wire:model.change.live="sort" class="min-h-11 w-full min-w-0 shrink-0 rounded-lg border-0 bg-transparent py-1.5 text-xs focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-slate-900 lg:min-h-9 lg:w-auto lg:max-w-64">
                             @foreach (\App\Enums\CrewBidSort::cases() as $option)
                                 <option value="{{ $option->value }}" @disabled($option === \App\Enums\CrewBidSort::Submitted && ! $submittedOrder->available())>{{ $option === \App\Enums\CrewBidSort::BestMatch && $goals === [] ? 'Line ID (no goals set)' : $option->label() }}</option>
                             @endforeach
                         </select>
-                        <button type="button" x-ref="filtersTrigger" @click="filtersOpen = ! filtersOpen" :aria-expanded="filtersOpen" aria-controls="bid-filters" class="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 font-semibold text-slate-600 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-slate-300 dark:hover:bg-slate-800"><x-heroicon-o-funnel class="h-4 w-4" aria-hidden="true" /><span>Filters</span><span class="rounded-full bg-[#C5A059]/15 px-1.5 font-mono">{{ $activeFilterCount }}<span class="sr-only"> active browsing filters</span></span></button>
+                        <button type="button" x-ref="filtersTrigger" @click="filtersOpen = ! filtersOpen" :aria-expanded="filtersOpen" aria-controls="bid-filters" class="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 font-semibold text-slate-600 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-slate-300 dark:hover:bg-slate-800 lg:min-h-9"><x-heroicon-o-funnel class="h-4 w-4" aria-hidden="true" /><span>Filters</span><span class="rounded-full bg-[#C5A059]/15 px-1.5 font-mono">{{ $activeFilterCount }}<span class="sr-only"> active browsing filters</span></span></button>
                     @endif
                 </div>
-                <button type="button" x-ref="predictionsTrigger" @click="$refs.predictions.showModal()" wire:poll.60s.visible aria-haspopup="dialog" aria-controls="bid-predictions" title="Bid predictions{{ $prediction['stale'] ? ' · Stale shared bids; refresh recommended' : '' }}" class="inline-flex min-h-11 max-w-full shrink-0 items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 text-xs font-medium text-[#1B365D] hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+                <button type="button" x-ref="predictionsTrigger" @click="$refs.predictions.showModal()" wire:poll.60s.visible aria-haspopup="dialog" aria-controls="bid-predictions" title="Bid predictions{{ $prediction['stale'] ? ' · Stale shared bids; refresh recommended' : '' }}" class="order-4 col-start-2 inline-flex min-h-11 min-w-0 max-w-full shrink-0 items-center gap-1 justify-self-start rounded-full border border-slate-300 bg-white px-2 text-xs font-medium text-[#1B365D] hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 lg:gap-1.5 lg:px-3">
                     <x-heroicon-o-chart-bar class="h-4 w-4 shrink-0 text-[#C5A059]" aria-hidden="true" />
                     <span class="sr-only">Bid predictions: </span>
-                    <span class="whitespace-nowrap">@if (! $prediction['available'])Unavailable @elseif ($prediction['likely'])<span class="font-mono font-semibold">{{ $prediction['likely'] }}</span> · Likely hold @else No hold @endif</span>
+                    <span class="truncate">@if (! $prediction['available'])Unavailable @elseif ($prediction['likely'])<span class="font-mono font-semibold">{{ $prediction['likely'] }}</span> · Likely hold @else No hold @endif</span>
                     @if ($prediction['stale'])<span class="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400" aria-hidden="true"></span><span class="sr-only"> · Stale shared bids; refresh recommended.</span>@endif
                 </button>
                 @if ($tab !== 'trips')
-                    <button type="button" wire:click="addMatching" wire:loading.attr="disabled" @disabled($lines === []) aria-label="Add all {{ count($lines) }} matching {{ $tab === 'reserve' ? 'reserve' : 'flying' }} lines to My bid list" class="ms-auto inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg bg-[#1B365D] px-3 text-xs font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50">
+                    <button type="button" wire:click="addMatching" wire:loading.attr="disabled" @disabled($lines === []) aria-label="Add all {{ count($lines) }} matching {{ $tab === 'reserve' ? 'reserve' : 'flying' }} lines to My bid list" class="order-4 col-start-3 ms-auto inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg bg-[#1B365D] px-3 text-xs font-semibold text-white focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-50">
                         <x-heroicon-o-plus wire:loading.remove wire:target="addMatching" class="h-4 w-4 shrink-0" aria-hidden="true" />
                         <x-heroicon-o-arrow-path wire:loading wire:target="addMatching" class="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
                         <span wire:loading.remove wire:target="addMatching">Add all</span>
@@ -107,7 +108,7 @@
                 @endif
             </div>
             @if ($sort === \App\Enums\CrewBidSort::Submitted->value && $submittedOrder->available())
-                <p class="pb-2 text-xs text-slate-500 dark:text-slate-400" role="status">Submitted order · Kalitta report checked <time datetime="{{ $submittedOrder->checkedAt->toIso8601String() }}">{{ $submittedOrder->checkedAt->utc()->format('Y-m-d H:i:s') }} UTC</time>. This is the last order checked by the app.</p>
+                <p class="order-3 col-span-3 pb-2 text-xs text-slate-500 dark:text-slate-400" role="status">Submitted order · Kalitta report checked <time datetime="{{ $submittedOrder->checkedAt->toIso8601String() }}">{{ $submittedOrder->checkedAt->utc()->format('Y-m-d H:i:s') }} UTC</time>. This is the last order checked by the app.</p>
             @endif
         @endif
     </header>

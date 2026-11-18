@@ -127,10 +127,12 @@ export function createBidSaveStatus({ now = Date.now } = {}) {
     };
 }
 
-export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeObserver } = {}) {
+export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeObserver, windowObject = globalThis.window } = {}) {
     let observer;
     let destroyed = false;
     let stopRefreshGuard;
+    let updateOnScroll;
+    let frame;
 
     return {
         ...createBidSaveStatus(),
@@ -175,6 +177,11 @@ export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeOb
                 this.listReturnFocus = null;
             });
         },
+        revealHeaderControl(event) {
+            if (!windowObject || event.target.getBoundingClientRect().top >= 0) return;
+
+            windowObject.scrollTo({ top: windowObject.scrollY + this.$refs.headerStart.getBoundingClientRect().top, behavior: 'instant' });
+        },
         init() {
             stopRefreshGuard = this.$wire.intercept(({ action }) => {
                 if (action.metadata.type === 'poll' && this.shouldPauseRefresh()) action.cancel();
@@ -183,13 +190,36 @@ export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeOb
             this.$nextTick(() => {
                 if (destroyed) return;
                 const header = this.$refs.workspaceHeader;
+                let previousTop;
+                let previousHeight;
                 const updateHeight = () => {
                     if (destroyed) return;
-                    this.$el.style.setProperty('--crew-bids-header-height', `${Math.ceil(header.getBoundingClientRect().height)}px`);
+                    const desktop = windowObject?.matchMedia('(min-width: 64rem)').matches ?? true;
+                    const bounds = header.getBoundingClientRect();
+                    const hiddenHeight = desktop ? 0 : Math.max(0, Math.floor(this.$refs.listTrigger.getBoundingClientRect().top - bounds.top - 8));
+                    const top = `${-hiddenHeight}px`;
+                    if (top !== previousTop) {
+                        this.$el.style.setProperty('--crew-bids-mobile-header-top', top);
+                        previousTop = top;
+                    }
+                    const height = `${Math.ceil(desktop ? bounds.height : Math.max(0, Math.min(bounds.height, header.getBoundingClientRect().bottom)))}px`;
+                    if (height !== previousHeight) {
+                        this.$el.style.setProperty('--crew-bids-header-height', height);
+                        previousHeight = height;
+                    }
                 };
                 updateHeight();
                 observer = new ResizeObserverClass(updateHeight);
                 observer.observe(header);
+                updateOnScroll = () => {
+                    if (frame !== undefined) return;
+                    frame = windowObject.requestAnimationFrame(() => {
+                        frame = undefined;
+                        updateHeight();
+                    });
+                };
+                windowObject?.addEventListener('scroll', updateOnScroll, { passive: true });
+                windowObject?.addEventListener('resize', updateOnScroll);
             });
         },
         destroy() {
@@ -197,6 +227,9 @@ export function createCrewBidsHeader({ ResizeObserverClass = globalThis.ResizeOb
             this.destroySaveStatus();
             destroyed = true;
             observer?.disconnect();
+            windowObject?.removeEventListener('scroll', updateOnScroll);
+            windowObject?.removeEventListener('resize', updateOnScroll);
+            if (frame !== undefined) windowObject.cancelAnimationFrame(frame);
         },
     };
 }
