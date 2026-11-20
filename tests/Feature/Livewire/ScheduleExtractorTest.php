@@ -329,6 +329,43 @@ class ScheduleExtractorTest extends TestCase
         $this->assertSame(1, ExtractRequest::query()->sole()->uploaded_file_count);
     }
 
+    public function test_it_extracts_the_supplied_deadhead_screenshot_as_a_route_instead_of_a_layover(): void
+    {
+        $path = storage_path('app/private/schedules/IMG_0532.jpeg');
+
+        if (! is_file($path)) {
+            $this->markTestSkipped('The private deadhead screenshot is unavailable.');
+        }
+
+        $this->travelTo('2026-11-19 12:00:00');
+        $this->mock(AirportLookupClient::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('lookupByIataOrFail')->with('NGO')->once()->andReturnNull();
+            $mock->shouldReceive('lookupByIataOrFail')->with('CVG')->once()->andReturnNull();
+        });
+        $file = UploadedFile::fake()->createWithContent('deadhead.jpeg', file_get_contents($path));
+
+        Livewire::actingAs(User::factory()->create())
+            ->test(ScheduleExtractor::class)
+            ->set('files', [$file])
+            ->call('extractRoster')
+            ->assertHasNoErrors()
+            ->assertSet('view', 'results')
+            ->assertDontSee('Layover NGO');
+
+        $parsed = app(EngineResultCache::class)->latest()->parsed;
+        $this->assertCount(1, $parsed['calendar_events']);
+        $event = $parsed['calendar_events'][0];
+        $this->assertSame('duty', $event['type']);
+        $this->assertSame('deadhead', $event['metadata']['duty_type']);
+        $this->assertSame('NGO', $event['metadata']['origin']);
+        $this->assertSame('CVG', $event['metadata']['destination']);
+        $this->assertSame('DH', $event['metadata']['position']);
+        $this->assertSame('N779CK', $event['metadata']['tail_number']);
+        $this->assertSame('2026-11-27T18:45:00+00:00', $event['start']);
+        $this->assertSame('2026-11-28T07:15:00+00:00', $event['end']);
+        $this->assertArrayNotHasKey('hotel', $event['metadata']);
+    }
+
     public function test_it_merges_deduplicates_and_sorts_multiple_image_results(): void
     {
         $files = [

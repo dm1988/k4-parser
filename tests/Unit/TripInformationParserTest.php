@@ -440,6 +440,55 @@ TEXT;
         $this->assertTrue($event['metadata']['deadhead']);
     }
 
+    #[DataProvider('mixedCaseFlightRoutes')]
+    public function test_it_recognizes_mixed_case_ocr_routes_with_a_flight_position(string $route, string $position, string $type): void
+    {
+        $text = "November 2026\nNov 27 18:45 - Nov 28 07:15\nK4 219 Pos AC\n{$route} | {$position} 77V";
+
+        $events = app(TripInformationParser::class)->parse($text)['calendar_events'];
+
+        $this->assertCount(1, $events);
+        $this->assertSame($type, $events[0]['type']);
+        $this->assertSame('NGO', $events[0]['metadata']['origin']);
+        $this->assertSame('CVG', $events[0]['metadata']['destination']);
+        $this->assertSame($position, $events[0]['metadata']['position']);
+        $this->assertSame('CKS 219 NGO-CVG', $events[0]['title']);
+        $this->assertSame($position === 'DH', $events[0]['metadata']['deadhead']);
+        $this->assertSame('2026-11-27T18:45:00+00:00', $events[0]['start']);
+        $this->assertSame('2026-11-28T07:15:00+00:00', $events[0]['end']);
+        $this->assertArrayNotHasKey('hotel', $events[0]['metadata']);
+    }
+
+    public static function mixedCaseFlightRoutes(): array
+    {
+        return [
+            'mixed case deadhead destination' => ['NGO - CvG', 'DH', 'duty'],
+            'mixed case operating origin' => ['NgO - CVG', 'FO', 'flight'],
+            'lowercase airports' => ['ngo - cvg', 'AFO', 'flight'],
+        ];
+    }
+
+    #[DataProvider('hotelsWithThreeLetterWords')]
+    public function test_it_preserves_layovers_with_three_letter_words_in_the_hotel_name(string $hotel): void
+    {
+        $text = "November 2026\nNov 28 07:15 - Nov 29 07:15\nCVG - {$hotel}";
+
+        $events = app(TripInformationParser::class)->parse($text)['calendar_events'];
+
+        $this->assertCount(1, $events);
+        $this->assertSame('layover', $events[0]['type']);
+        $this->assertSame('CVG', $events[0]['metadata']['station']);
+        $this->assertSame($hotel, $events[0]['metadata']['hotel']);
+    }
+
+    public static function hotelsWithThreeLetterWords(): array
+    {
+        return [
+            'article' => ['The Westin'],
+            'adjective' => ['New World Hotel'],
+        ];
+    }
+
     public function test_it_ignores_ocr_date_ranges_with_invalid_month_abbreviations(): void
     {
         $text = <<<'TEXT'

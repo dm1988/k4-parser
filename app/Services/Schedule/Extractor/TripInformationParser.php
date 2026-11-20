@@ -422,10 +422,11 @@ class TripInformationParser
     private function extractFlightRoute(array $lines): ?array
     {
         foreach ($lines as $line) {
-            if (preg_match('/\b([A-Z]{3})\s*-\s*([A-Z]{3})\b/', $line, $matches)) {
+            if (preg_match('/\b([A-Z]{3})\s*-\s*([A-Z]{3})\b/', $line, $matches) === 1
+                || preg_match('/\b([A-Z]{3})\s*-\s*([A-Z]{3})\s*\|\s*(?:'.CrewPosition::regexPattern().')\b/i', $line, $matches) === 1) {
                 return [
-                    'origin' => $matches[1],
-                    'destination' => $matches[2],
+                    'origin' => strtoupper($matches[1]),
+                    'destination' => strtoupper($matches[2]),
                 ];
             }
         }
