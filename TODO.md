@@ -28,6 +28,25 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## Completed: Flight plan brief: Improve offline fuel calculator
+
+- [x] Preserve entered data, accept fuel in thousands of pounds, and simplify the waypoint accordion.
+
+Goal: Retain Off time, starting FOB, ATA, and AFOB when switching tabs/apps; accept exact pounds and thousands of pounds; show a larger destination fuel estimate in a third accordion column; remove the redundant Planned FOB (FRMG) detail line.
+
+Current implementation: Drafts used tab-scoped session storage with reactive and page-hide saves. Fuel entries were interpreted as exact units, and expanded waypoints used two columns with the destination estimate remaining inline.
+
+Problem: Chrome users reported losing inputs after switching tabs/apps. Short pound entries needed support, and the expanded waypoint view needed clearer emphasis on estimated destination fuel.
+
+Outcome (2026-11-21): Drafts now use persistent browser storage scoped to owner, release, and source facts, migrate existing session drafts, save synchronously on input and before tab freeze, and clear both stores on reset. Unchanged tabs do not overwrite another tab's newer saved inputs during lifecycle saves. Confirmed with the user that 1–3 digits before the decimal mean thousands of pounds (`85` = 85,000 LB; `85.5` = 85,500 LB), while 4+ digits mean exact pounds (`85000` = 85,000 LB); kilogram entries retain exact-unit behavior. Both fuel inputs display their interpreted amount. Expanded waypoints now have three responsive columns with a larger destination estimate in the third; collapsed rows retain the current inline estimate. Removed the redundant Planned FOB (FRMG) detail line.
+
+Validation: Elevated Sail was available. All 30 focused JavaScript tests and all 10 offline calculator feature tests passed (127 PHP assertions). The production Vite build, Pint, the single Larastan run (zero errors), and whitespace checks passed. Tests cover app-switch recovery with a new tab session, legacy draft migration and failures, reset, unchanged-tab overwrites, owner/source isolation, and mixed shorthand/exact fuel calculations. Chrome's actual tab-discard behavior and the responsive layout were not manually exercised in a browser. Preserved all unrelated working-tree content; no other task was implemented.
+
+Commit message: `fix: preserve offline fuel inputs and improve waypoint estimates`
+
+Layout review follow-up (2026-11-21): Balanced the expanded row's vertical padding and matched its responsive horizontal inset to the section header. Top-aligned the three columns with consistent spacing and line height; matched ATA/AFOB input widths and padding; moved TBO and ETA messages below their inputs so supporting text does not offset the controls. Added a subtle destination divider, right-aligned destination values on wider screens, and retained left alignment when stacked. Missing or invalid destination values now use smaller text, while calculated fuel retains its larger emphasis. The focused calculator rendering test passed (1 test, 52 assertions), as did the production Vite build, Pint, and whitespace checks. No new tests were added for styling; the task's passing Larastan result was retained without another run for this layout-only follow-up. Browser screenshot verification remains outstanding. Preserved unrelated changes and user staging.
+
+Layout follow-up commit message: `style: align expanded waypoint calculator columns`
 
 ## Unified upload
 Currently: 2 tabs have 2 different upload points, user has to choose

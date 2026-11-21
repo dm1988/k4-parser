@@ -13,7 +13,7 @@
                 <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#C5A059]">Flight Plan Brief</p>
                 <h1 class="mt-2 text-2xl font-bold sm:text-3xl">Offline fuel calculator</h1>
                 <p class="mt-2 font-mono text-sm text-slate-200">{{ $flightNumber ?? 'Flight number not present' }} · {{ $flightDate ?? 'Flight date not present' }}</p>
-                <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-200">Enter Off time for waypoint ETAs. Add actual fuel readings to compare fuel and burn against the release and estimate fuel at destination. Inputs are saved in this tab and restored after a refresh. Once offline recovery is ready, this tab can reload without a connection, including after the browser unloads it. Closing the tab clears its entered inputs.</p>
+                <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-200">Enter Off time for waypoint ETAs. Add actual fuel readings to compare fuel and burn against the release and estimate fuel at destination. Inputs are saved on this device for this flight and restored after switching apps, refreshing, or reopening the calculator. Use Reset inputs to clear them. Once offline recovery is ready, this tab can reload without a connection, including after the browser unloads it.</p>
                 <p role="status" class="mt-2 text-sm font-semibold text-[#C5A059]" x-text="offlineMessage">Preparing offline recovery…</p>
             </header>
 
@@ -26,16 +26,18 @@
                 <div class="mt-4 flex flex-wrap items-end gap-4">
                     <label for="fuel-score-off-time" class="flex min-w-40 flex-col gap-1 text-sm font-semibold text-[#1B365D] dark:text-slate-200">
                         Off time (UTC, HHMM)
-                        <input id="fuel-score-off-time" name="off_time" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="0000–2359" x-model="offTime"
+                        <input id="fuel-score-off-time" name="off_time" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="0000–2359" x-model="offTime" x-on:input="saveDraft()"
                             class="rounded-lg border-[#1B365D]/20 bg-white font-mono text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                     </label>
                     <label for="fuel-score-starting-fob" class="flex min-w-44 flex-col gap-1 text-sm font-semibold text-[#1B365D] dark:text-slate-200">
                         <span class="whitespace-nowrap">Starting FOB at takeoff (<span x-text="fuelUnit?.toUpperCase() ?? 'unit unavailable'"></span>)</span>
-                        <input id="fuel-score-starting-fob" name="starting_fob" type="text" inputmode="decimal" autocomplete="off" placeholder="Fuel amount" x-model="startingFob" :disabled="fuelUnit === null"
+                        <input id="fuel-score-starting-fob" name="starting_fob" type="text" inputmode="decimal" autocomplete="off" placeholder="Fuel amount" x-model="startingFob" x-on:input="saveDraft()" :disabled="fuelUnit === null" aria-describedby="fuel-score-input-help fuel-score-starting-fob-value"
                             class="rounded-lg border-[#1B365D]/20 bg-white font-mono text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+                        <span id="fuel-score-starting-fob-value" class="font-mono text-xs font-normal text-[#4A5568] dark:text-slate-400" x-text="fuelInputLabel(startingFob)"></span>
                     </label>
                     <button type="button" x-on:click="reset()" class="rounded-lg border border-[#1B365D]/20 px-4 py-2 text-sm font-semibold text-[#1B365D] transition hover:bg-[#F8F9FA] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C5A059] dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800">Reset inputs</button>
                 </div>
+                <p id="fuel-score-input-help" class="mt-3 text-xs text-[#4A5568] dark:text-slate-400" x-show="fuelUnit === 'lb'" x-cloak>For LB, use 1–3 digits before the decimal for thousands: 85 = 85,000 LB; 85.5 = 85,500 LB. Use 4 or more digits for exact pounds: 85000 = 85,000 LB.</p>
                 <p x-show="draftUnavailable" x-cloak role="status" class="mt-3 text-sm text-amber-800 dark:text-amber-300">Browser storage is unavailable. Saved inputs may not match this page after a reload.</p>
                 <p class="mt-3 text-xs text-[#4A5568] dark:text-slate-400">Starting FOB is the actual fuel at takeoff and is used for cumulative burn at every waypoint. ETA needs only Off time and a confirmed cumulative duration. TBO is the release's cumulative planned burn. Source quantities must use the same unit. Displayed fuel values are rounded to two decimal places; calculations use full precision.</p>
             </section>
@@ -85,46 +87,53 @@
                                         </span>
                                     </td>
                                     <td class="whitespace-nowrap px-3 py-1 text-right align-middle">
-                                        <span class="inline-flex items-baseline justify-end gap-1" :class="hasActualFob(waypoint) ? '' : 'text-slate-400 dark:text-slate-600'">
+                                        <span x-show="!waypoint.expanded" class="inline-flex items-baseline justify-end gap-1" :class="hasActualFob(waypoint) ? '' : 'text-slate-400 dark:text-slate-600'">
                                             <span x-text="destinationValue(waypoint)"></span>
                                             <span x-show="destinationUnit(waypoint)" class="font-sans text-xs text-[#4A5568] dark:text-slate-400" x-text="destinationUnit(waypoint)"></span>
                                         </span>
                                     </td>
                                 </tr>
                                 <tr x-show="waypoint.expanded" x-cloak :id="`waypoint-details-${index}`" class="bg-[#F4F7FA] dark:bg-slate-800/50">
-                                    <td colspan="5" class="px-3 pb-4 pt-2">
-                                        <div class="grid gap-4 font-sans text-xs md:grid-cols-2">
-                                            <div class="flex flex-col gap-2">
+                                    <td colspan="5" class="px-4 py-5 sm:px-6">
+                                        <div class="grid items-start gap-6 font-sans text-xs leading-5 md:grid-cols-3 md:gap-8">
+                                            <div class="flex min-w-0 flex-col gap-3">
                                                 <span class="font-semibold text-[#1B365D] dark:text-slate-200">Time (UTC)</span>
-                                                <span class="text-[#4A5568] dark:text-slate-400" x-show="etaReason(waypoint)" x-text="etaReason(waypoint)"></span>
                                                 <label :for="`fuel-score-waypoint-${index}-ata`" class="flex flex-col gap-1 font-semibold text-[#1B365D] dark:text-slate-200">
                                                     <span>ATA (UTC, HHMM) at <span x-text="waypoint.displayLabel"></span></span>
-                                                    <input :id="`fuel-score-waypoint-${index}-ata`" :name="`waypoints[${index}][ata]`" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="HHMM" x-model="waypoint.ata"
-                                                        class="w-28 rounded-md border-[#1B365D]/20 bg-white font-mono text-sm text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+                                                    <input :id="`fuel-score-waypoint-${index}-ata`" :name="`waypoints[${index}][ata]`" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="HHMM" x-model="waypoint.ata" x-on:input="saveDraft()"
+                                                        class="w-36 max-w-full rounded-md border-[#1B365D]/20 bg-white px-3 py-2 font-mono text-sm text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                                                 </label>
+                                                <span class="text-[#4A5568] dark:text-slate-400" x-show="etaReason(waypoint)" x-text="etaReason(waypoint)"></span>
                                                 <span class="text-red-700 dark:text-red-400" x-show="ataReason(waypoint)" x-text="ataReason(waypoint)"></span>
                                                 <div x-show="hasValidAta(waypoint)" class="flex flex-col gap-1">
                                                     <span :class="varianceClasses(etaAtaDifference(waypoint))">ETA vs ATA: <span class="font-mono" x-text="etaAtaLabel(waypoint)"></span></span>
                                                     <span class="text-[#4A5568] dark:text-slate-400" x-show="etaAtaDifference(waypoint) === null" x-text="etaAtaReason(waypoint)"></span>
                                                 </div>
                                             </div>
-                                            <div class="flex flex-col gap-2">
+                                            <div class="flex min-w-0 flex-col gap-3">
                                                 <span class="font-semibold text-[#1B365D] dark:text-slate-200">Fuel and burn</span>
-                                                <span class="text-[#4A5568] dark:text-slate-400">Planned FOB (FRMG): <span class="font-mono" x-text="sourceFuelLabel(waypoint.remainingFuel)"></span></span>
-                                                <span class="text-[#4A5568] dark:text-slate-400">TBO (source, cumulative): <span class="font-mono" x-text="plannedBurnLabel(waypoint)"></span></span>
                                                 <label :for="`fuel-score-waypoint-${index}-actual-fob`" class="flex flex-col gap-1 font-semibold text-[#1B365D] dark:text-slate-200">
                                                     <span>AFOB (<span x-text="fuelUnit?.toUpperCase() ?? 'unit unavailable'"></span>) at <span x-text="waypoint.displayLabel"></span></span>
-                                                    <input :id="`fuel-score-waypoint-${index}-actual-fob`" :name="`waypoints[${index}][actual_fob]`" type="text" inputmode="decimal" autocomplete="off" placeholder="Actual fuel" x-model="waypoint.actualFob" :disabled="fuelUnit === null"
-                                                        class="w-36 rounded-md border-[#1B365D]/20 bg-white font-mono text-sm text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+                                                    <input :id="`fuel-score-waypoint-${index}-actual-fob`" :name="`waypoints[${index}][actual_fob]`" type="text" inputmode="decimal" autocomplete="off" placeholder="Actual fuel" x-model="waypoint.actualFob" x-on:input="saveDraft()" :disabled="fuelUnit === null" :aria-describedby="`fuel-score-input-help fuel-score-waypoint-${index}-actual-fob-value`"
+                                                        class="w-36 max-w-full rounded-md border-[#1B365D]/20 bg-white px-3 py-2 font-mono text-sm text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+                                                    <span :id="`fuel-score-waypoint-${index}-actual-fob-value`" class="font-mono font-normal text-[#4A5568] dark:text-slate-400" x-show="fuelInputLabel(waypoint.actualFob)" x-text="fuelInputLabel(waypoint.actualFob)"></span>
                                                 </label>
+                                                <span class="text-[#4A5568] dark:text-slate-400">TBO (source, cumulative): <span class="font-mono" x-text="plannedBurnLabel(waypoint)"></span></span>
                                                 <div x-show="hasActualFob(waypoint)" class="flex flex-col gap-1">
                                                     <span :class="varianceClasses(fobVariance(waypoint))">FOB vs plan: <span class="font-mono" x-text="varianceLabel(fobVariance(waypoint))"></span></span>
                                                     <span class="text-[#4A5568] dark:text-slate-400" x-show="fobVariance(waypoint) === null" x-text="fobReason(waypoint)"></span>
                                                     <span class="text-[#4A5568] dark:text-slate-400">Actual burn (ABO, cumulative): <span class="font-mono" x-text="fuelLabel(actualBurn(waypoint))"></span></span>
                                                     <span :class="varianceClasses(burnVariance(waypoint))">Cumulative burn vs TBO: <span class="font-mono" x-text="varianceLabel(burnVariance(waypoint))"></span></span>
                                                     <span class="text-[#4A5568] dark:text-slate-400" x-show="burnVariance(waypoint) === null" x-text="burnReason(waypoint)"></span>
-                                                    <span class="text-[#4A5568] dark:text-slate-400" x-show="estimatedDestinationFuel(waypoint) === null" x-text="destinationReason(waypoint)"></span>
                                                 </div>
+                                            </div>
+                                            <div class="flex min-w-0 flex-col gap-3 border-t border-[#1B365D]/10 pt-4 dark:border-slate-700 md:items-end md:border-l md:border-t-0 md:pl-6 md:pt-0 md:text-right">
+                                                <span class="font-semibold text-[#1B365D] dark:text-slate-200">Estimated fuel at destination</span>
+                                                <div class="flex flex-wrap items-baseline gap-2 text-[#1B365D] dark:text-slate-100 md:justify-end" :class="hasActualFob(waypoint) ? '' : 'opacity-50'" aria-live="polite" aria-atomic="true">
+                                                    <span class="font-mono font-bold tabular-nums" :class="destinationUnit(waypoint) ? 'text-3xl leading-tight' : 'text-sm leading-6'" x-text="destinationValue(waypoint)"></span>
+                                                    <span class="text-sm text-[#4A5568] dark:text-slate-400" x-show="destinationUnit(waypoint)" x-text="destinationUnit(waypoint)"></span>
+                                                </div>
+                                                <span class="text-[#4A5568] dark:text-slate-400" x-show="estimatedDestinationFuel(waypoint) === null" x-text="destinationReason(waypoint)"></span>
                                             </div>
                                         </div>
                                     </td>

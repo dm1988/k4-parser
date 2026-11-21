@@ -31,12 +31,13 @@ export const calculateEtaAtaDifference = (plannedEta, ata) => {
     return Math.abs(difference) === 720 ? null : difference;
 };
 
-export const parseFuelInput = (value) => {
+export const parseFuelInput = (value, unit = null) => {
     if (typeof value !== 'string' || !/^\d+(?:\.\d+)?$/.test(value.trim())) {
         return null;
     }
 
-    const amount = Number(value.trim());
+    const input = value.trim();
+    const amount = Number(input) * (unit === 'lb' && input.split('.')[0].length <= 3 ? 1000 : 1);
 
     return Number.isFinite(amount) ? amount : null;
 };
@@ -51,7 +52,7 @@ const fuelNumberFormatter = new Intl.NumberFormat('en-US', { maximumFractionDigi
 const isValidDuration = (minutes) => Number.isInteger(minutes) && minutes >= 0;
 
 export const calculateFobVariance = (actualFob, plannedRemainingFuel) => {
-    const actualAmount = parseFuelInput(actualFob);
+    const actualAmount = parseFuelInput(actualFob, plannedRemainingFuel?.unit);
 
     if (actualAmount === null || !isValidQuantity(plannedRemainingFuel)) {
         return null;
@@ -64,24 +65,24 @@ export const calculatePlannedCumulativeBurn = (tbo) => typeof tbo === 'string' &
     ? Number(tbo) * 100
     : null;
 
-export const calculateActualBurn = (startingFob, actualFob) => {
-    const startingAmount = parseFuelInput(startingFob);
-    const actualAmount = parseFuelInput(actualFob);
+export const calculateActualBurn = (startingFob, actualFob, unit = null) => {
+    const startingAmount = parseFuelInput(startingFob, unit);
+    const actualAmount = parseFuelInput(actualFob, unit);
 
     return startingAmount !== null && actualAmount !== null && startingAmount >= actualAmount
         ? startingAmount - actualAmount
         : null;
 };
 
-export const calculateBurnVariance = (startingFob, actualFob, tbo) => {
-    const actualBurn = calculateActualBurn(startingFob, actualFob);
+export const calculateBurnVariance = (startingFob, actualFob, tbo, unit = null) => {
+    const actualBurn = calculateActualBurn(startingFob, actualFob, unit);
     const plannedBurn = calculatePlannedCumulativeBurn(tbo);
 
     return actualBurn !== null && plannedBurn !== null ? plannedBurn - actualBurn : null;
 };
 
 export const calculateEstimatedDestinationFuel = (actualFob, plannedRemainingFuel, estimatedLandingFuel) => {
-    const actualAmount = parseFuelInput(actualFob);
+    const actualAmount = parseFuelInput(actualFob, plannedRemainingFuel?.unit);
 
     if (actualAmount === null || !isValidQuantity(plannedRemainingFuel) || !isValidQuantity(estimatedLandingFuel)
         || plannedRemainingFuel.unit !== estimatedLandingFuel.unit
@@ -234,12 +235,12 @@ export const waypointFuelMonitor = (calculator) => ({
     },
 
     actualBurn(waypoint) {
-        return this.fuelUnit !== null ? calculateActualBurn(this.startingFob, waypoint.actualFob) : null;
+        return this.fuelUnit !== null ? calculateActualBurn(this.startingFob, waypoint.actualFob, this.fuelUnit) : null;
     },
 
     burnVariance(waypoint) {
         return this.fuelUnit !== null
-            ? calculateBurnVariance(this.startingFob, waypoint.actualFob, waypoint.tbo)
+            ? calculateBurnVariance(this.startingFob, waypoint.actualFob, waypoint.tbo, this.fuelUnit)
             : null;
     },
 
@@ -255,6 +256,12 @@ export const waypointFuelMonitor = (calculator) => ({
         return amount === null
             ? 'Unable to calculate'
             : `${fuelNumberFormatter.format(amount)} ${this.fuelUnit.toUpperCase()}`;
+    },
+
+    fuelInputLabel(value) {
+        const amount = parseFuelInput(value, this.fuelUnit);
+
+        return amount !== null && this.fuelUnit !== null ? this.fuelLabel(amount) : '';
     },
 
     varianceLabel(amount) {

@@ -103,8 +103,8 @@ test('shows waypoint time difference only after a valid ATA and explains unavail
 });
 
 test('calculates signed FOB and cumulative burn variances with explicit zero values', () => {
-    assert.equal(calculateFobVariance('120.5', { amount: 100.25, unit: 'lb' }), 20.25);
-    assert.equal(calculateFobVariance('80', { amount: 100, unit: 'lb' }), -20);
+    assert.equal(calculateFobVariance('120.5', { amount: 100250, unit: 'lb' }), 20250);
+    assert.equal(calculateFobVariance('80000', { amount: 100000, unit: 'lb' }), -20000);
     assert.equal(calculateFobVariance('0', { amount: 0, unit: 'kg' }), 0);
     assert.equal(calculatePlannedCumulativeBurn('0050'), 5000);
     assert.equal(calculatePlannedCumulativeBurn('0000'), 0);
@@ -113,6 +113,50 @@ test('calculates signed FOB and cumulative burn variances with explicit zero val
     assert.equal(calculateBurnVariance('0', '0', '0000'), 0);
     assert.equal(parseFuelInput('0.5'), 0.5);
     assert.equal(calculateActualBurn('150', '120'), 30);
+});
+
+test('interprets short pound entries as thousands and long pound or kilogram entries as exact amounts', () => {
+    for (const [input, pounds] of [
+        ['0', 0], ['5', 5000], ['85', 85000], ['125', 125000], ['999', 999000],
+        ['0.5', 500], ['85.5', 85500], ['125.25', 125250], [' 85.5 ', 85500],
+        ['1000', 1000], ['85000', 85000], ['85000.5', 85000.5], ['0085', 85],
+    ]) {
+        assert.equal(parseFuelInput(input, 'lb'), pounds, input);
+        assert.equal(parseFuelInput(input, 'kg'), Number(input), input);
+    }
+
+    for (const input of ['', '-85', '85.', '.5', '85,000', '1e3', 'Infinity', '9'.repeat(400)]) {
+        assert.equal(parseFuelInput(input, 'lb'), null, input);
+    }
+});
+
+test('mixed short and exact pound entries agree across fuel, burn, and destination calculations', () => {
+    const monitor = waypointFuelMonitor({
+        fuelUnit: 'lb',
+        takeoffFuel: { amount: 150000, unit: 'lb' },
+        estimatedLandingFuel: { amount: 30000, unit: 'lb' },
+        waypoints: [{ tbo: '0300', remainingFuel: { amount: 120000, unit: 'lb' } }],
+    });
+    const waypoint = monitor.waypoints[0];
+
+    for (const [starting, actual] of [['150', '125.5'], ['150000', '125.5'], ['150', '125500'], ['150000', '125500']]) {
+        monitor.startingFob = starting;
+        waypoint.actualFob = actual;
+
+        assert.equal(monitor.fuelInputLabel(starting), '150,000 LB');
+        assert.equal(monitor.fuelInputLabel(actual), '125,500 LB');
+        assert.equal(monitor.fobVariance(waypoint), 5500);
+        assert.equal(monitor.actualBurn(waypoint), 24500);
+        assert.equal(monitor.burnVariance(waypoint), 5500);
+        assert.equal(monitor.destinationLabel(waypoint), '35,500 LB');
+    }
+
+    assert.equal(monitor.fuelInputLabel(''), '');
+    assert.equal(monitor.fuelInputLabel('invalid'), '');
+    monitor.fuelUnit = 'kg';
+    assert.equal(monitor.fuelInputLabel('125.5'), '125.5 KG');
+    monitor.fuelUnit = null;
+    assert.equal(monitor.fuelInputLabel('125.5'), '');
 });
 
 test('uses starting FOB for cumulative burn at every waypoint even when earlier AFOB is missing', () => {
@@ -153,7 +197,7 @@ test('uses starting FOB for cumulative burn at every waypoint even when earlier 
 });
 
 test('withholds fuel comparisons when source data or actual readings are unusable', () => {
-    const remaining = { amount: 50, unit: 'lb' };
+    const remaining = { amount: 50000, unit: 'lb' };
 
     for (const invalid of ['', '-1', 'abc', '1e3', 'Infinity']) {
         assert.equal(calculateFobVariance(invalid, remaining), null);
@@ -168,8 +212,8 @@ test('withholds fuel comparisons when source data or actual readings are unusabl
     assert.equal(calculateActualBurn('50', '60'), null);
     assert.equal(calculateEstimatedDestinationFuel('80', remaining, null), null);
     assert.equal(calculateEstimatedDestinationFuel('80', remaining, { amount: 20, unit: 'kg' }), null);
-    assert.equal(calculateEstimatedDestinationFuel('80', remaining, { amount: 60, unit: 'lb' }), null);
-    assert.equal(calculateEstimatedDestinationFuel('10', remaining, { amount: 20, unit: 'lb' }), null);
+    assert.equal(calculateEstimatedDestinationFuel('80', remaining, { amount: 60000, unit: 'lb' }), null);
+    assert.equal(calculateEstimatedDestinationFuel('10', remaining, { amount: 20000, unit: 'lb' }), null);
 });
 
 test('explains why cumulative burn cannot be compared without starting FOB or TBO', () => {
@@ -213,8 +257,8 @@ test('separates summary values from muted units without inventing missing values
     const monitor = waypointFuelMonitor({
         fuelUnit: 'lb',
         takeoffFuel: null,
-        estimatedLandingFuel: { amount: 20, unit: 'lb' },
-        waypoints: [{ cumulativeDurationMinutes: 0, remainingFuel: { amount: 100.25, unit: 'lb' } }],
+        estimatedLandingFuel: { amount: 20000, unit: 'lb' },
+        waypoints: [{ cumulativeDurationMinutes: 0, remainingFuel: { amount: 100250, unit: 'lb' } }],
     });
     const waypoint = monitor.waypoints[0];
 
@@ -222,7 +266,7 @@ test('separates summary values from muted units without inventing missing values
     assert.equal(monitor.durationUnit(0), 'min');
     assert.equal(monitor.durationValue(null), 'Not present in this release');
     assert.equal(monitor.durationUnit(null), '');
-    assert.equal(monitor.sourceFuelValue(waypoint.remainingFuel), '100.25');
+    assert.equal(monitor.sourceFuelValue(waypoint.remainingFuel), '100,250');
     assert.equal(monitor.sourceFuelUnit(waypoint.remainingFuel), 'LB');
     assert.equal(monitor.sourceFuelValue(null), 'Not present in this release');
     assert.equal(monitor.sourceFuelUnit(null), '');
@@ -230,7 +274,7 @@ test('separates summary values from muted units without inventing missing values
     assert.equal(monitor.destinationUnit(waypoint), '');
 
     waypoint.actualFob = '110.5';
-    assert.equal(monitor.destinationValue(waypoint), '30.25');
+    assert.equal(monitor.destinationValue(waypoint), '30,250');
     assert.equal(monitor.destinationUnit(waypoint), 'LB');
     waypoint.actualFob = 'invalid';
     assert.equal(monitor.destinationValue(waypoint), 'Unable to calculate');
@@ -240,11 +284,11 @@ test('separates summary values from muted units without inventing missing values
 test('empty inputs keep each waypoint compact without calculation prompts', () => {
     const monitor = waypointFuelMonitor({
         fuelUnit: 'lb',
-        takeoffFuel: { amount: 150, unit: 'lb' },
-        estimatedLandingFuel: { amount: 30, unit: 'lb' },
+        takeoffFuel: { amount: 150000, unit: 'lb' },
+        estimatedLandingFuel: { amount: 30000, unit: 'lb' },
         waypoints: [
-            { identifier: 'FIX01', cumulativeDurationMinutes: 10, remainingFuel: { amount: 120, unit: 'lb' } },
-            { identifier: 'FIX02', cumulativeDurationMinutes: 20, remainingFuel: { amount: 100, unit: 'lb' } },
+            { identifier: 'FIX01', cumulativeDurationMinutes: 10, remainingFuel: { amount: 120000, unit: 'lb' } },
+            { identifier: 'FIX02', cumulativeDurationMinutes: 20, remainingFuel: { amount: 100000, unit: 'lb' } },
         ],
     });
     const waypoint = monitor.waypoints[0];
@@ -263,7 +307,7 @@ test('empty inputs keep each waypoint compact without calculation prompts', () =
     assert.equal(monitor.waypoints[1].expanded, false);
     waypoint.actualFob = '130';
     assert.equal(monitor.hasActualFob(waypoint), true);
-    assert.equal(monitor.destinationLabel(waypoint), '40 LB');
+    assert.equal(monitor.destinationLabel(waypoint), '40,000 LB');
     monitor.toggleWaypoint(waypoint);
     assert.equal(waypoint.expanded, false);
     assert.equal(waypoint.actualFob, '130');

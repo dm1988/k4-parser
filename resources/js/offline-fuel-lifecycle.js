@@ -11,10 +11,12 @@ export const bindFuelDraftLifecycle = (monitor, page = globalThis.document, brow
     const leaving = () => monitor.saveDraft();
 
     page.addEventListener('visibilitychange', hidden);
+    page.addEventListener('freeze', leaving);
     browser.addEventListener('pagehide', leaving);
 
     return () => {
         page.removeEventListener('visibilitychange', hidden);
+        page.removeEventListener('freeze', leaving);
         browser.removeEventListener('pagehide', leaving);
     };
 };

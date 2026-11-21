@@ -18,10 +18,16 @@ const sourceSignature = (calculator) => JSON.stringify([
     ]),
 ]);
 
-export const createFuelScoreDraft = (calculator, scope, storageProvider = () => window.sessionStorage) => {
+export const createFuelScoreDraft = (
+    calculator,
+    scope,
+    storageProvider = () => window.localStorage,
+    legacyStorageProvider = () => globalThis.window?.sessionStorage,
+) => {
     const key = `offline-fuel-score:v${DRAFT_VERSION}:${encodeURIComponent(scope.ownerId)}:${encodeURIComponent(scope.flightPlanKey)}`;
     const signature = sourceSignature(calculator);
     const waypointIds = calculator.waypoints.map(waypointIdentity);
+    let savedInputs = null;
 
     const emptyDraft = () => ({
         version: DRAFT_VERSION,
@@ -31,18 +37,29 @@ export const createFuelScoreDraft = (calculator, scope, storageProvider = () => 
         waypoints: waypointIds.map((identity) => ({ identity, ata: '', actualFob: '' })),
     });
 
-    const clear = () => {
+    const clearStorage = (provider) => {
         try {
-            storageProvider().removeItem(key);
+            provider()?.removeItem(key);
             return true;
         } catch {
             try {
-                storageProvider().setItem(key, JSON.stringify(emptyDraft()));
+                provider()?.setItem(key, JSON.stringify(emptyDraft()));
                 return true;
             } catch {
                 return false;
             }
         }
+    };
+
+    const clear = () => {
+        const legacyCleared = clearStorage(legacyStorageProvider);
+        const currentCleared = clearStorage(storageProvider);
+
+        if (legacyCleared && currentCleared) {
+            savedInputs = JSON.stringify(emptyDraft());
+        }
+
+        return legacyCleared && currentCleared;
     };
 
     return {
@@ -51,9 +68,15 @@ export const createFuelScoreDraft = (calculator, scope, storageProvider = () => 
         load() {
             try {
                 const storage = storageProvider();
-                const raw = storage.getItem(key);
+                let raw = storage.getItem(key);
+                const needsMigration = raw === null;
+
+                if (needsMigration) {
+                    raw = legacyStorageProvider()?.getItem(key) ?? null;
+                }
 
                 if (raw === null) {
+                    savedInputs = JSON.stringify(emptyDraft());
                     return { available: true, inputs: null };
                 }
 
@@ -81,6 +104,16 @@ export const createFuelScoreDraft = (calculator, scope, storageProvider = () => 
                     return { available: clear(), inputs: null };
                 }
 
+                if (needsMigration) {
+                    try {
+                        storage.setItem(key, raw);
+                        clearStorage(legacyStorageProvider);
+                    } catch {
+                        return { available: false, inputs: draft };
+                    }
+                }
+
+                savedInputs = JSON.stringify(draft);
                 return { available: true, inputs: draft };
             } catch {
                 return { available: false, inputs: null };
@@ -92,6 +125,17 @@ export const createFuelScoreDraft = (calculator, scope, storageProvider = () => 
                 ata: waypoint.ata,
                 actualFob: waypoint.actualFob,
             }));
+            const serialized = JSON.stringify({
+                version: DRAFT_VERSION,
+                sourceSignature: signature,
+                offTime: monitor.offTime,
+                startingFob: monitor.startingFob,
+                waypoints,
+            });
+
+            if (serialized === savedInputs) {
+                return true;
+            }
 
             if (monitor.offTime === '' && monitor.startingFob === ''
                 && waypoints.every((waypoint) => waypoint.ata === '' && waypoint.actualFob === '')) {
@@ -99,13 +143,8 @@ export const createFuelScoreDraft = (calculator, scope, storageProvider = () => 
             }
 
             try {
-                storageProvider().setItem(key, JSON.stringify({
-                    version: DRAFT_VERSION,
-                    sourceSignature: signature,
-                    offTime: monitor.offTime,
-                    startingFob: monitor.startingFob,
-                    waypoints,
-                }));
+                storageProvider().setItem(key, serialized);
+                savedInputs = serialized;
                 return true;
             } catch {
                 return false;

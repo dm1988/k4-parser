@@ -41,9 +41,12 @@ test('pagehide flushes the draft and cleanup removes lifecycle listeners', () =>
     const unbind = bindFuelDraftLifecycle({ saveDraft: () => saves++ }, page, browser);
     browser.dispatchEvent(new Event('pagehide'));
     assert.equal(saves, 1);
+    page.dispatchEvent(new Event('freeze'));
+    assert.equal(saves, 2);
     unbind();
     page.visibilityState = 'hidden';
     page.dispatchEvent(new Event('visibilitychange'));
     browser.dispatchEvent(new Event('pagehide'));
-    assert.equal(saves, 1);
+    page.dispatchEvent(new Event('freeze'));
+    assert.equal(saves, 2);
 });
