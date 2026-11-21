@@ -21,25 +21,35 @@
 
             <section aria-labelledby="calculator-inputs-heading" class="rounded-xl border border-[#1B365D]/10 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-6">
                 <h2 id="calculator-inputs-heading" class="text-lg font-bold text-[#1B365D] dark:text-slate-100">Inputs <x-flight-release.planning-qualifier :show="$releaseStatus['preliminary']" label="Preliminary plan comparisons" /></h2>
-                <p class="mt-1 text-sm text-[#4A5568] dark:text-slate-400">Source release takeoff fuel: <span class="font-mono font-semibold" x-text="sourceFuelLabel(takeoffFuel)">Not present in this release</span></p>
-                <p class="mt-1 text-sm text-[#4A5568] dark:text-slate-400">Source estimated landing fuel: <span class="font-mono font-semibold" x-text="sourceFuelLabel(estimatedLandingFuel)">Not present in this release</span></p>
-                <div class="mt-4 flex flex-wrap items-end gap-4">
-                    <label for="fuel-score-off-time" class="flex min-w-40 flex-col gap-1 text-sm font-semibold text-[#1B365D] dark:text-slate-200">
+                <div class="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-[#4A5568] dark:text-slate-400">
+                    <p>Release takeoff: <span class="font-mono font-semibold" x-text="sourceFuelLabel(takeoffFuel)">Not present in this release</span></p>
+                    <p>Release est. landing: <span class="font-mono font-semibold" x-text="sourceFuelLabel(estimatedLandingFuel)">Not present in this release</span></p>
+                </div>
+                <div class="mt-4 grid items-end gap-4 sm:grid-cols-[12rem_minmax(0,1fr)] lg:grid-cols-[12rem_24rem_auto]">
+                    <label for="fuel-score-off-time" class="flex min-w-0 flex-col gap-1.5 text-sm font-semibold text-[#1B365D] dark:text-slate-200">
                         Off time (UTC, HHMM)
                         <input id="fuel-score-off-time" name="off_time" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="0000–2359" x-model="offTime" x-on:input="saveDraft()"
-                            class="rounded-lg border-[#1B365D]/20 bg-white font-mono text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+                            class="h-11 w-full rounded-lg border-[#1B365D]/20 bg-white px-3 py-2 font-mono text-sm text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                     </label>
-                    <label for="fuel-score-starting-fob" class="flex min-w-44 flex-col gap-1 text-sm font-semibold text-[#1B365D] dark:text-slate-200">
-                        <span class="whitespace-nowrap">Starting FOB at takeoff (<span x-text="fuelUnit?.toUpperCase() ?? 'unit unavailable'"></span>)</span>
+                    <label for="fuel-score-starting-fob" class="relative flex min-w-0 flex-col gap-1.5 text-sm font-semibold text-[#1B365D] dark:text-slate-200">
+                        <span>Starting FOB at takeoff (<span x-text="fuelUnit?.toUpperCase() ?? 'unit unavailable'"></span>)</span>
                         <input id="fuel-score-starting-fob" name="starting_fob" type="text" inputmode="decimal" autocomplete="off" placeholder="Fuel amount" x-model="startingFob" x-on:input="saveDraft()" :disabled="fuelUnit === null" aria-describedby="fuel-score-input-help fuel-score-starting-fob-value"
-                            class="rounded-lg border-[#1B365D]/20 bg-white font-mono text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
-                        <span id="fuel-score-starting-fob-value" class="font-mono text-xs font-normal text-[#4A5568] dark:text-slate-400" x-text="fuelInputLabel(startingFob)"></span>
+                            class="h-11 w-full rounded-lg border-[#1B365D]/20 bg-white py-2 pl-3 pr-32 font-mono text-sm text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+                        <span id="fuel-score-starting-fob-value" class="pointer-events-none absolute bottom-0 right-3 flex h-11 items-center gap-1 whitespace-nowrap font-mono text-xs font-normal text-[#4A5568] dark:text-slate-400" x-show="fuelInputLabel(startingFob)" x-cloak>
+                            <span aria-hidden="true">=</span><span x-text="fuelInputLabel(startingFob)"></span>
+                        </span>
                     </label>
-                    <button type="button" x-on:click="reset()" class="rounded-lg border border-[#1B365D]/20 px-4 py-2 text-sm font-semibold text-[#1B365D] transition hover:bg-[#F8F9FA] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C5A059] dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800">Reset inputs</button>
+                    <button type="button" x-on:click="reset()" class="h-11 justify-self-start rounded-lg border border-[#1B365D]/20 px-4 py-2 text-sm font-semibold text-[#1B365D] transition hover:bg-[#F8F9FA] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C5A059] dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-800">Reset inputs</button>
                 </div>
-                <p id="fuel-score-input-help" class="mt-3 text-xs text-[#4A5568] dark:text-slate-400" x-show="fuelUnit === 'lb'" x-cloak>For LB, use 1–3 digits before the decimal for thousands: 85 = 85,000 LB; 85.5 = 85,500 LB. Use 4 or more digits for exact pounds: 85000 = 85,000 LB.</p>
+                <p id="fuel-score-input-help" class="mt-3 text-xs text-[#4A5568] dark:text-slate-400" x-show="fuelUnit === 'lb'" x-cloak>LB: 85 or 85000 = 85,000 LB; 85.5 = 85,500 LB.</p>
                 <p x-show="draftUnavailable" x-cloak role="status" class="mt-3 text-sm text-amber-800 dark:text-amber-300">Browser storage is unavailable. Saved inputs may not match this page after a reload.</p>
-                <p class="mt-3 text-xs text-[#4A5568] dark:text-slate-400">Starting FOB is the actual fuel at takeoff and is used for cumulative burn at every waypoint. ETA needs only Off time and a confirmed cumulative duration. TBO is the release's cumulative planned burn. Source quantities must use the same unit. Displayed fuel values are rounded to two decimal places; calculations use full precision.</p>
+                <details class="mt-3 text-xs text-[#4A5568] dark:text-slate-400">
+                    <summary class="w-fit rounded font-semibold focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C5A059]">Calculation details</summary>
+                    <div class="mt-2 flex max-w-3xl flex-col gap-2 leading-5">
+                        <p>Starting FOB is the actual fuel at takeoff. TBO is planned cumulative burn. ETA uses Off time and cumulative duration. Source fuel units must match. Display rounds to two decimals; calculations retain full precision.</p>
+                        <p x-show="fuelUnit === 'lb'" x-cloak>For LB, 1–3 digits before the decimal mean thousands; 4+ digits mean exact pounds.</p>
+                    </div>
+                </details>
             </section>
 
             <section aria-labelledby="calculator-waypoints-heading" class="min-w-0 rounded-xl border border-[#1B365D]/10 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
@@ -101,7 +111,7 @@
                                                 <label :for="`fuel-score-waypoint-${index}-ata`" class="flex flex-col gap-1 font-semibold text-[#1B365D] dark:text-slate-200">
                                                     <span>ATA (UTC, HHMM) at <span x-text="waypoint.displayLabel"></span></span>
                                                     <input :id="`fuel-score-waypoint-${index}-ata`" :name="`waypoints[${index}][ata]`" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="HHMM" x-model="waypoint.ata" x-on:input="saveDraft()"
-                                                        class="w-36 max-w-full rounded-md border-[#1B365D]/20 bg-white px-3 py-2 font-mono text-sm text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+                                                        class="h-11 w-full rounded-md border-[#1B365D]/20 bg-white px-3 py-2 font-mono text-sm text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                                                 </label>
                                                 <span class="text-[#4A5568] dark:text-slate-400" x-show="etaReason(waypoint)" x-text="etaReason(waypoint)"></span>
                                                 <span class="text-red-700 dark:text-red-400" x-show="ataReason(waypoint)" x-text="ataReason(waypoint)"></span>
@@ -112,11 +122,13 @@
                                             </div>
                                             <div class="flex min-w-0 flex-col gap-3">
                                                 <span class="font-semibold text-[#1B365D] dark:text-slate-200">Fuel and burn</span>
-                                                <label :for="`fuel-score-waypoint-${index}-actual-fob`" class="flex flex-col gap-1 font-semibold text-[#1B365D] dark:text-slate-200">
+                                                <label :for="`fuel-score-waypoint-${index}-actual-fob`" class="relative flex min-w-0 flex-col gap-1 font-semibold text-[#1B365D] dark:text-slate-200">
                                                     <span>AFOB (<span x-text="fuelUnit?.toUpperCase() ?? 'unit unavailable'"></span>) at <span x-text="waypoint.displayLabel"></span></span>
                                                     <input :id="`fuel-score-waypoint-${index}-actual-fob`" :name="`waypoints[${index}][actual_fob]`" type="text" inputmode="decimal" autocomplete="off" placeholder="Actual fuel" x-model="waypoint.actualFob" x-on:input="saveDraft()" :disabled="fuelUnit === null" :aria-describedby="`fuel-score-input-help fuel-score-waypoint-${index}-actual-fob-value`"
-                                                        class="w-36 max-w-full rounded-md border-[#1B365D]/20 bg-white px-3 py-2 font-mono text-sm text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
-                                                    <span :id="`fuel-score-waypoint-${index}-actual-fob-value`" class="font-mono font-normal text-[#4A5568] dark:text-slate-400" x-show="fuelInputLabel(waypoint.actualFob)" x-text="fuelInputLabel(waypoint.actualFob)"></span>
+                                                        class="h-11 w-full rounded-md border-[#1B365D]/20 bg-white py-2 pl-3 pr-28 font-mono text-sm text-[#0B0E14] focus:border-[#1B365D] focus:ring-[#C5A059] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+                                                    <span :id="`fuel-score-waypoint-${index}-actual-fob-value`" class="pointer-events-none absolute bottom-0 right-3 flex h-11 items-center gap-1 whitespace-nowrap font-mono text-[11px] font-normal text-[#4A5568] dark:text-slate-400" x-show="fuelInputLabel(waypoint.actualFob)" x-cloak>
+                                                        <span aria-hidden="true">=</span><span x-text="fuelInputLabel(waypoint.actualFob)"></span>
+                                                    </span>
                                                 </label>
                                                 <span class="text-[#4A5568] dark:text-slate-400">TBO (source, cumulative): <span class="font-mono" x-text="plannedBurnLabel(waypoint)"></span></span>
                                                 <div x-show="hasActualFob(waypoint)" class="flex flex-col gap-1">

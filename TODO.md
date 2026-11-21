@@ -48,6 +48,10 @@ Layout review follow-up (2026-11-21): Balanced the expanded row's vertical paddi
 
 Layout follow-up commit message: `style: align expanded waypoint calculator columns`
 
+Screenshot review follow-up (2026-11-21): Reviewed `IMG_0533.jpg` and corrected the Inputs row's misalignment caused by the extra fuel-preview line inside a bottom-aligned label. Moved interpreted fuel into a right-hand suffix inside both starting FOB and waypoint AFOB fields, reserving input padding for it. Used a responsive input grid with matching 44px control heights, compact release reference values, one short visible pounds example, and a native Calculation details disclosure for longer notes. Preserved fuel calculations, saving, explicit units, warnings, and label associations. All three focused rendering/label tests passed (93 assertions); Vite build, Pint, and whitespace checks passed. No styling tests or dependencies were added, and the task's single passing Larastan result was retained. The supplied screenshot was reviewed; the revised screen was not captured in a browser.
+
+Screenshot follow-up commit message: `style: simplify fuel inputs and align calculator controls`
+
 ## Unified upload
 Currently: 2 tabs have 2 different upload points, user has to choose
 Goal: Have one unified upload path. Service will determine if a schedule or flight plan has been uploaded.

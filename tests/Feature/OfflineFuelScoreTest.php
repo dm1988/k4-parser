@@ -70,7 +70,7 @@ class OfflineFuelScoreTest extends TestCase
                 'flightPlanKey' => $key,
             ])
             ->assertSeeText('Off time (UTC, HHMM)')
-            ->assertSeeHtml('<span class="whitespace-nowrap">Starting FOB at takeoff (<span x-text="fuelUnit?.toUpperCase() ?? \'unit unavailable\'"></span>)</span>')
+            ->assertSeeHtml('<span>Starting FOB at takeoff (<span x-text="fuelUnit?.toUpperCase() ?? \'unit unavailable\'"></span>)</span>')
             ->assertSeeText('ATA (UTC, HHMM)')
             ->assertSeeText('ETA vs ATA')
             ->assertSeeHtml('x-show="hasValidAta(waypoint)"')
