@@ -28,6 +28,16 @@ Optionally add references and constraints.
 - Every interactive control needs keyboard access, visible focus, an accessible name, and a useful loading/empty/error state.
 
 # Tasks
+## Completed: K4 Parser Laravel Sail migration to Colima
+
+Outcome (2026-11-24). All four K4 Parser services run on Colima with the migrated PHP 8.4 image. Laravel uses the existing SQLite database. The Colima override removes the web build, sets the local app URL and uses the Compose hostname for Redis. Plain Sail uses the project override from the local `.env`, and the web container runs as the host UID and GID `501:20`. The K4-only start and status commands were exercised.
+
+The source MySQL and Redis volumes and live SQLite database were backed up and checksum-verified. The Desktop archives were restored into new, detached Colima volumes and compared with the backup files. A temporary MySQL clone booted and had zero non-system tables. The Redis snapshot was valid with zero keys. The four original K4 Parser Desktop containers are still stopped, and the Personal Finance pilot continued running.
+
+Both local Laravel endpoints returned HTTP 200. Read-only Artisan checks, MySQL and Redis connectivity, SSHFS permission checks, Composer, the Vite CLI and 16 focused tests with 54 assertions passed. Larastan ran once and reported zero errors. VS Code is configured for new terminals to use Colima. A direct integrated terminal check was blocked by macOS Accessibility settings. The existing migration reports include the backup paths and rollback commands.
+
+Commit message: `chore: migrate K4 Parser Sail development to Colima`
+
 ## Completed: Flight plan brief: Improve offline fuel calculator
 
 - [x] Preserve entered data, accept fuel in thousands of pounds, and simplify the waypoint accordion.
